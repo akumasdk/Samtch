@@ -15,3 +15,15 @@
 local.properties
 
 .idea
+
+# Keystore files
+*.jks
+*.keystore
+keystore.properties
+
+# Release notes
+release-notes.txt
+
+# Base64 encoded keystores (for GitHub Secrets setup)
+*.base64.txt
+
