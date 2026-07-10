@@ -1,4 +1,8 @@
-# <img src="images/logo.png" width="48" height="48" alt="Samtch Logo"> Samtch
+<p align="center">
+  <img src="images/logo.png" alt="Samtch Logo" height="192dp" style="border-radius: 50%;">
+</p>
+
+<h1 align="center">Samtch</h1>
 
 Samtch is a lightweight Twitch client for Android designed for a clean, ad-free viewing experience. It combines the power of the native Twitch web interface for discovery with a highly optimized custom player for watching.
 
