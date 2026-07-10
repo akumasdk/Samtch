@@ -62,8 +62,11 @@ Contributions are welcome! If you have ideas for improvements or have found a bu
 - [ ] **Chat in Fullscreen**: Overlay chat during landscape viewing.
 - [ ] **Navigation Improvements**: Faster transitions and better gesture support.
 - [ ] **Picture-in-Picture (PiP)**: Watch streams while using other apps.
-- [ ] **Account Management**: Easier switching between accounts and session persistence improvements.
-- [ ] **VOD Support**: Extend the custom player to support Video on Demand.
+- [ ] **Android TV Support**: Optimized interface for television and remote control navigation.
+
+## 🙏 Credits & Acknowledgments
+
+- **[pixeltris/TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions)**: Special thanks for the `video-swap-new` script which powers the ad-blocking capabilities of this client.
 
 ---
 
