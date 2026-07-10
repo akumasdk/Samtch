@@ -33,7 +33,7 @@ Samtch is a lightweight Twitch client for Android designed for a clean, ad-free 
 
 ## 🚀 Installation
 
-You can download the latest version of Samtch from the **[Releases](https://github.com/yourusername/Samtch/releases)** page.
+You can download the latest version of Samtch from the **[Releases](https://github.com/akumasdk/Samtch/releases)** page.
 
 1. Download the latest `.apk` file.
 2. If prompted, enable "Install from Unknown Sources" in your Android settings.
