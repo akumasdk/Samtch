@@ -31,8 +31,8 @@
                 display: none !important;
             }
 
-            /* Estilos para el botón personalizado */
-            .samtch-fullscreen-btn {
+            /* Estilos para los botones personalizados */
+            .samtch-control-btn {
                 background: transparent;
                 border: none;
                 color: white;
@@ -43,10 +43,10 @@
                 padding: 0 10px;
                 height: 100%;
             }
-            .samtch-fullscreen-btn:hover {
+            .samtch-control-btn:hover {
                 background: rgba(255, 255, 255, 0.1);
             }
-            .samtch-fullscreen-btn svg {
+            .samtch-control-btn svg {
                 fill: currentColor;
             }
         `;
@@ -90,12 +90,36 @@
         });
     }
 
-    function injectCustomFullscreenButton() {
+    function injectCustomControls() {
         const rightGroup = document.querySelector('.player-controls__right-control-group');
-        if (rightGroup && !document.getElementById('samtch-fullscreen-btn')) {
+        if (!rightGroup) return;
+
+        // 1. Botón de Chat
+        if (!document.getElementById('samtch-chat-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'samtch-chat-btn';
+            btn.className = 'samtch-control-btn';
+            btn.title = 'Toggle Chat';
+            btn.innerHTML = `
+                <svg width="24" height="24" viewBox="0 0 24 24">
+                    <path d="M12 2C6.477 2 2 6.477 2 12c0 1.821.487 3.53 1.338 5L2.1 21.9l4.9-1.238A9.956 9.956 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.477 0-2.872-.37-4.1-.1.023l-3.324.84.84-3.324c-.63-1.228-1-2.623-1-4.1 0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"></path>
+                </svg>
+            `;
+            btn.onclick = function() {
+                if (window.SamtchBridge) {
+                    window.SamtchBridge.toggleChat();
+                }
+            };
+            // Insertar antes de cualquier otro botón personalizado o al final
+            rightGroup.appendChild(btn);
+        }
+
+        // 2. Botón de Pantalla Completa
+        if (!document.getElementById('samtch-fullscreen-btn')) {
             const btn = document.createElement('button');
             btn.id = 'samtch-fullscreen-btn';
-            btn.className = 'samtch-fullscreen-btn';
+            btn.className = 'samtch-control-btn';
+            btn.title = 'Toggle Fullscreen';
             btn.innerHTML = `
                 <svg width="24" height="24" viewBox="0 0 24 24">
                     <path d="M8 3v2H3.996v4H2V3h6ZM2 15v6h6v-2H4v-4H2Zm18.002 0-.024 4H16v2h6v-6h-1.998ZM22 9V3h-5.993v2H20l.002 4H22Z"></path>
@@ -148,7 +172,7 @@
         removeSocialPanel();
         removeWatchOnTwitch();
         removeClipButton();
-        injectCustomFullscreenButton();
+        injectCustomControls();
         disableTwitchLinks();
         syncVisibility();
     }
