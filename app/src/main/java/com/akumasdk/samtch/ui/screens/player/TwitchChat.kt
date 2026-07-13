@@ -39,13 +39,14 @@ fun TwitchChat(
                     }
                 }
 
-                // Load and inject UI Cleaner
-                val cleanerScript = ScriptLoader.loadAsset(context, "js/chat/ui_cleaner.js")
-                if (cleanerScript.isNotEmpty()) {
-                    navigator.evaluateJavaScript(cleanerScript) {
-                        Log.d("TwitchChat", "Chat UI Cleaner script injected")
-                    }
-                }
+                // Load and inject UI Cleaner (currently disabled)
+                //TODO:
+//                val cleanerScript = ScriptLoader.loadAsset(context, "js/chat/ui_cleaner.js")
+//                if (cleanerScript.isNotEmpty()) {
+//                    navigator.evaluateJavaScript(cleanerScript) {
+//                        Log.d("TwitchChat", "Chat UI Cleaner script injected")
+//                    }
+//                }
             } catch (e: Exception) {
                 Log.e("TwitchChat", "Error injecting scripts", e)
             }

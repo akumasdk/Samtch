@@ -30,6 +30,7 @@ Samtch is a lightweight Twitch client for Android designed for a clean, ad-free 
   - Allows full profile exploration (clips, videos, home tabs) without hijacking.
   - Remembers your browsing position when returning from the player.
 - **Fullscreen Support**: Landscape mode with immersive system bar handling and optional side-chat overlay.
+- **Picture-in-Picture (PiP)**: Watch streams while using other apps with automatic transition to PiP mode.
 - **Gesture Controls**: Double-tap the center of the player to toggle chat in fullscreen mode.
 
 ## 🚀 Installation
@@ -67,7 +68,7 @@ Contributions are welcome! If you have ideas for improvements or have found a bu
 
 - [x] **Chat in Fullscreen**: Overlay chat during landscape viewing.
 - [ ] **Navigation Improvements**: Faster transitions and better gesture support.
-- [ ] **Picture-in-Picture (PiP)**: Watch streams while using other apps.
+- [x] **Picture-in-Picture (PiP)**: Watch streams while using other apps.
 - [ ] **Android TV Support**: Optimized interface for television and remote control navigation.
 
 ## 🙏 Credits & Acknowledgments

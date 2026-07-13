@@ -29,7 +29,7 @@ import com.akumasdk.samtch.util.ScriptLoader
 fun TwitchBrowser(
     onChannelSelected: (String) -> Unit
 ) {
-    val state = rememberSaveableWebViewState("https://www.twitch.tv/")
+    val state = rememberSaveableWebViewState("https://m.twitch.tv/")
     val navigator = rememberWebViewNavigator()
     val activity = LocalActivity.current
     val context = LocalContext.current
@@ -46,7 +46,7 @@ fun TwitchBrowser(
     }
 
     LaunchedEffect(Unit) {
-        navigator.loadUrl("https://www.twitch.tv/")
+        navigator.loadUrl("https://m.twitch.tv/")
     }
 
     // Monitor URL changes including SPA transitions via polling

@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -17,6 +21,7 @@ import com.multiplatform.webview.web.rememberWebViewNavigator
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
 import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
+import com.akumasdk.samtch.ui.screens.player.WebViewContainer
 import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
 import com.akumasdk.samtch.util.ScriptLoader
 
@@ -24,8 +29,10 @@ import com.akumasdk.samtch.util.ScriptLoader
 fun TwitchPlayer(
     channel: String = "forsen",
     isFullscreen: Boolean = false,
+    isPip: Boolean = false,
     onToggleFullscreen: () -> Unit = {},
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
     val twitchUrl = createTwitchPlayerUrl(channel)
     val context = LocalContext.current
@@ -33,11 +40,13 @@ fun TwitchPlayer(
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
 
-    Log.d("TwitchPlayer", "Creating player for channel: $channel")
+    Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip)")
 
     // Handle back button to return to browser
-    BackHandler {
-        onBack?.invoke()
+    if (!isPip) {
+        BackHandler {
+            onBack?.invoke()
+        }
     }
 
     LaunchedEffect(channel) {
@@ -50,7 +59,7 @@ fun TwitchPlayer(
         if (state.loadingState is LoadingState.Finished) {
             try {
                 // List of scripts to inject in player mode (from assets)
-                val scripts = listOf(
+                val scripts = mutableListOf(
                     "js/player/video_swap.js",
                     "js/player/ui_cleaner.js",
                     "js/player/controls_injector.js",
@@ -94,24 +103,47 @@ fun TwitchPlayer(
         }
     }
 
+    // Stable WebView content that won't be recreated when moving in the tree
+    val webView = remember(channel) {
+        movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
+            WebViewContainer(
+                modifier = modifier.onGloballyPositioned { layoutCoordinates ->
+                    val rect = layoutCoordinates.boundsInWindow()
+                    onVideoBoundsChanged(
+                        android.graphics.Rect(
+                            rect.left.toInt(),
+                            rect.top.toInt(),
+                            rect.right.toInt(),
+                            rect.bottom.toInt()
+                        )
+                    )
+                },
+                state = state,
+                navigator = navigator,
+                channel = channel,
+                onToggleFullscreen = onToggleFullscreen,
+                onToggleChat = onToggleChat
+            )
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        if (isFullscreen) {
+        if (isPip) {
+            // Simplified view for PiP: Just the WebView container
+            webView(Modifier.fillMaxSize()) {}
+        } else if (isFullscreen) {
             FullscreenPlayer(
-                state = state,
-                navigator = navigator,
                 channel = channel,
-                onToggleFullscreen = onToggleFullscreen
+                webView = { modifier, onToggleChat -> webView(modifier, onToggleChat) }
             )
         } else {
             PortraitPlayer(
-                state = state,
-                navigator = navigator,
                 channel = channel,
-                onToggleFullscreen = onToggleFullscreen
+                webView = { modifier, onToggleChat -> webView(modifier, onToggleChat) }
             )
         }
     }

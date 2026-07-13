@@ -14,15 +14,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.multiplatform.webview.web.WebViewNavigator
-import com.multiplatform.webview.web.WebViewState
 
 @Composable
 fun PortraitPlayer(
-    state: WebViewState,
-    navigator: WebViewNavigator,
     channel: String,
-    onToggleFullscreen: () -> Unit
+    webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var isChatVisible by remember { mutableStateOf(true) }
 
@@ -38,14 +34,9 @@ fun PortraitPlayer(
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
         ) {
-            WebViewContainer(
-                modifier = Modifier.fillMaxSize(),
-                state = state,
-                navigator = navigator,
-                channel = channel,
-                onToggleFullscreen = onToggleFullscreen,
-                onToggleChat = { isChatVisible = !isChatVisible }
-            )
+            webView(Modifier.fillMaxSize()) {
+                isChatVisible = !isChatVisible
+            }
         }
 
         // Twitch Chat
@@ -58,7 +49,9 @@ fun PortraitPlayer(
             ) {
                 TwitchChat(
                     channel = channel,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF18181B))
                 )
             }
         }

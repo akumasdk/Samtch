@@ -1,7 +1,11 @@
 package com.akumasdk.samtch
 
+import android.app.PictureInPictureParams
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.graphics.Rect
 import android.os.Bundle
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,6 +23,10 @@ import com.akumasdk.samtch.ui.screens.TwitchPlayer
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
+    private var selectedChannelState = mutableStateOf<String?>(null)
+    private var isInPipModeState = mutableStateOf(false)
+    private var pipRectState = mutableStateOf<Rect?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
@@ -29,9 +37,15 @@ class MainActivity : ComponentActivity() {
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         setContent {
-            var selectedChannel by remember { mutableStateOf<String?>(null) }
+            var selectedChannel by selectedChannelState
+            var isInPipMode by isInPipModeState
             var isFullscreen by remember { mutableStateOf(false) }
             var isPlayerReady by remember { mutableStateOf(false) }
+
+            // Update PiP params when channel or rect changes
+            LaunchedEffect(selectedChannel, pipRectState.value) {
+                updatePipParams()
+            }
 
             // Check if app was opened with a Twitch URL
             val intentUrl = intent?.data?.toString()
@@ -43,7 +57,9 @@ class MainActivity : ComponentActivity() {
             }
 
             // Change orientation and system bars based on current screen
-            LaunchedEffect(selectedChannel, isFullscreen) {
+            LaunchedEffect(selectedChannel, isFullscreen, isInPipMode) {
+                if (isInPipMode) return@LaunchedEffect
+
                 if (selectedChannel != null) {
                     if (isFullscreen) {
                         // Fullscreen Landscape
@@ -73,6 +89,7 @@ class MainActivity : ComponentActivity() {
                     TwitchPlayer(
                         channel = selectedChannel!!,
                         isFullscreen = isFullscreen,
+                        isPip = isInPipMode,
                         onToggleFullscreen = { isFullscreen = !isFullscreen },
                         onBack = {
                             if (isFullscreen) {
@@ -81,6 +98,9 @@ class MainActivity : ComponentActivity() {
                                 // Destroy player by setting channel to null
                                 selectedChannel = null
                             }
+                        },
+                        onVideoBoundsChanged = { rect ->
+                            pipRectState.value = rect
                         }
                     )
                 }
@@ -93,6 +113,31 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun updatePipParams() {
+        val builder = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .setAutoEnterEnabled(selectedChannelState.value != null)
+        
+        pipRectState.value?.let {
+            builder.setSourceRectHint(it)
+        }
+        
+        setPictureInPictureParams(builder.build())
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // Auto-enter handles this for Android 12+
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        isInPipModeState.value = isInPictureInPictureMode
     }
 
     private fun extractChannelFromUrl(url: String?): String? {
