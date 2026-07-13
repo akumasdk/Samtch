@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.akumasdk.samtch.ui.screens.TvPlayer
+import com.akumasdk.samtch.ui.screens.player.TvPlayer
 import com.akumasdk.samtch.ui.screens.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.TwitchChannelSelector
 import com.akumasdk.samtch.ui.screens.TwitchPlayer
