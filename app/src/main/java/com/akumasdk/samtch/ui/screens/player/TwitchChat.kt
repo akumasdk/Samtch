@@ -27,18 +27,27 @@ fun TwitchChat(
         navigator.loadUrl(chatUrl)
     }
 
-    // Inject BTTV when page is loaded
+    // Inject BTTV and UI Cleaner when page is loaded
     LaunchedEffect(state.loadingState) {
         if (state.loadingState is LoadingState.Finished) {
             try {
+                // Load and inject BTTV
                 val bttvScript = ScriptLoader.loadAsset(context, "js/chat/bttv.js")
                 if (bttvScript.isNotEmpty()) {
                     navigator.evaluateJavaScript(bttvScript) {
                         Log.d("TwitchChat", "BTTV script injected")
                     }
                 }
+
+                // Load and inject UI Cleaner
+                val cleanerScript = ScriptLoader.loadAsset(context, "js/chat/ui_cleaner.js")
+                if (cleanerScript.isNotEmpty()) {
+                    navigator.evaluateJavaScript(cleanerScript) {
+                        Log.d("TwitchChat", "Chat UI Cleaner script injected")
+                    }
+                }
             } catch (e: Exception) {
-                Log.e("TwitchChat", "Error injecting BTTV", e)
+                Log.e("TwitchChat", "Error injecting scripts", e)
             }
         }
     }
