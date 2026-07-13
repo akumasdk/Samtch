@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Samtch</string>
+    <string name="fullscreen_double_tap_hint">Double tap center to toggle chat</string>
 </resources>
