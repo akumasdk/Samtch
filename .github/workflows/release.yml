@@ -49,19 +49,22 @@ jobs:
         echo "path=$APK_PATH" >> $GITHUB_OUTPUT
         echo "Found APK at: $APK_PATH"
 
+    - name: Extract Changelog
+      run: |
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        sed -n "/## Samtch $VERSION/,/---/p" CHANGELOG.md | grep -v "---" > RELEASE_NOTES.md
+        if [ ! -s RELEASE_NOTES.md ]; then
+          echo "## Samtch $VERSION" > RELEASE_NOTES.md
+          echo "See commit history for changes." >> RELEASE_NOTES.md
+        fi
+        echo -e "\n### Download\nDownload the APK below to install on your Android device." >> RELEASE_NOTES.md
+
     - name: Create Release and Upload APK
       uses: softprops/action-gh-release@v1
       with:
         files: ${{ steps.apk.outputs.path }}
         name: Release ${{ steps.version.outputs.VERSION }}
-        body: |
-          ## Samtch ${{ steps.version.outputs.VERSION }}
-          
-          ### What's New
-          - See commit history for changes
-          
-          ### Download
-          Download the APK below to install on your Android device.
+        body_path: RELEASE_NOTES.md
         draft: false
         prerelease: false
       env:
