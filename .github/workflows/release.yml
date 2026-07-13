@@ -52,7 +52,7 @@ jobs:
     - name: Extract Changelog
       run: |
         VERSION="${{ steps.version.outputs.VERSION }}"
-        sed -n "/## Samtch $VERSION/,/---/p" CHANGELOG.md | grep -v "---" > RELEASE_NOTES.md
+        sed -n "/## Samtch $VERSION/,/---/p" CHANGELOG.md | grep -v -- "---" > RELEASE_NOTES.md
         if [ ! -s RELEASE_NOTES.md ]; then
           echo "## Samtch $VERSION" > RELEASE_NOTES.md
           echo "See commit history for changes." >> RELEASE_NOTES.md
