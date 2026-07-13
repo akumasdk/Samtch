@@ -18,7 +18,7 @@ Samtch is a lightweight Twitch client for Android designed for a clean, ad-free 
 
 | Ad-Blocking in Action | BTTV Integration |
 | :---: | :---: |
-| <img src="images/fullScreenViewBlockingAds.jpg" width="400"> | <img src="images/BTTVFunctionality1.jpg" width="300"> |
+| <img src="images/PortraitModeBlockingAds3.jpg" width="400"> | <img src="images/BTTVFunctionality1.jpg" width="300"> |
 
 ## ✨ Features
 
