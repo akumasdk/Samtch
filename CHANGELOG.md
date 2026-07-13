@@ -1,3 +1,19 @@
+## Samtch v0.0.2
+
+### What's New
+
+- **Fullscreen Chat Overlay**: You can now toggle chat while in landscape fullscreen mode.
+- **Double-Tap Interaction**: Added a new double-tap gesture in the center of the player to quickly toggle chat visibility.
+- **Chat UI Cleaning**: Integrated a specialized script to remove headers, banners, and unnecessary transition elements from the chat embed for a cleaner look.
+- **Onboarding Tooltip**: Added a helpful hint that appears when entering fullscreen to inform about the new double-tap gesture.
+- **Localization Support**: Tooltip and other UI strings are now properly localized.
+
+### Fixed
+- Improved touch event handling in the fullscreen player to intercept gestures before they are consumed by the WebView.
+- Refined the ad-blocking script injection timing for better consistency.
+
+---
+
 ## Samtch v0.0.1
 
 ### What's New
