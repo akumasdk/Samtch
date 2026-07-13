@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.akumasdk.samtch.R
+import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.rememberSaveableWebViewState
@@ -31,12 +31,11 @@ fun TwitchChat(
     LaunchedEffect(state.loadingState) {
         if (state.loadingState is LoadingState.Finished) {
             try {
-                val bttvScript = context.resources.openRawResource(R.raw.bttv)
-                    .bufferedReader()
-                    .use { it.readText() }
-
-                navigator.evaluateJavaScript(bttvScript) {
-                    Log.d("TwitchChat", "BTTV script injected")
+                val bttvScript = ScriptLoader.loadAsset(context, "js/chat/bttv.js")
+                if (bttvScript.isNotEmpty()) {
+                    navigator.evaluateJavaScript(bttvScript) {
+                        Log.d("TwitchChat", "BTTV script injected")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("TwitchChat", "Error injecting BTTV", e)

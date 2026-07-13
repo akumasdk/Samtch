@@ -23,6 +23,7 @@ import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.util.ScriptLoader
 
 @Composable
 fun TwitchBrowser(
@@ -95,19 +96,21 @@ fun TwitchBrowser(
             }
 
             try {
-                // Inject auto-close dialog script (but NOT auto-play)
-                val autoCloseScript = context.resources.openRawResource(R.raw.auto_close_dialog)
-                    .bufferedReader()
-                    .use { it.readText() }
-
-                navigator.evaluateJavaScript(autoCloseScript) {
-                    Log.d("TwitchBrowser", "Auto-close dialog script injected")
+                // Inject granular scripts for browser mode
+                val scripts = listOf(
+                    "js/common/app_banners_remover.js",
+                    "js/common/scroll_unlocker.js"
+                )
+                
+                scripts.forEach { path ->
+                    val script = ScriptLoader.loadAsset(context, path)
+                    if (script.isNotEmpty()) {
+                        navigator.evaluateJavaScript(script)
+                    }
                 }
-
-                // DO NOT inject video_swap_new here to prevent auto-play in browser
-                // Only inject it in TwitchPlayer
+                Log.d("TwitchBrowser", "Browser scripts injected successfully")
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("TwitchBrowser", "Error injecting scripts", e)
             }
         }
     }
@@ -271,5 +274,3 @@ private fun isGlobalHome(url: String?): Boolean {
     // Root / is NOT home, so navigating from / to a user WILL trigger the player
     return path == "/home" || path == "/home/"
 }
-
-

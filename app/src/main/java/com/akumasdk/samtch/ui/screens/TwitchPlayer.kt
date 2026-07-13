@@ -18,10 +18,11 @@ import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
 import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
 import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
+import com.akumasdk.samtch.util.ScriptLoader
 
 @Composable
 fun TwitchPlayer(
-    channel: String = "shroud",
+    channel: String = "forsen",
     isFullscreen: Boolean = false,
     onToggleFullscreen: () -> Unit = {},
     onBack: (() -> Unit)? = null
@@ -48,25 +49,26 @@ fun TwitchPlayer(
     LaunchedEffect(state.loadingState) {
         if (state.loadingState is LoadingState.Finished) {
             try {
-                // First inject video swap script
-                val videoSwapScript = context.resources.openRawResource(R.raw.video_swap_new)
-                    .bufferedReader()
-                    .use { it.readText() }
+                // List of scripts to inject in player mode (from assets)
+                val scripts = listOf(
+                    "js/player/video_swap.js",
+                    "js/player/ui_cleaner.js",
+                    "js/player/controls_injector.js",
+                    "js/player/visibility_monitor.js",
+                    "js/player/link_disabler.js",
+                    "js/common/scroll_unlocker.js"
+                )
 
-                navigator.evaluateJavaScript(videoSwapScript) {
-                    Log.d("TwitchPlayer", "Video swap script injected")
-                }
-
-                // Inject clean UI script
-                val cleanUiScript = context.resources.openRawResource(R.raw.clean_ui)
-                    .bufferedReader()
-                    .use { it.readText() }
-
-                navigator.evaluateJavaScript(cleanUiScript) {
-                    Log.d("TwitchPlayer", "Clean UI script injected")
+                scripts.forEach { path ->
+                    val script = ScriptLoader.loadAsset(context, path)
+                    if (script.isNotEmpty()) {
+                        navigator.evaluateJavaScript(script) {
+                            Log.d("TwitchPlayer", "Injected script: $path")
+                        }
+                    }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("TwitchPlayer", "Error injecting scripts", e)
             }
         }
     }
