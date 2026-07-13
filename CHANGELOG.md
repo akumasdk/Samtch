@@ -1,7 +1,15 @@
+## Samtch v0.0.3
+
+### What's New
+- **Picture-in-Picture (PiP) Support**: Watch your favorite streams while using other apps. The player automatically transitions to PiP mode when you leave the app.
+- **Seamless PiP Animation**: Implemented source rect hints and auto-enter support for a smooth, high-quality transition when swiping to the home screen.
+- **Player Stability**: Refactored the core player using `movableContentOf` to prevent black screens and WebView recreation when switching between portrait, fullscreen, and PiP modes.
+
+---
+
 ## Samtch v0.0.2
 
 ### What's New
-
 - **Fullscreen Chat Overlay**: You can now toggle chat while in landscape fullscreen mode.
 - **Double-Tap Interaction**: Added a new double-tap gesture in the center of the player to quickly toggle chat visibility.
 - **Chat UI Cleaning**: Integrated a specialized script to remove headers, banners, and unnecessary transition elements from the chat embed for a cleaner look.
@@ -17,7 +25,6 @@
 ## Samtch v0.0.1
 
 ### What's New
-
 - **Initial Release** of Samtch: A lightweight, ad-free Twitch client for Android.
 - **Custom Player**: Highly optimized player with integrated script injection.
 - **Ad-Blocking**: Integrated `video-swap-new` script to bypass Twitch video ads.
