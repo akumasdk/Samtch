@@ -32,18 +32,14 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.R
-import com.multiplatform.webview.web.WebViewNavigator
-import com.multiplatform.webview.web.WebViewState
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun FullscreenPlayer(
-    state: WebViewState,
-    navigator: WebViewNavigator,
     channel: String,
-    onToggleFullscreen: () -> Unit
+    webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var isChatVisible by remember { mutableStateOf(false) }
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -96,14 +92,9 @@ fun FullscreenPlayer(
                     }
                 }
         ) {
-            WebViewContainer(
-                modifier = Modifier.fillMaxSize(),
-                state = state,
-                navigator = navigator,
-                channel = channel,
-                onToggleFullscreen = onToggleFullscreen,
-                onToggleChat = { isChatVisible = !isChatVisible }
-            )
+            webView(Modifier.fillMaxSize()) {
+                isChatVisible = !isChatVisible
+            }
 
             // Double tap hint tooltip
             TapTooltip(
