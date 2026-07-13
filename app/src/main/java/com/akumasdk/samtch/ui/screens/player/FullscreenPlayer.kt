@@ -65,7 +65,8 @@ fun FullscreenPlayer(
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             if (event.type == PointerEventType.Press) {
                                 val currentTime = event.changes.first().uptimeMillis
-                                val isDoubleTap = (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
+                                val isDoubleTap =
+                                    (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
 
                                 if (isDoubleTap) {
                                     val position = event.changes.first().position
@@ -78,7 +79,7 @@ fun FullscreenPlayer(
 
                                     val isInCenterZone =
                                         abs(position.x - centerX) <= radiusX &&
-                                        abs(position.y - centerY) <= radiusY
+                                                abs(position.y - centerY) <= radiusY
 
                                     if (isInCenterZone) {
                                         isChatVisible = !isChatVisible
@@ -113,7 +114,9 @@ fun FullscreenPlayer(
             ) {
                 TwitchChat(
                     channel = channel,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF18181B))
                 )
             }
         }
