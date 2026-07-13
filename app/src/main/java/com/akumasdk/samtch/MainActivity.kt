@@ -1,9 +1,16 @@
 package com.akumasdk.samtch
 
+import android.app.PendingIntent
 import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Rect
+import android.graphics.drawable.Icon
 import android.os.Bundle
 import android.util.Rational
 import androidx.activity.ComponentActivity
@@ -12,6 +19,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -26,11 +34,30 @@ class MainActivity : ComponentActivity() {
     private var selectedChannelState = mutableStateOf<String?>(null)
     private var isInPipModeState = mutableStateOf(false)
     private var pipRectState = mutableStateOf<Rect?>(null)
+    private var refreshTriggerState = mutableIntStateOf(0)
+
+    private val pipReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ACTION_REFRESH) {
+                refreshTriggerState.intValue += 1
+            }
+        }
+    }
+
+    companion object {
+        private const val ACTION_REFRESH = "com.akumasdk.samtch.REFRESH"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        registerReceiver(
+            pipReceiver,
+            IntentFilter(ACTION_REFRESH),
+            Context.RECEIVER_NOT_EXPORTED
+        )
 
         val windowInsetsController = WindowInsetsControllerCompat(window, window.decorView)
         windowInsetsController.systemBarsBehavior =
@@ -39,11 +66,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             var selectedChannel by selectedChannelState
             var isInPipMode by isInPipModeState
+            var refreshTrigger by refreshTriggerState
             var isFullscreen by remember { mutableStateOf(false) }
             var isPlayerReady by remember { mutableStateOf(false) }
 
             // Update PiP params when channel or rect changes
-            LaunchedEffect(selectedChannel, pipRectState.value) {
+            LaunchedEffect(selectedChannel, pipRectState.value, isInPipMode) {
                 updatePipParams()
             }
 
@@ -90,6 +118,7 @@ class MainActivity : ComponentActivity() {
                         channel = selectedChannel!!,
                         isFullscreen = isFullscreen,
                         isPip = isInPipMode,
+                        refreshTrigger = refreshTrigger,
                         onToggleFullscreen = { isFullscreen = !isFullscreen },
                         onBack = {
                             if (isFullscreen) {
@@ -116,15 +145,43 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updatePipParams() {
+        val actions = if (selectedChannelState.value != null && isInPipModeState.value) {
+            listOf(
+                RemoteAction(
+                    Icon.createWithResource(this, android.R.drawable.ic_menu_rotate),
+                    "Refresh",
+                    "Refresh player",
+                    PendingIntent.getBroadcast(
+                        this,
+                        0,
+                        Intent(ACTION_REFRESH).setPackage(packageName),
+                        PendingIntent.FLAG_IMMUTABLE
+                    )
+                )
+            )
+        } else {
+            emptyList()
+        }
+
         val builder = PictureInPictureParams.Builder()
             .setAspectRatio(Rational(16, 9))
             .setAutoEnterEnabled(selectedChannelState.value != null)
+            .setActions(actions)
         
         pipRectState.value?.let {
             builder.setSourceRectHint(it)
         }
         
         setPictureInPictureParams(builder.build())
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(pipReceiver)
+        } catch (e: Exception) {
+            // Already unregistered or not registered
+        }
     }
 
     override fun onUserLeaveHint() {

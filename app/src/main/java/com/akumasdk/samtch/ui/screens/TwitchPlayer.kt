@@ -30,6 +30,7 @@ fun TwitchPlayer(
     channel: String = "forsen",
     isFullscreen: Boolean = false,
     isPip: Boolean = false,
+    refreshTrigger: Int = 0,
     onToggleFullscreen: () -> Unit = {},
     onBack: (() -> Unit)? = null,
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
@@ -52,6 +53,13 @@ fun TwitchPlayer(
     LaunchedEffect(channel) {
         Log.d("TwitchPlayer", "Loading URL: $twitchUrl")
         navigator.loadUrl(twitchUrl)
+    }
+
+    LaunchedEffect(refreshTrigger) {
+        if (refreshTrigger > 0) {
+            Log.d("TwitchPlayer", "Refresh triggered (key: $refreshTrigger)")
+            navigator.reload()
+        }
     }
 
     // Inject scripts when page is loaded
