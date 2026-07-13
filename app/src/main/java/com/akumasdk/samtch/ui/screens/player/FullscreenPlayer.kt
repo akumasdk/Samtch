@@ -36,6 +36,7 @@ import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun FullscreenPlayer(
@@ -49,7 +50,7 @@ fun FullscreenPlayer(
     var showTooltip by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        delay(3000)
+        delay(3000.milliseconds)
         showTooltip = false
     }
 
