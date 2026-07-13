@@ -10,6 +10,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -29,7 +31,8 @@ fun TwitchPlayer(
     isFullscreen: Boolean = false,
     isPip: Boolean = false,
     onToggleFullscreen: () -> Unit = {},
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
     val twitchUrl = createTwitchPlayerUrl(channel)
     val context = LocalContext.current
@@ -104,7 +107,17 @@ fun TwitchPlayer(
     val webView = remember(channel) {
         movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
             WebViewContainer(
-                modifier = modifier,
+                modifier = modifier.onGloballyPositioned { layoutCoordinates ->
+                    val rect = layoutCoordinates.boundsInWindow()
+                    onVideoBoundsChanged(
+                        android.graphics.Rect(
+                            rect.left.toInt(),
+                            rect.top.toInt(),
+                            rect.right.toInt(),
+                            rect.bottom.toInt()
+                        )
+                    )
+                },
                 state = state,
                 navigator = navigator,
                 channel = channel,

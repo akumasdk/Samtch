@@ -3,6 +3,7 @@ package com.akumasdk.samtch
 import android.app.PictureInPictureParams
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.graphics.Rect
 import android.os.Bundle
 import android.util.Rational
 import androidx.activity.ComponentActivity
@@ -24,6 +25,7 @@ import kotlinx.coroutines.delay
 class MainActivity : ComponentActivity() {
     private var selectedChannelState = mutableStateOf<String?>(null)
     private var isInPipModeState = mutableStateOf(false)
+    private var pipRectState = mutableStateOf<Rect?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -39,6 +41,11 @@ class MainActivity : ComponentActivity() {
             var isInPipMode by isInPipModeState
             var isFullscreen by remember { mutableStateOf(false) }
             var isPlayerReady by remember { mutableStateOf(false) }
+
+            // Update PiP params when channel or rect changes
+            LaunchedEffect(selectedChannel, pipRectState.value) {
+                updatePipParams()
+            }
 
             // Check if app was opened with a Twitch URL
             val intentUrl = intent?.data?.toString()
@@ -91,6 +98,9 @@ class MainActivity : ComponentActivity() {
                                 // Destroy player by setting channel to null
                                 selectedChannel = null
                             }
+                        },
+                        onVideoBoundsChanged = { rect ->
+                            pipRectState.value = rect
                         }
                     )
                 }
@@ -105,14 +115,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun updatePipParams() {
+        val builder = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .setAutoEnterEnabled(selectedChannelState.value != null)
+        
+        pipRectState.value?.let {
+            builder.setSourceRectHint(it)
+        }
+        
+        setPictureInPictureParams(builder.build())
+    }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (selectedChannelState.value != null) {
-            val params = PictureInPictureParams.Builder()
-                .setAspectRatio(Rational(16, 9))
-                .build()
-            enterPictureInPictureMode(params)
-        }
+        // Auto-enter handles this for Android 12+
     }
 
     override fun onPictureInPictureModeChanged(
