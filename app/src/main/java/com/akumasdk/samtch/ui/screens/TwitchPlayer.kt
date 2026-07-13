@@ -16,10 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.delay
-import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
-import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
 import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
 import com.akumasdk.samtch.ui.screens.player.WebViewContainer
@@ -61,67 +59,47 @@ fun TwitchPlayer(
         if (refreshTrigger > 0) {
             Log.d("TwitchPlayer", "Refresh triggered in PiP (count: $refreshTrigger)")
             // Use loadUrl instead of reload to ensure a clean state transition and JS injection
-            navigator.loadUrl(createTwitchPlayerUrl(channel))
+            // We add a unique query param to force the WebView to treat it as a new navigation
+            val refreshUrl = createTwitchPlayerUrl(channel) + "&refresh=$refreshTrigger"
+            navigator.loadUrl(refreshUrl)
         }
     }
 
-    // Pre-load scripts to be ready for rapid injection
-    val scriptsToInject = remember(context) {
-        try {
-            listOf(
-                "js/player/video_swap.js",
-                "js/player/ui_cleaner.js",
-                "js/player/controls_injector.js",
-                "js/player/visibility_monitor.js",
-                "js/player/link_disabler.js",
-                "js/common/scroll_unlocker.js"
-            ).joinToString("\n") { path ->
-                val script = ScriptLoader.loadAsset(context, path)
-                if (script.isNotEmpty()) {
-                    val guardVar = "samtch_" + path.replace(Regex("[^a-zA-Z0-9]"), "_")
-                    "if (typeof window.$guardVar === 'undefined') { window.$guardVar = true; $script }"
-                } else ""
-            }
-        } catch (e: Exception) {
-            Log.e("TwitchPlayer", "Error pre-loading scripts", e)
-            ""
-        }
-    }
-
-    // Aggressive injection strategy
-    // We use a combination of immediate hits on state changes and a persistent polling loop
-    LaunchedEffect(state.loadingState) {
-        val loadingState = state.loadingState
-        
-        // 1. Immediate injection attempts on key state transitions
-        if (loadingState is LoadingState.Finished || (loadingState is LoadingState.Loading && loadingState.progress > 0.2f)) {
-            if (scriptsToInject.isNotEmpty()) {
-                navigator.evaluateJavaScript(scriptsToInject)
-                Log.d("TwitchPlayer", "State-triggered injection (progress: ${if (loadingState is LoadingState.Loading) loadingState.progress else 1f})")
-            }
-        }
-    }
-
-    // 2. Persistent polling loop to catch hydration even if state signals are missed or premature
+    // Aggressive injection strategy: Polling loop to catch hydration
     LaunchedEffect(channel, refreshTrigger) {
-        // Small initial delay to avoid about:blank or very early states
-        delay(200)
-        
-        val maxPollingTime = 8000L // 8 seconds
-        val interval = 400L
-        var elapsed = 0L
-        
-        while (elapsed < maxPollingTime) {
-            if (scriptsToInject.isNotEmpty()) {
-                navigator.evaluateJavaScript(scriptsToInject)
-            }
-            delay(interval)
-            elapsed += interval
-        }
-        Log.d("TwitchPlayer", "Completed aggressive polling loop for $channel")
-    }
+        val scripts = listOf(
+            "js/player/video_swap.js",
+            "js/player/ui_cleaner.js",
+            "js/player/controls_injector.js",
+            "js/player/visibility_monitor.js",
+            "js/player/link_disabler.js",
+            "js/common/scroll_unlocker.js"
+        ).mapNotNull { path ->
+            val script = ScriptLoader.loadAsset(context, path)
+            if (script.isNotEmpty()) {
+                val guardVar = "samtch_" + path.replace(Regex("[^a-zA-Z0-9]"), "_")
+                "if (typeof window.$guardVar === 'undefined') { window.$guardVar = true; $script }"
+            } else null
+        }.joinToString("\n")
 
-    // Cleanup when player is destroyed
+        if (scripts.isEmpty()) return@LaunchedEffect
+
+        // Small initial delay
+        delay(300)
+        
+        // Initial tight polling for early hooks
+        repeat(10) {
+            navigator.evaluateJavaScript(scripts)
+            delay(200)
+        }
+        
+        // Steady polling for dynamic hydration
+        repeat(15) {
+            navigator.evaluateJavaScript(scripts)
+            delay(1000)
+        }
+        Log.d("TwitchPlayer", "Completed injection polling for $channel")
+    }
     DisposableEffect(channel) {
         onDispose {
             Log.d("TwitchPlayer", "Disposing player for channel: $channel")
