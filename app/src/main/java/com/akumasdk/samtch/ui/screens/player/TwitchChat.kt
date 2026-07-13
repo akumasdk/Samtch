@@ -15,7 +15,8 @@ import com.multiplatform.webview.web.rememberWebViewNavigator
 @Composable
 fun TwitchChat(
     channel: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isFocusable: Boolean = true
 ) {
     val chatUrl = "https://www.twitch.tv/embed/$channel/chat?parent=twitch.tv&darkpopout"
     val state = rememberSaveableWebViewState(chatUrl)
@@ -69,6 +70,9 @@ fun TwitchChat(
                 overScrollMode = View.OVER_SCROLL_NEVER
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false
+                
+                this.isFocusable = isFocusable
+                this.isFocusableInTouchMode = isFocusable
             }
         }
     )

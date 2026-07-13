@@ -17,7 +17,8 @@ fun WebViewContainer(
     navigator: WebViewNavigator,
     channel: String,
     onToggleFullscreen: () -> Unit,
-    onToggleChat: () -> Unit = {}
+    onToggleChat: () -> Unit = {},
+    isFocusable: Boolean = true
 ) {
     WebView(
         modifier = modifier,
@@ -42,6 +43,9 @@ fun WebViewContainer(
                 overScrollMode = View.OVER_SCROLL_NEVER
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false
+                
+                this.isFocusable = isFocusable
+                this.isFocusableInTouchMode = isFocusable
 
                 // Add bridge for fullscreen and chat using the dedicated class
                 addJavascriptInterface(
