@@ -70,9 +70,22 @@ class MainActivity : ComponentActivity() {
             var isFullscreen by remember { mutableStateOf(false) }
             var isPlayerReady by remember { mutableStateOf(false) }
 
-            // Update PiP params when channel or rect changes
-            LaunchedEffect(selectedChannel, pipRectState.value, isInPipMode) {
+            // Update PiP params when channel or PiP mode changes
+            LaunchedEffect(selectedChannel, isInPipMode) {
                 updatePipParams()
+            }
+
+            // Separately update source rect hint to avoid frequent heavy updates
+            LaunchedEffect(pipRectState.value) {
+                if (pipRectState.value != null && selectedChannel != null) {
+                    val builder = PictureInPictureParams.Builder()
+                    pipRectState.value?.let { builder.setSourceRectHint(it) }
+                    try {
+                        setPictureInPictureParams(builder.build())
+                    } catch (e: Exception) {
+                        // Ignore if called too frequently or in wrong state
+                    }
+                }
             }
 
             // Check if app was opened with a Twitch URL
@@ -98,10 +111,12 @@ class MainActivity : ComponentActivity() {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
                     }
-                    // Small delay to ensure previous player is destroyed
-                    isPlayerReady = false
-                    delay(200)
-                    isPlayerReady = true
+                    
+                    // Only reset player if it wasn't already ready (e.g. channel changed)
+                    if (!isPlayerReady) {
+                        delay(200)
+                        isPlayerReady = true
+                    }
                 } else {
                     // Browser: force portrait
                     requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -168,11 +183,11 @@ class MainActivity : ComponentActivity() {
             .setAutoEnterEnabled(selectedChannelState.value != null)
             .setActions(actions)
         
-        pipRectState.value?.let {
-            builder.setSourceRectHint(it)
+        try {
+            setPictureInPictureParams(builder.build())
+        } catch (e: Exception) {
+            // Activity might not be in a state to accept PiP params
         }
-        
-        setPictureInPictureParams(builder.build())
     }
 
     override fun onDestroy() {

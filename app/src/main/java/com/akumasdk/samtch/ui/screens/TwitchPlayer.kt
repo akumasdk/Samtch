@@ -15,6 +15,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
@@ -55,39 +56,69 @@ fun TwitchPlayer(
         navigator.loadUrl(twitchUrl)
     }
 
+    // Handle refresh trigger from PiP actions
     LaunchedEffect(refreshTrigger) {
         if (refreshTrigger > 0) {
-            Log.d("TwitchPlayer", "Refresh triggered (key: $refreshTrigger)")
-            navigator.reload()
+            Log.d("TwitchPlayer", "Refresh triggered in PiP (count: $refreshTrigger)")
+            // Use loadUrl instead of reload to ensure a clean state transition and JS injection
+            navigator.loadUrl(createTwitchPlayerUrl(channel))
         }
     }
 
-    // Inject scripts when page is loaded
-    LaunchedEffect(state.loadingState) {
-        if (state.loadingState is LoadingState.Finished) {
-            try {
-                // List of scripts to inject in player mode (from assets)
-                val scripts = mutableListOf(
-                    "js/player/video_swap.js",
-                    "js/player/ui_cleaner.js",
-                    "js/player/controls_injector.js",
-                    "js/player/visibility_monitor.js",
-                    "js/player/link_disabler.js",
-                    "js/common/scroll_unlocker.js"
-                )
+    // Pre-load scripts to be ready for rapid injection
+    val scriptsToInject = remember(context) {
+        try {
+            listOf(
+                "js/player/video_swap.js",
+                "js/player/ui_cleaner.js",
+                "js/player/controls_injector.js",
+                "js/player/visibility_monitor.js",
+                "js/player/link_disabler.js",
+                "js/common/scroll_unlocker.js"
+            ).joinToString("\n") { path ->
+                val script = ScriptLoader.loadAsset(context, path)
+                if (script.isNotEmpty()) {
+                    val guardVar = "samtch_" + path.replace(Regex("[^a-zA-Z0-9]"), "_")
+                    "if (typeof window.$guardVar === 'undefined') { window.$guardVar = true; $script }"
+                } else ""
+            }
+        } catch (e: Exception) {
+            Log.e("TwitchPlayer", "Error pre-loading scripts", e)
+            ""
+        }
+    }
 
-                scripts.forEach { path ->
-                    val script = ScriptLoader.loadAsset(context, path)
-                    if (script.isNotEmpty()) {
-                        navigator.evaluateJavaScript(script) {
-                            Log.d("TwitchPlayer", "Injected script: $path")
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("TwitchPlayer", "Error injecting scripts", e)
+    // Aggressive injection strategy
+    // We use a combination of immediate hits on state changes and a persistent polling loop
+    LaunchedEffect(state.loadingState) {
+        val loadingState = state.loadingState
+        
+        // 1. Immediate injection attempts on key state transitions
+        if (loadingState is LoadingState.Finished || (loadingState is LoadingState.Loading && loadingState.progress > 0.2f)) {
+            if (scriptsToInject.isNotEmpty()) {
+                navigator.evaluateJavaScript(scriptsToInject)
+                Log.d("TwitchPlayer", "State-triggered injection (progress: ${if (loadingState is LoadingState.Loading) loadingState.progress else 1f})")
             }
         }
+    }
+
+    // 2. Persistent polling loop to catch hydration even if state signals are missed or premature
+    LaunchedEffect(channel, refreshTrigger) {
+        // Small initial delay to avoid about:blank or very early states
+        delay(200)
+        
+        val maxPollingTime = 8000L // 8 seconds
+        val interval = 400L
+        var elapsed = 0L
+        
+        while (elapsed < maxPollingTime) {
+            if (scriptsToInject.isNotEmpty()) {
+                navigator.evaluateJavaScript(scriptsToInject)
+            }
+            delay(interval)
+            elapsed += interval
+        }
+        Log.d("TwitchPlayer", "Completed aggressive polling loop for $channel")
     }
 
     // Cleanup when player is destroyed
