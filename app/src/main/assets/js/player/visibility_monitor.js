@@ -10,5 +10,6 @@
     }
     setInterval(syncVisibility, 500);
     const observer = new MutationObserver(syncVisibility);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-a-visible'] });
+    const target = document.body || document.documentElement;
+    observer.observe(target, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-a-visible'] });
 })();
