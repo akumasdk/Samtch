@@ -2,7 +2,7 @@
     'use strict';
 
     function removeTransitionGroup() {
-        const element = document.querySelector('.tw-transition-group');
+        const element = document.querySelector('.stream-chat-header');
         if (element) {
             console.log('[Samtch] Removing the first transition group element');
             element.remove();
