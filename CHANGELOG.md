@@ -1,3 +1,15 @@
+## Samtch v0.0.5
+
+### What's New
+- **New Splash Screen**: Implemented a smoother app entry that remains until the Twitch browser is fully loaded and interactive via JS bridge and a dedicated controller.
+- **Enhanced Navigation**: Added double-tap gesture in portrait mode to enter fullscreen directly from the player.
+- **Material 3 Icons**: Updated PiP RemoteAction button to use a Material 3 style refresh icon for better consistency.
+
+### Changed
+- **UI Cleanup**: Significantly reduced channel page clutter by removing dynamic transition groups and "Open in App" distractions across the site.
+
+---
+
 ## Samtch v0.0.4
 
 ### What's New
@@ -50,7 +62,7 @@
 - **App Logo**: Custom branding for a native feel.
 
 ### Fixed
-- Fixed issues with Single Page Application (SPA) navigation not triggering standard WebView events.
+- Fixed issues with Single Single Page Application (SPA) navigation not triggering standard WebView events.
 - Resolved white-screen/blank-page issues during complex navigation transitions.
 - Improved the detection of channel root URLs to accurately distinguish between streams and sub-pages.
 - Fixed infinite reload loops when returning to the Twitch home page.
