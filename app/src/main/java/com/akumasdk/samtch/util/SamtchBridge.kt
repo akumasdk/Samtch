@@ -7,7 +7,8 @@ import android.webkit.JavascriptInterface
  */
 class SamtchBridge(
     private val onToggleFullscreen: () -> Unit,
-    private val onToggleChat: () -> Unit = {}
+    private val onToggleChat: () -> Unit = {},
+    private val onChatLoadedCallback: () -> Unit = {}
 ) {
     @JavascriptInterface
     fun toggleFullscreen() {
@@ -17,5 +18,10 @@ class SamtchBridge(
     @JavascriptInterface
     fun toggleChat() {
         onToggleChat()
+    }
+
+    @JavascriptInterface
+    fun onChatLoaded() {
+        onChatLoadedCallback()
     }
 }
