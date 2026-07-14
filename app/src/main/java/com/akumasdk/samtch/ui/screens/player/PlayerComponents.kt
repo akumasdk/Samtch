@@ -2,12 +2,12 @@ package com.akumasdk.samtch.ui.screens.player
 
 import android.util.Log
 import android.view.View
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import com.akumasdk.samtch.util.TwitchPlayerBridge
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
@@ -74,4 +74,19 @@ fun WebViewContainer(
 
 fun createTwitchPlayerUrl(channel: String): String {
     return "https://player.twitch.tv/?channel=$channel&parent=twitch.tv&muted=false&autoplay=true&enableExtensions=false&player=mobile"
+}
+
+class TwitchPlayerBridge(
+    private val onToggleFullscreen: () -> Unit,
+    private val onToggleChat: () -> Unit = {}
+) {
+    @JavascriptInterface
+    fun toggleFullscreen() {
+        onToggleFullscreen()
+    }
+
+    @JavascriptInterface
+    fun toggleChat() {
+        onToggleChat()
+    }
 }

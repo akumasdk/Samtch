@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.screens.player
 import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
+import android.webkit.JavascriptInterface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import com.akumasdk.samtch.util.TwitchChatBridge
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
@@ -132,5 +132,14 @@ fun TwitchChat(
                 CircularProgressIndicator()
             }
         }
+    }
+}
+
+class TwitchChatBridge(
+    private val onChatLoadedCallback: () -> Unit = {}
+) {
+    @JavascriptInterface
+    fun onChatLoaded() {
+        onChatLoadedCallback()
     }
 }

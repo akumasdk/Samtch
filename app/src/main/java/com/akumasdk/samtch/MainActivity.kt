@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
     private var isInPipModeState = mutableStateOf(false)
     private var pipRectState = mutableStateOf<Rect?>(null)
     private var refreshTriggerState = mutableIntStateOf(0)
+    private var isAppLoadedState = mutableStateOf(false)
 
     private val pipReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -54,6 +56,11 @@ class MainActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition {
+            !isAppLoadedState.value
+        }
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -122,6 +129,7 @@ class MainActivity : ComponentActivity() {
                     if (!isPlayerReady) {
                         delay(200.milliseconds)
                         isPlayerReady = true
+                        isAppLoadedState.value = true
                     }
                 } else {
                     // Browser: force portrait
@@ -159,6 +167,9 @@ class MainActivity : ComponentActivity() {
                 TwitchBrowser(
                     onChannelSelected = { channel ->
                         selectedChannel = channel
+                    },
+                    onLoaded = {
+                        isAppLoadedState.value = true
                     }
                 )
             }

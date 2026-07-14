@@ -1,11 +1,13 @@
 package com.akumasdk.samtch.ui.screens
 
+import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.JavascriptInterface
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,9 +27,11 @@ import com.multiplatform.webview.web.rememberWebViewNavigator
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.util.ScriptLoader
 
+@SuppressLint("JavascriptInterface")
 @Composable
 fun TwitchBrowser(
-    onChannelSelected: (String) -> Unit
+    onChannelSelected: (String) -> Unit,
+    onLoaded: () -> Unit = {}
 ) {
     val state = rememberSaveableWebViewState("https://m.twitch.tv/")
     val navigator = rememberWebViewNavigator()
@@ -43,6 +47,13 @@ fun TwitchBrowser(
         } else {
             activity?.finish()
         }
+    }
+
+    // Safety timeout to ensure splash screen eventually disappears
+    LaunchedEffect(Unit) {
+        delay(8000)
+        Log.d("TwitchBrowser", "Safety timeout reached, forcing splash screen dismissal")
+        onLoaded()
     }
 
     LaunchedEffect(Unit) {
@@ -99,7 +110,8 @@ fun TwitchBrowser(
                 // Inject granular scripts for browser mode
                 val scripts = listOf(
                     "js/common/app_banners_remover.js",
-                    "js/common/scroll_unlocker.js"
+                    "js/common/scroll_unlocker.js",
+                    "js/common/splash_controller.js"
                 )
                 
                 scripts.forEach { path ->
@@ -115,6 +127,8 @@ fun TwitchBrowser(
         }
     }
 
+    val androidInterface = remember { TwitchBrowserBridge(activity, onLoaded) }
+
     com.multiplatform.webview.web.WebView(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
         state = state,
@@ -122,6 +136,7 @@ fun TwitchBrowser(
         captureBackPresses = false,
         onCreated = { webView ->
             webViewRef = webView
+            webView.addJavascriptInterface(androidInterface, "TwitchBrowserBridge")
             state.webSettings.apply {
                 isJavaScriptEnabled = true
 
@@ -182,6 +197,12 @@ fun TwitchBrowser(
                     override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                         super.onPageStarted(view, url, favicon)
                         Log.d("TwitchBrowser", "Page started: $url")
+
+                        // Inject splash controller early
+                        val splashScript = ScriptLoader.loadAsset(context, "js/common/splash_controller.js")
+                        if (splashScript.isNotEmpty()) {
+                            view?.evaluateJavascript(splashScript, null)
+                        }
 
                         // Double-check if this is a channel URL
                         url?.let {
@@ -273,4 +294,17 @@ private fun isGlobalHome(url: String?): Boolean {
     // Only /home and /home/ are considered "Exploration zones"
     // Root / is NOT home, so navigating from / to a user WILL trigger the player
     return path == "/home" || path == "/home/"
+}
+
+class TwitchBrowserBridge(
+    private val activity: android.app.Activity?,
+    private val onLoaded: () -> Unit
+) {
+    @JavascriptInterface
+    fun onDomLoaded() {
+        activity?.runOnUiThread {
+            Log.d("TwitchBrowser", "DOM Loaded via JS Bridge class")
+            onLoaded()
+        }
+    }
 }
