@@ -1,16 +1,17 @@
 (function() {
     'use strict';
 
-    function removeTransitionGroup() {
-        const element = document.querySelector('.stream-chat-header');
-        if (element) {
-            console.log('[Samtch] Removing the first transition group element');
-            element.remove();
-        }
+    function removeTransitionGroups() {
+        const elements = document.querySelectorAll('.tw-transition-group');
+        elements.forEach(element => {
+            if (!element.closest('.chat-input')) {
+                element.remove();
+            }
+        });
     }
 
     function clean() {
-        removeTransitionGroup();
+        removeTransitionGroups();
     }
 
     // Use MutationObserver to keep the chat clean of dynamic elements

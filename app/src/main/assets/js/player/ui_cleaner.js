@@ -19,6 +19,7 @@
             .stream-info-social-panel,
             .samtch-hidden-button,
             .ad-banner,
+            .disclosure-card,
             .tw-upsell-banner {
                 display: none !important;
             }
