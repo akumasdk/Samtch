@@ -23,12 +23,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.akumasdk.samtch.ui.screens.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.TwitchPlayer
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     private var selectedChannelState = mutableStateOf<String?>(null)
@@ -53,10 +55,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        registerReceiver(
+        ContextCompat.registerReceiver(
+            this,
             pipReceiver,
             IntentFilter(ACTION_REFRESH),
-            Context.RECEIVER_NOT_EXPORTED
+            ContextCompat.RECEIVER_NOT_EXPORTED
         )
 
         val windowInsetsController = WindowInsetsControllerCompat(window, window.decorView)
@@ -82,7 +85,7 @@ class MainActivity : ComponentActivity() {
                     pipRectState.value?.let { builder.setSourceRectHint(it) }
                     try {
                         setPictureInPictureParams(builder.build())
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // Ignore if called too frequently or in wrong state
                     }
                 }
@@ -108,18 +111,18 @@ class MainActivity : ComponentActivity() {
                         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
                     } else {
                         // Portrait for default player view
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
                     }
                     
                     // Only reset player if it wasn't already ready (e.g. channel changed)
                     if (!isPlayerReady) {
-                        delay(200)
+                        delay(200.milliseconds)
                         isPlayerReady = true
                     }
                 } else {
                     // Browser: force portrait
-                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                     windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
                     isPlayerReady = false
                     isFullscreen = false // Reset fullscreen state
@@ -160,10 +163,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updatePipParams() {
+
         val actions = if (selectedChannelState.value != null && isInPipModeState.value) {
             listOf(
                 RemoteAction(
-                    Icon.createWithResource(this, android.R.drawable.ic_menu_rotate),
+                    Icon.createWithResource(this, android.R.drawable.ic_media_play),
                     "Refresh",
                     "Refresh player",
                     PendingIntent.getBroadcast(
@@ -180,12 +184,13 @@ class MainActivity : ComponentActivity() {
 
         val builder = PictureInPictureParams.Builder()
             .setAspectRatio(Rational(16, 9))
-            .setAutoEnterEnabled(selectedChannelState.value != null)
             .setActions(actions)
-        
+
+        builder.setAutoEnterEnabled(selectedChannelState.value != null)
+
         try {
             setPictureInPictureParams(builder.build())
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Activity might not be in a state to accept PiP params
         }
     }
@@ -194,7 +199,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         try {
             unregisterReceiver(pipReceiver)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Already unregistered or not registered
         }
     }
@@ -219,7 +224,7 @@ class MainActivity : ComponentActivity() {
         // https://twitch.tv/channelname
         // https://www.twitch.tv/channelname
         // https://m.twitch.tv/channelname (mobile)
-        val regex = """(?:www\.|m\.)?twitch\.tv/([^/\?]+)""".toRegex()
+        val regex = """(?:www\.|m\.)?twitch\.tv/([^/?]+)""".toRegex()
         return regex.find(url)?.groupValues?.getOrNull(1)
     }
 }
