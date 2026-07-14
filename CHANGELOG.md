@@ -1,3 +1,18 @@
+## Samtch v0.0.4
+
+### What's New
+- **Improved Injection Reliability**: Enhanced script injection logic with aggressive polling and immediate execution on page load to ensure ad-blocking and UI cleaning work correctly on fresh app opens.
+- **Robust JavaScript Hooks**: Updated player scripts with persistent intervals and root-level observation to maintain stability even with Twitch's dynamic SPA transitions.
+
+### Fixed
+- **Stale Chat Toggle**: Resolved an issue where toggling chat would stop working after entering fullscreen due to staled state in the player bridge.
+- **Bridge Communication**: Fixed a naming mismatch between native and JavaScript bridges to ensure seamless interaction.
+
+### Changed
+- **Increased Minimum SDK**: Bumped `minSdk` to 24 (Android 7.0) to better support modern Compose and WebView features.
+
+---
+
 ## Samtch v0.0.3
 
 ### What's New

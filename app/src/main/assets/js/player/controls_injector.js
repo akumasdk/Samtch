@@ -36,7 +36,7 @@
             btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (window.SamtchBridge) window.SamtchBridge.toggleChat();
+                if (window.TwitchPlayerBridge) window.TwitchPlayerBridge.toggleChat();
             };
             rightGroup.appendChild(btn);
             console.log('[Samtch] Chat button injected');
@@ -52,7 +52,7 @@
             btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (window.SamtchBridge) window.SamtchBridge.toggleFullscreen();
+                if (window.TwitchPlayerBridge) window.TwitchPlayerBridge.toggleFullscreen();
             };
             rightGroup.appendChild(btn);
             console.log('[Samtch] Fullscreen button injected');
