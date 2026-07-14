@@ -2,8 +2,12 @@ package com.akumasdk.samtch.ui.screens.player
 
 import android.util.Log
 import android.view.View
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.akumasdk.samtch.util.ScriptLoader
@@ -53,23 +57,31 @@ fun TwitchChat(
         }
     }
 
-    WebView(
-        modifier = modifier,
-        state = state,
-        navigator = navigator,
-        captureBackPresses = false,
-        onCreated = { webView ->
-            state.webSettings.apply {
-                isJavaScriptEnabled = true
-                androidWebSettings.apply {
-                    domStorageEnabled = true
+    Box(modifier = modifier) {
+        WebView(
+            modifier = Modifier.fillMaxSize(),
+            state = state,
+            navigator = navigator,
+            captureBackPresses = false,
+            onCreated = { webView ->
+                state.webSettings.apply {
+                    isJavaScriptEnabled = true
+                    androidWebSettings.apply {
+                        domStorageEnabled = true
+                    }
+                }
+                webView.apply {
+                    overScrollMode = View.OVER_SCROLL_NEVER
+                    isVerticalScrollBarEnabled = false
+                    isHorizontalScrollBarEnabled = false
                 }
             }
-            webView.apply {
-                overScrollMode = View.OVER_SCROLL_NEVER
-                isVerticalScrollBarEnabled = false
-                isHorizontalScrollBarEnabled = false
-            }
+        )
+
+        if (state.loadingState !is LoadingState.Finished) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center)
+            )
         }
-    )
+    }
 }
