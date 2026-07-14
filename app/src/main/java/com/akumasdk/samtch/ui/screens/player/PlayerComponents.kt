@@ -4,8 +4,10 @@ import android.util.Log
 import android.view.View
 import android.webkit.WebChromeClient
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import com.akumasdk.samtch.util.SamtchBridge
+import com.akumasdk.samtch.util.TwitchPlayerBridge
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
@@ -19,6 +21,10 @@ fun WebViewContainer(
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit = {}
 ) {
+    // Ensure the bridge always uses the latest lambdas from the current composition context
+    val currentOnToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
+    val currentOnToggleChat by rememberUpdatedState(onToggleChat)
+
     WebView(
         modifier = modifier,
         state = state,
@@ -45,15 +51,15 @@ fun WebViewContainer(
 
                 // Add bridge for fullscreen and chat using the dedicated class
                 addJavascriptInterface(
-                    SamtchBridge(
+                    TwitchPlayerBridge(
                         onToggleFullscreen = {
-                            post { onToggleFullscreen() }
+                            post { currentOnToggleFullscreen() }
                         },
                         onToggleChat = {
-                            post { onToggleChat() }
+                            post { currentOnToggleChat() }
                         }
                     ),
-                    "SamtchBridge"
+                    "TwitchPlayerBridge"
                 )
 
                 // Enable fullscreen for videos

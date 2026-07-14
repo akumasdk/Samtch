@@ -18,7 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import com.akumasdk.samtch.util.SamtchBridge
+import com.akumasdk.samtch.util.TwitchChatBridge
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
@@ -43,11 +43,8 @@ fun TwitchChat(
     // Track if chat is fully loaded (chat-input element is present)
     var isChatFullyLoaded by remember { mutableStateOf(false) }
 
-    // Create bridge with callback for when chat is loaded
     val chatBridge = remember(coroutineScope) {
-        SamtchBridge(
-            onToggleFullscreen = { /* Not used in chat */ },
-            onToggleChat = { /* Not used in chat */ },
+        TwitchChatBridge(
             onChatLoadedCallback = {
                 Log.d("TwitchChat", "Chat input element detected, waiting to prevent flash...")
                 // Add small delay to prevent flash when loading is very fast
@@ -119,7 +116,7 @@ fun TwitchChat(
                     isHorizontalScrollBarEnabled = false
 
                     // Add JavaScript bridge for chat load detection
-                    addJavascriptInterface(chatBridge, "SamtchBridge")
+                    addJavascriptInterface(chatBridge, "TwitchChatBridge")
                 }
             }
         )
