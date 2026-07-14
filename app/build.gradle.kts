@@ -15,16 +15,12 @@ kotlin {
 
 android {
     namespace = "com.akumasdk.samtch"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.magumboi.samtch"
-        minSdk = 36
-        targetSdk = 36
+        minSdk = 24
+        targetSdk = 35
         versionCode = 3
         versionName = "0.0.3"
 
