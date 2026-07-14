@@ -160,6 +160,7 @@ fun TwitchPlayer(
         } else {
             PortraitPlayer(
                 channel = channel,
+                onToggleFullscreen = onToggleFullscreen,
                 webView = { modifier, onToggleChat -> webView(modifier, onToggleChat) }
             )
         }

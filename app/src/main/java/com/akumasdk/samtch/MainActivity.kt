@@ -11,11 +11,13 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Rect
 import android.graphics.drawable.Icon
+import android.os.Build
 import android.os.Bundle
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -50,6 +52,7 @@ class MainActivity : ComponentActivity() {
         private const val ACTION_REFRESH = "com.akumasdk.samtch.REFRESH"
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
@@ -162,12 +165,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private fun updatePipParams() {
 
         val actions = if (selectedChannelState.value != null && isInPipModeState.value) {
             listOf(
                 RemoteAction(
-                    Icon.createWithResource(this, android.R.drawable.ic_media_play),
+                    Icon.createWithResource(this, R.drawable.ic_refresh),
                     "Refresh",
                     "Refresh player",
                     PendingIntent.getBroadcast(

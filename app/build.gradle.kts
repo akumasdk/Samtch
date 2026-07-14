@@ -23,7 +23,7 @@ android {
 
     defaultConfig {
         applicationId = "com.magumboi.samtch"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 4
         versionName = "0.0.4"
