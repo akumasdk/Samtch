@@ -32,6 +32,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.akumasdk.samtch.ui.screens.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.TwitchPlayer
+import com.akumasdk.samtch.util.ScriptLoader
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -60,6 +61,9 @@ class MainActivity : ComponentActivity() {
         splashScreen.setKeepOnScreenCondition {
             !isAppLoadedState.value
         }
+
+        // Preload all JS scripts into memory for faster access
+        ScriptLoader.initialize(this)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()

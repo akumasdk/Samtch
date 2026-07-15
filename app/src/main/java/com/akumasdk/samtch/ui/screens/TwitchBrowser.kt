@@ -115,7 +115,7 @@ fun TwitchBrowser(
                 )
                 
                 scripts.forEach { path ->
-                    val script = ScriptLoader.loadAsset(context, path)
+                    val script = ScriptLoader.getScript(context, path)
                     if (script.isNotEmpty()) {
                         navigator.evaluateJavaScript(script)
                     }
@@ -199,7 +199,7 @@ fun TwitchBrowser(
                         Log.d("TwitchBrowser", "Page started: $url")
 
                         // Inject splash controller early
-                        val splashScript = ScriptLoader.loadAsset(context, "js/common/splash_controller.js")
+                        val splashScript = ScriptLoader.getScript(context, "js/common/splash_controller.js")
                         if (splashScript.isNotEmpty()) {
                             view?.evaluateJavascript(splashScript, null)
                         }

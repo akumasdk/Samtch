@@ -75,7 +75,7 @@ fun TwitchPlayer(
             "js/player/link_disabler.js",
             "js/common/scroll_unlocker.js"
         ).mapNotNull { path ->
-            val script = ScriptLoader.loadAsset(context, path)
+            val script = ScriptLoader.getScript(context, path)
             if (script.isNotEmpty()) {
                 val guardVar = "samtch_" + path.replace(Regex("[^a-zA-Z0-9]"), "_")
                 "if (typeof window.$guardVar === 'undefined') { window.$guardVar = true; $script }"

@@ -5,7 +5,7 @@
         const elements = document.querySelectorAll('.tw-transition-group');
         elements.forEach(element => {
             if (!element.closest('.chat-input')
-                && !element.closest('.community-highlight')
+                && !element.closest('.community-highlight-stack__card')
                 && !element.closest('.sticky-community-highlight')) {
                 element.remove();
             }

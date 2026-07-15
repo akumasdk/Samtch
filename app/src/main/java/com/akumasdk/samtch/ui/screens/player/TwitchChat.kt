@@ -68,7 +68,7 @@ fun TwitchChat(
         if (state.loadingState is LoadingState.Finished) {
             try {
                 // Load and inject Chat Loader Observer first
-                val observerScript = ScriptLoader.loadAsset(context, "js/chat/chat_loader_observer.js")
+                val observerScript = ScriptLoader.getScript(context, "js/chat/chat_loader_observer.js")
                 if (observerScript.isNotEmpty()) {
                     navigator.evaluateJavaScript(observerScript) {
                         Log.d("TwitchChat", "Chat Loader Observer script injected")
@@ -76,7 +76,7 @@ fun TwitchChat(
                 }
 
                 // Load and inject UI Cleaner
-                val cleanerScript = ScriptLoader.loadAsset(context, "js/chat/ui_cleaner.js")
+                val cleanerScript = ScriptLoader.getScript(context, "js/chat/ui_cleaner.js")
                 if (cleanerScript.isNotEmpty()) {
                     navigator.evaluateJavaScript(cleanerScript) {
                         Log.d("TwitchChat", "Chat UI Cleaner script injected")
@@ -84,7 +84,7 @@ fun TwitchChat(
                 }
 
                 // Load and inject BTTV
-                val bttvScript = ScriptLoader.loadAsset(context, "js/chat/bttv.js")
+                val bttvScript = ScriptLoader.getScript(context, "js/chat/bttv.js")
                 if (bttvScript.isNotEmpty()) {
                     navigator.evaluateJavaScript(bttvScript) {
                         Log.d("TwitchChat", "BTTV script injected")

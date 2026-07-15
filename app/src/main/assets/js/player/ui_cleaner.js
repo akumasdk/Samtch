@@ -50,7 +50,7 @@
             '[data-a-target="player-clip-button"]',
             'button[aria-label*="Clip"]',
             'button[title*="Clip"]',
-            '.clipping-button'
+            '.clipping-button',
         ];
         selectors.forEach(s => {
             document.querySelectorAll(s).forEach(el => {
@@ -61,6 +61,17 @@
                     el.remove();
                 }
             });
+        });
+
+        // Remove by label text
+        document.querySelectorAll('[data-a-target="tw-core-button-label-text"]').forEach(el => {
+            if (el.textContent.trim() === 'Clip') {
+                const button = el.closest('button');
+                if (button) {
+                    console.log('[Samtch] Removing clip button via label text');
+                    button.remove();
+                }
+            }
         });
     }
 
