@@ -1,3 +1,14 @@
+## Samtch v0.0.7
+
+### Added
+- **Script Pre-loading**: Introduced a centralized memory cache for scripts to eliminate redundant asset I/O and improve performance.
+
+### Changed
+- **Changed Adblocking Script Strategy**: Moved to "vaft" script instead of "video-swap"
+- **Injection Resilience**: Significantly improved the script injection pipeline to handle poor network conditions and slow page loads with extended polling and re-triggering logic.
+
+---
+
 ## Samtch v0.0.6
 
 ### Changed

@@ -68,7 +68,8 @@ fun TwitchPlayer(
     // Aggressive injection strategy: Polling loop to catch hydration
     LaunchedEffect(channel, refreshTrigger) {
         val scripts = listOf(
-            "js/player/video_swap.js",
+            //"js/player/video_swap.js",
+            "js/player/vaft.js", // using vaft script as of now
             "js/player/ui_cleaner.js",
             "js/player/controls_injector.js",
             "js/player/visibility_monitor.js",
