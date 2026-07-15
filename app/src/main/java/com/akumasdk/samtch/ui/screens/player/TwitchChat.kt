@@ -75,19 +75,19 @@ fun TwitchChat(
                     }
                 }
 
-                // Load and inject BTTV
-                val bttvScript = ScriptLoader.loadAsset(context, "js/chat/bttv.js")
-                if (bttvScript.isNotEmpty()) {
-                    navigator.evaluateJavaScript(bttvScript) {
-                        Log.d("TwitchChat", "BTTV script injected")
-                    }
-                }
-
                 // Load and inject UI Cleaner
                 val cleanerScript = ScriptLoader.loadAsset(context, "js/chat/ui_cleaner.js")
                 if (cleanerScript.isNotEmpty()) {
                     navigator.evaluateJavaScript(cleanerScript) {
                         Log.d("TwitchChat", "Chat UI Cleaner script injected")
+                    }
+                }
+
+                // Load and inject BTTV
+                val bttvScript = ScriptLoader.loadAsset(context, "js/chat/bttv.js")
+                if (bttvScript.isNotEmpty()) {
+                    navigator.evaluateJavaScript(bttvScript) {
+                        Log.d("TwitchChat", "BTTV script injected")
                     }
                 }
             } catch (e: Exception) {
