@@ -1,3 +1,13 @@
+## Samtch v0.0.6
+
+### Changed
+- **Script Injection**: Reordered and optimized the script injection pipeline with persistent guards to prevent duplicate execution and ensure faster player hydration.
+
+### Fixed
+- **UI Cleanup**: Improved clutter detection logic to handle dynamic label changes, ensuring a cleaner player interface.
+
+---
+
 ## Samtch v0.0.5
 
 ### What's New
