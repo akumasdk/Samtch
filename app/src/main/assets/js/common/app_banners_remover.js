@@ -81,18 +81,21 @@
                 return;
             }
 
-            // New navigation removal patterns
-            try {
-                const url = new URL(href, window.location.origin);
-                if (navHidingRegex.test(url.pathname)) {
-                    console.log('[Samtch] Removing navigation link:', href);
-                    link.style.setProperty('display', 'none', 'important');
-                }
-            } catch (e) {
-                // Handle relative paths or invalid URLs
-                if (navHidingRegex.test(href)) {
-                    console.log('[Samtch] Removing relative navigation link:', href);
-                    link.style.setProperty('display', 'none', 'important');
+            // New navigation removal patterns - only target elements inside .tw-transition container
+            // This is usually the side/top menu that slides in
+            if (link.closest('.tw-transition')) {
+                try {
+                    const url = new URL(href, window.location.origin);
+                    if (navHidingRegex.test(url.pathname)) {
+                        console.log('[Samtch] Removing navigation link inside .tw-transition:', href);
+                        link.style.setProperty('display', 'none', 'important');
+                    }
+                } catch (e) {
+                    // Handle relative paths or invalid URLs
+                    if (navHidingRegex.test(href)) {
+                        console.log('[Samtch] Removing relative navigation link inside .tw-transition:', href);
+                        link.style.setProperty('display', 'none', 'important');
+                    }
                 }
             }
         });
