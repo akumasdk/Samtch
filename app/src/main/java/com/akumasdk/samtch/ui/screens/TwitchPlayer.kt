@@ -55,7 +55,7 @@ fun TwitchPlayer(
     LaunchedEffect(state.loadingState, sessionRefreshPending) {
         if (sessionRefreshPending && state.loadingState is LoadingState.Finished) {
             Log.d("TwitchPlayer", "Initial load finished, waiting before triggering scheduled session refresh")
-            delay(1500) // Give it a second to fully settle
+            delay(1000) // Give it a second to fully settle
             onRefreshRequested()
         }
     }
