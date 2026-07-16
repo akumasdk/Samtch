@@ -22,7 +22,7 @@
         btn.setAttribute('aria-label', 'Samtch Settings');
 
         // Styles matching Twitch's mobile UI
-        btn.style.marginRight = '8px';
+        btn.style.marginRight = '18px';
         btn.style.marginLeft = '4px';
         btn.style.color = isDarkMode ? 'white' : 'black';
         btn.style.background = 'transparent';
@@ -68,7 +68,7 @@
     }
 
     // Use an interval to ensure it stays there during SPA transitions
-    setInterval(injectSettingsButton, 2000);
+    //setInterval(injectSettingsButton, 2000);
 
     const observer = new MutationObserver(injectSettingsButton);
     observer.observe(document.documentElement, { childList: true, subtree: true });

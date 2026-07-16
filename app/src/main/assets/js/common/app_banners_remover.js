@@ -65,10 +65,35 @@
         });
 
         const patterns = ['desktop-redirect=true', 'mweb_upsell', 'top_nav_open_in_app'];
+
+        // Regex for navigation items we want to hide
+        // 1. /home
+        // 2. /something/home
+        // 3. /activity
+        const navHidingRegex = /^\/home\/?$|^\/[^/]+\/home\/?$|^\/activity\/?$/;
+
         document.querySelectorAll('a[href]').forEach(link => {
             const href = link.getAttribute('href');
+
+            // Original app promotion patterns
             if (patterns.some(p => href.includes(p))) {
                 link.style.setProperty('display', 'none', 'important');
+                return;
+            }
+
+            // New navigation removal patterns
+            try {
+                const url = new URL(href, window.location.origin);
+                if (navHidingRegex.test(url.pathname)) {
+                    console.log('[Samtch] Removing navigation link:', href);
+                    link.style.setProperty('display', 'none', 'important');
+                }
+            } catch (e) {
+                // Handle relative paths or invalid URLs
+                if (navHidingRegex.test(href)) {
+                    console.log('[Samtch] Removing relative navigation link:', href);
+                    link.style.setProperty('display', 'none', 'important');
+                }
             }
         });
     }
