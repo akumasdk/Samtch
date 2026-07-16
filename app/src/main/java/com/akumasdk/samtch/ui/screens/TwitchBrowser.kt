@@ -31,6 +31,7 @@ import com.akumasdk.samtch.util.ScriptLoader
 @Composable
 fun TwitchBrowser(
     onChannelSelected: (String) -> Unit,
+    onSettingsClick: () -> Unit = {},
     onLoaded: () -> Unit = {}
 ) {
     val state = rememberSaveableWebViewState("https://m.twitch.tv/")
@@ -111,7 +112,8 @@ fun TwitchBrowser(
                 val scripts = listOf(
                     "js/common/app_banners_remover.js",
                     "js/common/scroll_unlocker.js",
-                    "js/common/splash_controller.js"
+                    "js/common/splash_controller.js",
+                    "js/common/browser_nav_injector.js"
                 )
                 
                 scripts.forEach { path ->
@@ -127,7 +129,7 @@ fun TwitchBrowser(
         }
     }
 
-    val androidInterface = remember { TwitchBrowserBridge(activity, onLoaded) }
+    val androidInterface = remember { TwitchBrowserBridge(activity, onSettingsClick, onLoaded) }
 
     com.multiplatform.webview.web.WebView(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -298,6 +300,7 @@ private fun isGlobalHome(url: String?): Boolean {
 
 class TwitchBrowserBridge(
     private val activity: android.app.Activity?,
+    private val onSettingsClick: () -> Unit,
     private val onLoaded: () -> Unit
 ) {
     @JavascriptInterface
@@ -305,6 +308,14 @@ class TwitchBrowserBridge(
         activity?.runOnUiThread {
             Log.d("TwitchBrowser", "DOM Loaded via JS Bridge class")
             onLoaded()
+        }
+    }
+
+    @JavascriptInterface
+    fun openSettings() {
+        activity?.runOnUiThread {
+            Log.d("TwitchBrowser", "Settings button clicked in JS")
+            onSettingsClick()
         }
     }
 }

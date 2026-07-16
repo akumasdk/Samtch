@@ -188,6 +188,9 @@ class MainActivity : ComponentActivity() {
                     onChannelSelected = { channel ->
                         selectedChannel = channel
                     },
+                    onSettingsClick = {
+                        android.widget.Toast.makeText(this@MainActivity, "Settings clicked", android.widget.Toast.LENGTH_SHORT).show()
+                    },
                     onLoaded = {
                         isAppLoadedState.value = true
                     }
