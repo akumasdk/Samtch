@@ -1,5 +1,10 @@
 package com.akumasdk.samtch.ui.screens.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,6 +32,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
+    var isBttvSettingsOpen by remember { mutableStateOf(false) }
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -36,6 +42,8 @@ fun SettingsScreen(
     BackHandler {
         if (showAboutDialog) {
             showAboutDialog = false
+        } else if (isBttvSettingsOpen) {
+            isBttvSettingsOpen = false
         } else {
             onBack()
         }
@@ -120,7 +128,34 @@ fun SettingsScreen(
                     }
                 )
             }
+
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.bttv_settings_title)) },
+                    supportingContent = { Text(stringResource(R.string.bttv_settings_summary)) },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_github), // Using github icon as placeholder or we can use another one
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        isBttvSettingsOpen = true
+                    }
+                )
+            }
         }
+    }
+
+    AnimatedVisibility(
+        visible = isBttvSettingsOpen,
+        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+    ) {
+        BttvSettingsScreen(
+            onBack = { isBttvSettingsOpen = false }
+        )
     }
 
     if (showAboutDialog) {

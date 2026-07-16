@@ -12,6 +12,8 @@
     <string name="update_button">Update</string>
     <string name="about_title">About</string>
     <string name="about_summary">App information and version</string>
+    <string name="bttv_settings_title">BetterTTV Settings</string>
+    <string name="bttv_settings_summary">Configure BetterTTV emotes and features</string>
 
     <!-- About Dialog -->
     <string name="about_dialog_title">About Samtch</string>
