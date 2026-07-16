@@ -1,4 +1,34 @@
 <resources>
     <string name="app_name">Samtch</string>
     <string name="fullscreen_double_tap_hint">Double tap center to toggle chat</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="back_content_description">Back</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="checking_updates">Checking…</string>
+    <string name="new_version_available">New version available: %s</string>
+    <string name="app_up_to_date">App is up to date (v%s)</string>
+    <string name="update_button">Update</string>
+    <string name="about_title">About</string>
+    <string name="about_summary">App information and version</string>
+
+    <!-- About Dialog -->
+    <string name="about_dialog_title">About Samtch</string>
+    <string name="about_dialog_version">Version: %1$s (%2$d)</string>
+    <string name="about_dialog_description">An enhanced Twitch experience for Android.</string>
+    <string name="github_repo">GitHub Repository</string>
+    <string name="github_repo_summary">View source code and releases</string>
+    <string name="support_project">Support the Project</string>
+    <string name="support_project_summary">Donations via Ko-fi</string>
+    <string name="close_button">Close</string>
+    <string name="ok_button">OK</string>
+
+    <!-- PiP -->
+    <string name="pip_action_refresh">Refresh</string>
+    <string name="pip_action_refresh_description">Refresh player</string>
+
+    <!-- Update Manager -->
+    <string name="update_download_title">Samtch Update</string>
+    <string name="update_download_description">Downloading latest version…</string>
 </resources>

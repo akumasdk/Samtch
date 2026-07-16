@@ -233,8 +233,8 @@ class MainActivity : ComponentActivity() {
             listOf(
                 RemoteAction(
                     Icon.createWithResource(this, R.drawable.ic_refresh),
-                    "Refresh",
-                    "Refresh player",
+                    getString(R.string.pip_action_refresh),
+                    getString(R.string.pip_action_refresh_description),
                     PendingIntent.getBroadcast(
                         this,
                         0,

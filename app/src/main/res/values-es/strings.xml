@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">Samtch</string>
+    <string name="fullscreen_double_tap_hint">Toca dos veces en el centro para alternar el chat</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ajustes</string>
+    <string name="back_content_description">Atrás</string>
+    <string name="check_for_updates">Buscar actualizaciones</string>
+    <string name="checking_updates">Buscando…</string>
+    <string name="new_version_available">Nueva versión disponible: %s</string>
+    <string name="app_up_to_date">La aplicación está actualizada (v%s)</string>
+    <string name="update_button">Actualizar</string>
+    <string name="about_title">Acerca de</string>
+    <string name="about_summary">Información de la aplicación y versión</string>
+
+    <!-- About Dialog -->
+    <string name="about_dialog_title">Acerca de Samtch</string>
+    <string name="about_dialog_version">Versión: %1$s (%2$d)</string>
+    <string name="about_dialog_description">Una experiencia de Twitch mejorada para Android.</string>
+    <string name="github_repo">Repositorio de GitHub</string>
+    <string name="github_repo_summary">Ver código fuente y lanzamientos</string>
+    <string name="support_project">Apoyar el proyecto</string>
+    <string name="support_project_summary">Donaciones a través de Ko-fi</string>
+    <string name="close_button">Cerrar</string>
+    <string name="ok_button">Aceptar</string>
+
+    <!-- PiP -->
+    <string name="pip_action_refresh">Actualizar</string>
+    <string name="pip_action_refresh_description">Actualizar reproductor</string>
+
+    <!-- Update Manager -->
+    <string name="update_download_title">Actualización de Samtch</string>
+    <string name="update_download_description">Descargando la última versión…</string>
+</resources>

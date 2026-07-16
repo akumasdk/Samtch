@@ -12,9 +12,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import com.akumasdk.samtch.BuildConfig
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.util.GitHubRelease
+import com.akumasdk.samtch.util.UpdateManager
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,6 +27,10 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
+    var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // Intercept system back button
     BackHandler {
@@ -32,15 +41,22 @@ fun SettingsScreen(
         }
     }
 
+    // Check for updates on screen launch
+    LaunchedEffect(Unit) {
+        isCheckingUpdate = true
+        latestRelease = UpdateManager.checkForUpdate()
+        isCheckingUpdate = false
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.back_content_description)
                         )
                     }
                 }
@@ -54,8 +70,45 @@ fun SettingsScreen(
         ) {
             item {
                 ListItem(
-                    headlineContent = { Text("About") },
-                    supportingContent = { Text("App information and version") },
+                    headlineContent = { Text(stringResource(R.string.check_for_updates)) },
+                    supportingContent = {
+                        if (isCheckingUpdate) {
+                            Text(stringResource(R.string.checking_updates))
+                        } else if (latestRelease != null) {
+                            Text(stringResource(R.string.new_version_available, latestRelease?.tagName ?: ""))
+                        } else {
+                            Text(stringResource(R.string.app_up_to_date, BuildConfig.VERSION_NAME))
+                        }
+                    },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_refresh),
+                            contentDescription = null
+                        )
+                    },
+                    trailingContent = {
+                        if (latestRelease != null) {
+                            Button(onClick = {
+                                latestRelease?.let { UpdateManager.downloadAndInstall(context, it) }
+                            }) {
+                                Text(stringResource(R.string.update_button))
+                            }
+                        }
+                    },
+                    modifier = Modifier.clickable(enabled = !isCheckingUpdate) {
+                        scope.launch {
+                            isCheckingUpdate = true
+                            latestRelease = UpdateManager.checkForUpdate()
+                            isCheckingUpdate = false
+                        }
+                    }
+                )
+            }
+
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.about_title)) },
+                    supportingContent = { Text(stringResource(R.string.about_summary)) },
                     leadingContent = {
                         Icon(
                             imageVector = Icons.Default.Info,
@@ -74,17 +127,17 @@ fun SettingsScreen(
         val uriHandler = LocalUriHandler.current
         AlertDialog(
             onDismissRequest = { showAboutDialog = false },
-            title = { Text("About Samtch") },
+            title = { Text(stringResource(R.string.about_dialog_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-                    Text("An enhanced Twitch experience for Android.")
+                    Text(stringResource(R.string.about_dialog_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE))
+                    Text(stringResource(R.string.about_dialog_description))
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     ListItem(
-                        headlineContent = { Text("GitHub Repository") },
-                        supportingContent = { Text("View source code and releases") },
+                        headlineContent = { Text(stringResource(R.string.github_repo)) },
+                        supportingContent = { Text(stringResource(R.string.github_repo_summary)) },
                         leadingContent = {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_github),
@@ -98,8 +151,8 @@ fun SettingsScreen(
                     )
 
                     ListItem(
-                        headlineContent = { Text("Support the Project") },
-                        supportingContent = { Text("Donations via Ko-fi") },
+                        headlineContent = { Text(stringResource(R.string.support_project)) },
+                        supportingContent = { Text(stringResource(R.string.support_project_summary)) },
                         leadingContent = {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_donation),
@@ -115,7 +168,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showAboutDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.close_button))
                 }
             }
         )
