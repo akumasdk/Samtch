@@ -17,6 +17,14 @@ import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,6 +40,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.akumasdk.samtch.ui.screens.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.TwitchPlayer
+import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.ScriptLoader
 import com.akumasdk.samtch.util.SessionManager
 import kotlinx.coroutines.delay
@@ -44,6 +54,8 @@ class MainActivity : ComponentActivity() {
     private var refreshTriggerState = mutableIntStateOf(0)
     private var sessionRefreshPendingState = mutableStateOf(false)
     private var isAppLoadedState = mutableStateOf(false)
+
+    private var isSettingsOpenState = mutableStateOf(false)
 
     private val pipReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -91,110 +103,125 @@ class MainActivity : ComponentActivity() {
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         setContent {
-            var selectedChannel by selectedChannelState
-            var isInPipMode by isInPipModeState
-            var refreshTrigger by refreshTriggerState
-            var sessionRefreshPending by sessionRefreshPendingState
-            var isFullscreen by remember { mutableStateOf(false) }
-            var isPlayerReady by remember { mutableStateOf(false) }
+            SamtchTheme {
+                var selectedChannel by selectedChannelState
+                var isInPipMode by isInPipModeState
+                var refreshTrigger by refreshTriggerState
+                var sessionRefreshPending by sessionRefreshPendingState
+                var isFullscreen by remember { mutableStateOf(false) }
+                var isPlayerReady by remember { mutableStateOf(false) }
+                var isSettingsOpen by isSettingsOpenState
 
-            // Update PiP params when channel or PiP mode changes
-            LaunchedEffect(selectedChannel, isInPipMode) {
-                updatePipParams()
-            }
-
-            // Separately update source rect hint to avoid frequent heavy updates
-            LaunchedEffect(pipRectState.value) {
-                if (pipRectState.value != null && selectedChannel != null) {
-                    val builder = PictureInPictureParams.Builder()
-                    pipRectState.value?.let { builder.setSourceRectHint(it) }
-                    try {
-                        setPictureInPictureParams(builder.build())
-                    } catch (_: Exception) {
-                        // Ignore if called too frequently or in wrong state
-                    }
+                // Update PiP params when channel or PiP mode changes
+                LaunchedEffect(selectedChannel, isInPipMode) {
+                    updatePipParams()
                 }
-            }
 
-            // Check if app was opened with a Twitch URL
-            val intentUrl = intent?.data?.toString()
-            val channelFromIntent = extractChannelFromUrl(intentUrl)
-
-            // If intent has a channel, use it; otherwise start with browser
-            if (channelFromIntent != null && selectedChannel == null) {
-                selectedChannel = channelFromIntent
-            }
-
-            // Change orientation and system bars based on current screen
-            LaunchedEffect(selectedChannel, isFullscreen, isInPipMode) {
-                if (isInPipMode) return@LaunchedEffect
-
-                if (selectedChannel != null) {
-                    if (isFullscreen) {
-                        // Fullscreen Landscape
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-                    } else {
-                        // Portrait for default player view
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-                    }
-                    
-                    // Only reset player if it wasn't already ready (e.g. channel changed)
-                    if (!isPlayerReady) {
-                        delay(200.milliseconds)
-                        isPlayerReady = true
-                        isAppLoadedState.value = true
-                    }
-                } else {
-                    // Browser: force portrait
-                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                    windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-                    isPlayerReady = false
-                    isFullscreen = false // Reset fullscreen state
-                }
-            }
-
-            if (selectedChannel != null && isPlayerReady) {
-                // Use key() to force complete recreation when channel changes
-                key(selectedChannel) {
-                    TwitchPlayer(
-                        channel = selectedChannel!!,
-                        isFullscreen = isFullscreen,
-                        isPip = isInPipMode,
-                        refreshTrigger = refreshTrigger,
-                        sessionRefreshPending = sessionRefreshPending,
-                        onRefreshRequested = {
-                            refreshTriggerState.intValue += 1
-                            sessionRefreshPendingState.value = false
-                        },
-                        onToggleFullscreen = { isFullscreen = !isFullscreen },
-                        onBack = {
-                            if (isFullscreen) {
-                                isFullscreen = false
-                            } else {
-                                // Destroy player by setting channel to null
-                                selectedChannel = null
-                            }
-                        },
-                        onVideoBoundsChanged = { rect ->
-                            pipRectState.value = rect
+                // Separately update source rect hint to avoid frequent heavy updates
+                LaunchedEffect(pipRectState.value) {
+                    if ((pipRectState.value != null) && (selectedChannel != null)) {
+                        val builder = PictureInPictureParams.Builder()
+                        pipRectState.value?.let { builder.setSourceRectHint(it) }
+                        try {
+                            setPictureInPictureParams(builder.build())
+                        } catch (_: Exception) {
+                            // Ignore if called too frequently or in wrong state
                         }
-                    )
-                }
-            } else if (selectedChannel == null) {
-                // Show browser to select a channel
-                TwitchBrowser(
-                    onChannelSelected = { channel ->
-                        selectedChannel = channel
-                    },
-                    onSettingsClick = {
-                        android.widget.Toast.makeText(this@MainActivity, "Settings clicked", android.widget.Toast.LENGTH_SHORT).show()
-                    },
-                    onLoaded = {
-                        isAppLoadedState.value = true
                     }
-                )
+                }
+
+                // Check if app was opened with a Twitch URL
+                val intentUrl = intent?.data?.toString()
+                val channelFromIntent = extractChannelFromUrl(intentUrl)
+
+                // If intent has a channel, use it; otherwise start with browser
+                if (channelFromIntent != null && selectedChannel == null) {
+                    selectedChannel = channelFromIntent
+                }
+
+                // Change orientation and system bars based on current screen
+                LaunchedEffect(selectedChannel, isFullscreen, isInPipMode) {
+                    if (isInPipMode) return@LaunchedEffect
+
+                    if (selectedChannel != null) {
+                        if (isFullscreen) {
+                            // Fullscreen Landscape
+                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+                        } else {
+                            // Portrait for default player view
+                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+                        }
+                        
+                        // Only reset player if it wasn't already ready (e.g. channel changed)
+                        if (!isPlayerReady) {
+                            delay(200.milliseconds)
+                            isPlayerReady = true
+                            isAppLoadedState.value = true
+                        }
+                    } else {
+                        // Browser: force portrait
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+                        isPlayerReady = false
+                        isFullscreen = false // Reset fullscreen state
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (selectedChannel != null && isPlayerReady) {
+                        // Use key() to force complete recreation when channel changes
+                        key(selectedChannel) {
+                            TwitchPlayer(
+                                channel = selectedChannel!!,
+                                isFullscreen = isFullscreen,
+                                isPip = isInPipMode,
+                                refreshTrigger = refreshTrigger,
+                                sessionRefreshPending = sessionRefreshPending,
+                                onRefreshRequested = {
+                                    refreshTriggerState.intValue += 1
+                                    sessionRefreshPendingState.value = false
+                                },
+                                onToggleFullscreen = { isFullscreen = !isFullscreen },
+                                onBack = {
+                                    if (isFullscreen) {
+                                        isFullscreen = false
+                                    } else {
+                                        // Destroy player by setting channel to null
+                                        selectedChannel = null
+                                    }
+                                },
+                                onVideoBoundsChanged = { rect ->
+                                    pipRectState.value = rect
+                                }
+                            )
+                        }
+                    } else if (selectedChannel == null) {
+                        // Show browser to select a channel
+                        TwitchBrowser(
+                            onChannelSelected = { channel ->
+                                selectedChannel = channel
+                            },
+                            onSettingsClick = {
+                                isSettingsOpen = true
+                            },
+                            onLoaded = {
+                                isAppLoadedState.value = true
+                            }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = isSettingsOpen,
+                        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                    ) {
+                        SettingsScreen(
+                            onBack = { isSettingsOpen = false }
+                        )
+                    }
+                }
             }
         }
     }
