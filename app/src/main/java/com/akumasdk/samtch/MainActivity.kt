@@ -33,6 +33,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.akumasdk.samtch.ui.screens.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.TwitchPlayer
 import com.akumasdk.samtch.util.ScriptLoader
+import com.akumasdk.samtch.util.SessionManager
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private var isInPipModeState = mutableStateOf(false)
     private var pipRectState = mutableStateOf<Rect?>(null)
     private var refreshTriggerState = mutableIntStateOf(0)
+    private var sessionRefreshPendingState = mutableStateOf(false)
     private var isAppLoadedState = mutableStateOf(false)
 
     private val pipReceiver = object : BroadcastReceiver() {
@@ -60,6 +62,14 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition {
             !isAppLoadedState.value
+        }
+
+        // Initialize SessionManager to track activity and handle refreshes
+        SessionManager.initialize(this)
+        
+        // Schedule initial refresh if needed (first run or long inactivity)
+        if (SessionManager.shouldTriggerRefresh()) {
+            sessionRefreshPendingState.value = true
         }
 
         // Preload all JS scripts into memory for faster access
@@ -84,6 +94,7 @@ class MainActivity : ComponentActivity() {
             var selectedChannel by selectedChannelState
             var isInPipMode by isInPipModeState
             var refreshTrigger by refreshTriggerState
+            var sessionRefreshPending by sessionRefreshPendingState
             var isFullscreen by remember { mutableStateOf(false) }
             var isPlayerReady by remember { mutableStateOf(false) }
 
@@ -152,6 +163,11 @@ class MainActivity : ComponentActivity() {
                         isFullscreen = isFullscreen,
                         isPip = isInPipMode,
                         refreshTrigger = refreshTrigger,
+                        sessionRefreshPending = sessionRefreshPending,
+                        onRefreshRequested = {
+                            refreshTriggerState.intValue += 1
+                            sessionRefreshPendingState.value = false
+                        },
                         onToggleFullscreen = { isFullscreen = !isFullscreen },
                         onBack = {
                             if (isFullscreen) {
@@ -212,6 +228,20 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
             // Activity might not be in a state to accept PiP params
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Check if we need to refresh due to long background time
+        if (SessionManager.shouldTriggerRefresh()) {
+            sessionRefreshPendingState.value = true
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Record last active time when app goes to background
+        SessionManager.updateLastActiveTime()
     }
 
     override fun onDestroy() {

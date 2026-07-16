@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.delay
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
+import com.multiplatform.webview.web.LoadingState
 import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
 import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
 import com.akumasdk.samtch.ui.screens.player.WebViewContainer
@@ -30,17 +31,18 @@ fun TwitchPlayer(
     isFullscreen: Boolean = false,
     isPip: Boolean = false,
     refreshTrigger: Int = 0,
+    sessionRefreshPending: Boolean = false,
+    onRefreshRequested: () -> Unit = {},
     onToggleFullscreen: () -> Unit = {},
     onBack: (() -> Unit)? = null,
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
-    val twitchUrl = createTwitchPlayerUrl(channel)
     val context = LocalContext.current
 
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
 
-    Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip)")
+    Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, pendingRefresh: $sessionRefreshPending)")
 
     // Handle back button to return to browser
     if (!isPip) {
@@ -49,20 +51,25 @@ fun TwitchPlayer(
         }
     }
 
-    LaunchedEffect(channel) {
-        Log.d("TwitchPlayer", "Loading URL: $twitchUrl")
-        navigator.loadUrl(twitchUrl)
+    // Trigger sequential refresh after initial load finished
+    LaunchedEffect(state.loadingState, sessionRefreshPending) {
+        if (sessionRefreshPending && state.loadingState is LoadingState.Finished) {
+            Log.d("TwitchPlayer", "Initial load finished, waiting before triggering scheduled session refresh")
+            delay(1500) // Give it a second to fully settle
+            onRefreshRequested()
+        }
     }
 
-    // Handle refresh trigger from PiP actions
-    LaunchedEffect(refreshTrigger) {
-        if (refreshTrigger > 0) {
-            Log.d("TwitchPlayer", "Refresh triggered in PiP (count: $refreshTrigger)")
-            // Use loadUrl instead of reload to ensure a clean state transition and JS injection
-            // We add a unique query param to force the WebView to treat it as a new navigation
-            val refreshUrl = createTwitchPlayerUrl(channel) + "&refresh=$refreshTrigger"
-            navigator.loadUrl(refreshUrl)
+    // Handle URL loading and refresh logic
+    LaunchedEffect(channel, refreshTrigger) {
+        val baseUrl = createTwitchPlayerUrl(channel)
+        val finalUrl = if (refreshTrigger > 0) {
+            "$baseUrl&refresh=$refreshTrigger"
+        } else {
+            baseUrl
         }
+        Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: $refreshTrigger)")
+        navigator.loadUrl(finalUrl)
     }
 
     // Aggressive injection strategy: Polling loop to catch hydration
