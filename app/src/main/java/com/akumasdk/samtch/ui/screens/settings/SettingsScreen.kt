@@ -36,8 +36,10 @@ fun SettingsScreen(
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
+    var isDownloading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Intercept system back button
     BackHandler {
@@ -58,6 +60,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
@@ -101,6 +104,8 @@ fun SettingsScreen(
                     supportingContent = {
                         if (isCheckingUpdate) {
                             Text(stringResource(R.string.checking_updates))
+                        } else if (isDownloading) {
+                            Text(stringResource(R.string.update_download_description))
                         } else if (latestRelease != null) {
                             Text(stringResource(R.string.new_version_available, latestRelease?.tagName ?: ""))
                         } else {
@@ -115,17 +120,40 @@ fun SettingsScreen(
                     },
                     trailingContent = {
                         if (latestRelease != null) {
-                            Button(onClick = {
-                                latestRelease?.let { UpdateManager.downloadAndInstall(context, it) }
-                            }) {
-                                Text(stringResource(R.string.update_button))
+                            Button(
+                                onClick = {
+                                    latestRelease?.let { release ->
+                                        if (release.assets.any { it.name.endsWith(".apk") }) {
+                                            isDownloading = true
+                                            UpdateManager.downloadAndInstall(context, release)
+                                        } else {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("No APK found in release")
+                                            }
+                                        }
+                                    }
+                                },
+                                enabled = !isDownloading
+                            ) {
+                                if (isDownloading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                } else {
+                                    Text(stringResource(R.string.update_button))
+                                }
                             }
                         }
                     },
-                    modifier = Modifier.clickable(enabled = !isCheckingUpdate) {
+                    modifier = Modifier.clickable(enabled = !isCheckingUpdate && !isDownloading) {
                         scope.launch {
                             isCheckingUpdate = true
                             latestRelease = UpdateManager.checkForUpdate()
+                            if (latestRelease == null) {
+                                snackbarHostState.showSnackbar("No updates found or error occurred")
+                            }
                             isCheckingUpdate = false
                         }
                     }

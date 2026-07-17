@@ -1,3 +1,13 @@
+## Samtch v0.1.0
+
+### What's New
+- **Robust Update Mechanism**: Refactored the in-app update system to use a more reliable file sharing method, resolving "Cannot parse package" errors on modern Android versions.
+- **Improved Update UI**: Added a progress indicator during downloads and better error handling via SnackBar notifications.
+- **Localization**: Added Spanish translation for the BetterTTV settings success message.
+- **Stability Improvements**: Resolved critical infinite recursion issues in the bridge and optimized JavaScript communication.
+
+---
+
 ## Samtch v0.0.9
 
 ### What's New
