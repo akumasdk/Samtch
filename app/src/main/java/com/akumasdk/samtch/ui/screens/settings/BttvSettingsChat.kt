@@ -21,6 +21,7 @@ import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 @SuppressLint("JavascriptInterface")
 @Composable
@@ -40,7 +41,7 @@ fun BttvSettingsChat(
 
     // Safety timeout
     LaunchedEffect(Unit) {
-        delay(15000)
+        delay(15.seconds)
         if (!isReady) {
             Log.w("BttvSettingsChat", "Safety timeout reached")
             isReady = true
@@ -161,7 +162,7 @@ fun BttvSettingsChat(
                         override fun shouldOverrideUrlLoading(view: android.webkit.WebView?, request: WebResourceRequest?): Boolean {
                             val url = request?.url?.toString() ?: return false
                             if (url.contains("m.twitch.tv")) {
-                                Log.d("BttvSettingsChat", "Blocking mobile redirect to: ${"$"}{url}")
+                                Log.d("BttvSettingsChat", "Blocking mobile redirect to: $url")
                                 val desktopUrl = url.replace("m.twitch.tv", "www.twitch.tv")
                                     .let { if (!it.contains("desktop-redirect")) "$it${if (it.contains("?")) "&" else "?"}desktop-redirect=true" else it }
                                 view?.loadUrl(desktopUrl)

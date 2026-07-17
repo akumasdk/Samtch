@@ -2,19 +2,15 @@ package com.akumasdk.samtch.ui.screens
 
 import android.annotation.SuppressLint
 import android.util.Log
-import android.view.View
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.webkit.JavascriptInterface
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,15 +19,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
-import kotlinx.coroutines.delay
 import com.multiplatform.webview.web.LoadingState
+import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
-import com.akumasdk.samtch.R
 import com.akumasdk.samtch.util.ScriptLoader
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("JavascriptInterface")
 @Composable
 fun TwitchBrowser(
@@ -46,15 +41,6 @@ fun TwitchBrowser(
     var lastCheckedUrl by remember { mutableStateOf("") }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     
-    var isRefreshing by remember { mutableStateOf(false) }
-
-    // Sync isRefreshing with WebView loading state
-    LaunchedEffect(state.loadingState) {
-        if (state.loadingState is LoadingState.Finished) {
-            isRefreshing = false
-        }
-    }
-
     // Handle back button
     BackHandler {
         if (navigator.canGoBack) {
@@ -66,7 +52,7 @@ fun TwitchBrowser(
 
     // Safety timeout to ensure splash screen eventually disappears
     LaunchedEffect(Unit) {
-        delay(8000)
+        delay(8000.milliseconds)
         Log.d("TwitchBrowser", "Safety timeout reached, forcing splash screen dismissal")
         onLoaded()
     }
@@ -103,7 +89,7 @@ fun TwitchBrowser(
                     }
                 }
             }
-            delay(500)
+            delay(500.milliseconds)
         }
     }
 
@@ -127,7 +113,8 @@ fun TwitchBrowser(
                     "js/common/app_banners_remover.js",
                     "js/common/scroll_unlocker.js",
                     "js/common/splash_controller.js",
-                    "js/common/browser_nav_injector.js"
+                    "js/common/browser_nav_injector.js",
+                    "js/common/pull_to_refresh.js"
                 )
                 
                 scripts.forEach { path ->
@@ -137,130 +124,121 @@ fun TwitchBrowser(
                     }
                 }
                 Log.d("TwitchBrowser", "Browser scripts injected successfully")
-            } catch (e: Exception) {
-                Log.e("TwitchBrowser", "Error injecting scripts", e)
+            } catch (_: Exception) {
+                Log.e("TwitchBrowser", "Error injecting scripts")
             }
         }
     }
 
-    val androidInterface = remember { TwitchBrowserBridge(activity, onSettingsClick, onLoaded) }
+    val androidInterface = remember {
+        TwitchBrowserBridge(
+            activity = activity,
+            onSettingsClick = onSettingsClick,
+            onLoaded = onLoaded,
+            onRefreshRequested = { navigator.reload() }
+        )
+    }
 
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = {
-            isRefreshing = true
-            navigator.reload()
-        },
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-    ) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item {
-                com.multiplatform.webview.web.WebView(
-                    modifier = Modifier.fillParentMaxSize(),
-                    state = state,
-                    navigator = navigator,
-                    captureBackPresses = false,
-                    onCreated = { webView ->
-                        webViewRef = webView
-                        webView.addJavascriptInterface(androidInterface, "TwitchBrowserBridge")
-                        state.webSettings.apply {
-                            isJavaScriptEnabled = true
+    WebView(
+        modifier = Modifier.fillMaxSize().statusBarsPadding(),
+        state = state,
+        navigator = navigator,
+        captureBackPresses = false,
+        onCreated = { webView ->
+            webViewRef = webView
+            webView.addJavascriptInterface(androidInterface, "TwitchBrowserBridge")
+            state.webSettings.apply {
+                isJavaScriptEnabled = true
 
-                            androidWebSettings.apply {
-                                domStorageEnabled = true
-                                mediaPlaybackRequiresUserGesture = false
-                                allowFileAccess = true
+                androidWebSettings.apply {
+                    domStorageEnabled = true
+                    mediaPlaybackRequiresUserGesture = false
+                    allowFileAccess = true
+                }
+            }
+
+            webView.apply {
+                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                overScrollMode = android.view.View.OVER_SCROLL_NEVER
+                isVerticalScrollBarEnabled = true
+                isHorizontalScrollBarEnabled = false
+
+                // Enable fullscreen for videos
+                webChromeClient = WebChromeClient()
+
+                // Custom WebViewClient to intercept URL changes
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): Boolean {
+                        val url = request?.url?.toString() ?: return false
+                        Log.d("TwitchBrowser", "shouldOverrideUrlLoading: $url")
+
+                        // Force full reload for the global home to avoid SPA issues
+                        if (isGlobalHome(url)) {
+                            Log.d("TwitchBrowser", "Global home path detected in shouldOverride, forcing full load")
+                            view?.loadUrl(url)
+                            return true
+                        }
+
+                        // Detect if user navigated to a channel
+                        val channelMatch = extractChannelFromUrl(url)
+                        val currentUser = getCurrentUserFromCookies()
+
+                        if (channelMatch != null && channelMatch != currentUser) {
+                            // If we are coming from global home, stay in browser
+                            if (isGlobalHome(view?.url)) {
+                                Log.d("TwitchBrowser", "Channel detected from home in shouldOverride, staying in browser: $channelMatch")
+                                return false
+                            } else {
+                                Log.d("TwitchBrowser", "Channel detected in shouldOverride: $channelMatch. Triggering player.")
+                                // Stop loading immediately
+                                view?.stopLoading()
+                                // User clicked on a channel, trigger callback
+                                onChannelSelected(channelMatch)
+                                return true // Prevent navigation, we'll handle it
                             }
                         }
 
-                        webView.apply {
-                            setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                            overScrollMode = View.OVER_SCROLL_NEVER
-                            isVerticalScrollBarEnabled = true
-                            isHorizontalScrollBarEnabled = false
-                            isNestedScrollingEnabled = true
+                        return false // Allow normal navigation
+                    }
 
-                            // Enable fullscreen for videos
-                            webChromeClient = WebChromeClient()
+                    override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                        super.onPageStarted(view, url, favicon)
+                        Log.d("TwitchBrowser", "Page started: $url")
 
-                            // Custom WebViewClient to intercept URL changes
-                            webViewClient = object : WebViewClient() {
-                                override fun shouldOverrideUrlLoading(
-                                    view: WebView?,
-                                    request: WebResourceRequest?
-                                ): Boolean {
-                                    val url = request?.url?.toString() ?: return false
-                                    Log.d("TwitchBrowser", "shouldOverrideUrlLoading: $url")
+                        // Inject splash controller early
+                        val splashScript = ScriptLoader.getScript(context, "js/common/splash_controller.js")
+                        if (splashScript.isNotEmpty()) {
+                            view?.evaluateJavascript(splashScript, null)
+                        }
 
-                                    // Force full reload for the global home to avoid SPA issues
-                                    if (isGlobalHome(url)) {
-                                        Log.d("TwitchBrowser", "Global home path detected in shouldOverride, forcing full load")
-                                        view?.loadUrl(url)
-                                        return true
-                                    }
+                        // Double-check if this is a channel URL
+                        url?.let {
+                            val channelMatch = extractChannelFromUrl(it)
+                            val currentUser = getCurrentUserFromCookies()
 
-                                    // Detect if user navigated to a channel
-                                    val channelMatch = extractChannelFromUrl(url)
-                                    val currentUser = getCurrentUserFromCookies()
-
-                                    if (channelMatch != null && channelMatch != currentUser) {
-                                        // If we are coming from global home, stay in browser
-                                        if (isGlobalHome(view?.url)) {
-                                            Log.d("TwitchBrowser", "Channel detected from home in shouldOverride, staying in browser: $channelMatch")
-                                            return false
-                                        } else {
-                                            Log.d("TwitchBrowser", "Channel detected in shouldOverride: $channelMatch. Triggering player.")
-                                            // Stop loading immediately
-                                            view?.stopLoading()
-                                            // User clicked on a channel, trigger callback
-                                            onChannelSelected(channelMatch)
-                                            return true // Prevent navigation, we'll handle it
-                                        }
-                                    }
-
-                                    return false // Allow normal navigation
-                                }
-
-                                override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                                    super.onPageStarted(view, url, favicon)
-                                    Log.d("TwitchBrowser", "Page started: $url")
-
-                                    // Inject splash controller early
-                                    val splashScript = ScriptLoader.getScript(context, "js/common/splash_controller.js")
-                                    if (splashScript.isNotEmpty()) {
-                                        view?.evaluateJavascript(splashScript, null)
-                                    }
-
-                                    // Double-check if this is a channel URL
-                                    url?.let {
-                                        val channelMatch = extractChannelFromUrl(it)
-                                        val currentUser = getCurrentUserFromCookies()
-
-                                        if (channelMatch != null && channelMatch != currentUser && !isGlobalHome(lastCheckedUrl)) {
-                                            Log.d("TwitchBrowser", "Channel URL detected in onPageStarted, stopping: $channelMatch")
-                                            view?.stopLoading()
-                                            onChannelSelected(channelMatch)
-                                        }
-                                    }
-                                }
-
-                                override fun onPageFinished(view: WebView?, url: String?) {
-                                    super.onPageFinished(view, url)
-                                    Log.d("TwitchBrowser", "Page finished: $url")
-                                }
+                            if (channelMatch != null && channelMatch != currentUser && !isGlobalHome(lastCheckedUrl)) {
+                                Log.d("TwitchBrowser", "Channel URL detected in onPageStarted, stopping: $channelMatch")
+                                view?.stopLoading()
+                                onChannelSelected(channelMatch)
                             }
-
-                            // Enable mixed content for Twitch
-                            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                            settings.userAgentString = "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"
                         }
                     }
-                )
+
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        Log.d("TwitchBrowser", "Page finished: $url")
+                    }
+                }
+
+                // Enable mixed content for Twitch
+                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                settings.userAgentString = "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"
             }
         }
-    }
+    )
 }
 
 private fun extractChannelFromUrl(url: String): String? {
@@ -331,7 +309,8 @@ private fun isGlobalHome(url: String?): Boolean {
 class TwitchBrowserBridge(
     private val activity: android.app.Activity?,
     private val onSettingsClick: () -> Unit,
-    private val onLoaded: () -> Unit
+    private val onLoaded: () -> Unit,
+    private val onRefreshRequested: () -> Unit
 ) {
     @JavascriptInterface
     fun onDomLoaded() {
@@ -346,6 +325,14 @@ class TwitchBrowserBridge(
         activity?.runOnUiThread {
             Log.d("TwitchBrowser", "Settings button clicked in JS")
             onSettingsClick()
+        }
+    }
+
+    @JavascriptInterface
+    fun onRefresh() {
+        activity?.runOnUiThread {
+            Log.d("TwitchBrowser", "Refresh triggered via JS Bridge")
+            onRefreshRequested()
         }
     }
 }
