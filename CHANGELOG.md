@@ -1,3 +1,19 @@
+## Samtch v0.0.8
+
+### What's New
+- **Settings Screen**: Introduced a new Settings menu, accessible via a custom Gear icon in the Twitch browser.
+- **BetterTTV Configuration**: Dedicated screen to manage BetterTTV settings and emotes with automated menu opening.
+- **In-App Update Checker**: Stay up to date with automatic notifications and integrated APK installation from GitHub.
+- **Localization**: Full support for Spanish (Español) and externalized strings for easier future translations.
+- **Material 3 Integration**: The app now fully supports Material 3, including system-wide Dark/Light mode and dynamic colors.
+- **Preserved Browser State**: Opening settings now overlays the browser without reloading, ensuring a seamless experience.
+
+### Improved
+- **Visual Branding**: Integrated official-styled BetterTTV and Samtch icons as high-quality vector drawables.
+- **Smooth Navigation**: Added native-like slide and fade transitions for the settings interface.
+
+---
+
 ## Samtch v0.0.7
 
 ### Added
