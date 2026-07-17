@@ -35,6 +35,7 @@ fun BttvSettingsChat(
     val navigator = rememberWebViewNavigator()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val successMessage = androidx.compose.ui.res.stringResource(com.akumasdk.samtch.R.string.bttv_settings_success_overlay)
 
     var isReady by remember { mutableStateOf(false) }
     var webViewConfigured by remember { mutableStateOf(false) }
@@ -109,7 +110,7 @@ fun BttvSettingsChat(
                                 // Show success overlay
                                 const overlay = document.createElement('div');
                                 overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:white;display:flex;align-items:center;justify-content:center;z-index:9998;color:black;font-size:22px;font-weight:bold;text-align:center;font-family:sans-serif;";
-                                overlay.innerText = "Go back and try again";
+                                overlay.innerText = "${successMessage.replace("\"", "\\\"")}";
                                 document.body.appendChild(overlay);
 
                                 setTimeout(notifyAndroid, 1000);

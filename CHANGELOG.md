@@ -1,3 +1,13 @@
+## Samtch v0.0.9
+
+### What's New
+- **Native Pull-to-Refresh**: Added support for refreshing the Twitch browser using standard pull gestures with full nested scrolling integration.
+- **Enhanced UI Cleaning**: Improved player detection logic to ensure interface cleaning only occurs when a stream is active.
+- **Automation Resilience**: BetterTTV settings automation is now more robust with improved element polling and visual confirmation.
+- **Bridge Stability**: Fixed critical infinite recursion issues in the bridge and optimized JavaScript communication.
+
+---
+
 ## Samtch v0.0.8
 
 ### What's New

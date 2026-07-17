@@ -14,6 +14,7 @@
     <string name="about_summary">App information and version</string>
     <string name="bttv_settings_title">BetterTTV Settings</string>
     <string name="bttv_settings_summary">Configure BetterTTV emotes and features</string>
+    <string name="bttv_settings_success_overlay">Go back and try again</string>
 
     <!-- About Dialog -->
     <string name="about_dialog_title">About Samtch</string>
