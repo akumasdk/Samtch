@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -78,6 +79,24 @@ fun SettingsScreen(
         ) {
             item {
                 ListItem(
+                    headlineContent = { Text(stringResource(R.string.bttv_settings_title)) },
+                    supportingContent = { Text(stringResource(R.string.bttv_settings_summary)) },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_bttv),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.Unspecified // Keep original BetterTTV colors
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        isBttvSettingsOpen = true
+                    }
+                )
+            }
+
+            item {
+                ListItem(
                     headlineContent = { Text(stringResource(R.string.check_for_updates)) },
                     supportingContent = {
                         if (isCheckingUpdate) {
@@ -125,23 +144,6 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.clickable {
                         showAboutDialog = true
-                    }
-                )
-            }
-
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.bttv_settings_title)) },
-                    supportingContent = { Text(stringResource(R.string.bttv_settings_summary)) },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_github), // Using github icon as placeholder or we can use another one
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    modifier = Modifier.clickable {
-                        isBttvSettingsOpen = true
                     }
                 )
             }
