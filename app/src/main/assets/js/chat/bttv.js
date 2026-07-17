@@ -5,9 +5,4 @@
     var head = document.getElementsByTagName('head')[0];
     if (!head) return;
     head.appendChild(script);
-    script.onload = function() {
-        if (window.BetterTTV) {
-            BetterTTV.settings.set('consoleLog', true);
-        }
-    };
 })()

@@ -2,8 +2,9 @@ package com.akumasdk.samtch.ui.screens.settings
 
 import android.annotation.SuppressLint
 import android.util.Log
-import android.view.View
 import android.webkit.JavascriptInterface
+import android.webkit.WebResourceRequest
+import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,32 +27,29 @@ import kotlinx.coroutines.launch
 fun BttvSettingsChat(
     modifier: Modifier = Modifier
 ) {
-    val chatUrl = "https://www.twitch.tv/embed/twitch/chat?parent=twitch.tv&darkpopout"
+    // Aggressive URL parameters to prevent mobile redirection
+    val targetUrl = "https://www.twitch.tv/directory?desktop-redirect=true&no-mobile-redirect=true"
     
-    // Start with empty URL to ensure we can configure the WebView before loading starts
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // Track if chat and BTTV settings are fully open
     var isReady by remember { mutableStateOf(false) }
     var webViewConfigured by remember { mutableStateOf(false) }
 
-    // Safety timeout: if automation doesn't complete in 12 seconds, show the chat anyway
+    // Safety timeout
     LaunchedEffect(Unit) {
-        delay(12000)
+        delay(15000)
         if (!isReady) {
-            Log.w("BttvSettingsChat", "Safety timeout reached, forcing ready state")
+            Log.w("BttvSettingsChat", "Safety timeout reached")
             isReady = true
         }
     }
 
-    // Load the URL only after the WebView has been created and configured
     LaunchedEffect(webViewConfigured) {
         if (webViewConfigured) {
-            Log.d("BttvSettingsChat", "WebView configured, loading chat URL")
-            navigator.loadUrl(chatUrl)
+            navigator.loadUrl(targetUrl)
         }
     }
 
@@ -59,7 +57,7 @@ fun BttvSettingsChat(
         BttvSettingsChatBridge(
             onComplete = {
                 coroutineScope.launch {
-                    Log.d("BttvSettingsChat", "Bridge received completion signal, waiting a second...")
+                    Log.d("BttvSettingsChat", "Automation complete signal received")
                     delay(500)
                     isReady = true
                 }
@@ -67,73 +65,58 @@ fun BttvSettingsChat(
         )
     }
 
-    // Inject automation script
+    // Simplified automation script
     LaunchedEffect(state.loadingState, webViewConfigured) {
         val loadingState = state.loadingState
-        
-        // Try to inject as soon as there's some progress or it's finished
         val shouldAttempt = loadingState is LoadingState.Finished || 
                          (loadingState is LoadingState.Loading && loadingState.progress > 0.6f)
                          
         if (shouldAttempt && !isReady && webViewConfigured) {
             try {
-                // 1. Inject BTTV script
                 val bttvScript = ScriptLoader.getScript(context, "js/chat/bttv.js")
-                if (bttvScript.isNotEmpty()) {
-                    navigator.evaluateJavaScript(bttvScript)
-                }
+                if (bttvScript.isEmpty()) return@LaunchedEffect
 
-                // 2. Inject automation sequence
                 val automationScript = """
                     (function() {
                         if (window.samtch_automation_running) return;
                         window.samtch_automation_running = true;
-                        console.log('[Samtch] BTTV Automation started');
                         
+                        // 0. Aggressive fingerprinting override to hide mobile identity
+                        try {
+                            Object.defineProperty(navigator, 'platform', { get: function () { return 'Win32'; } });
+                            Object.defineProperty(navigator, 'maxTouchPoints', { get: function () { return 0; } });
+                        } catch (e) { console.error('Fingerprint override failed', e); }
+
                         function notifyAndroid() {
                             if (window.BttvSettingsBridge) {
                                 window.BttvSettingsBridge.onAutomationComplete();
                             }
                         }
 
-                        function startAutomation() {
-                            const twitchSettingsBtn = document.querySelector('[data-a-target="chat-settings"]') ||
-                                                      document.querySelector('.chat-settings button');
-                                                      
-                            if (twitchSettingsBtn) {
-                                console.log('[Samtch] Clicking Twitch settings');
-                                twitchSettingsBtn.click();
-                                
-                                let attempts = 0;
-                                const bttvInterval = setInterval(() => {
-                                    const bttvBtn = document.querySelector('.openSettings') || 
-                                                    document.querySelector('.bttv-settings-button');
-                                                    
-                                    if (bttvBtn) {
-                                        console.log('[Samtch] Clicking BTTV settings');
-                                        bttvBtn.click();
-                                        
-                                        // Notify Android that everything is ready
-                                        notifyAndroid();
-                                        
-                                        clearInterval(bttvInterval);
-                                    } else if (attempts++ > 40) {
-                                        clearInterval(bttvInterval);
-                                        notifyAndroid(); 
-                                    }
-                                }, 250);
+                        // Inject BetterTTV
+                        $bttvScript
+
+                        // Wait for the official BetterTTV button to be added to the DOM and click it
+                        function findAndClick() {
+                            const btn = document.querySelector('[data-a-target="betterttv-settings-button"]');
+                            if (btn) {
+                                console.log('[Samtch] Official BTTV button found, clicking...');
+                                btn.click();
+                                setTimeout(notifyAndroid, 1000);
                             } else {
-                                setTimeout(startAutomation, 1000);
+                                setTimeout(findAndClick, 500);
                             }
                         }
                         
-                        startAutomation();
+                        findAndClick();
                     })();
                 """.trimIndent()
-                
+
                 navigator.evaluateJavaScript(automationScript)
+                
             } catch (e: Exception) {
                 Log.e("BttvSettingsChat", "Injection error", e)
+                isReady = true 
             }
         }
     }
@@ -145,7 +128,6 @@ fun BttvSettingsChat(
             navigator = navigator,
             captureBackPresses = false,
             onCreated = { webView ->
-                Log.d("BttvSettingsChat", "WebView onCreated")
                 state.webSettings.apply {
                     isJavaScriptEnabled = true
                     androidWebSettings.apply {
@@ -153,10 +135,47 @@ fun BttvSettingsChat(
                     }
                 }
                 webView.apply {
-                    overScrollMode = View.OVER_SCROLL_NEVER
+                    val desktopUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    
+                    // Native settings for desktop rendering
+                    settings.userAgentString = desktopUserAgent
+                    settings.useWideViewPort = true
+                    settings.loadWithOverviewMode = true
+                    
+                    overScrollMode = android.view.View.OVER_SCROLL_NEVER
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
                     addJavascriptInterface(bttvBridge, "BttvSettingsBridge")
+
+                    // Clear cookies to avoid being tagged as mobile from previous sessions
+                    try {
+                        val cookieManager = android.webkit.CookieManager.getInstance()
+                        cookieManager.setAcceptCookie(true)
+                        cookieManager.removeSessionCookies(null)
+                    } catch (e: Exception) {
+                        Log.e("BttvSettingsChat", "Error clearing session cookies", e)
+                    }
+
+                    // Intercept and prevent mobile redirection
+                    webViewClient = object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(view: android.webkit.WebView?, request: WebResourceRequest?): Boolean {
+                            val url = request?.url?.toString() ?: return false
+                            if (url.contains("m.twitch.tv")) {
+                                Log.d("BttvSettingsChat", "Blocking mobile redirect to: ${"$"}{url}")
+                                val desktopUrl = url.replace("m.twitch.tv", "www.twitch.tv")
+                                    .let { if (!it.contains("desktop-redirect")) "$it${if (it.contains("?")) "&" else "?"}desktop-redirect=true" else it }
+                                view?.loadUrl(desktopUrl)
+                                return true
+                            }
+                            return false
+                        }
+
+                        override fun onPageStarted(view: android.webkit.WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                            super.onPageStarted(view, url, favicon)
+                            // Double-check User Agent on page start
+                            view?.settings?.userAgentString = desktopUserAgent
+                        }
+                    }
                 }
                 webViewConfigured = true
             }
