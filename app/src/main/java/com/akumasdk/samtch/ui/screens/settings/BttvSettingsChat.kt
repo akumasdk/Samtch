@@ -41,7 +41,7 @@ fun BttvSettingsChat(
 
     // Safety timeout
     LaunchedEffect(Unit) {
-        delay(15.seconds)
+        delay(30.seconds)
         if (!isReady) {
             Log.w("BttvSettingsChat", "Safety timeout reached")
             isReady = true
@@ -81,6 +81,7 @@ fun BttvSettingsChat(
                     (function() {
                         if (window.samtch_automation_running) return;
                         window.samtch_automation_running = true;
+                        console.log('[Samtch] BttvSettingsChat automation active');
                         
                         // 0. Aggressive fingerprinting override to hide mobile identity
                         try {
@@ -98,14 +99,26 @@ fun BttvSettingsChat(
                         $bttvScript
 
                         // Wait for the official BetterTTV button to be added to the DOM and click it
+                        let waitLogged = false;
                         function findAndClick() {
                             const btn = document.querySelector('[data-a-target="betterttv-settings-button"]');
                             if (btn) {
                                 console.log('[Samtch] Official BTTV button found, clicking...');
                                 btn.click();
+                                
+                                // Show success overlay
+                                const overlay = document.createElement('div');
+                                overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:white;display:flex;align-items:center;justify-content:center;z-index:9998;color:black;font-size:22px;font-weight:bold;text-align:center;font-family:sans-serif;";
+                                overlay.innerText = "Go back and try again";
+                                document.body.appendChild(overlay);
+
                                 setTimeout(notifyAndroid, 1000);
                             } else {
-                                setTimeout(findAndClick, 500);
+                                if (!waitLogged) {
+                                    console.log('[Samtch] Waiting for BTTV settings button...');
+                                    waitLogged = true;
+                                }
+                                setTimeout(findAndClick, 1000);
                             }
                         }
                         

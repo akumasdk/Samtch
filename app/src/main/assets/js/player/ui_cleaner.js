@@ -1,10 +1,12 @@
 (function() {
     'use strict';
+    console.log('[Samtch] ui_cleaner.js active');
 
     function injectStyles() {
         const styleId = 'samtch-player-cleaner';
         if (document.getElementById(styleId)) return;
 
+        console.log('[Samtch] Injecting player cleaner styles');
         const style = document.createElement('style');
         style.id = styleId;
         style.textContent = `
@@ -40,7 +42,12 @@
             const svg = container.querySelector('svg');
             if (svg && svg.getAttribute('viewBox') === '0 0 65 16') {
                 const button = container.closest('button');
-                if (button) button.remove(); else container.remove();
+                if (button) {
+                    console.log('[Samtch] Removing Watch on Twitch button');
+                    button.remove();
+                } else {
+                    container.remove();
+                }
             }
         });
     }
@@ -75,14 +82,46 @@
         });
     }
 
+    let reloadAttempts = 0;
+    const maxReloadAttempts = 20; // ~40 seconds total at 2s interval
+
     function clean() {
+        // Check if player exists before executing clean functions
+        const playerExists = document.querySelector('.video-player') ||
+                           document.querySelector('[data-a-target="video-player"]');
+
+        if (!playerExists) {
+            if (!window.samtch_player_wait_logged) {
+                console.log('[Samtch] UI Cleaner: Waiting for player...');
+                window.samtch_player_wait_logged = true;
+            }
+
+            reloadAttempts++;
+            if (reloadAttempts > maxReloadAttempts) {
+                console.log('[Samtch] UI Cleaner: Player not detected after timeout, performing refresh...');
+                reloadAttempts = 0;
+                window.location.reload();
+            }
+            return;
+        }
+
+        if (window.samtch_player_wait_logged) {
+            console.log('[Samtch] UI Cleaner: Player detected! Starting cleaning...');
+            window.samtch_player_wait_logged = false;
+        }
+
+        reloadAttempts = 0;
+
         injectStyles();
         removeSocialPanel();
         removeWatchOnTwitch();
         removeClipButtons();
     }
 
+    // Persistent cleaning and reload check
+    setInterval(clean, 2000);
+
     const observer = new MutationObserver(clean);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
     clean();
 })();

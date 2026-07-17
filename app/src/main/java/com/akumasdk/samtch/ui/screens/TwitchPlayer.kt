@@ -39,6 +39,8 @@ fun TwitchPlayer(
 ) {
     val context = LocalContext.current
 
+    val sessionRefreshPending = false; // always false for testing
+
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
 
