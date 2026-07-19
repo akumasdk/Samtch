@@ -65,6 +65,19 @@ android {
             }
         }
     }
+
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("full") {
+            dimension = "distribution"
+            buildConfigField("boolean", "UPDATES_ENABLED", "true")
+        }
+        create("foss") {
+            dimension = "distribution"
+            buildConfigField("boolean", "UPDATES_ENABLED", "false")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

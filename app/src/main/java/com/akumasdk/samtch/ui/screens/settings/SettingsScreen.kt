@@ -98,66 +98,71 @@ fun SettingsScreen(
                 )
             }
 
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.check_for_updates)) },
-                    supportingContent = {
-                        if (isCheckingUpdate) {
-                            Text(stringResource(R.string.checking_updates))
-                        } else if (isDownloading) {
-                            Text(stringResource(R.string.update_download_description))
-                        } else if (latestRelease != null) {
-                            Text(stringResource(R.string.new_version_available, latestRelease?.tagName ?: ""))
-                        } else {
-                            Text(stringResource(R.string.app_up_to_date, BuildConfig.VERSION_NAME))
-                        }
-                    },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_refresh),
-                            contentDescription = null
-                        )
-                    },
-                    trailingContent = {
-                        if (latestRelease != null) {
-                            Button(
-                                onClick = {
-                                    latestRelease?.let { release ->
-                                        if (release.assets.any { it.name.endsWith(".apk") }) {
-                                            isDownloading = true
-                                            UpdateManager.downloadAndInstall(context, release)
-                                        } else {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("No APK found in release")
+            if (BuildConfig.UPDATES_ENABLED) {
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.check_for_updates)) },
+                        supportingContent = {
+                            if (isCheckingUpdate) {
+                                Text(stringResource(R.string.checking_updates))
+                            } else if (isDownloading) {
+                                Text(stringResource(R.string.update_download_description))
+                            } else if (latestRelease != null) {
+                                Text(stringResource(R.string.new_version_available,
+                                    latestRelease?.tagName ?: ""))
+                            } else {
+                                Text(stringResource(R.string.app_up_to_date, BuildConfig.VERSION_NAME))
+                            }
+                        },
+                        leadingContent = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_refresh),
+                                contentDescription = null
+                            )
+                        },
+                        trailingContent = {
+                            if (latestRelease != null) {
+                                Button(
+                                    onClick = {
+                                        latestRelease?.let { release ->
+                                            if (release.assets.any { it.name.endsWith(".apk") }) {
+                                                isDownloading = true
+                                                UpdateManager.downloadAndInstall(context, release)
+                                            } else {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("No APK found in release")
+                                                }
                                             }
                                         }
+                                    },
+                                    enabled = !isDownloading
+                                ) {
+                                    if (isDownloading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    } else {
+                                        Text(stringResource(R.string.update_button))
                                     }
-                                },
-                                enabled = !isDownloading
-                            ) {
-                                if (isDownloading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                } else {
-                                    Text(stringResource(R.string.update_button))
                                 }
                             }
-                        }
-                    },
-                    modifier = Modifier.clickable(enabled = !isCheckingUpdate && !isDownloading) {
-                        scope.launch {
-                            isCheckingUpdate = true
-                            latestRelease = UpdateManager.checkForUpdate()
-                            if (latestRelease == null) {
-                                snackbarHostState.showSnackbar("No updates found or error occurred")
+                        },
+                        modifier = Modifier.clickable(
+                            enabled = !isCheckingUpdate && !isDownloading
+                        ) {
+                            scope.launch {
+                                isCheckingUpdate = true
+                                latestRelease = UpdateManager.checkForUpdate()
+                                if (latestRelease == null) {
+                                    snackbarHostState.showSnackbar("No updates found or error occurred")
+                                }
+                                isCheckingUpdate = false
                             }
-                            isCheckingUpdate = false
                         }
-                    }
-                )
+                    )
+                }
             }
 
             item {

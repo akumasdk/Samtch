@@ -30,7 +30,7 @@ jobs:
         echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > $GITHUB_WORKSPACE/release.jks
         chmod 600 $GITHUB_WORKSPACE/release.jks
 
-    - name: Build Signed Release APK
+    - name: Build Signed Release APKs
       env:
         KEYSTORE_FILE: ${{ github.workspace }}/release.jks
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -42,12 +42,21 @@ jobs:
       id: version
       run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-    - name: Get APK path
-      id: apk
+    - name: Prepare APKs for release
+      id: apks
       run: |
-        APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
-        echo "path=$APK_PATH" >> $GITHUB_OUTPUT
-        echo "Found APK at: $APK_PATH"
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        
+        # Find and rename Full APK
+        FULL_APK=$(find app/build/outputs/apk/full/release -name "*.apk" -type f | head -n 1)
+        cp "$FULL_APK" "Samtch-$VERSION-full.apk"
+        
+        # Find and rename FOSS APK
+        FOSS_APK=$(find app/build/outputs/apk/foss/release -name "*.apk" -type f | head -n 1)
+        cp "$FOSS_APK" "Samtch-$VERSION-foss.apk"
+        
+        echo "full_path=Samtch-$VERSION-full.apk" >> $GITHUB_OUTPUT
+        echo "foss_path=Samtch-$VERSION-foss.apk" >> $GITHUB_OUTPUT
 
     - name: Extract Changelog
       run: |
@@ -57,12 +66,14 @@ jobs:
           echo "## Samtch $VERSION" > RELEASE_NOTES.md
           echo "See commit history for changes." >> RELEASE_NOTES.md
         fi
-        echo -e "\n### Download\nDownload the APK below to install on your Android device." >> RELEASE_NOTES.md
+        echo -e "\n### Downloads\n- **Full**: Samtch-$VERSION-full.apk (Includes Auto-Updates)\n- **FOSS**: Samtch-$VERSION-foss.apk (For F-Droid compliance)" >> RELEASE_NOTES.md
 
-    - name: Create Release and Upload APK
+    - name: Create Release and Upload APKs
       uses: softprops/action-gh-release@v1
       with:
-        files: ${{ steps.apk.outputs.path }}
+        files: |
+          ${{ steps.apks.outputs.full_path }}
+          ${{ steps.apks.outputs.foss_path }}
         name: Release ${{ steps.version.outputs.VERSION }}
         body_path: RELEASE_NOTES.md
         draft: false
