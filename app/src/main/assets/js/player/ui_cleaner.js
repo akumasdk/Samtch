@@ -82,6 +82,27 @@
         });
     }
 
+    function extractMetadata() {
+        const avatarImg = document.querySelector('img.tw-image-avatar');
+        const subtitleEl = document.querySelector('p[data-test-selector="stream-info-card-component__subtitle"]');
+
+        const avatarUrl = avatarImg ? avatarImg.src : null;
+        const subtitle = subtitleEl ? subtitleEl.textContent.trim() : null;
+
+        if ((avatarUrl && avatarUrl !== window.samtch_last_avatar) ||
+            (subtitle && subtitle !== window.samtch_last_subtitle)) {
+
+            console.log('[Samtch] Metadata change detected - Avatar: ' + (avatarUrl || 'none') + ', Subtitle: ' + (subtitle || 'none'));
+
+            if (window.TwitchPlayerBridge && typeof window.TwitchPlayerBridge.updateMetadata === 'function') {
+                window.TwitchPlayerBridge.updateMetadata(avatarUrl || '', subtitle || '');
+
+                window.samtch_last_avatar = avatarUrl;
+                window.samtch_last_subtitle = subtitle;
+            }
+        }
+    }
+
     let reloadAttempts = 0;
     const maxReloadAttempts = 20; // ~40 seconds total at 2s interval
 
@@ -112,6 +133,7 @@
 
         reloadAttempts = 0;
 
+        extractMetadata();
         injectStyles();
         removeSocialPanel();
         removeWatchOnTwitch();

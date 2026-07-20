@@ -121,8 +121,8 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent = { Text("Reproducción en segundo plano") },
-                    supportingContent = { Text("Mantiene el audio cuando la app está minimizada") },
+                    headlineContent = { Text(stringResource(R.string.bg_play_title)) },
+                    supportingContent = { Text(stringResource(R.string.bg_play_summary)) },
                     leadingContent = {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_refresh), // TODO: Better icon
@@ -203,12 +203,12 @@ fun SettingsScreen(
                                 Button(
                                     onClick = {
                                         latestRelease?.let { release ->
-                                            if (release.assets.any { it.name.endsWith(".apk") }) {
+                                            if (release.assets.any { it.name.endsWith("full.apk") }) {
                                                 isDownloading = true
                                                 UpdateManager.downloadAndInstall(context, release)
                                             } else {
                                                 scope.launch {
-                                                    snackbarHostState.showSnackbar("No APK found in release")
+                                                    snackbarHostState.showSnackbar("No Full APK found in release")
                                                 }
                                             }
                                         }

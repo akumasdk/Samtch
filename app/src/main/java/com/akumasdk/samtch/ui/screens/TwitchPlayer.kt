@@ -20,7 +20,6 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.delay
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
-import com.multiplatform.webview.web.LoadingState
 import androidx.core.content.ContextCompat
 import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
 import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
@@ -36,8 +35,6 @@ fun TwitchPlayer(
     isFullscreen: Boolean = false,
     isPip: Boolean = false,
     refreshTrigger: Int = 0,
-    sessionRefreshPending: Boolean = false,
-    onRefreshRequested: () -> Unit = {},
     onToggleFullscreen: () -> Unit = {},
     onBack: (() -> Unit)? = null,
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
@@ -73,26 +70,15 @@ fun TwitchPlayer(
         }
     }
 
-    val sessionRefreshPending = false; // always false for testing
-
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
 
-    Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, pendingRefresh: $sessionRefreshPending)")
+    Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip)")
 
     // Handle back button to return to browser
     if (!isPip) {
         BackHandler {
             onBack?.invoke()
-        }
-    }
-
-    // Trigger sequential refresh after initial load finished
-    LaunchedEffect(state.loadingState, sessionRefreshPending) {
-        if (sessionRefreshPending && state.loadingState is LoadingState.Finished) {
-            Log.d("TwitchPlayer", "Initial load finished, waiting before triggering scheduled session refresh")
-            delay(1000) // Give it a second to fully settle
-            onRefreshRequested()
         }
     }
 
@@ -196,7 +182,17 @@ fun TwitchPlayer(
                 navigator = navigator,
                 channel = channel,
                 onToggleFullscreen = onToggleFullscreen,
-                onToggleChat = onToggleChat
+                onToggleChat = onToggleChat,
+                onMetadataDetected = { avatarUrl, subtitle ->
+                    if (isBackgroundPlayEnabled) {
+                        val intent = android.content.Intent(context, PlaybackService::class.java).apply {
+                            action = PlaybackService.ACTION_UPDATE_METADATA
+                            putExtra(PlaybackService.EXTRA_AVATAR_URL, avatarUrl)
+                            putExtra(PlaybackService.EXTRA_STREAM_TITLE, subtitle)
+                        }
+                        context.startService(intent)
+                    }
+                }
             )
         }
     }

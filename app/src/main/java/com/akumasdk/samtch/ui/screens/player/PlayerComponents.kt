@@ -20,11 +20,13 @@ fun WebViewContainer(
     navigator: WebViewNavigator,
     channel: String,
     onToggleFullscreen: () -> Unit,
-    onToggleChat: () -> Unit = {}
+    onToggleChat: () -> Unit = {},
+    onMetadataDetected: (String, String) -> Unit = { _, _ -> }
 ) {
     // Ensure the bridge always uses the latest lambdas from the current composition context
     val currentOnToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
     val currentOnToggleChat by rememberUpdatedState(onToggleChat)
+    val currentOnMetadataDetected by rememberUpdatedState(onMetadataDetected)
 
     WebView(
         modifier = modifier,
@@ -64,6 +66,9 @@ fun WebViewContainer(
                         },
                         onToggleChat = {
                             post { currentOnToggleChat() }
+                        },
+                        onMetadataDetected = { avatarUrl, subtitle ->
+                            post { currentOnMetadataDetected(avatarUrl, subtitle) }
                         }
                     ),
                     "TwitchPlayerBridge"
@@ -85,7 +90,8 @@ fun createTwitchPlayerUrl(channel: String): String {
 
 class TwitchPlayerBridge(
     private val onToggleFullscreen: () -> Unit,
-    private val onToggleChat: () -> Unit = {}
+    private val onToggleChat: () -> Unit = {},
+    private val onMetadataDetected: (String, String) -> Unit = { _, _ -> }
 ) {
     @JavascriptInterface
     fun toggleFullscreen() {
@@ -95,5 +101,10 @@ class TwitchPlayerBridge(
     @JavascriptInterface
     fun toggleChat() {
         onToggleChat()
+    }
+
+    @JavascriptInterface
+    fun updateMetadata(avatarUrl: String, subtitle: String) {
+        onMetadataDetected(avatarUrl, subtitle)
     }
 }

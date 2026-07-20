@@ -43,7 +43,6 @@ import com.akumasdk.samtch.ui.screens.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.ScriptLoader
-import com.akumasdk.samtch.util.SessionManager
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -52,21 +51,22 @@ class MainActivity : ComponentActivity() {
     private var isInPipModeState = mutableStateOf(false)
     private var pipRectState = mutableStateOf<Rect?>(null)
     private var refreshTriggerState = mutableIntStateOf(0)
-    private var sessionRefreshPendingState = mutableStateOf(false)
     private var isAppLoadedState = mutableStateOf(false)
 
     private var isSettingsOpenState = mutableStateOf(false)
 
     private val pipReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ACTION_REFRESH) {
-                refreshTriggerState.intValue += 1
+            when (intent?.action) {
+                ACTION_REFRESH -> refreshTriggerState.intValue += 1
+                ACTION_STOP_PLAYER -> selectedChannelState.value = null
             }
         }
     }
 
     companion object {
         private const val ACTION_REFRESH = "com.akumasdk.samtch.REFRESH"
+        private const val ACTION_STOP_PLAYER = "com.akumasdk.samtch.STOP_PLAYER"
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -74,14 +74,6 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition {
             !isAppLoadedState.value
-        }
-
-        // Initialize SessionManager to track activity and handle refreshes
-        SessionManager.initialize(this)
-        
-        // Schedule initial refresh if needed (first run or long inactivity)
-        if (SessionManager.shouldTriggerRefresh()) {
-            sessionRefreshPendingState.value = true
         }
 
         // Preload all JS scripts into memory for faster access
@@ -93,10 +85,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        val filter = IntentFilter().apply {
+            addAction(ACTION_REFRESH)
+            addAction(ACTION_STOP_PLAYER)
+        }
         ContextCompat.registerReceiver(
             this,
             pipReceiver,
-            IntentFilter(ACTION_REFRESH),
+            filter,
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
 
@@ -109,7 +105,6 @@ class MainActivity : ComponentActivity() {
                 var selectedChannel by selectedChannelState
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
-                var sessionRefreshPending by sessionRefreshPendingState
                 var isFullscreen by rememberSaveable { mutableStateOf(false) }
                 var isPlayerReady by rememberSaveable { mutableStateOf(false) }
                 var isSettingsOpen by isSettingsOpenState
@@ -171,11 +166,6 @@ class MainActivity : ComponentActivity() {
                                 isFullscreen = isFullscreen,
                                 isPip = isInPipMode,
                                 refreshTrigger = refreshTrigger,
-                                sessionRefreshPending = sessionRefreshPending,
-                                onRefreshRequested = {
-                                    refreshTriggerState.intValue += 1
-                                    sessionRefreshPendingState.value = false
-                                },
                                 onToggleFullscreen = { isFullscreen = !isFullscreen },
                                 onBack = {
                                     if (isFullscreen) {
@@ -255,16 +245,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Check if we need to refresh due to long background time
-        if (SessionManager.shouldTriggerRefresh()) {
-            sessionRefreshPendingState.value = true
-        }
+        updateServiceVisibility(true)
     }
 
     override fun onStop() {
         super.onStop()
-        // Record last active time when app goes to background
-        SessionManager.updateLastActiveTime()
+        updateServiceVisibility(false)
+    }
+
+    private fun updateServiceVisibility(isForeground: Boolean) {
+        if (selectedChannelState.value == null) return
+
+        val intent = Intent(this, com.akumasdk.samtch.util.PlaybackService::class.java).apply {
+            action = com.akumasdk.samtch.util.PlaybackService.ACTION_UPDATE_VISIBILITY
+            putExtra(com.akumasdk.samtch.util.PlaybackService.EXTRA_IS_FOREGROUND, isForeground)
+        }
+        try {
+            startService(intent)
+        } catch (_: Exception) {}
     }
 
     override fun onDestroy() {

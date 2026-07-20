@@ -88,8 +88,8 @@ object UpdateManager {
 
     fun downloadAndInstall(context: Context, release: GitHubRelease) {
         val appContext = context.applicationContext
-        val apkAsset = release.assets.find { it.name.endsWith(".apk") } ?: run {
-            Log.e(TAG, "No APK asset found in release")
+        val apkAsset = release.assets.find { it.name.endsWith("full.apk") } ?: run {
+            Log.e(TAG, "No Full APK asset found in release")
             return
         }
         
