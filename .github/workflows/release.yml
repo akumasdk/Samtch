@@ -36,6 +36,7 @@ jobs:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        _JAVA_OPTIONS: -Xmx4g
       run: ./gradlew assembleRelease --stacktrace
 
     - name: Get version from tag
