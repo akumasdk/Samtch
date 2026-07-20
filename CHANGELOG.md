@@ -1,3 +1,15 @@
+## Samtch v0.1.1
+
+### What's New
+- **F-Droid Compliance**: Refactored the project to support F-Droid's strictly open-source requirements.
+- **Build Flavors**: Introduced `full` and `foss` distribution flavors. 
+    - `full`: Standard version with GitHub auto-updates.
+    - `foss`: Clean version for F-Droid without auto-update permissions or non-free trackers.
+- **Improved CI/CD**: GitHub Actions now automatically builds and attaches both `full` and `foss` APKs to every release.
+- **Default Variant**: The `full` flavor is now the default for development builds in Android Studio.
+
+---
+
 ## Samtch v0.1.0
 
 ### What's New

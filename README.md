@@ -43,7 +43,11 @@ See the **[CHANGELOG.md](CHANGELOG.md)** for a full history of changes.
 
 You can download the latest version of Samtch from the **[Releases](https://github.com/akumasdk/Samtch/releases)** page.
 
-1. Download the latest `.apk` file.
+We provide two variants of the APK:
+- **`Samtch-vX.Y.Z-full.apk`**: Includes the built-in update checker to notify you of new releases directly in the app.
+- **`Samtch-vX.Y.Z-foss.apk`**: A "Free and Open Source" version without auto-update permissions, designed for compliance with FOSS standards.
+
+1. Download the latest `.apk` file for your preferred flavor.
 2. If prompted, enable "Install from Unknown Sources" in your Android settings.
 3. Make sure to click **"Install anyway"** if a Play Protect dialog pops up during installation.
 4. Open the file and install.
@@ -75,6 +79,7 @@ Contributions are welcome! If you have ideas for improvements or have found a bu
 - [x] **Chat in Fullscreen**: Overlay chat during landscape viewing.
 - [ ] **Navigation Improvements**: Faster transitions and better gesture support.
 - [x] **Picture-in-Picture (PiP)**: Watch streams while using other apps.
+- [ ] **Background Play**: Listen to stream audio even when the screen is off or the app is minimized.
 - [ ] **Android TV Support**: Optimized interface for television and remote control navigation.
 
 ## 🙏 Credits & Acknowledgments
