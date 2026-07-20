@@ -4,7 +4,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
@@ -19,6 +18,7 @@ import com.akumasdk.samtch.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URL
@@ -55,7 +55,49 @@ class PlaybackService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: action=${intent?.action}")
+        val action = intent?.action
+        Log.d(TAG, "onStartCommand: action=$action")
+        
+        if (action == ACTION_START) {
+            // Immediate foreground start to comply with Android 14+
+            val channelName = intent.getStringExtra(EXTRA_CHANNEL_NAME) ?: "Twitch"
+            lastChannelName = channelName
+            startForegroundService(channelName)
+            
+            // Then validate settings asynchronously
+            validateSettingsAndStopIfNeeded()
+        } else if (action == ACTION_UPDATE_METADATA || action == ACTION_UPDATE_VISIBILITY) {
+            serviceScope.launch {
+                if (isSettingEnabled()) {
+                    handleAction(intent)
+                } else {
+                    Log.d(TAG, "Setting disabled, stopping service")
+                    stopForeground(true)
+                    stopSelf()
+                }
+            }
+        } else if (action == ACTION_STOP) {
+            handleAction(intent)
+        }
+        
+        return START_NOT_STICKY
+    }
+
+    private suspend fun isSettingEnabled(): Boolean = withContext(Dispatchers.IO) {
+        SettingsManager.isBackgroundPlayEnabled(applicationContext).first()
+    }
+
+    private fun validateSettingsAndStopIfNeeded() {
+        serviceScope.launch {
+            if (!isSettingEnabled()) {
+                Log.d(TAG, "Background play disabled by settings, stopping service after start")
+                stopForeground(true)
+                stopSelf()
+            }
+        }
+    }
+
+    private fun handleAction(intent: Intent?) {
         when (intent?.action) {
             ACTION_START -> {
                 val channelName = intent.getStringExtra(EXTRA_CHANNEL_NAME) ?: "Twitch"
@@ -87,7 +129,6 @@ class PlaybackService : Service() {
                 stopSelf()
             }
         }
-        return START_NOT_STICKY
     }
 
     private fun startForegroundService(channelName: String, largeIcon: Bitmap? = null) {
@@ -118,7 +159,7 @@ class PlaybackService : Service() {
         }
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_refresh)
+            .setSmallIcon(R.drawable.ic_notification)
             .setLargeIcon(largeIcon)
             .setContentTitle(channelName)
             .setContentText(lastStreamTitle.ifEmpty { getString(R.string.bg_play_now_playing) })

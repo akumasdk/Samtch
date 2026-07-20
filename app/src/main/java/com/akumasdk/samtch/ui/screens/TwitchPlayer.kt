@@ -28,6 +28,7 @@ import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
 import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.ScriptLoader
 import com.akumasdk.samtch.util.SettingsManager
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun TwitchPlayer(
@@ -128,18 +129,18 @@ fun TwitchPlayer(
         if (finalScripts.isEmpty()) return@LaunchedEffect
 
         // Small initial delay
-        delay(300)
+        delay(300.milliseconds)
         
         // Initial tight polling for early hooks
         repeat(10) {
             navigator.evaluateJavaScript(finalScripts)
-            delay(200)
+            delay(200.milliseconds)
         }
         
         // Steady polling for dynamic hydration
         repeat(15) {
             navigator.evaluateJavaScript(finalScripts)
-            delay(1000)
+            delay(1000.milliseconds)
         }
         Log.d("TwitchPlayer", "Completed injection polling for $channel")
     }
@@ -181,6 +182,7 @@ fun TwitchPlayer(
                 state = state,
                 navigator = navigator,
                 channel = channel,
+                isBackgroundPlayEnabled = isBackgroundPlayEnabled,
                 onToggleFullscreen = onToggleFullscreen,
                 onToggleChat = onToggleChat,
                 onMetadataDetected = { avatarUrl, subtitle ->

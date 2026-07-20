@@ -4,14 +4,18 @@ import android.util.Log
 import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebView as NativeWebView
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
-import android.webkit.WebView as NativeWebView
 
 @Composable
 fun WebViewContainer(
@@ -19,6 +23,7 @@ fun WebViewContainer(
     state: WebViewState,
     navigator: WebViewNavigator,
     channel: String,
+    isBackgroundPlayEnabled: Boolean,
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit = {},
     onMetadataDetected: (String, String) -> Unit = { _, _ -> }
@@ -28,15 +33,25 @@ fun WebViewContainer(
     val currentOnToggleChat by rememberUpdatedState(onToggleChat)
     val currentOnMetadataDetected by rememberUpdatedState(onMetadataDetected)
 
+    var webViewInstance by remember { mutableStateOf<NativeWebView?>(null) }
+
+    // Update the background play property on the existing WebView instance
+    LaunchedEffect(webViewInstance, isBackgroundPlayEnabled) {
+        (webViewInstance as? BackgroundAudioWebView)?.isBackgroundPlayEnabled = isBackgroundPlayEnabled
+    }
+
     WebView(
         modifier = modifier,
         state = state,
         navigator = navigator,
         captureBackPresses = false,
         factory = { param ->
-            BackgroundAudioWebView(param.context)
+            BackgroundAudioWebView(param.context).apply {
+                this.isBackgroundPlayEnabled = isBackgroundPlayEnabled
+            }
         },
         onCreated = { webView ->
+            webViewInstance = webView
             Log.d("TwitchPlayer", "WebView created for channel: $channel")
 
             // Prevent the renderer process from being killed when hidden

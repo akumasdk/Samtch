@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Adjusted group to perfectly center the icon based on its actual bounds -->
+    <!-- Bounds: X[31-83] (mid 57), Y[25-69] (mid 47) -->
+    <!-- Translate: dX = 54-57 = -3, dY = 54-47 = +7 -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="1.6"
+        android:scaleY="1.6"
+        android:translateX="-3"
+        android:translateY="7">
+
+        <!-- Combined bubble and arrows using exactly the same path data from ic_launcher_foreground -->
+        <!-- We use evenOdd to create the "striped" decorative arrow effect as a cut-out -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M31,25 h46 a6,6 0 0 1 6,6 v28 a6,6 0 0 1 -6,6 h-9 l-10,10 v-10 h-27 a6,6 0 0 1 -6,-6 v-28 a6,6 0 0 1 6,-6 z
+                             M50,36 L69,45 L50,54 Z
+                             M40,36 L69,45 L50,54 Z
+                             M29,36 L69,45 L50,54 Z" />
+    </group>
+</vector>

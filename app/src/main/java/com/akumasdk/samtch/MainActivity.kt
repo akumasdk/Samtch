@@ -17,6 +17,7 @@ import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,26 +25,30 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.lifecycleScope
 import com.akumasdk.samtch.ui.screens.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.ScriptLoader
+import com.akumasdk.samtch.util.SettingsManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
@@ -59,7 +64,13 @@ class MainActivity : ComponentActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 ACTION_REFRESH -> refreshTriggerState.intValue += 1
-                ACTION_STOP_PLAYER -> selectedChannelState.value = null
+                ACTION_STOP_PLAYER -> {
+                    selectedChannelState.value = null
+                    // If we are in PiP mode, closing the player should also close the PiP window
+                    if (isInPipModeState.value) {
+                        finish()
+                    }
+                }
             }
         }
     }
@@ -256,13 +267,22 @@ class MainActivity : ComponentActivity() {
     private fun updateServiceVisibility(isForeground: Boolean) {
         if (selectedChannelState.value == null) return
 
-        val intent = Intent(this, com.akumasdk.samtch.util.PlaybackService::class.java).apply {
-            action = com.akumasdk.samtch.util.PlaybackService.ACTION_UPDATE_VISIBILITY
-            putExtra(com.akumasdk.samtch.util.PlaybackService.EXTRA_IS_FOREGROUND, isForeground)
+        lifecycleScope.launch {
+            val enabled = SettingsManager.isBackgroundPlayEnabled(applicationContext).first()
+            if (!enabled) {
+                val intent = Intent(this@MainActivity, PlaybackService::class.java)
+                stopService(intent)
+                return@launch
+            }
+
+            val intent = Intent(this@MainActivity, PlaybackService::class.java).apply {
+                action = PlaybackService.ACTION_UPDATE_VISIBILITY
+                putExtra(PlaybackService.EXTRA_IS_FOREGROUND, isForeground)
+            }
+            try {
+                startService(intent)
+            } catch (_: Exception) {}
         }
-        try {
-            startService(intent)
-        } catch (_: Exception) {}
     }
 
     override fun onDestroy() {
@@ -296,7 +316,7 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         val intentUrl = intent?.data?.toString()
         val channelFromUrl = extractChannelFromUrl(intentUrl)
-        val channelFromExtra = intent?.getStringExtra(com.akumasdk.samtch.util.PlaybackService.EXTRA_CHANNEL_NAME)
+        val channelFromExtra = intent?.getStringExtra(PlaybackService.EXTRA_CHANNEL_NAME)
 
         val channel = channelFromUrl ?: channelFromExtra
         if (channel != null) {
