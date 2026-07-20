@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -19,11 +21,14 @@ import kotlinx.coroutines.delay
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import com.multiplatform.webview.web.LoadingState
+import androidx.core.content.ContextCompat
 import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
 import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
 import com.akumasdk.samtch.ui.screens.player.WebViewContainer
 import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
+import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.ScriptLoader
+import com.akumasdk.samtch.util.SettingsManager
 
 @Composable
 fun TwitchPlayer(
@@ -38,6 +43,35 @@ fun TwitchPlayer(
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val isBackgroundPlayEnabled by SettingsManager.isBackgroundPlayEnabled(context).collectAsState(initial = false)
+
+    // Manage Background Playback Service
+    LaunchedEffect(channel, isBackgroundPlayEnabled) {
+        Log.d("TwitchPlayer", "LaunchedEffect: channel=$channel, enabled=$isBackgroundPlayEnabled")
+        if (isBackgroundPlayEnabled) {
+            val intent = android.content.Intent(context, PlaybackService::class.java).apply {
+                action = PlaybackService.ACTION_START
+                putExtra(PlaybackService.EXTRA_CHANNEL_NAME, channel)
+            }
+            Log.d("TwitchPlayer", "Starting PlaybackService")
+            ContextCompat.startForegroundService(context, intent)
+        } else {
+            val intent = android.content.Intent(context, PlaybackService::class.java).apply {
+                action = PlaybackService.ACTION_STOP
+            }
+            Log.d("TwitchPlayer", "Stopping PlaybackService")
+            context.stopService(intent)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            val intent = android.content.Intent(context, PlaybackService::class.java).apply {
+                action = PlaybackService.ACTION_STOP
+            }
+            context.stopService(intent)
+        }
+    }
 
     val sessionRefreshPending = false; // always false for testing
 
@@ -90,22 +124,35 @@ fun TwitchPlayer(
                 val guardVar = "samtch_" + path.replace(Regex("[^a-zA-Z0-9]"), "_")
                 "if (typeof window.$guardVar === 'undefined') { window.$guardVar = true; $script }"
             } else null
-        }.joinToString("\n")
+        }.toMutableList()
 
-        if (scripts.isEmpty()) return@LaunchedEffect
+        // Background play visibility hack
+        scripts.add("""
+            (function() {
+                if (window.samtch_background_hack) return;
+                window.samtch_background_hack = true;
+                document.addEventListener('visibilitychange', function(e) { e.stopImmediatePropagation(); }, true);
+                Object.defineProperty(document, 'visibilityState', {get: function() { return 'visible'; }});
+                Object.defineProperty(document, 'hidden', {get: function() { return false; }});
+            })();
+        """.trimIndent())
+
+        val finalScripts = scripts.joinToString("\n")
+
+        if (finalScripts.isEmpty()) return@LaunchedEffect
 
         // Small initial delay
         delay(300)
         
         // Initial tight polling for early hooks
         repeat(10) {
-            navigator.evaluateJavaScript(scripts)
+            navigator.evaluateJavaScript(finalScripts)
             delay(200)
         }
         
         // Steady polling for dynamic hydration
         repeat(15) {
-            navigator.evaluateJavaScript(scripts)
+            navigator.evaluateJavaScript(finalScripts)
             delay(1000)
         }
         Log.d("TwitchPlayer", "Completed injection polling for $channel")

@@ -31,8 +31,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
@@ -87,6 +87,8 @@ class MainActivity : ComponentActivity() {
         // Preload all JS scripts into memory for faster access
         ScriptLoader.initialize(this)
 
+        handleIntent(intent)
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -108,8 +110,8 @@ class MainActivity : ComponentActivity() {
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
                 var sessionRefreshPending by sessionRefreshPendingState
-                var isFullscreen by remember { mutableStateOf(false) }
-                var isPlayerReady by remember { mutableStateOf(false) }
+                var isFullscreen by rememberSaveable { mutableStateOf(false) }
+                var isPlayerReady by rememberSaveable { mutableStateOf(false) }
                 var isSettingsOpen by isSettingsOpenState
 
                 // Update PiP params when channel or PiP mode changes
@@ -128,15 +130,6 @@ class MainActivity : ComponentActivity() {
                             // Ignore if called too frequently or in wrong state
                         }
                     }
-                }
-
-                // Check if app was opened with a Twitch URL
-                val intentUrl = intent?.data?.toString()
-                val channelFromIntent = extractChannelFromUrl(intentUrl)
-
-                // If intent has a channel, use it; otherwise start with browser
-                if (channelFromIntent != null && selectedChannel == null) {
-                    selectedChannel = channelFromIntent
                 }
 
                 // Change orientation and system bars based on current screen
@@ -294,6 +287,23 @@ class MainActivity : ComponentActivity() {
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         isInPipModeState.value = isInPictureInPictureMode
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val intentUrl = intent?.data?.toString()
+        val channelFromUrl = extractChannelFromUrl(intentUrl)
+        val channelFromExtra = intent?.getStringExtra(com.akumasdk.samtch.util.PlaybackService.EXTRA_CHANNEL_NAME)
+
+        val channel = channelFromUrl ?: channelFromExtra
+        if (channel != null) {
+            selectedChannelState.value = channel
+        }
     }
 
     private fun extractChannelFromUrl(url: String?): String? {

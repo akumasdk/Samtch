@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
+import android.webkit.WebView as NativeWebView
 
 @Composable
 fun WebViewContainer(
@@ -30,8 +31,14 @@ fun WebViewContainer(
         state = state,
         navigator = navigator,
         captureBackPresses = false,
+        factory = { param ->
+            BackgroundAudioWebView(param.context)
+        },
         onCreated = { webView ->
             Log.d("TwitchPlayer", "WebView created for channel: $channel")
+
+            // Prevent the renderer process from being killed when hidden
+            webView.setRendererPriorityPolicy(NativeWebView.RENDERER_PRIORITY_BOUND, false)
 
             state.webSettings.apply {
                 isJavaScriptEnabled = true

@@ -17,8 +17,11 @@ material = "1.14.0"
 materialIconsCore = "1.7.8"
 splashscreen = "1.0.1"
 playwright = "1.58.0"
+media3 = "1.5.1"
 
 [libraries]
+media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
+media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsCore" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

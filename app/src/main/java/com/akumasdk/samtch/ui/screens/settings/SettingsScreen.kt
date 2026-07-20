@@ -1,5 +1,10 @@
 package com.akumasdk.samtch.ui.screens.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,9 +26,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.akumasdk.samtch.BuildConfig
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.util.GitHubRelease
+import com.akumasdk.samtch.util.SettingsManager
 import com.akumasdk.samtch.util.UpdateManager
 import kotlinx.coroutines.launch
 
@@ -37,9 +44,23 @@ fun SettingsScreen(
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    
     val context = LocalContext.current
+    val isBackgroundPlayEnabled by SettingsManager.isBackgroundPlayEnabled(context).collectAsState(initial = false)
+
+    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                scope.launch {
+                    SettingsManager.setBackgroundPlayEnabled(context, true)
+                }
+            }
+        }
+    )
 
     // Intercept system back button
     BackHandler {
@@ -94,6 +115,63 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.clickable {
                         isBttvSettingsOpen = true
+                    }
+                )
+            }
+
+            item {
+                ListItem(
+                    headlineContent = { Text("Reproducción en segundo plano") },
+                    supportingContent = { Text("Mantiene el audio cuando la app está minimizada") },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_refresh), // TODO: Better icon
+                            contentDescription = null
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = isBackgroundPlayEnabled,
+                            onCheckedChange = { enabled ->
+                                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    if (ContextCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.POST_NOTIFICATIONS
+                                        ) != PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        scope.launch {
+                                            SettingsManager.setBackgroundPlayEnabled(context, true)
+                                        }
+                                    }
+                                } else {
+                                    scope.launch {
+                                        SettingsManager.setBackgroundPlayEnabled(context, enabled)
+                                    }
+                                }
+                            }
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        val newEnabled = !isBackgroundPlayEnabled
+                        if (newEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                ) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                scope.launch {
+                                    SettingsManager.setBackgroundPlayEnabled(context, true)
+                                }
+                            }
+                        } else {
+                            scope.launch {
+                                SettingsManager.setBackgroundPlayEnabled(context, newEnabled)
+                            }
+                        }
                     }
                 )
             }
