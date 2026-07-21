@@ -20,10 +20,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -190,6 +195,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Track which channel to show in the player (even during exit animation)
+                var displayedChannel by remember { mutableStateOf<String?>(null) }
+                LaunchedEffect(selectedChannel) {
+                    if (selectedChannel != null) {
+                        displayedChannel = selectedChannel
+                    }
+                }
+
+                val browserAlpha by animateFloatAsState(
+                    targetValue = if (selectedChannel == null) 1f else 0.4f,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "browserAlpha"
+                )
+
                 Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
                     val isBrowserVisible = selectedChannel == null
                     
@@ -197,7 +216,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                alpha = if (isBrowserVisible) 1f else 0f
+                                alpha = browserAlpha
                             }
                     ) {
                         TwitchBrowser(
@@ -218,26 +237,33 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    if (selectedChannel != null) {
-                        // Use key() to force complete recreation when channel changes
-                        key(selectedChannel) {
-                            TwitchPlayer(
-                                channel = selectedChannel!!,
-                                isFullscreen = isFullscreen,
-                                isPip = isInPipMode,
-                                refreshTrigger = refreshTrigger,
-                                onToggleFullscreen = { isFullscreen = !isFullscreen },
-                                onBack = {
-                                    if (isFullscreen) {
-                                        isFullscreen = false
-                                    } else {
-                                        selectedChannel = null
+                    AnimatedVisibility(
+                        visible = selectedChannel != null,
+                        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        displayedChannel?.let { channel ->
+                            // Use key() to force complete recreation when channel changes
+                            key(channel) {
+                                TwitchPlayer(
+                                    channel = channel,
+                                    isFullscreen = isFullscreen,
+                                    isPip = isInPipMode,
+                                    refreshTrigger = refreshTrigger,
+                                    onToggleFullscreen = { isFullscreen = !isFullscreen },
+                                    onBack = {
+                                        if (isFullscreen) {
+                                            isFullscreen = false
+                                        } else {
+                                            selectedChannel = null
+                                        }
+                                    },
+                                    onVideoBoundsChanged = { rect ->
+                                        pipRectState.value = rect
                                     }
-                                },
-                                onVideoBoundsChanged = { rect ->
-                                    pipRectState.value = rect
-                                }
-                            )
+                                )
+                            }
                         }
                     }
 

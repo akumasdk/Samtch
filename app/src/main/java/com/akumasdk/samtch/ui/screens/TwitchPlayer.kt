@@ -121,19 +121,19 @@ fun TwitchPlayer(
 
         if (finalScripts.isEmpty()) return@LaunchedEffect
 
-        // Small initial delay
-        delay(300.milliseconds)
+        // Small initial delay to let the WebView engine warm up
+        delay(500.milliseconds)
         
         // Initial tight polling for early hooks
-        repeat(10) {
+        repeat(8) {
             navigator.evaluateJavaScript(finalScripts)
-            delay(200.milliseconds)
+            delay(250.milliseconds)
         }
         
-        // Steady polling for dynamic hydration
-        repeat(15) {
+        // Steady polling for dynamic hydration (reduced frequency)
+        repeat(12) {
             navigator.evaluateJavaScript(finalScripts)
-            delay(1000.milliseconds)
+            delay(1500.milliseconds)
         }
         Log.d("TwitchPlayer", "Completed injection polling for $channel")
     }
