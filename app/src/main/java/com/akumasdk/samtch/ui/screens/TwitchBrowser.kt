@@ -5,7 +5,7 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
-import android.webkit.WebView
+import android.webkit.WebView as NativeWebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
@@ -21,8 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
-import com.multiplatform.webview.web.rememberSaveableWebViewState
-import com.multiplatform.webview.web.rememberWebViewNavigator
+import com.multiplatform.webview.web.WebViewNavigator
+import com.multiplatform.webview.web.WebViewState
 import com.akumasdk.samtch.util.ScriptLoader
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -30,23 +30,27 @@ import kotlin.time.Duration.Companion.milliseconds
 @SuppressLint("JavascriptInterface")
 @Composable
 fun TwitchBrowser(
+    state: WebViewState,
+    navigator: WebViewNavigator,
     onChannelSelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    isBackHandlerEnabled: Boolean = true,
     onSettingsClick: () -> Unit = {},
     onLoaded: () -> Unit = {}
 ) {
-    val state = rememberSaveableWebViewState("https://m.twitch.tv/")
-    val navigator = rememberWebViewNavigator()
     val activity = LocalActivity.current
     val context = LocalContext.current
     var lastCheckedUrl by remember { mutableStateOf("") }
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    var webViewRef by remember { mutableStateOf<NativeWebView?>(null) }
     
     // Handle back button
-    BackHandler {
-        if (navigator.canGoBack) {
-            navigator.navigateBack()
-        } else {
-            activity?.finish()
+    if (isBackHandlerEnabled) {
+        BackHandler {
+            if (navigator.canGoBack) {
+                navigator.navigateBack()
+            } else {
+                activity?.finish()
+            }
         }
     }
 
@@ -57,8 +61,9 @@ fun TwitchBrowser(
         onLoaded()
     }
 
+    // Restoration logic is now handled in onCreated to ensure the NativeWebView is ready
     LaunchedEffect(Unit) {
-        navigator.loadUrl("https://m.twitch.tv/")
+        Log.d("TwitchBrowser", "TwitchBrowser component ENTERED composition. lastLoadedUrl=${state.lastLoadedUrl}")
     }
 
     // Monitor URL changes including SPA transitions via polling
@@ -78,9 +83,10 @@ fun TwitchBrowser(
                     val currentUser = getCurrentUserFromCookies()
 
                     if (channelMatch != null && channelMatch != currentUser) {
-                        // If we are coming from the global home, stay in browser to allow exploration
-                        if (isGlobalHome(previousUrl)) {
-                            Log.d("TwitchBrowser", "Channel detected from home, staying in browser: $channelMatch")
+                        // If we are coming from the global home or this is the first URL check (restoration),
+                        // stay in browser to allow exploration or just viewing the channel page.
+                        if (isGlobalHome(previousUrl) || previousUrl.isEmpty()) {
+                            Log.d("TwitchBrowser", "Channel detected from home or restoration, staying in browser: $channelMatch")
                         } else {
                             Log.d("TwitchBrowser", "Channel detected: $channelMatch. Triggering player.")
                             navigator.stopLoading()
@@ -96,6 +102,9 @@ fun TwitchBrowser(
     // Inject scripts when page is loaded (ONLY dialog closer)
     LaunchedEffect(state.loadingState) {
         if (state.loadingState is LoadingState.Finished) {
+            // Ensure splash screen is dismissed when loading completes
+            onLoaded()
+
             // Check if this is a channel URL - if so, don't inject scripts
             val currentUrl = state.lastLoadedUrl ?: ""
             val channelMatch = extractChannelFromUrl(currentUrl)
@@ -140,13 +149,29 @@ fun TwitchBrowser(
     }
 
     WebView(
-        modifier = Modifier.fillMaxSize().statusBarsPadding(),
+        modifier = modifier.fillMaxSize().statusBarsPadding(),
         state = state,
         navigator = navigator,
         captureBackPresses = false,
         onCreated = { webView ->
             webViewRef = webView
+            
+            // Perform initial load or restore previous URL when returning from player.
+            // Requirement: load home page (first start) or last known URL (returning from player).
+            // The state.lastLoadedUrl is preserved across composition changes in MainActivity.
+            val urlToLoad = if (!state.lastLoadedUrl.isNullOrEmpty()) {
+                state.lastLoadedUrl!!
+            } else {
+                "https://m.twitch.tv/"
+            }
+
+            if (webView.url == null || webView.url == "about:blank") {
+                Log.d("TwitchBrowser", "onCreated: Initializing load of $urlToLoad")
+                webView.loadUrl(urlToLoad)
+            }
+
             webView.addJavascriptInterface(androidInterface, "TwitchBrowserBridge")
+            
             state.webSettings.apply {
                 isJavaScriptEnabled = true
 
@@ -169,7 +194,7 @@ fun TwitchBrowser(
                 // Custom WebViewClient to intercept URL changes
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(
-                        view: WebView?,
+                        view: NativeWebView?,
                         request: WebResourceRequest?
                     ): Boolean {
                         val url = request?.url?.toString() ?: return false
@@ -204,7 +229,7 @@ fun TwitchBrowser(
                         return false // Allow normal navigation
                     }
 
-                    override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                    override fun onPageStarted(view: NativeWebView?, url: String?, favicon: android.graphics.Bitmap?) {
                         super.onPageStarted(view, url, favicon)
                         Log.d("TwitchBrowser", "Page started: $url")
 
@@ -219,7 +244,7 @@ fun TwitchBrowser(
                             val channelMatch = extractChannelFromUrl(it)
                             val currentUser = getCurrentUserFromCookies()
 
-                            if (channelMatch != null && channelMatch != currentUser && !isGlobalHome(lastCheckedUrl)) {
+                            if (channelMatch != null && channelMatch != currentUser && lastCheckedUrl.isNotEmpty() && !isGlobalHome(lastCheckedUrl)) {
                                 Log.d("TwitchBrowser", "Channel URL detected in onPageStarted, stopping: $channelMatch")
                                 view?.stopLoading()
                                 onChannelSelected(channelMatch)
@@ -227,9 +252,11 @@ fun TwitchBrowser(
                         }
                     }
 
-                    override fun onPageFinished(view: WebView?, url: String?) {
+                    override fun onPageFinished(view: NativeWebView?, url: String?) {
                         super.onPageFinished(view, url)
                         Log.d("TwitchBrowser", "Page finished: $url")
+                        // Ensure splash screen dismisses even on restoration
+                        onLoaded()
                     }
                 }
 

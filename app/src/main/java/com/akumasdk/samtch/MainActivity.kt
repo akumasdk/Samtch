@@ -23,6 +23,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +35,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.multiplatform.webview.web.rememberSaveableWebViewState
+import com.multiplatform.webview.web.rememberWebViewNavigator
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
@@ -114,13 +117,29 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SamtchTheme {
-                var selectedChannel by selectedChannelState
+                var selectedChannel by rememberSaveable { mutableStateOf<String?>(null) }
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
                 var isFullscreen by rememberSaveable { mutableStateOf(false) }
                 var isPlayerReady by rememberSaveable { mutableStateOf(false) }
                 var isSettingsOpen by isSettingsOpenState
                 val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
+
+                // Sync Activity property with Compose state for PiP/Service logic
+                LaunchedEffect(selectedChannel) {
+                    selectedChannelState.value = selectedChannel
+                }
+                
+                // Handle updates from external intents (Activity property)
+                val externalChannel by selectedChannelState
+                LaunchedEffect(externalChannel) {
+                    if (externalChannel != null && externalChannel != selectedChannel) {
+                        selectedChannel = externalChannel
+                    }
+                }
+
+                val browserState = rememberSaveableWebViewState("https://m.twitch.tv/")
+                val browserNavigator = rememberWebViewNavigator()
 
                 // Update PiP params when channel or PiP mode or PiP setting changes
                 LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled) {
@@ -140,37 +159,58 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Change orientation and system bars based on current screen
+                // Orientation and System Bars management
                 LaunchedEffect(selectedChannel, isFullscreen, isInPipMode) {
                     if (isInPipMode) return@LaunchedEffect
 
                     if (selectedChannel != null) {
                         if (isFullscreen) {
-                            // Fullscreen Landscape
                             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                             windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
                         } else {
-                            // Portrait for default player view
                             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                             windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
                         }
-                        
-                        // Only reset player if it wasn't already ready (e.g. channel changed)
+                    } else {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+                    }
+                }
+
+                // Player readiness management - Only resets on channel changes
+                LaunchedEffect(selectedChannel) {
+                    if (selectedChannel != null) {
                         if (!isPlayerReady) {
-                            delay(200.milliseconds)
+                            // Minimal delay to ensure orientation/insets are updated before showing player
+                            delay(50.milliseconds)
                             isPlayerReady = true
                             isAppLoadedState.value = true
                         }
                     } else {
-                        // Browser: force portrait
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                        windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
                         isPlayerReady = false
-                        isFullscreen = false // Reset fullscreen state
+                        isFullscreen = false
                     }
                 }
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
+                    // Browser - Unload completely when player is active to prevent background audio/video
+                    if (selectedChannel == null) {
+                        TwitchBrowser(
+                            state = browserState,
+                            navigator = browserNavigator,
+                            onChannelSelected = { channel ->
+                                selectedChannel = channel
+                            },
+                            onSettingsClick = {
+                                isSettingsOpen = true
+                            },
+                            onLoaded = {
+                                isAppLoadedState.value = true
+                            },
+                            isBackHandlerEnabled = !isSettingsOpen
+                        )
+                    }
+
                     if (selectedChannel != null && isPlayerReady) {
                         // Use key() to force complete recreation when channel changes
                         key(selectedChannel) {
@@ -193,19 +233,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                    } else if (selectedChannel == null) {
-                        // Show browser to select a channel
-                        TwitchBrowser(
-                            onChannelSelected = { channel ->
-                                selectedChannel = channel
-                            },
-                            onSettingsClick = {
-                                isSettingsOpen = true
-                            },
-                            onLoaded = {
-                                isAppLoadedState.value = true
-                            }
-                        )
                     }
 
                     AnimatedVisibility(
