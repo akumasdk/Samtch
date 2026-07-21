@@ -1,3 +1,13 @@
+## Samtch v0.1.2
+
+### What's New
+- **Picture-in-Picture Control**: Added a toggle in settings to enable/disable automatic PiP entry.
+- **Background Playback (Beta)**: Marked background play as a beta feature (disabled by default) and improved its persistence with a sticky, ongoing notification and `START_STICKY` service mode.
+- **UI Enhancements**: Updated settings icons with new solid-style assets and improved the overall settings layout.
+- **Improved Service Lifecycle**: Resolved issues where background audio would stop prematurely when navigating away from the player.
+
+---
+
 ## Samtch v0.1.1
 
 ### What's New
