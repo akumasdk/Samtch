@@ -170,6 +170,10 @@ class MainActivity : ComponentActivity() {
                     } else {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+                        
+                        // Ensure white icons in browser (since Twitch is dark)
+                        windowInsetsController.isAppearanceLightStatusBars = false
+                        windowInsetsController.isAppearanceLightNavigationBars = false
                     }
                 }
 

@@ -1,5 +1,9 @@
 <resources>
     <string name="app_name">Samtch</string>
+    <string name="exit_dialog_title">Salir de Samtch</string>
+    <string name="exit_dialog_message">¿Estás seguro de que quieres salir?</string>
+    <string name="exit_button">Salir</string>
+    <string name="cancel_button">Cancelar</string>
     <string name="fullscreen_double_tap_hint">Toca dos veces en el centro para alternar el chat</string>
 
     <!-- Settings -->

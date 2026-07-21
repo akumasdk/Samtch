@@ -1,5 +1,9 @@
 <resources>
     <string name="app_name">Samtch</string>
+    <string name="exit_dialog_title">Exit Samtch</string>
+    <string name="exit_dialog_message">Are you sure you want to exit?</string>
+    <string name="exit_button">Exit</string>
+    <string name="cancel_button">Cancel</string>
     <string name="fullscreen_double_tap_hint">Double tap center to toggle chat</string>
 
     <!-- Settings -->
