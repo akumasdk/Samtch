@@ -24,9 +24,12 @@
 
         let promotionFound = false;
 
+        const isInsideStreamCard = (el) => !!el.closest('[class*="streamCard"]');
+
         // 1. Remove targeted promotion elements
         CONFIG.targetedSelectors.forEach(selector => {
             document.querySelectorAll(selector).forEach(el => {
+                if (isInsideStreamCard(el)) return;
                 console.log('[Samtch] Removing targeted promotion:', selector);
                 el.remove();
                 promotionFound = true;
@@ -37,6 +40,7 @@
         document.querySelectorAll('div, section, aside, span, button').forEach(el => {
             // Only check visible elements that are likely modals
             if (el.offsetWidth > 0 && (el.classList.contains('tw-modal') || el.classList.contains('tw-dialog'))) {
+                if (isInsideStreamCard(el)) return;
                 const text = (el.textContent || '').toLowerCase();
                 if (CONFIG.appKeywords.some(k => text.includes(k))) {
                      console.log('[Samtch] Removing dynamic promotion modal via text match');
@@ -49,6 +53,7 @@
         // 3. Remove backdrops/overlays if a promotion was found OR if they contain keywords
         CONFIG.backdropSelectors.forEach(selector => {
             document.querySelectorAll(selector).forEach(el => {
+                if (isInsideStreamCard(el)) return;
                 const text = (el.textContent || '').toLowerCase();
                 const hasKeyword = CONFIG.appKeywords.some(k => text.includes(k));
 
@@ -69,6 +74,7 @@
         const patterns = ['desktop-redirect=true', 'mweb_upsell', 'top_nav_open_in_app'];
 
         document.querySelectorAll('a[href]').forEach(link => {
+            if (isInsideStreamCard(link)) return;
             const href = link.getAttribute('href');
             if (patterns.some(p => href.includes(p))) {
                 link.style.setProperty('display', 'none', 'important');
