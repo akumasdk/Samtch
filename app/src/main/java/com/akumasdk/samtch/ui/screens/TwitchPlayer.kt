@@ -62,14 +62,6 @@ fun TwitchPlayer(
         }
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            val intent = android.content.Intent(context, PlaybackService::class.java).apply {
-                action = PlaybackService.ACTION_STOP
-            }
-            context.stopService(intent)
-        }
-    }
 
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()

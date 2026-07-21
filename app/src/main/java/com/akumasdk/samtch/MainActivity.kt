@@ -26,6 +26,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -119,10 +120,11 @@ class MainActivity : ComponentActivity() {
                 var isFullscreen by rememberSaveable { mutableStateOf(false) }
                 var isPlayerReady by rememberSaveable { mutableStateOf(false) }
                 var isSettingsOpen by isSettingsOpenState
+                val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
 
-                // Update PiP params when channel or PiP mode changes
-                LaunchedEffect(selectedChannel, isInPipMode) {
-                    updatePipParams()
+                // Update PiP params when channel or PiP mode or PiP setting changes
+                LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled) {
+                    updatePipParams(isPipEnabled)
                 }
 
                 // Separately update source rect hint to avoid frequent heavy updates
@@ -221,7 +223,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
-    private fun updatePipParams() {
+    private fun updatePipParams(isPipEnabled: Boolean = true) {
 
         val actions = if (selectedChannelState.value != null && isInPipModeState.value) {
             listOf(
@@ -245,7 +247,7 @@ class MainActivity : ComponentActivity() {
             .setAspectRatio(Rational(16, 9))
             .setActions(actions)
 
-        builder.setAutoEnterEnabled(selectedChannelState.value != null)
+        builder.setAutoEnterEnabled(selectedChannelState.value != null && isPipEnabled)
 
         try {
             setPictureInPictureParams(builder.build())

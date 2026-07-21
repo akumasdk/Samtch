@@ -120,12 +120,41 @@ fun SettingsScreen(
             }
 
             item {
+                val isPipEnabled by SettingsManager.isPipEnabled(context).collectAsState(initial = true)
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.pip_enabled_title)) },
+                    supportingContent = { Text(stringResource(R.string.pip_enabled_summary)) },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_pip_mode),
+                            contentDescription = null
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = isPipEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    SettingsManager.setPipEnabled(context, enabled)
+                                }
+                            }
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        scope.launch {
+                            SettingsManager.setPipEnabled(context, !isPipEnabled)
+                        }
+                    }
+                )
+            }
+
+            item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.bg_play_title)) },
                     supportingContent = { Text(stringResource(R.string.bg_play_summary)) },
                     leadingContent = {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_refresh), // TODO: Better icon
+                            painter = painterResource(id = R.drawable.ic_exit_fullscreen),
                             contentDescription = null
                         )
                     },

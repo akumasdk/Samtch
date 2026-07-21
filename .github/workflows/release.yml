@@ -73,8 +73,8 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          ${{ steps.apks.outputs.full_path }}
           ${{ steps.apks.outputs.foss_path }}
+          ${{ steps.apks.outputs.full_path }}
         name: Release ${{ steps.version.outputs.VERSION }}
         body_path: RELEASE_NOTES.md
         draft: false

@@ -80,7 +80,7 @@ class PlaybackService : Service() {
             handleAction(intent)
         }
         
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private suspend fun isSettingEnabled(): Boolean = withContext(Dispatchers.IO) {
@@ -167,7 +167,7 @@ class PlaybackService : Service() {
             .setContentIntent(pendingIntent)
             .setDeleteIntent(stopPendingIntent) // Stop playback when dismissed
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setOngoing(false) // Allow dismissal
+            .setOngoing(true) // Prevent dismissal while playing
             .addAction(R.drawable.ic_refresh, getString(R.string.bg_play_stop_action), stopPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()

@@ -13,6 +13,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 object SettingsManager {
     private val BACKGROUND_PLAY_ENABLED = booleanPreferencesKey("background_play_enabled")
+    private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
 
     fun isBackgroundPlayEnabled(context: Context): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
@@ -23,6 +24,18 @@ object SettingsManager {
     suspend fun setBackgroundPlayEnabled(context: Context, enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[BACKGROUND_PLAY_ENABLED] = enabled
+        }
+    }
+
+    fun isPipEnabled(context: Context): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[PIP_ENABLED] ?: true
+        }
+    }
+
+    suspend fun setPipEnabled(context: Context, enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PIP_ENABLED] = enabled
         }
     }
 }
