@@ -13,6 +13,7 @@ import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -35,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import androidx.core.content.ContextCompat
@@ -56,11 +58,11 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
-    private var selectedChannelState = mutableStateOf<String?>(null)
     private var isInPipModeState = mutableStateOf(false)
     private var pipRectState = mutableStateOf<Rect?>(null)
     private var refreshTriggerState = mutableIntStateOf(0)
     private var isAppLoadedState = mutableStateOf(false)
+    private var currentChannel: String? = null // For PiP and Service access
 
     private var isSettingsOpenState = mutableStateOf(false)
 
@@ -69,11 +71,13 @@ class MainActivity : ComponentActivity() {
             when (intent?.action) {
                 ACTION_REFRESH -> refreshTriggerState.intValue += 1
                 ACTION_STOP_PLAYER -> {
-                    selectedChannelState.value = null
-                    // If we are in PiP mode, closing the player should also close the PiP window
-                    if (isInPipModeState.value) {
-                        finish()
+                    // This will be handled via intent or a global event if needed
+                    // For now, we'll let handleIntent handle the stop if necessary
+                    val stopIntent = Intent(this@MainActivity, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        putExtra("ACTION", "STOP")
                     }
+                    startActivity(stopIntent)
                 }
             }
         }
@@ -121,30 +125,22 @@ class MainActivity : ComponentActivity() {
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
                 var isFullscreen by rememberSaveable { mutableStateOf(false) }
-                var isPlayerReady by rememberSaveable { mutableStateOf(false) }
                 var isSettingsOpen by isSettingsOpenState
                 val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
 
-                // Sync Activity property with Compose state for PiP/Service logic
-                LaunchedEffect(selectedChannel) {
-                    selectedChannelState.value = selectedChannel
-                }
-                
-                // Handle updates from external intents (Activity property)
-                val externalChannel by selectedChannelState
-                LaunchedEffect(externalChannel) {
-                    if (externalChannel != null && externalChannel != selectedChannel) {
-                        selectedChannel = externalChannel
+                // Handle updates from external intents
+                LaunchedEffect(intent) {
+                    val action = intent.getStringExtra("ACTION")
+                    val newChannel = intent.getStringExtra("CHANNEL")
+                    if (action == "STOP") {
+                        selectedChannel = null
+                    } else if (newChannel != null) {
+                        selectedChannel = newChannel
                     }
                 }
 
                 val browserState = rememberSaveableWebViewState("https://m.twitch.tv/")
                 val browserNavigator = rememberWebViewNavigator()
-
-                // Update PiP params when channel or PiP mode or PiP setting changes
-                LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled) {
-                    updatePipParams(isPipEnabled)
-                }
 
                 // Separately update source rect hint to avoid frequent heavy updates
                 LaunchedEffect(pipRectState.value) {
@@ -177,41 +173,48 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Player readiness management - Only resets on channel changes
+                // Sync with class property for PiP and Background Service
+                LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled) {
+                    currentChannel = selectedChannel
+                    updatePipParams(isPipEnabled)
+                }
+
+                // Player state cleanup on exit
                 LaunchedEffect(selectedChannel) {
-                    if (selectedChannel != null) {
-                        if (!isPlayerReady) {
-                            // Minimal delay to ensure orientation/insets are updated before showing player
-                            delay(50.milliseconds)
-                            isPlayerReady = true
-                            isAppLoadedState.value = true
-                        }
-                    } else {
-                        isPlayerReady = false
+                    if (selectedChannel == null) {
                         isFullscreen = false
                     }
                 }
 
                 Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
-                    // Browser - Unload completely when player is active to prevent background audio/video
-                    if (selectedChannel == null) {
+                    val isBrowserVisible = selectedChannel == null
+                    
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = if (isBrowserVisible) 1f else 0f
+                            }
+                    ) {
                         TwitchBrowser(
                             state = browserState,
                             navigator = browserNavigator,
+                            isVisible = isBrowserVisible,
                             onChannelSelected = { channel ->
-                                selectedChannel = channel
+                                if (selectedChannel != channel) {
+                                    selectedChannel = channel
+                                }
                             },
                             onSettingsClick = {
                                 isSettingsOpen = true
                             },
                             onLoaded = {
                                 isAppLoadedState.value = true
-                            },
-                            isBackHandlerEnabled = !isSettingsOpen
+                            }
                         )
                     }
 
-                    if (selectedChannel != null && isPlayerReady) {
+                    if (selectedChannel != null) {
                         // Use key() to force complete recreation when channel changes
                         key(selectedChannel) {
                             TwitchPlayer(
@@ -224,7 +227,6 @@ class MainActivity : ComponentActivity() {
                                     if (isFullscreen) {
                                         isFullscreen = false
                                     } else {
-                                        // Destroy player by setting channel to null
                                         selectedChannel = null
                                     }
                                 },
@@ -252,7 +254,7 @@ class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.S)
     private fun updatePipParams(isPipEnabled: Boolean = true) {
 
-        val actions = if (selectedChannelState.value != null && isInPipModeState.value) {
+        val actions = if (currentChannel != null && isInPipModeState.value) {
             listOf(
                 RemoteAction(
                     Icon.createWithResource(this, R.drawable.ic_refresh),
@@ -274,7 +276,7 @@ class MainActivity : ComponentActivity() {
             .setAspectRatio(Rational(16, 9))
             .setActions(actions)
 
-        builder.setAutoEnterEnabled(selectedChannelState.value != null && isPipEnabled)
+        builder.setAutoEnterEnabled(currentChannel != null && isPipEnabled)
 
         try {
             setPictureInPictureParams(builder.build())
@@ -294,7 +296,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateServiceVisibility(isForeground: Boolean) {
-        if (selectedChannelState.value == null) return
+        if (currentChannel == null) return
 
         lifecycleScope.launch {
             val enabled = SettingsManager.isBackgroundPlayEnabled(applicationContext).first()
@@ -349,7 +351,11 @@ class MainActivity : ComponentActivity() {
 
         val channel = channelFromUrl ?: channelFromExtra
         if (channel != null) {
-            selectedChannelState.value = channel
+            val stopIntent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("CHANNEL", channel)
+            }
+            startActivity(stopIntent)
         }
     }
 

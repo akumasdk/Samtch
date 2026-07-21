@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.screens.settings
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +18,10 @@ import com.akumasdk.samtch.R
 fun BttvSettingsScreen(
     onBack: () -> Unit
 ) {
-    BackHandler(onBack = onBack)
+    BackHandler {
+        Log.d("BttvSettingsScreen", "BackHandler triggered")
+        onBack()
+    }
 
     Scaffold(
         topBar = {

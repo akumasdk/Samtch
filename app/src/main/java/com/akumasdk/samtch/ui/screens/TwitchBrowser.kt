@@ -32,9 +32,9 @@ import kotlin.time.Duration.Companion.milliseconds
 fun TwitchBrowser(
     state: WebViewState,
     navigator: WebViewNavigator,
+    isVisible: Boolean,
     onChannelSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
-    isBackHandlerEnabled: Boolean = true,
     onSettingsClick: () -> Unit = {},
     onLoaded: () -> Unit = {}
 ) {
@@ -43,13 +43,21 @@ fun TwitchBrowser(
     var lastCheckedUrl by remember { mutableStateOf("") }
     var webViewRef by remember { mutableStateOf<NativeWebView?>(null) }
     
-    // Handle back button
-    if (isBackHandlerEnabled) {
+    // Handle back button - only when browser is visible
+    if (isVisible) {
         BackHandler {
-            if (navigator.canGoBack) {
+            val currentUrl = state.lastLoadedUrl
+            Log.d("TwitchBrowser", "BackHandler triggered. currentUrl=$currentUrl")
+            if (isBrowserRoot(currentUrl)) {
+                Log.d("TwitchBrowser", "At root, finishing activity")
+                activity?.finish()
+            } else if (navigator.canGoBack) {
+                Log.d("TwitchBrowser", "Can go back in history, navigating back")
                 navigator.navigateBack()
             } else {
-                activity?.finish()
+                Log.d("TwitchBrowser", "Cannot go back, returning to root home")
+                // Not at root and can't go back -> navigate to root instead of finishing
+                navigator.loadUrl("https://m.twitch.tv/")
             }
         }
     }
@@ -61,13 +69,22 @@ fun TwitchBrowser(
         onLoaded()
     }
 
-    // Restoration logic is now handled in onCreated to ensure the NativeWebView is ready
-    LaunchedEffect(Unit) {
-        Log.d("TwitchBrowser", "TwitchBrowser component ENTERED composition. lastLoadedUrl=${state.lastLoadedUrl}")
+    // Suspend/Resume WebView activity based on visibility
+    LaunchedEffect(isVisible) {
+        webViewRef?.let { webView ->
+            if (isVisible) {
+                Log.d("TwitchBrowser", "Resuming WebView")
+                webView.onResume()
+            } else {
+                Log.d("TwitchBrowser", "Pausing WebView")
+                webView.onPause()
+            }
+        }
     }
 
     // Monitor URL changes including SPA transitions via polling
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isVisible) {
+        if (!isVisible) return@LaunchedEffect
         while (true) {
             val currentUrl = webViewRef?.url ?: ""
             if (currentUrl.isNotEmpty() && currentUrl != lastCheckedUrl) {
@@ -331,6 +348,13 @@ private fun isGlobalHome(url: String?): Boolean {
     // Only /home and /home/ are considered "Exploration zones"
     // Root / is NOT home, so navigating from / to a user WILL trigger the player
     return path == "/home" || path == "/home/"
+}
+
+private fun isBrowserRoot(url: String?): Boolean {
+    if (url.isNullOrEmpty()) return true
+    val uri = try { java.net.URI(url) } catch (e: Exception) { return false }
+    val path = uri.path ?: ""
+    return path == "/" || path == "" || path == "/home" || path == "/home/"
 }
 
 class TwitchBrowserBridge(

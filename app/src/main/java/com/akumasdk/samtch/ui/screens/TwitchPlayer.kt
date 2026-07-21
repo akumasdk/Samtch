@@ -71,6 +71,7 @@ fun TwitchPlayer(
     // Handle back button to return to browser
     if (!isPip) {
         BackHandler {
+            Log.d("TwitchPlayer", "BackHandler triggered for $channel")
             onBack?.invoke()
         }
     }

@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.screens.settings
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -64,6 +65,7 @@ fun SettingsScreen(
 
     // Intercept system back button
     BackHandler {
+        Log.d("SettingsScreen", "BackHandler triggered. showAboutDialog=$showAboutDialog, isBttvSettingsOpen=$isBttvSettingsOpen")
         if (showAboutDialog) {
             showAboutDialog = false
         } else if (isBttvSettingsOpen) {
