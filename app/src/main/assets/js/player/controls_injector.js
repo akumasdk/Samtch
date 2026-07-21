@@ -1,11 +1,12 @@
 (function() {
     'use strict';
 
-    // Prevent multiple initializations in the same session
-    if (window.samtch_controls_injected) return;
-    window.samtch_controls_injected = true;
+    // Self-cleanup: Clear existing intervals and observers from previous runs
+    if (window.samtch_controls_init_int) clearInterval(window.samtch_controls_init_int);
+    if (window.samtch_controls_maint_int) clearInterval(window.samtch_controls_maint_int);
+    if (window.samtch_controls_obs) window.samtch_controls_obs.disconnect();
 
-    console.log('[Samtch] controls_injector.js starting...');
+    console.log('[Samtch] controls_injector.js starting fresh session...');
 
     function injectStyles() {
         const styleId = 'samtch-controls-styles';
@@ -97,18 +98,18 @@
 
     // Aggressive polling for the first 10 seconds
     const startTime = Date.now();
-    const initInterval = setInterval(() => {
+    window.samtch_controls_init_int = setInterval(() => {
         const success = injectButtons();
         if (success || Date.now() - startTime > 10000) {
-            clearInterval(initInterval);
+            clearInterval(window.samtch_controls_init_int);
             // Switch to low-frequency maintenance polling
-            setInterval(injectButtons, 3000);
+            window.samtch_controls_maint_int = setInterval(injectButtons, 3000);
         }
     }, 500);
 
     // Watch for dynamic UI updates (React transitions)
-    const observer = new MutationObserver(injectButtons);
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    window.samtch_controls_obs = new MutationObserver(injectButtons);
+    window.samtch_controls_obs.observe(document.documentElement, { childList: true, subtree: true });
 
     injectButtons();
 })();

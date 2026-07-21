@@ -1,107 +1,102 @@
 (function() {
     'use strict';
+
     const CONFIG = {
         appKeywords: ['open in app', 'get the app', 'use the app', 'continue in browser', 'open the app', 'accept cookies', 'who\'s watching'],
-        checkTags: ['DIV', 'SECTION', 'ASIDE', 'A', 'BUTTON', 'SPAN'],
-        removeSelectors: [
-            '.stream-info-social-panel',
-            'div[class*="overlay"]'
+        targetedSelectors: [
+            'div[class*="AppUpsell"]',
+            'div[class*="app-upsell"]',
+            '.tw-upsell-banner',
+            '.disclosure-card',
+            '.stream-info-social-panel'
+        ],
+        backdropSelectors: [
+            'div[class*="overlay"]',
+            'div[class*="overlay-background"]',
+            'div[class*="backdrop"]',
+            '.tw-backdrop',
+            '.tw-modal-backdrop'
         ]
     };
 
-    function isAppPromotion(el) {
-        if (!el || el.nodeType !== 1) return false;
+    function removePromotions(attempt) {
+        console.log(`[Samtch] app_banners_remover.js: Pass #${attempt}`);
 
-        // Hard safety: NEVER remove anything inside the player or functional UI components
-        if (el.id === 'root' ||
-            el.classList.contains('video-player') ||
-            el.classList.contains('video-player__overlay') ||
-            el.closest('.video-player') ||
-            el.closest('[data-a-target="video-player"]') ||
-            el.closest('[data-a-target="player-controls"]') ||
-            el.closest('[data-a-target="player-settings-menu"]') ||
-            el.closest('[data-a-target="player-settings-balloon"]') ||
-            el.closest('.tw-balloon') ||
-            el.closest('.tw-dialog') ||
-            el.closest('.video-player__container') ||
-            (el.hasAttribute('data-a-target') && el.getAttribute('data-a-target').includes('settings'))) {
-            return false;
-        }
+        let promotionFound = false;
 
-        // If it's a backdrop or overlay, only remove it if it contains app-promotion keywords
-        // or if it's explicitly in our blacklist (like upsell banners)
-        // AND ONLY if we are NOT in the player subdomain
-        const isPlayerSubdomain = window.location.hostname === 'player.twitch.tv';
-        const isGenericOverlay = el.matches('.tw-backdrop, .tw-modal-backdrop, div[class*="backdrop"], div[class*="overlay-background"]');
-        if (isGenericOverlay && !isPlayerSubdomain) {
-            const text = (el.textContent || '').toLowerCase();
-            const hasAppKeyword = CONFIG.appKeywords.some(k => text.includes(k));
-            const isUpsell = el.matches('.tw-upsell-banner, [class*="AppUpsell"]');
-            return hasAppKeyword || isUpsell;
-        }
-
-        if (CONFIG.removeSelectors.some(s => el.matches && el.matches(s))) return true;
-
-        if (CONFIG.checkTags.includes(el.tagName)) {
-            const text = (el.textContent || '').toLowerCase();
-            if (CONFIG.appKeywords.some(k => text.includes(k))) {
-                const style = window.getComputedStyle(el);
-                const isOverlay = style.position === 'fixed' || style.position === 'absolute' || el.classList.contains('tw-modal');
-
-                if (isOverlay && el.offsetWidth < window.innerWidth * 0.95) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    function removePromotions() {
-        document.querySelectorAll('*').forEach(el => {
-            if (isAppPromotion(el)) {
-                console.log('[Samtch] Removing promotion/backdrop:', el.tagName, el.className);
+        // 1. Remove targeted promotion elements
+        CONFIG.targetedSelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => {
+                console.log('[Samtch] Removing targeted promotion:', selector);
                 el.remove();
+                promotionFound = true;
+            });
+        });
+
+        // 2. Scan for dynamic promotion overlays via text
+        document.querySelectorAll('div, section, aside, span, button').forEach(el => {
+            // Only check visible elements that are likely modals
+            if (el.offsetWidth > 0 && (el.classList.contains('tw-modal') || el.classList.contains('tw-dialog'))) {
+                const text = (el.textContent || '').toLowerCase();
+                if (CONFIG.appKeywords.some(k => text.includes(k))) {
+                     console.log('[Samtch] Removing dynamic promotion modal via text match');
+                     el.remove();
+                     promotionFound = true;
+                }
             }
         });
 
-        const patterns = ['desktop-redirect=true', 'mweb_upsell', 'top_nav_open_in_app'];
+        // 3. Remove backdrops/overlays if a promotion was found OR if they contain keywords
+        CONFIG.backdropSelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => {
+                const text = (el.textContent || '').toLowerCase();
+                const hasKeyword = CONFIG.appKeywords.some(k => text.includes(k));
 
-        // Regex for navigation items we want to hide
-        // 1. /home
-        // 2. /something/home
-        // 3. /activity
+                // If we found a promotion elsewhere, or this backdrop has a keyword, or it's a fixed fullscreen backdrop
+                if (promotionFound || hasKeyword || (el.offsetWidth >= window.innerWidth && el.offsetHeight >= window.innerHeight)) {
+                    // Check if it's actually a backdrop (fixed/absolute)
+                    const style = window.getComputedStyle(el);
+                    if (style.position === 'fixed' || style.position === 'absolute') {
+                         console.log('[Samtch] Removing backdrop/overlay:', selector);
+                         el.remove();
+                    }
+                }
+            });
+        });
+
+        // 4. Hide specific navigation links and cleanup body lock
         const navHidingRegex = /^\/home\/?$|^\/[^/]+\/home\/?$|^\/activity\/?$/;
+        const patterns = ['desktop-redirect=true', 'mweb_upsell', 'top_nav_open_in_app'];
 
         document.querySelectorAll('a[href]').forEach(link => {
             const href = link.getAttribute('href');
-
-            // Original app promotion patterns
             if (patterns.some(p => href.includes(p))) {
                 link.style.setProperty('display', 'none', 'important');
                 return;
             }
-
-            // New navigation removal patterns - only target elements inside .tw-transition container
-            // This is usually the side/top menu that slides in
-            if (link.closest('.tw-transition')) {
-                try {
-                    const url = new URL(href, window.location.origin);
-                    if (navHidingRegex.test(url.pathname)) {
-                        console.log('[Samtch] Removing navigation link inside .tw-transition:', href);
-                        link.style.setProperty('display', 'none', 'important');
-                    }
-                } catch (e) {
-                    // Handle relative paths or invalid URLs
-                    if (navHidingRegex.test(href)) {
-                        console.log('[Samtch] Removing relative navigation link inside .tw-transition:', href);
-                        link.style.setProperty('display', 'none', 'important');
-                    }
+            try {
+                const url = new URL(href, window.location.origin);
+                if (navHidingRegex.test(url.pathname)) {
+                    link.style.setProperty('display', 'none', 'important');
+                }
+            } catch (e) {
+                if (navHidingRegex.test(href)) {
+                    link.style.setProperty('display', 'none', 'important');
                 }
             }
         });
+
+        // Ensure body scrolling is not locked (Twitch often does this)
+        if (promotionFound) {
+            document.body.style.overflow = 'auto';
+            document.documentElement.style.overflow = 'auto';
+        }
     }
 
-    const observer = new MutationObserver(removePromotions);
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-    removePromotions();
+    // Staggered execution to catch SPA dynamic elements
+    removePromotions(1); // Immediate
+    setTimeout(() => removePromotions(2), 1000);
+    setTimeout(() => removePromotions(3), 2500);
+    setTimeout(() => removePromotions(4), 5000);
+    setTimeout(() => removePromotions(5), 8000); // Late sweep
 })();

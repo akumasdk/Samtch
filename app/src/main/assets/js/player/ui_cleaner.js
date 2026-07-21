@@ -1,10 +1,12 @@
 (function() {
     'use strict';
 
-    if (window.samtch_ui_cleaner_active) return;
-    window.samtch_ui_cleaner_active = true;
+    // Self-cleanup: Clear existing intervals and observers from previous runs
+    if (window.samtch_cleaner_init_int) clearInterval(window.samtch_cleaner_init_int);
+    if (window.samtch_cleaner_maint_int) clearInterval(window.samtch_cleaner_maint_int);
+    if (window.samtch_cleaner_obs) window.samtch_cleaner_obs.disconnect();
 
-    console.log('[Samtch] ui_cleaner.js starting...');
+    console.log('[Samtch] ui_cleaner.js starting fresh session...');
 
     function injectStyles() {
         const styleId = 'samtch-player-cleaner';
@@ -71,17 +73,17 @@
 
     // High frequency cleanup during initial load
     const startTime = Date.now();
-    const cleanInterval = setInterval(() => {
+    window.samtch_cleaner_init_int = setInterval(() => {
         clean();
         if (Date.now() - startTime > 8000) {
-            clearInterval(cleanInterval);
+            clearInterval(window.samtch_cleaner_init_int);
             // Switch to maintenance cleaning
-            setInterval(clean, 2500);
+            window.samtch_cleaner_maint_int = setInterval(clean, 2500);
         }
     }, 500);
 
-    const observer = new MutationObserver(clean);
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    window.samtch_cleaner_obs = new MutationObserver(clean);
+    window.samtch_cleaner_obs.observe(document.documentElement, { childList: true, subtree: true });
 
     clean();
 })();
