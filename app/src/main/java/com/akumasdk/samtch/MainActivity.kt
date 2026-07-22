@@ -378,42 +378,55 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Stop background audio and refresh player to ensure video resumes
+        val stopIntent = Intent(this, PlaybackService::class.java)
+        stopService(stopIntent)
+        
+        if (currentChannel != null) {
+            refreshTriggerState.intValue += 1
+        }
     }
 
     override fun onStop() {
         super.onStop()
         
-        if (currentChannel != null && !isInPipModeState.value) {
-            lifecycleScope.launch {
-                val audioOnlyEnabled = SettingsManager.isAudioOnlyBackgroundEnabled(applicationContext).first()
-                if (audioOnlyEnabled) {
-                    val sessionToken = SessionToken(this@MainActivity, ComponentName(this@MainActivity, PlaybackService::class.java))
-                    val controllerFuture = MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
-                    controllerFuture.addListener({
-                        val controller = controllerFuture.get()
-                        
-                        val metadata = MediaMetadata.Builder()
-                            .setTitle(currentChannel)
-                            .setArtist(lastSubtitle)
-                            .setArtworkUri(lastAvatarUrl?.let { android.net.Uri.parse(it) })
-                            .build()
+        lifecycleScope.launch {
+            val audioOnlyEnabled = SettingsManager.isAudioOnlyBackgroundEnabled(applicationContext).first()
+            if (currentChannel != null && !isInPipModeState.value && audioOnlyEnabled) {
+                val sessionToken = SessionToken(this@MainActivity, ComponentName(this@MainActivity, PlaybackService::class.java))
+                val controllerFuture = MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
+                controllerFuture.addListener({
+                    val controller = controllerFuture.get()
+                    
+                    val metadata = MediaMetadata.Builder()
+                        .setTitle(currentChannel)
+                        .setArtist(lastSubtitle)
+                        .setArtworkUri(lastAvatarUrl?.let { android.net.Uri.parse(it) })
+                        .build()
 
-                        controller.setMediaItem(
-                            MediaItem.Builder()
-                                .setMediaId(currentChannel!!)
-                                .setMediaMetadata(metadata)
-                                .build()
-                        )
-                        controller.prepare()
-                        controller.play()
-                    }, MoreExecutors.directExecutor())
-                }
+                    controller.setMediaItem(
+                        MediaItem.Builder()
+                            .setMediaId(currentChannel!!)
+                            .setMediaMetadata(metadata)
+                            .build()
+                    )
+                    controller.prepare()
+                    controller.play()
+                }, MoreExecutors.directExecutor())
+            } else {
+                // If background play is disabled or we're in PiP, ensure the HLS service is stopped
+                val stopIntent = Intent(this@MainActivity, PlaybackService::class.java)
+                stopService(stopIntent)
             }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        // Final cleanup
+        val stopIntent = Intent(this, PlaybackService::class.java)
+        stopService(stopIntent)
+        
         try {
             unregisterReceiver(pipReceiver)
         } catch (_: Exception) {

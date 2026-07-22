@@ -13,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableStateOf
@@ -78,19 +79,31 @@ fun TwitchPlayer(
     var avatarUrl by remember { mutableStateOf<String?>(null) }
     var streamSubtitle by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-        val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
-        controllerFuture.addListener({
-            val controller = controllerFuture.get()
-            mediaController = controller
-            isPlaying = controller.isPlaying
-            controller.addListener(object : Player.Listener {
-                override fun onIsPlayingChanged(playing: Boolean) {
-                    isPlaying = playing
-                }
-            })
-        }, MoreExecutors.directExecutor())
+    val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
+
+    LaunchedEffect(isAudioOnly, isAudioOnlyBackgroundEnabled) {
+        if (!isAudioOnly && !isAudioOnlyBackgroundEnabled) {
+            mediaController?.release()
+            mediaController = null
+            // Explicitly stop the service if we are in video mode and backgrounding is off
+            context.stopService(android.content.Intent(context, PlaybackService::class.java))
+            return@LaunchedEffect
+        }
+
+        if (mediaController == null) {
+            val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+            val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+            controllerFuture.addListener({
+                val controller = controllerFuture.get()
+                mediaController = controller
+                isPlaying = controller.isPlaying
+                controller.addListener(object : Player.Listener {
+                    override fun onIsPlayingChanged(playing: Boolean) {
+                        isPlaying = playing
+                    }
+                })
+            }, MoreExecutors.directExecutor())
+        }
     }
 
     val state = rememberSaveableWebViewState("")
