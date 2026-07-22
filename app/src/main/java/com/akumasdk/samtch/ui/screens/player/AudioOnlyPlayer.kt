@@ -17,12 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.akumasdk.samtch.R
 
 @Composable
 fun AudioOnlyPlayer(
@@ -48,13 +50,14 @@ fun AudioOnlyPlayer(
         val titleSize = if (isSmallSpace) 18.sp else 22.sp
         val subtitleSize = if (isSmallSpace) 12.sp else 14.sp
         val controlSize = if (isSmallSpace) 48.dp else 64.dp
+        val hintSize = if (isSmallSpace) 10.sp else 12.sp
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isSmallSpace) 8.dp else 16.dp)
         ) {
-            // Avatar
+            // ... existing avatar and title code ...
             if (!avatarUrl.isNullOrEmpty()) {
                 AsyncImage(
                     model = avatarUrl,
@@ -131,9 +134,17 @@ fun AudioOnlyPlayer(
                 // Spacer or additional control if needed
                 Box(modifier = Modifier.size(if (isSmallSpace) 24.dp else 32.dp))
             }
+
+            Spacer(modifier = Modifier.height(if (isSmallSpace) 8.dp else 16.dp))
+            Text(
+                text = stringResource(R.string.audio_only_hint),
+                color = Color.Gray,
+                fontSize = hintSize,
+                textAlign = TextAlign.Center
+            )
         }
         
-        // Close Button (Return to Video)
+        // ... existing close button ...
         IconButton(
             onClick = onCloseAudioOnly,
             modifier = Modifier

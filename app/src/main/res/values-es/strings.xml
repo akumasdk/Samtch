@@ -44,6 +44,7 @@
     <string name="audio_only_notification_text">Escuchando a %s</string>
     <string name="audio_only_background_title">Reproducción de Audio de Fondo</string>
     <string name="audio_only_background_summary">Cambiar automáticamente al modo de solo audio al minimizar la aplicación</string>
+    <string name="audio_only_hint">Puedes cerrar o minimizar la aplicación para seguir escuchando</string>
 
     <!-- PiP Settings -->
     <string name="pip_enabled_title">Imagen en imagen (PiP)</string>

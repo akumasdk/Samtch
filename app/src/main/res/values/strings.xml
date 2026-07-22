@@ -44,6 +44,7 @@
     <string name="audio_only_notification_text">Listening to %s</string>
     <string name="audio_only_background_title">Audio Background Play</string>
     <string name="audio_only_background_summary">Automatically switch to audio-only mode when app is minimized</string>
+    <string name="audio_only_hint">You can close or minimize the app to keep listening</string>
 
     <!-- PiP Settings -->
     <string name="pip_enabled_title">Picture-in-Picture</string>

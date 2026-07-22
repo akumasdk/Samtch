@@ -1,9 +1,13 @@
 package com.akumasdk.samtch.util
 
+import android.app.PendingIntent
 import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -15,8 +19,14 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.upstream.DefaultAllocator
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
+import androidx.media3.session.SessionResult
+import com.akumasdk.samtch.R
+import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -34,6 +44,10 @@ class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var exoPlayer: ExoPlayer? = null
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
+
+    companion object {
+        const val ACTION_REFRESH = "com.akumasdk.samtch.ACTION_REFRESH"
+    }
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -72,8 +86,38 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
-        mediaSession = MediaSession.Builder(this, exoPlayer!!)
+        // Wrap player to disable seeking for live streams
+        val forwardingPlayer = object : ForwardingPlayer(exoPlayer!!) {
+            override fun getAvailableCommands(): Player.Commands {
+                return super.getAvailableCommands().buildUpon()
+                    .remove(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                    .remove(Player.COMMAND_SEEK_BACK)
+                    .remove(Player.COMMAND_SEEK_FORWARD)
+                    .remove(Player.COMMAND_SEEK_TO_NEXT)
+                    .remove(Player.COMMAND_SEEK_TO_PREVIOUS)
+                    .remove(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                    .remove(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                    .build()
+            }
+        }
+
+        val refreshCommand = SessionCommand(ACTION_REFRESH, Bundle.EMPTY)
+        val refreshButton = CommandButton.Builder()
+            .setSessionCommand(refreshCommand)
+            .setDisplayName(getString(R.string.pip_action_refresh))
+            .setIconResId(R.drawable.ic_refresh)
+            .build()
+
+        val intent = Intent(this, com.akumasdk.samtch.MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        mediaSession = MediaSession.Builder(this, forwardingPlayer)
             .setCallback(CustomCallback())
+            .setCustomLayout(ImmutableList.of(refreshButton))
+            .setSessionActivity(pendingIntent)
             .build()
     }
 
@@ -91,6 +135,61 @@ class PlaybackService : MediaSessionService() {
 
     private inner class CustomCallback : MediaSession.Callback {
         @OptIn(UnstableApi::class)
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult {
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                .add(SessionCommand(ACTION_REFRESH, Bundle.EMPTY))
+                .build()
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(sessionCommands)
+                .build()
+        }
+
+        @OptIn(UnstableApi::class)
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle
+        ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction == ACTION_REFRESH) {
+                val player = session.player
+                val currentItem = player.currentMediaItem
+                if (currentItem != null) {
+                    serviceScope.launch {
+                        val resolvedItems = resolveMediaItem(currentItem)
+                        val resolvedItem = resolvedItems.firstOrNull()
+                        if (resolvedItem != null) {
+                            player.setMediaItem(resolvedItem)
+                            player.prepare()
+                            player.play()
+                        }
+                    }
+                }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
+        }
+
+        @OptIn(UnstableApi::class)
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val item = mediaSession.player.currentMediaItem
+            return if (item != null) {
+                serviceScope.async(Dispatchers.IO) {
+                    val resolved = resolveMediaItem(item)
+                    MediaSession.MediaItemsWithStartPosition(resolved, 0, 0L)
+                }.asListenableFuture()
+            } else {
+                super.onPlaybackResumption(mediaSession, controller)
+            }
+        }
+
+        @OptIn(UnstableApi::class)
         override fun onAddMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -103,32 +202,38 @@ class PlaybackService : MediaSessionService() {
                 return Futures.immediateFuture(mediaItems)
             }
 
-            // Otherwise, it's a channel name in the mediaId, we need to fetch the HLS URL
             return serviceScope.async(Dispatchers.IO) {
-                val channelName = item.mediaId
-                val tokenPair = TwitchGqlService.getPlaybackAccessToken(channelName, Constants.TWITCH_GRAPHQL_CLIENT_ID)
-                
-                if (tokenPair != null) {
-                    val hlsUrl = TwitchGqlService.buildHlsUrl(channelName, tokenPair.first, tokenPair.second)
-                    val audioOnlyUrl = fetchAudioOnlyUrl(hlsUrl)
-                    
-                    val finalUrl = audioOnlyUrl ?: hlsUrl
-                    
-                    val newItem = item.buildUpon()
-                        .setUri(finalUrl)
-                        .setMediaMetadata(
-                            item.mediaMetadata.buildUpon()
-                                .setArtist(channelName)
-                                .setIsBrowsable(false)
-                                .setIsPlayable(true)
-                                .build()
-                        )
-                        .build()
-                    mutableListOf(newItem)
-                } else {
-                    mediaItems
-                }
+                resolveMediaItem(item)
             }.asListenableFuture()
+        }
+
+        private suspend fun resolveMediaItem(item: MediaItem): MutableList<MediaItem> {
+            val channelName = item.mediaId
+            val tokenPair = TwitchGqlService.getPlaybackAccessToken(channelName, Constants.TWITCH_GRAPHQL_CLIENT_ID)
+            
+            return if (tokenPair != null) {
+                val hlsUrl = TwitchGqlService.buildHlsUrl(channelName, tokenPair.first, tokenPair.second)
+                val audioOnlyUrl = fetchAudioOnlyUrl(hlsUrl)
+                
+                val finalUrl = audioOnlyUrl ?: hlsUrl
+                
+                val newItem = item.buildUpon()
+                    .setUri(Uri.parse(finalUrl))
+                    .setMediaMetadata(
+                        item.mediaMetadata.buildUpon()
+                            .setTitle(item.mediaMetadata.title ?: channelName)
+                            .setArtist(item.mediaMetadata.artist ?: channelName)
+                            .setArtworkUri(item.mediaMetadata.artworkUri)
+                            .setIsBrowsable(false)
+                            .setIsPlayable(true)
+                            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+                            .build()
+                    )
+                    .build()
+                mutableListOf(newItem)
+            } else {
+                mutableListOf(item)
+            }
         }
     }
 

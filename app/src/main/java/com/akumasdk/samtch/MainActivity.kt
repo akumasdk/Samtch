@@ -55,6 +55,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.ui.screens.TwitchBrowser
@@ -76,6 +77,9 @@ class MainActivity : ComponentActivity() {
     private var refreshTriggerState = mutableIntStateOf(0)
     private var isAppLoadedState = mutableStateOf(false)
     private var currentChannel: String? = null // For PiP and Service access
+    private var isAudioOnlyModeState = mutableStateOf(false)
+    private var lastAvatarUrl: String? = null
+    private var lastSubtitle: String? = null
 
     private var isSettingsOpenState = mutableStateOf(false)
 
@@ -283,6 +287,14 @@ class MainActivity : ComponentActivity() {
                                             selectedChannel = null
                                         }
                                     },
+                                    onMetadataUpdated = { avatar, subtitle ->
+                                        lastAvatarUrl = avatar
+                                        lastSubtitle = subtitle
+                                    },
+                                    onAudioOnlyModeChanged = { isAudioOnly ->
+                                        isAudioOnlyModeState.value = isAudioOnly
+                                        updatePipParams(isPipEnabled)
+                                    },
                                     onVideoBoundsChanged = { rect ->
                                         pipRectState.value = rect
                                     }
@@ -330,7 +342,7 @@ class MainActivity : ComponentActivity() {
             .setAspectRatio(Rational(16, 9))
             .setActions(actions)
 
-        builder.setAutoEnterEnabled(currentChannel != null && isPipEnabled)
+        builder.setAutoEnterEnabled(currentChannel != null && isPipEnabled && !isAudioOnlyModeState.value)
 
         try {
             setPictureInPictureParams(builder.build())
@@ -354,7 +366,19 @@ class MainActivity : ComponentActivity() {
                     val controllerFuture = MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
                     controllerFuture.addListener({
                         val controller = controllerFuture.get()
-                        controller.setMediaItem(MediaItem.Builder().setMediaId(currentChannel!!).build())
+                        
+                        val metadata = MediaMetadata.Builder()
+                            .setTitle(currentChannel)
+                            .setArtist(lastSubtitle)
+                            .setArtworkUri(lastAvatarUrl?.let { android.net.Uri.parse(it) })
+                            .build()
+
+                        controller.setMediaItem(
+                            MediaItem.Builder()
+                                .setMediaId(currentChannel!!)
+                                .setMediaMetadata(metadata)
+                                .build()
+                        )
                         controller.prepare()
                         controller.play()
                     }, MoreExecutors.directExecutor())

@@ -6,15 +6,18 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView as NativeWebView
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.akumasdk.samtch.util.ScriptLoader
+import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun WebViewContainer(
@@ -27,11 +30,50 @@ fun WebViewContainer(
     onToggleAudioOnly: () -> Unit = {},
     onMetadataDetected: (String, String) -> Unit = { _, _ -> }
 ) {
+    val context = LocalContext.current
     // Ensure the bridge always uses the latest lambdas from the current composition context
     val currentOnToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
     val currentOnToggleChat by rememberUpdatedState(onToggleChat)
     val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
     val currentOnMetadataDetected by rememberUpdatedState(onMetadataDetected)
+
+    // Script injection logic when page finishes loading
+    LaunchedEffect(state.lastLoadedUrl, state.loadingState) {
+        if (state.loadingState is LoadingState.Finished) {
+            val url = state.lastLoadedUrl ?: ""
+            if (!url.contains("twitch.tv")) return@LaunchedEffect
+
+            val scripts = listOf(
+                "js/player/vaft.js",
+                "js/player/ui_cleaner.js",
+                "js/player/controls_injector.js",
+                "js/player/visibility_monitor.js",
+                "js/player/link_disabler.js",
+                "js/common/scroll_unlocker.js"
+            ).mapNotNull { path ->
+                val script = ScriptLoader.getScript(context, path)
+                if (script.isNotEmpty()) script else null
+            }
+
+            if (scripts.isEmpty()) return@LaunchedEffect
+            val finalScripts = scripts.joinToString("\n")
+
+            // Wait for WebView to be ready
+            delay(800.milliseconds)
+
+            // Initial tight polling for early hooks (catch hydration)
+            repeat(10) {
+                navigator.evaluateJavaScript(finalScripts)
+                delay(300.milliseconds)
+            }
+
+            // Steady polling for dynamic hydration (catch late UI elements)
+            repeat(15) {
+                navigator.evaluateJavaScript(finalScripts)
+                delay(1500.milliseconds)
+            }
+        }
+    }
 
     WebView(
         modifier = modifier,

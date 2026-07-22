@@ -1,8 +1,5 @@
 package com.akumasdk.samtch.ui.screens
 
-import android.content.ComponentName
-import android.util.Log
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,7 +8,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -21,22 +17,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import android.content.ComponentName
+import com.google.common.util.concurrent.MoreExecutors
+import com.multiplatform.webview.web.rememberSaveableWebViewState
+import com.multiplatform.webview.web.rememberWebViewNavigator
 import com.akumasdk.samtch.ui.screens.player.AudioOnlyPlayer
 import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
 import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
 import com.akumasdk.samtch.ui.screens.player.WebViewContainer
 import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
 import com.akumasdk.samtch.util.PlaybackService
-import com.akumasdk.samtch.util.ScriptLoader
 import com.akumasdk.samtch.util.SettingsManager
-import com.google.common.util.concurrent.MoreExecutors
-import kotlinx.coroutines.delay
-import com.multiplatform.webview.web.rememberSaveableWebViewState
-import com.multiplatform.webview.web.rememberWebViewNavigator
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun TwitchPlayer(
@@ -46,17 +41,22 @@ fun TwitchPlayer(
     refreshTrigger: Int = 0,
     onToggleFullscreen: () -> Unit = {},
     onBack: (() -> Unit)? = null,
+    onMetadataUpdated: (String?, String?) -> Unit = { _, _ -> },
+    onAudioOnlyModeChanged: (Boolean) -> Unit = {},
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
     val context = LocalContext.current
     var isAudioOnly by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isAudioOnly) {
+        onAudioOnlyModeChanged(isAudioOnly)
+    }
+
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
     
     var avatarUrl by remember { mutableStateOf<String?>(null) }
     var streamSubtitle by remember { mutableStateOf<String?>(null) }
-
-    var internalRefreshTrigger by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
@@ -76,66 +76,31 @@ fun TwitchPlayer(
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
 
-    Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip)")
+    android.util.Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip)")
 
     // Handle back button to return to browser
     if (!isPip) {
-        BackHandler {
-            Log.d("TwitchPlayer", "BackHandler triggered for $channel")
+        androidx.activity.compose.BackHandler {
+            android.util.Log.d("TwitchPlayer", "BackHandler triggered for $channel")
             onBack?.invoke()
         }
     }
 
     // Handle URL loading and refresh logic
-    LaunchedEffect(channel, refreshTrigger, internalRefreshTrigger) {
+    LaunchedEffect(channel, refreshTrigger) {
         val baseUrl = createTwitchPlayerUrl(channel)
-        val finalUrl = if (refreshTrigger > 0 || internalRefreshTrigger > 0) {
-            "$baseUrl&refresh=${refreshTrigger + internalRefreshTrigger}"
+        val finalUrl = if (refreshTrigger > 0) {
+            "$baseUrl&refresh=$refreshTrigger"
         } else {
             baseUrl
         }
-        Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: ${refreshTrigger + internalRefreshTrigger})")
+        android.util.Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: $refreshTrigger)")
         navigator.loadUrl(finalUrl)
     }
 
-    // Aggressive injection strategy: Polling loop to catch hydration
-    LaunchedEffect(channel, refreshTrigger, internalRefreshTrigger) {
-        val scripts = listOf(
-            //"js/player/video_swap.js",
-            "js/player/vaft.js", // using vaft script as of now
-            "js/player/ui_cleaner.js",
-            "js/player/controls_injector.js",
-            "js/player/visibility_monitor.js",
-            "js/player/link_disabler.js",
-            "js/common/scroll_unlocker.js"
-        ).mapNotNull { path ->
-            val script = ScriptLoader.getScript(context, path)
-            if (script.isNotEmpty()) script else null
-        }.toMutableList()
-
-        val finalScripts = scripts.joinToString("\n")
-
-        if (finalScripts.isEmpty()) return@LaunchedEffect
-
-        // Small initial delay to let the WebView engine warm up
-        delay(500.milliseconds)
-        
-        // Initial tight polling for early hooks
-        repeat(8) {
-            navigator.evaluateJavaScript(finalScripts)
-            delay(250.milliseconds)
-        }
-        
-        // Steady polling for dynamic hydration (reduced frequency)
-        repeat(12) {
-            navigator.evaluateJavaScript(finalScripts)
-            delay(1500.milliseconds)
-        }
-        Log.d("TwitchPlayer", "Completed injection polling for $channel")
-    }
     DisposableEffect(channel) {
         onDispose {
-            Log.d("TwitchPlayer", "Disposing player for channel: $channel")
+            android.util.Log.d("TwitchPlayer", "Disposing player for channel: $channel")
             // Clean up WebView resources aggressively
             try {
                 state.nativeWebView.apply {
@@ -148,7 +113,7 @@ fun TwitchPlayer(
                     removeAllViews()
                 }
             } catch (e: Exception) {
-                Log.e("TwitchPlayer", "Error disposing WebView", e)
+                android.util.Log.e("TwitchPlayer", "Error disposing WebView", e)
             }
         }
     }
@@ -175,13 +140,24 @@ fun TwitchPlayer(
                 onToggleChat = onToggleChat,
                 onToggleAudioOnly = {
                     isAudioOnly = true
-                    mediaController?.setMediaItem(MediaItem.Builder().setMediaId(channel).build())
+                    val metadata = MediaMetadata.Builder()
+                        .setTitle(channel)
+                        .setArtist(streamSubtitle)
+                        .setArtworkUri(avatarUrl?.let { android.net.Uri.parse(it) })
+                        .build()
+                    mediaController?.setMediaItem(
+                        MediaItem.Builder()
+                            .setMediaId(channel)
+                            .setMediaMetadata(metadata)
+                            .build()
+                    )
                     mediaController?.prepare()
                     mediaController?.play()
                 },
                 onMetadataDetected = { avatar, subtitle ->
                     avatarUrl = avatar
                     streamSubtitle = subtitle
+                    onMetadataUpdated(avatar, subtitle)
                 }
             )
         }
@@ -192,50 +168,53 @@ fun TwitchPlayer(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        val playerContent = remember(isAudioOnly, channel, avatarUrl, streamSubtitle, isPlaying) {
-            movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
-                if (isAudioOnly) {
-                    AudioOnlyPlayer(
-                        channel = channel,
-                        avatarUrl = avatarUrl,
-                        subtitle = streamSubtitle,
-                        isPlaying = isPlaying,
-                        onTogglePlayback = {
-                            if (isPlaying) mediaController?.pause() else mediaController?.play()
-                        },
-                        onCloseAudioOnly = {
-                            isAudioOnly = false
-                            mediaController?.stop()
-                            // Increment trigger to force reload and script re-injection
-                            internalRefreshTrigger++
-                        },
-                        onRefresh = {
-                            mediaController?.stop()
-                            mediaController?.setMediaItem(MediaItem.Builder().setMediaId(channel).build())
-                            mediaController?.prepare()
-                            mediaController?.play()
-                        },
-                        modifier = modifier
+        if (isAudioOnly) {
+            AudioOnlyPlayer(
+                channel = channel,
+                avatarUrl = avatarUrl,
+                subtitle = streamSubtitle,
+                isPlaying = isPlaying,
+                onTogglePlayback = {
+                    if (isPlaying) mediaController?.pause() else mediaController?.play()
+                },
+                onCloseAudioOnly = {
+                    isAudioOnly = false
+                    mediaController?.stop()
+                    // Explicitly reload video player when returning to trigger script injection
+                    navigator.loadUrl(createTwitchPlayerUrl(channel))
+                },
+                onRefresh = {
+                    mediaController?.stop()
+                    mediaController?.setMediaItem(
+                        MediaItem.Builder()
+                            .setMediaId(channel)
+                            .setMediaMetadata(
+                                MediaMetadata.Builder()
+                                    .setTitle(channel)
+                                    .setArtist(streamSubtitle)
+                                    .setArtworkUri(avatarUrl?.let { android.net.Uri.parse(it) })
+                                    .build()
+                            )
+                            .build()
                     )
-                } else {
-                    webView(modifier, onToggleChat)
-                }
-            }
-        }
-
-        if (isPip) {
-            // Simplified view for PiP: Just the Player content
-            playerContent(Modifier.fillMaxSize()) {}
+                    mediaController?.prepare()
+                    mediaController?.play()
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (isPip) {
+            // Simplified view for PiP: Just the WebView container
+            webView(Modifier.fillMaxSize()) {}
         } else if (isFullscreen) {
             FullscreenPlayer(
                 channel = channel,
-                webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
+                webView = { modifier, onToggleChat -> webView(modifier, onToggleChat) }
             )
         } else {
             PortraitPlayer(
                 channel = channel,
                 onToggleFullscreen = onToggleFullscreen,
-                webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
+                webView = { modifier, onToggleChat -> webView(modifier, onToggleChat) }
             )
         }
     }
