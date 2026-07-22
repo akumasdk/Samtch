@@ -36,21 +36,7 @@
             });
         });
 
-        // 2. Scan for dynamic promotion overlays via text
-        document.querySelectorAll('div, section, aside, span, button').forEach(el => {
-            // Only check visible elements that are likely modals
-            if (el.offsetWidth > 0 && (el.classList.contains('tw-modal') || el.classList.contains('tw-dialog'))) {
-                if (isInsideStreamCard(el)) return;
-                const text = (el.textContent || '').toLowerCase();
-                if (CONFIG.appKeywords.some(k => text.includes(k))) {
-                     console.log('[Samtch] Removing dynamic promotion modal via text match');
-                     el.remove();
-                     promotionFound = true;
-                }
-            }
-        });
-
-        // 3. Remove backdrops/overlays if a promotion was found OR if they contain keywords
+        // 2. Remove backdrops/overlays if a promotion was found OR if they contain keywords
         CONFIG.backdropSelectors.forEach(selector => {
             document.querySelectorAll(selector).forEach(el => {
                 if (isInsideStreamCard(el)) return;
@@ -69,7 +55,7 @@
             });
         });
 
-        // 4. Hide specific navigation links and cleanup body lock
+        // 3. Hide specific navigation links and cleanup body lock
         const navHidingRegex = /^\/home\/?$|^\/[^/]+\/home\/?$|^\/activity\/?$/;
         const patterns = ['desktop-redirect=true', 'mweb_upsell', 'top_nav_open_in_app'];
 
@@ -92,11 +78,7 @@
             }
         });
 
-        // Ensure body scrolling is not locked (Twitch often does this)
-        if (promotionFound) {
-            document.body.style.overflow = 'auto';
-            document.documentElement.style.overflow = 'auto';
-        }
+
     }
 
     // Staggered execution to catch SPA dynamic elements

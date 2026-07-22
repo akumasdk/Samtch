@@ -69,6 +69,17 @@
                 if (button) button.remove();
             }
         });
+
+        // Remove Clip buttons by label text
+        document.querySelectorAll('[data-a-target="tw-core-button-label-text"]').forEach(el => {
+            if (el.textContent.trim() === 'Clip') {
+                const button = el.closest('button');
+                if (button) {
+                    console.log('[Samtch] Removing clip button via label text');
+                    button.remove();
+                }
+            }
+        });
     }
 
     // High frequency cleanup during initial load
