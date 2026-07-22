@@ -282,8 +282,8 @@ fun TwitchPlayer(
 
         if (isMinimized) {
             Box(
-                modifier = Modifier.fillMaxWidth().height(80.dp), // Stable height for mini
-                contentAlignment = Alignment.BottomCenter
+                modifier = Modifier.fillMaxWidth().height(92.dp), // Height adjusted for 80dp pill + shadows
+                contentAlignment = Alignment.Center
             ) {
                 MiniPlayer(
                     channel = channel,

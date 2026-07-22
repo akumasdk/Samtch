@@ -1,13 +1,13 @@
 package com.akumasdk.samtch.ui.screens.player
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,35 +33,33 @@ fun MiniPlayer(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .height(64.dp)
-            .shadow(8.dp, RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
+            .height(80.dp)
+            .shadow(16.dp, RoundedCornerShape(40.dp))
+            .clip(RoundedCornerShape(40.dp))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), RoundedCornerShape(40.dp))
             .clickable(onClick = onClick),
-        color = Color(0xFF1F1F23), // Twitch dark gray
-        tonalElevation = 4.dp
+        color = Color(0xFF1F1F23).copy(alpha = 0.95f),
+        tonalElevation = 12.dp
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
         ) {
-            // Small Player Preview
+            // Player Preview - Filling more height
             Box(
                 modifier = Modifier
-                    .size(width = 80.dp, height = 45.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(width = 120.dp, height = 64.dp)
+                    .clip(RoundedCornerShape(20.dp))
                     .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
                 playerContent(Modifier.fillMaxSize())
-                // Click interceptor and touch sink
+                // Touch sink
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color.Transparent)
-                        .pointerInput(Unit) {
-                            // consume touches
-                        }
+                        .pointerInput(Unit) { /* consume touches */ }
                 )
             }
 
@@ -69,27 +67,28 @@ fun MiniPlayer(
 
             // Channel Info
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = channel,
                     color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = streamTitle ?: "Live",
-                    color = Color(0xFF9146FF), // Twitch purple
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFFBF94FF), // Twitch light purple
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
-            // Close Button
+            // Close Button - Large and easy to tap
             IconButton(
                 onClick = onClose,
                 modifier = Modifier.size(48.dp)
@@ -97,8 +96,8 @@ fun MiniPlayer(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close Player",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(28.dp)
+                    tint = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }

@@ -226,7 +226,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .navigationBarsPadding()
-                            .padding(bottom = if (isMinimized && selectedChannel != null) 92.dp else 0.dp)
+                            .padding(bottom = if (isMinimized && selectedChannel != null) 104.dp else 0.dp)
                     ) {
                         TwitchBrowser(
                             state = browserState,
