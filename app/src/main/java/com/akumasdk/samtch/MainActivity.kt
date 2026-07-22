@@ -234,6 +234,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .navigationBarsPadding()
+                            .padding(bottom = if (isMinimized && selectedChannel != null) 92.dp else 0.dp)
                     ) {
                         TwitchBrowser(
                             state = browserState,
@@ -260,15 +261,19 @@ class MainActivity : ComponentActivity() {
                             initialOffsetY = { it },
                             animationSpec = spring(stiffness = 400f, dampingRatio = 0.8f)
                         ) + fadeIn(),
-                        exit = slideOutVertically(
-                            targetOffsetY = { it },
-                            animationSpec = tween(durationMillis = 300)
-                        ) + fadeOut(),
+                        exit = if (isMinimized) {
+                            fadeOut(animationSpec = tween(durationMillis = 200))
+                        } else {
+                            slideOutVertically(
+                                targetOffsetY = { it },
+                                animationSpec = tween(durationMillis = 300)
+                            ) + fadeOut()
+                        },
                         modifier = Modifier
                             .fillMaxSize()
                             .then(
                                 if (isMinimized) 
-                                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding() 
+                                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp) 
                                 else 
                                     Modifier
                             )
