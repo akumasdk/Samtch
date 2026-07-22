@@ -1,16 +1,21 @@
 (function() {
     'use strict';
-    console.log('[Samtch] ui_cleaner.js active');
+
+    // Self-cleanup: Clear existing intervals and observers from previous runs
+    if (window.samtch_cleaner_init_int) clearInterval(window.samtch_cleaner_init_int);
+    if (window.samtch_cleaner_maint_int) clearInterval(window.samtch_cleaner_maint_int);
+    if (window.samtch_cleaner_obs) window.samtch_cleaner_obs.disconnect();
+
+    console.log('[Samtch] ui_cleaner.js starting fresh session...');
 
     function injectStyles() {
         const styleId = 'samtch-player-cleaner';
         if (document.getElementById(styleId)) return;
 
-        console.log('[Samtch] Injecting player cleaner styles');
         const style = document.createElement('style');
         style.id = styleId;
         style.textContent = `
-            /* Ocultar elementos innecesarios */
+            /* Hide distracting elements */
             [data-a-target="player-fullscreen-button"],
             [data-a-target="player-clip-button"],
             [data-a-target="player-forward-button"],
@@ -29,48 +34,43 @@
         document.head.appendChild(style);
     }
 
-    function removeSocialPanel() {
-        const panel = document.querySelector('.stream-info-social-panel');
-        if (panel) {
-            console.log('[Samtch] Removing social panel');
-            panel.remove();
+    function extractMetadata() {
+        const avatarImg = document.querySelector('img.tw-image-avatar');
+        const subtitleEl = document.querySelector('p[data-test-selector="stream-info-card-component__subtitle"]');
+
+        const avatarUrl = avatarImg ? avatarImg.src : null;
+        const subtitle = subtitleEl ? subtitleEl.textContent.trim() : null;
+
+        if ((avatarUrl && avatarUrl !== window.samtch_last_avatar) ||
+            (subtitle && subtitle !== window.samtch_last_subtitle)) {
+
+            if (window.TwitchPlayerBridge) {
+                window.TwitchPlayerBridge.updateMetadata(avatarUrl || '', subtitle || '');
+                window.samtch_last_avatar = avatarUrl;
+                window.samtch_last_subtitle = subtitle;
+            }
         }
     }
 
-    function removeWatchOnTwitch() {
+    function clean() {
+        const playerExists = document.querySelector('.video-player') ||
+                           document.querySelector('[data-a-target="video-player"]');
+
+        if (!playerExists) return;
+
+        injectStyles();
+        extractMetadata();
+
+        // Remove "Watch on Twitch" button manually if it persists
         document.querySelectorAll('.tw-svg').forEach(container => {
             const svg = container.querySelector('svg');
             if (svg && svg.getAttribute('viewBox') === '0 0 65 16') {
                 const button = container.closest('button');
-                if (button) {
-                    console.log('[Samtch] Removing Watch on Twitch button');
-                    button.remove();
-                } else {
-                    container.remove();
-                }
+                if (button) button.remove();
             }
         });
-    }
 
-    function removeClipButtons() {
-        const selectors = [
-            '[data-a-target="player-clip-button"]',
-            'button[aria-label*="Clip"]',
-            'button[title*="Clip"]',
-            '.clipping-button',
-        ];
-        selectors.forEach(s => {
-            document.querySelectorAll(s).forEach(el => {
-                // Double check it's not a settings button or something we want to keep
-                const target = el.getAttribute('data-a-target') || '';
-                if (!target.includes('settings') && !target.includes('quality') && !target.includes('play')) {
-                    console.log('[Samtch] Removing clip button element:', s);
-                    el.remove();
-                }
-            });
-        });
-
-        // Remove by label text
+        // Remove Clip buttons by label text
         document.querySelectorAll('[data-a-target="tw-core-button-label-text"]').forEach(el => {
             if (el.textContent.trim() === 'Clip') {
                 const button = el.closest('button');
@@ -82,68 +82,19 @@
         });
     }
 
-    function extractMetadata() {
-        const avatarImg = document.querySelector('img.tw-image-avatar');
-        const subtitleEl = document.querySelector('p[data-test-selector="stream-info-card-component__subtitle"]');
-
-        const avatarUrl = avatarImg ? avatarImg.src : null;
-        const subtitle = subtitleEl ? subtitleEl.textContent.trim() : null;
-
-        if ((avatarUrl && avatarUrl !== window.samtch_last_avatar) ||
-            (subtitle && subtitle !== window.samtch_last_subtitle)) {
-
-            console.log('[Samtch] Metadata change detected - Avatar: ' + (avatarUrl || 'none') + ', Subtitle: ' + (subtitle || 'none'));
-
-            if (window.TwitchPlayerBridge && typeof window.TwitchPlayerBridge.updateMetadata === 'function') {
-                window.TwitchPlayerBridge.updateMetadata(avatarUrl || '', subtitle || '');
-
-                window.samtch_last_avatar = avatarUrl;
-                window.samtch_last_subtitle = subtitle;
-            }
+    // High frequency cleanup during initial load
+    const startTime = Date.now();
+    window.samtch_cleaner_init_int = setInterval(() => {
+        clean();
+        if (Date.now() - startTime > 8000) {
+            clearInterval(window.samtch_cleaner_init_int);
+            // Switch to maintenance cleaning
+            window.samtch_cleaner_maint_int = setInterval(clean, 2500);
         }
-    }
+    }, 500);
 
-    let reloadAttempts = 0;
-    const maxReloadAttempts = 20; // ~40 seconds total at 2s interval
+    window.samtch_cleaner_obs = new MutationObserver(clean);
+    window.samtch_cleaner_obs.observe(document.documentElement, { childList: true, subtree: true });
 
-    function clean() {
-        // Check if player exists before executing clean functions
-        const playerExists = document.querySelector('.video-player') ||
-                           document.querySelector('[data-a-target="video-player"]');
-
-        if (!playerExists) {
-            if (!window.samtch_player_wait_logged) {
-                console.log('[Samtch] UI Cleaner: Waiting for player...');
-                window.samtch_player_wait_logged = true;
-            }
-
-            reloadAttempts++;
-            if (reloadAttempts > maxReloadAttempts) {
-                console.log('[Samtch] UI Cleaner: Player not detected after timeout, performing refresh...');
-                reloadAttempts = 0;
-                window.location.reload();
-            }
-            return;
-        }
-
-        if (window.samtch_player_wait_logged) {
-            console.log('[Samtch] UI Cleaner: Player detected! Starting cleaning...');
-            window.samtch_player_wait_logged = false;
-        }
-
-        reloadAttempts = 0;
-
-        extractMetadata();
-        injectStyles();
-        removeSocialPanel();
-        removeWatchOnTwitch();
-        removeClipButtons();
-    }
-
-    // Persistent cleaning and reload check
-    setInterval(clean, 2000);
-
-    const observer = new MutationObserver(clean);
-    observer.observe(document.documentElement, { childList: true, subtree: true });
     clean();
 })();

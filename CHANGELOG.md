@@ -1,3 +1,16 @@
+## Samtch v0.1.3
+
+### What's New
+- **Instant Browser Return**: Optimized the browser to stay persistent in the background, allowing for an immediate return from the player without reloads.
+- **Smooth Navigation Transitions**: Added fluid slide and fade animations when switching between the browser and the native player.
+- **Exit Confirmation**: Added a confirmation dialog when pressing back on the browser home screen to prevent accidental app exits.
+- **High-Contrast UI**: Fixed status bar icon colors in the browser to ensure legibility against dark backgrounds.
+- **Refined Pull-to-Refresh**: Increased gesture resistance and added a dead-zone to prevent accidental page refreshes while scrolling.
+- **Robust Player Cleaning**: Improved the script injection system to be self-cleaning and more reliable. Added targeted removal of \"Clip\" buttons.
+- **Improved Settings Navigation**: Updated the Settings screen with a smooth horizontal transition.
+
+---
+
 ## Samtch v0.1.2
 
 ### What's New

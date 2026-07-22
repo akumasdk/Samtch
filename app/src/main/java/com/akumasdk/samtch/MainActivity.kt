@@ -20,10 +20,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,10 +38,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import androidx.core.content.ContextCompat
@@ -190,6 +198,29 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Track which channel to show in the player (even during exit animation)
+                var displayedChannel by remember { mutableStateOf<String?>(null) }
+                LaunchedEffect(selectedChannel) {
+                    if (selectedChannel != null) {
+                        displayedChannel = selectedChannel
+                    }
+                }
+
+                val browserAlpha by animateFloatAsState(
+                    targetValue = if (selectedChannel == null) 1f else 0f,
+                    animationSpec = tween(durationMillis = 400),
+                    label = "browserAlpha"
+                )
+
+                val browserOffset by animateFloatAsState(
+                    targetValue = if (selectedChannel == null) 0f else 60f,
+                    animationSpec = spring(stiffness = 300f),
+                    label = "browserOffset"
+                )
+                
+                val density = LocalDensity.current
+                val offsetPx = with(density) { browserOffset.dp.toPx() }
+
                 Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
                     val isBrowserVisible = selectedChannel == null
                     
@@ -197,7 +228,8 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                alpha = if (isBrowserVisible) 1f else 0f
+                                alpha = browserAlpha
+                                translationY = offsetPx
                             }
                     ) {
                         TwitchBrowser(
@@ -218,26 +250,39 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    if (selectedChannel != null) {
-                        // Use key() to force complete recreation when channel changes
-                        key(selectedChannel) {
-                            TwitchPlayer(
-                                channel = selectedChannel!!,
-                                isFullscreen = isFullscreen,
-                                isPip = isInPipMode,
-                                refreshTrigger = refreshTrigger,
-                                onToggleFullscreen = { isFullscreen = !isFullscreen },
-                                onBack = {
-                                    if (isFullscreen) {
-                                        isFullscreen = false
-                                    } else {
-                                        selectedChannel = null
+                    AnimatedVisibility(
+                        visible = selectedChannel != null,
+                        enter = slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = spring(stiffness = 400f, dampingRatio = 0.8f)
+                        ) + fadeIn(),
+                        exit = slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(durationMillis = 300)
+                        ) + fadeOut(),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        displayedChannel?.let { channel ->
+                            // Use key() to force complete recreation when channel changes
+                            key(channel) {
+                                TwitchPlayer(
+                                    channel = channel,
+                                    isFullscreen = isFullscreen,
+                                    isPip = isInPipMode,
+                                    refreshTrigger = refreshTrigger,
+                                    onToggleFullscreen = { isFullscreen = !isFullscreen },
+                                    onBack = {
+                                        if (isFullscreen) {
+                                            isFullscreen = false
+                                        } else {
+                                            selectedChannel = null
+                                        }
+                                    },
+                                    onVideoBoundsChanged = { rect ->
+                                        pipRectState.value = rect
                                     }
-                                },
-                                onVideoBoundsChanged = { rect ->
-                                    pipRectState.value = rect
-                                }
-                            )
+                                )
+                            }
                         }
                     }
 
