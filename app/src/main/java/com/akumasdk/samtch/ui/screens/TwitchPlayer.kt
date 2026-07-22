@@ -53,6 +53,7 @@ fun TwitchPlayer(
     onBack: (() -> Unit)? = null,
     onClose: () -> Unit = {},
     onExpand: () -> Unit = {},
+    onRefreshRequested: () -> Unit = {},
     onMetadataUpdated: (String?, String?) -> Unit = { _, _ -> },
     onAudioOnlyModeChanged: (Boolean) -> Unit = {},
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
@@ -200,8 +201,8 @@ fun TwitchPlayer(
                         onCloseAudioOnly = {
                             isAudioOnly = false
                             mediaController?.stop()
-                            // Explicitly reload video player when returning to trigger script injection
-                            navigator.loadUrl(createTwitchPlayerUrl(channel))
+                            // Trigger the global refresh (adds &refresh=N to URL)
+                            onRefreshRequested()
                         },
                         onRefresh = {
                             mediaController?.stop()
@@ -261,6 +262,7 @@ fun TwitchPlayer(
                 } else {
                     PortraitPlayer(
                         channel = channel,
+                        isAudioOnly = isAudioOnly,
                         onToggleFullscreen = onToggleFullscreen,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )

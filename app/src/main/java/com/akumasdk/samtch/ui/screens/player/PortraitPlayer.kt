@@ -1,17 +1,9 @@
 package com.akumasdk.samtch.ui.screens.player
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -19,11 +11,13 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 
 @Composable
 fun PortraitPlayer(
     channel: String,
+    isAudioOnly: Boolean = false,
     onToggleFullscreen: () -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
@@ -33,14 +27,21 @@ fun PortraitPlayer(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(Color.Black)
+            .animateContentSize(),
         verticalArrangement = if (isChatVisible) Arrangement.Top else Arrangement.Center
     ) {
-        // Video at top (16:9 aspect ratio)
+        // Dynamic height container
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
+                .then(
+                    if (isAudioOnly) {
+                        Modifier.height(240.dp) // Reclaimed space for Audio Only table design
+                    } else {
+                        Modifier.aspectRatio(16f / 9f)
+                    }
+                )
                 .onSizeChanged { size ->
                     playerSize = size
                 }

@@ -303,6 +303,9 @@ class MainActivity : ComponentActivity() {
                                     onExpand = {
                                         isMinimized = false
                                     },
+                                    onRefreshRequested = {
+                                        refreshTriggerState.intValue += 1
+                                    },
                                     onClose = {
                                         selectedChannel = null
                                         // Stop the service explicitly to ensure notification and playback end

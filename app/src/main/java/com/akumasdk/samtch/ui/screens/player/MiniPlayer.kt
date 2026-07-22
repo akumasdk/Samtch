@@ -49,7 +49,8 @@ fun MiniPlayer(
                 modifier = Modifier
                     .size(width = 80.dp, height = 45.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black)
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
             ) {
                 playerContent(Modifier.fillMaxSize())
                 // Click interceptor and touch sink
