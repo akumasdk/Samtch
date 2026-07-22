@@ -57,7 +57,6 @@ import com.akumasdk.samtch.ui.screens.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import com.akumasdk.samtch.ui.theme.SamtchTheme
-import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.ScriptLoader
 import com.akumasdk.samtch.util.SettingsManager
 import kotlinx.coroutines.delay
@@ -336,33 +335,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        updateServiceVisibility(true)
     }
 
     override fun onStop() {
         super.onStop()
-        updateServiceVisibility(false)
-    }
-
-    private fun updateServiceVisibility(isForeground: Boolean) {
-        if (currentChannel == null) return
-
-        lifecycleScope.launch {
-            val enabled = SettingsManager.isBackgroundPlayEnabled(applicationContext).first()
-            if (!enabled) {
-                val intent = Intent(this@MainActivity, PlaybackService::class.java)
-                stopService(intent)
-                return@launch
-            }
-
-            val intent = Intent(this@MainActivity, PlaybackService::class.java).apply {
-                action = PlaybackService.ACTION_UPDATE_VISIBILITY
-                putExtra(PlaybackService.EXTRA_IS_FOREGROUND, isForeground)
-            }
-            try {
-                startService(intent)
-            } catch (_: Exception) {}
-        }
     }
 
     override fun onDestroy() {
@@ -396,9 +372,8 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         val intentUrl = intent?.data?.toString()
         val channelFromUrl = extractChannelFromUrl(intentUrl)
-        val channelFromExtra = intent?.getStringExtra(PlaybackService.EXTRA_CHANNEL_NAME)
 
-        val channel = channelFromUrl ?: channelFromExtra
+        val channel = channelFromUrl
         if (channel != null) {
             val stopIntent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP

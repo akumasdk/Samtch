@@ -1,6 +1,5 @@
 package com.akumasdk.samtch.ui.screens.settings
 
-import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -47,21 +46,9 @@ fun SettingsScreen(
     var isDownloading by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
-    val isBackgroundPlayEnabled by SettingsManager.isBackgroundPlayEnabled(context).collectAsState(initial = false)
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                scope.launch {
-                    SettingsManager.setBackgroundPlayEnabled(context, true)
-                }
-            }
-        }
-    )
 
     // Intercept system back button
     BackHandler {
@@ -145,63 +132,6 @@ fun SettingsScreen(
                     modifier = Modifier.clickable {
                         scope.launch {
                             SettingsManager.setPipEnabled(context, !isPipEnabled)
-                        }
-                    }
-                )
-            }
-
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.bg_play_title)) },
-                    supportingContent = { Text(stringResource(R.string.bg_play_summary)) },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_exit_fullscreen),
-                            contentDescription = null
-                        )
-                    },
-                    trailingContent = {
-                        Switch(
-                            checked = isBackgroundPlayEnabled,
-                            onCheckedChange = { enabled ->
-                                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    if (ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.POST_NOTIFICATIONS
-                                        ) != PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    } else {
-                                        scope.launch {
-                                            SettingsManager.setBackgroundPlayEnabled(context, true)
-                                        }
-                                    }
-                                } else {
-                                    scope.launch {
-                                        SettingsManager.setBackgroundPlayEnabled(context, enabled)
-                                    }
-                                }
-                            }
-                        )
-                    },
-                    modifier = Modifier.clickable {
-                        val newEnabled = !isBackgroundPlayEnabled
-                        if (newEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            if (ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.POST_NOTIFICATIONS
-                                ) != PackageManager.PERMISSION_GRANTED
-                            ) {
-                                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            } else {
-                                scope.launch {
-                                    SettingsManager.setBackgroundPlayEnabled(context, true)
-                                }
-                            }
-                        } else {
-                            scope.launch {
-                                SettingsManager.setBackgroundPlayEnabled(context, newEnabled)
-                            }
                         }
                     }
                 )

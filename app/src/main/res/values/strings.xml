@@ -39,16 +39,6 @@
     <string name="update_download_title">Samtch Update</string>
     <string name="update_download_description">Downloading latest version…</string>
 
-    <!-- Background Play -->
-    <string name="bg_play_title">Background Playback (Beta)</string>
-    <string name="bg_play_summary">Keep audio playing when app is minimized</string>
-    <string name="bg_play_notification_text">Playing in background</string>
-    <string name="bg_play_now_playing">Playing now</string>
-    <string name="bg_play_status_background">Background</string>
-    <string name="bg_play_stop_action">Stop</string>
-    <string name="bg_play_channel_name">Playback</string>
-    <string name="bg_play_channel_description">Notifications for background audio playback</string>
-
     <!-- PiP Settings -->
     <string name="pip_enabled_title">Picture-in-Picture</string>
     <string name="pip_enabled_summary">Automatically enter PiP mode when app is minimized</string>

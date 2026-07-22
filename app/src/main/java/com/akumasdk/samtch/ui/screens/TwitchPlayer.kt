@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
@@ -25,9 +24,7 @@ import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
 import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
 import com.akumasdk.samtch.ui.screens.player.WebViewContainer
 import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
-import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.ScriptLoader
-import com.akumasdk.samtch.util.SettingsManager
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -41,27 +38,6 @@ fun TwitchPlayer(
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
     val context = LocalContext.current
-    val isBackgroundPlayEnabled by SettingsManager.isBackgroundPlayEnabled(context).collectAsState(initial = false)
-
-    // Manage Background Playback Service
-    LaunchedEffect(channel, isBackgroundPlayEnabled) {
-        Log.d("TwitchPlayer", "LaunchedEffect: channel=$channel, enabled=$isBackgroundPlayEnabled")
-        if (isBackgroundPlayEnabled) {
-            val intent = android.content.Intent(context, PlaybackService::class.java).apply {
-                action = PlaybackService.ACTION_START
-                putExtra(PlaybackService.EXTRA_CHANNEL_NAME, channel)
-            }
-            Log.d("TwitchPlayer", "Starting PlaybackService")
-            ContextCompat.startForegroundService(context, intent)
-        } else {
-            val intent = android.content.Intent(context, PlaybackService::class.java).apply {
-                action = PlaybackService.ACTION_STOP
-            }
-            Log.d("TwitchPlayer", "Stopping PlaybackService")
-            context.stopService(intent)
-        }
-    }
-
 
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
@@ -102,17 +78,6 @@ fun TwitchPlayer(
             val script = ScriptLoader.getScript(context, path)
             if (script.isNotEmpty()) script else null
         }.toMutableList()
-
-        // Background play visibility hack
-        scripts.add("""
-            (function() {
-                if (window.samtch_background_hack) return;
-                window.samtch_background_hack = true;
-                document.addEventListener('visibilitychange', function(e) { e.stopImmediatePropagation(); }, true);
-                Object.defineProperty(document, 'visibilityState', {get: function() { return 'visible'; }});
-                Object.defineProperty(document, 'hidden', {get: function() { return false; }});
-            })();
-        """.trimIndent())
 
         val finalScripts = scripts.joinToString("\n")
 
@@ -172,19 +137,8 @@ fun TwitchPlayer(
                 state = state,
                 navigator = navigator,
                 channel = channel,
-                isBackgroundPlayEnabled = isBackgroundPlayEnabled,
                 onToggleFullscreen = onToggleFullscreen,
-                onToggleChat = onToggleChat,
-                onMetadataDetected = { avatarUrl, subtitle ->
-                    if (isBackgroundPlayEnabled) {
-                        val intent = android.content.Intent(context, PlaybackService::class.java).apply {
-                            action = PlaybackService.ACTION_UPDATE_METADATA
-                            putExtra(PlaybackService.EXTRA_AVATAR_URL, avatarUrl)
-                            putExtra(PlaybackService.EXTRA_STREAM_TITLE, subtitle)
-                        }
-                        context.startService(intent)
-                    }
-                }
+                onToggleChat = onToggleChat
             )
         }
     }
