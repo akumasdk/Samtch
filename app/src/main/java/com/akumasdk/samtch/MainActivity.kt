@@ -402,28 +402,38 @@ class MainActivity : ComponentActivity() {
         
         lifecycleScope.launch {
             val audioOnlyEnabled = SettingsManager.isAudioOnlyBackgroundEnabled(applicationContext).first()
+            val isAudioOnlyPlayerActive = isAudioOnlyModeState.value
+            
             if (currentChannel != null && !isInPipModeState.value && audioOnlyEnabled) {
-                val sessionToken = SessionToken(this@MainActivity, ComponentName(this@MainActivity, PlaybackService::class.java))
-                val controllerFuture = MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
-                controllerFuture.addListener({
-                    val controller = controllerFuture.get()
-                    backgroundController = controller
-                    
-                    val metadata = MediaMetadata.Builder()
-                        .setTitle(currentChannel)
-                        .setArtist(lastSubtitle)
-                        .setArtworkUri(lastAvatarUrl?.toUri())
-                        .build()
-
-                    controller.setMediaItem(
-                        MediaItem.Builder()
-                            .setMediaId(currentChannel!!)
-                            .setMediaMetadata(metadata)
+                if (isAudioOnlyPlayerActive) {
+                    // If the user was already listening in Audio Only mode inside the app,
+                    // the PlaybackService is already running and playing.
+                    // Reusing the same playback instead of refreshing the stream.
+                    Log.d("MainActivity", "Backgrounding from Audio Only mode. Reusing existing session.")
+                } else {
+                    // Transitioning from Video to Background Audio
+                    val sessionToken = SessionToken(this@MainActivity, ComponentName(this@MainActivity, PlaybackService::class.java))
+                    val controllerFuture = MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
+                    controllerFuture.addListener({
+                        val controller = controllerFuture.get()
+                        backgroundController = controller
+                        
+                        val metadata = MediaMetadata.Builder()
+                            .setTitle(currentChannel)
+                            .setArtist(lastSubtitle)
+                            .setArtworkUri(lastAvatarUrl?.toUri())
                             .build()
-                    )
-                    controller.prepare()
-                    controller.play()
-                }, MoreExecutors.directExecutor())
+
+                        controller.setMediaItem(
+                            MediaItem.Builder()
+                                .setMediaId(currentChannel!!)
+                                .setMediaMetadata(metadata)
+                                .build()
+                        )
+                        controller.prepare()
+                        controller.play()
+                    }, MoreExecutors.directExecutor())
+                }
             } else {
                 // If background play is disabled or we're in PiP, ensure the HLS service is stopped
                 backgroundController?.release()
