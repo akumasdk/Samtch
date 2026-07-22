@@ -21,6 +21,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -32,7 +33,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,10 +47,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.*
+import androidx.compose.animation.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.core.animateDpAsState
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import androidx.core.content.ContextCompat
@@ -142,6 +153,7 @@ class MainActivity : ComponentActivity() {
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
                 var isFullscreen by rememberSaveable { mutableStateOf(false) }
+                var isMinimized by rememberSaveable { mutableStateOf(false) }
                 var isSettingsOpen by isSettingsOpenState
                 val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
 
@@ -151,8 +163,10 @@ class MainActivity : ComponentActivity() {
                     val newChannel = intent.getStringExtra("CHANNEL")
                     if (action == "STOP") {
                         selectedChannel = null
+                        isMinimized = false
                     } else if (newChannel != null) {
                         selectedChannel = newChannel
+                        isMinimized = false
                     }
                 }
 
@@ -173,10 +187,10 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Orientation and System Bars management
-                LaunchedEffect(selectedChannel, isFullscreen, isInPipMode) {
+                LaunchedEffect(selectedChannel, isFullscreen, isInPipMode, isMinimized) {
                     if (isInPipMode) return@LaunchedEffect
 
-                    if (selectedChannel != null) {
+                    if (selectedChannel != null && !isMinimized) {
                         if (isFullscreen) {
                             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                             windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
@@ -215,39 +229,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                val browserAlpha by animateFloatAsState(
-                    targetValue = if (selectedChannel == null) 1f else 0f,
-                    animationSpec = tween(durationMillis = 400),
-                    label = "browserAlpha"
-                )
-
-                val browserOffset by animateFloatAsState(
-                    targetValue = if (selectedChannel == null) 0f else 60f,
-                    animationSpec = spring(stiffness = 300f),
-                    label = "browserOffset"
-                )
-                
-                val density = LocalDensity.current
-                val offsetPx = with(density) { browserOffset.dp.toPx() }
-
                 Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
-                    val isBrowserVisible = selectedChannel == null
-                    
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer {
-                                alpha = browserAlpha
-                                translationY = offsetPx
-                            }
+                            .padding(bottom = if (isMinimized && selectedChannel != null) 80.dp else 0.dp)
                     ) {
                         TwitchBrowser(
                             state = browserState,
                             navigator = browserNavigator,
-                            isVisible = isBrowserVisible,
+                            isVisible = true, // Always keep browser active to avoid state loss
                             onChannelSelected = { channel ->
                                 if (selectedChannel != channel) {
                                     selectedChannel = channel
+                                    isMinimized = false
                                 }
                             },
                             onSettingsClick = {
@@ -259,47 +254,46 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    AnimatedVisibility(
-                        visible = selectedChannel != null,
-                        enter = slideInVertically(
-                            initialOffsetY = { it },
-                            animationSpec = spring(stiffness = 400f, dampingRatio = 0.8f)
-                        ) + fadeIn(),
-                        exit = slideOutVertically(
-                            targetOffsetY = { it },
-                            animationSpec = tween(durationMillis = 300)
-                        ) + fadeOut(),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        displayedChannel?.let { channel ->
-                            // Use key() to force complete recreation when channel changes
-                            key(channel) {
-                                TwitchPlayer(
-                                    channel = channel,
-                                    isFullscreen = isFullscreen,
-                                    isPip = isInPipMode,
-                                    refreshTrigger = refreshTrigger,
-                                    onToggleFullscreen = { isFullscreen = !isFullscreen },
-                                    onBack = {
-                                        if (isFullscreen) {
-                                            isFullscreen = false
-                                        } else {
-                                            selectedChannel = null
-                                        }
-                                    },
-                                    onMetadataUpdated = { avatar, subtitle ->
-                                        lastAvatarUrl = avatar
-                                        lastSubtitle = subtitle
-                                    },
-                                    onAudioOnlyModeChanged = { isAudioOnly ->
-                                        isAudioOnlyModeState.value = isAudioOnly
-                                        updatePipParams(isPipEnabled)
-                                    },
-                                    onVideoBoundsChanged = { rect ->
-                                        pipRectState.value = rect
+                    if (selectedChannel != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(if (isMinimized) Modifier.align(Alignment.BottomCenter) else Modifier)
+                        ) {
+                            TwitchPlayer(
+                                channel = selectedChannel!!,
+                                isFullscreen = isFullscreen,
+                                isPip = isInPipMode,
+                                isMinimized = isMinimized,
+                                refreshTrigger = refreshTrigger,
+                                onToggleFullscreen = { isFullscreen = !isFullscreen },
+                                onBack = {
+                                    if (isFullscreen) {
+                                        isFullscreen = false
+                                    } else {
+                                        isMinimized = true
+                                        isFullscreen = false
                                     }
-                                )
-                            }
+                                },
+                                onExpand = {
+                                    isMinimized = false
+                                },
+                                onClose = {
+                                    selectedChannel = null
+                                    isMinimized = false
+                                },
+                                onMetadataUpdated = { avatar, subtitle ->
+                                    lastAvatarUrl = avatar
+                                    lastSubtitle = subtitle
+                                },
+                                onAudioOnlyModeChanged = { isAudioOnly ->
+                                    isAudioOnlyModeState.value = isAudioOnly
+                                    updatePipParams(isPipEnabled)
+                                },
+                                onVideoBoundsChanged = { rect ->
+                                    pipRectState.value = rect
+                                }
+                            )
                         }
                     }
 
