@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.util
+package com.akumasdk.samtch.data.settings
 
 import android.content.Context
 import androidx.datastore.core.DataStore

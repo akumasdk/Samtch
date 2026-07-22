@@ -1,6 +1,12 @@
-package com.akumasdk.samtch.util
+package com.akumasdk.samtch.service
 
 import android.util.Log
+import com.akumasdk.samtch.data.model.TwitchGame
+import com.akumasdk.samtch.data.model.TwitchRoles
+import com.akumasdk.samtch.data.model.TwitchStream
+import com.akumasdk.samtch.data.model.TwitchStreamMetadata
+import com.akumasdk.samtch.data.model.TwitchUser
+import com.akumasdk.samtch.util.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -8,6 +14,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.net.URLEncoder
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -54,7 +61,8 @@ object TwitchGqlService {
 
             if (response.isSuccessful && body.isNotEmpty()) {
                 // Look for clientId="ID" (script block) or "Client-ID":"ID" (JSON/Legacy)
-                val regex = """(?:clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["'])""".toRegex()
+                val regex =
+                    """(?:clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["'])""".toRegex()
                 val match = regex.find(body)
                 // The ID could be in group 1 or group 2 depending on which pattern matched
                 val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }
@@ -126,93 +134,95 @@ object TwitchGqlService {
     /**
      * Fetches detailed stream and user metadata.
      */
-    suspend fun getStreamMetadata(channelName: String): TwitchStreamMetadata? = withContext(Dispatchers.IO) {
-        try {
-            val clientId = getDynamicClientId()
-            val payload = JSONObject().apply {
-                put("operationName", "StreamMetadata")
-                put("query", STREAM_METADATA_QUERY.trimIndent())
-                put("variables", JSONObject().apply {
-                    put("login", channelName.lowercase())
-                })
-            }
-
-            val request = Request.Builder()
-                .url(Constants.TWITCH_GQL_ENDPOINT)
-                .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                .addCommonHeaders(clientId)
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string().orEmpty()
-
-            if (!response.isSuccessful) return@withContext null
-
-            val json = JSONObject(body)
-            val data = json.optJSONObject("data")
-            val userJson = data?.optJSONObject("user") ?: return@withContext null
-
-            val rolesJson = userJson.optJSONObject("roles")
-            val streamJson = userJson.optJSONObject("stream")
-            val gameJson = streamJson?.optJSONObject("game")
-
-            val user = TwitchUser(
-                id = userJson.getString("id"),
-                login = userJson.getString("login"),
-                displayName = userJson.getString("displayName"),
-                description = userJson.optString("description"),
-                createdAt = userJson.optString("createdAt"),
-                roles = rolesJson?.let { TwitchRoles(it.getBoolean("isPartner")) },
-                stream = streamJson?.let {
-                    TwitchStream(
-                        id = it.getString("id"),
-                        title = it.getString("title"),
-                        type = it.optString("type"),
-                        viewersCount = it.getInt("viewersCount"),
-                        createdAt = it.optString("createdAt"),
-                        game = gameJson?.let { g -> TwitchGame(g.getString("name")) }
-                    )
+    suspend fun getStreamMetadata(channelName: String): TwitchStreamMetadata? =
+        withContext(Dispatchers.IO) {
+            try {
+                val clientId = getDynamicClientId()
+                val payload = JSONObject().apply {
+                    put("operationName", "StreamMetadata")
+                    put("query", STREAM_METADATA_QUERY.trimIndent())
+                    put("variables", JSONObject().apply {
+                        put("login", channelName.lowercase())
+                    })
                 }
-            )
 
-            TwitchStreamMetadata(user)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching stream metadata", e)
-            null
+                val request = Request.Builder()
+                    .url(Constants.TWITCH_GQL_ENDPOINT)
+                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                    .addCommonHeaders(clientId)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val body = response.body?.string().orEmpty()
+
+                if (!response.isSuccessful) return@withContext null
+
+                val json = JSONObject(body)
+                val data = json.optJSONObject("data")
+                val userJson = data?.optJSONObject("user") ?: return@withContext null
+
+                val rolesJson = userJson.optJSONObject("roles")
+                val streamJson = userJson.optJSONObject("stream")
+                val gameJson = streamJson?.optJSONObject("game")
+
+                val user = TwitchUser(
+                    id = userJson.getString("id"),
+                    login = userJson.getString("login"),
+                    displayName = userJson.getString("displayName"),
+                    description = userJson.optString("description"),
+                    createdAt = userJson.optString("createdAt"),
+                    roles = rolesJson?.let { TwitchRoles(it.getBoolean("isPartner")) },
+                    stream = streamJson?.let {
+                        TwitchStream(
+                            id = it.getString("id"),
+                            title = it.getString("title"),
+                            type = it.optString("type"),
+                            viewersCount = it.getInt("viewersCount"),
+                            createdAt = it.optString("createdAt"),
+                            game = gameJson?.let { g -> TwitchGame(g.getString("name")) }
+                        )
+                    }
+                )
+
+                TwitchStreamMetadata(user)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching stream metadata", e)
+                null
+            }
         }
-    }
 
     /**
      * Fetches a new Integrity Token from Twitch.
      */
-    private suspend fun fetchIntegrityToken(clientId: String): String? = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url(INTEGRITY_URL)
-                .post("{}".toRequestBody("application/json".toMediaType()))
-                .addCommonHeaders(clientId)
-                .build()
+    private suspend fun fetchIntegrityToken(clientId: String): String? =
+        withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder()
+                    .url(INTEGRITY_URL)
+                    .post("{}".toRequestBody("application/json".toMediaType()))
+                    .addCommonHeaders(clientId)
+                    .build()
 
-            val response = client.newCall(request).execute()
-            val body = response.body?.string().orEmpty()
+                val response = client.newCall(request).execute()
+                val body = response.body?.string().orEmpty()
 
-            if (!response.isSuccessful) {
-                Log.w(TAG, "Integrity token fetch failed: ${response.code} body=$body")
-                return@withContext null
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "Integrity token fetch failed: ${response.code} body=$body")
+                    return@withContext null
+                }
+
+                val json = JSONObject(body)
+                val token = json.optString("token").takeIf { it.isNotBlank() }
+
+                if (token != null) {
+                    cachedIntegrityToken = token
+                    return@withContext token
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch integrity token", e)
             }
-
-            val json = JSONObject(body)
-            val token = json.optString("token").takeIf { it.isNotBlank() }
-
-            if (token != null) {
-                cachedIntegrityToken = token
-                return@withContext token
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch integrity token", e)
+            null
         }
-        null
-    }
 
     /**
      * Fetch playback access token and signature for a channel
@@ -277,7 +287,7 @@ object TwitchGqlService {
     }
 
     fun buildHlsUrl(channelName: String, token: String, signature: String): String {
-        val encodedToken = java.net.URLEncoder.encode(token, "UTF-8")
+        val encodedToken = URLEncoder.encode(token, "UTF-8")
         val random = (Math.random() * 999999).toInt()
 
         return "${Constants.TWITCH_HLS_BASE}${channelName.lowercase()}.m3u8" +

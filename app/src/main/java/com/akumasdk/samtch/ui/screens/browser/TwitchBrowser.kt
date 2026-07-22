@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.ui.screens
+package com.akumasdk.samtch.ui.screens.browser
 
 import android.annotation.SuppressLint
 import android.util.Log
@@ -374,12 +374,13 @@ private fun isPlayableChannel(channelMatch: String?, currentUser: String?): Bool
     return !channelMatch.equals(currentUser, ignoreCase = true)
 }
 
-private fun extractChannelFromUrl(url: String): String? {
+private fun extractChannelFromUrl(url: String?): String? {
     // Match ONLY the root channel URL: twitch.tv/channelname
     // Exclude sub-paths like /channelname/videos, /channelname/home, etc.
     // Also exclude reserved paths like /directory, /search
 
     val uri = try {
+        if (url == null) return null
         val cleanUrl = if (!url.startsWith("http")) "https://$url" else url
         java.net.URI(cleanUrl)
     } catch (e: Exception) {

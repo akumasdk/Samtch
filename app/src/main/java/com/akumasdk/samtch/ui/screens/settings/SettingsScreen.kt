@@ -29,8 +29,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.akumasdk.samtch.BuildConfig
 import com.akumasdk.samtch.R
-import com.akumasdk.samtch.util.GitHubRelease
-import com.akumasdk.samtch.util.SettingsManager
+import com.akumasdk.samtch.data.model.GitHubRelease
+import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.UpdateManager
 import kotlinx.coroutines.launch
 

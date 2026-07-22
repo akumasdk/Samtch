@@ -59,13 +59,13 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import com.akumasdk.samtch.ui.screens.TwitchBrowser
-import com.akumasdk.samtch.ui.screens.TwitchPlayer
+import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
+import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import com.akumasdk.samtch.ui.theme.SamtchTheme
-import com.akumasdk.samtch.util.PlaybackService
+import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.util.ScriptLoader
-import com.akumasdk.samtch.util.SettingsManager
+import com.akumasdk.samtch.data.settings.SettingsManager
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator

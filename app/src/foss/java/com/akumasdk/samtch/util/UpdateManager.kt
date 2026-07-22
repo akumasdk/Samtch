@@ -1,20 +1,8 @@
 package com.akumasdk.samtch.util
 
 import android.content.Context
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class GitHubRelease(
-    @SerialName("tag_name") val tagName: String,
-    val assets: List<GitHubAsset>
-)
-
-@Serializable
-data class GitHubAsset(
-    val name: String,
-    @SerialName("browser_download_url") val downloadUrl: String
-)
+import com.akumasdk.samtch.data.model.GitHubRelease
+import com.akumasdk.samtch.data.model.GitHubAsset
 
 /**
  * FOSS stub for UpdateManager. In-app updates are not allowed in F-Droid.

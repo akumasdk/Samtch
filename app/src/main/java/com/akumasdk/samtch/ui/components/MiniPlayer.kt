@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.ui.screens.player
+package com.akumasdk.samtch.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

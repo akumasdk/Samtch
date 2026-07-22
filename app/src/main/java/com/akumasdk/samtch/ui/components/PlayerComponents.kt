@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.ui.screens.player
+package com.akumasdk.samtch.ui.components
 
 import android.util.Log
 import android.view.View

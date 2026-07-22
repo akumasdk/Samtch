@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.ui.screens
+package com.akumasdk.samtch.ui.screens.player
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -22,16 +22,13 @@ import android.content.ComponentName
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
-import com.akumasdk.samtch.ui.screens.player.AudioOnlyPlayer
-import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
-import com.akumasdk.samtch.ui.screens.player.MiniPlayer
-import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
-import com.akumasdk.samtch.ui.screens.player.WebViewContainer
-import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
-import com.akumasdk.samtch.util.PlaybackService
-import com.akumasdk.samtch.util.SettingsManager
-import com.akumasdk.samtch.util.TwitchGqlService
-import com.akumasdk.samtch.util.TwitchStreamMetadata
+import com.akumasdk.samtch.service.PlaybackService
+import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.service.TwitchGqlService
+import com.akumasdk.samtch.data.model.TwitchStreamMetadata
+import com.akumasdk.samtch.ui.components.MiniPlayer
+import com.akumasdk.samtch.ui.components.WebViewContainer
+import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
 import androidx.core.net.toUri
 
 @Composable
@@ -253,7 +250,7 @@ fun TwitchPlayer(
                         modifier = modifier
                     )
                 } else {
-                    Box(modifier = modifier) {
+                    Box(modifier = modifier.background(Color.Black)) {
                         webView(Modifier.fillMaxSize(), onToggleChat)
                         
                         // Loading Overlay constrained to video player area
@@ -261,7 +258,7 @@ fun TwitchPlayer(
                             visible = isUiLoading,
                             enter = fadeIn(),
                             exit = fadeOut(animationSpec = tween(durationMillis = 300)),
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.matchParentSize()
                         ) {
                             Box(
                                 modifier = Modifier

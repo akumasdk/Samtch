@@ -30,7 +30,7 @@
         </provider>
 
         <service
-            android:name=".util.PlaybackService"
+            android:name=".service.PlaybackService"
             android:enabled="true"
             android:exported="false"
             android:icon="@drawable/ic_notification"
