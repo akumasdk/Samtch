@@ -33,6 +33,9 @@ fun AudioOnlyPlayer(
     channel: String,
     avatarUrl: String?,
     subtitle: String?,
+    streamTitle: String? = null,
+    gameName: String? = null,
+    viewersCount: Int = 0,
     isPlaying: Boolean,
     onTogglePlayback: () -> Unit,
     onCloseAudioOnly: () -> Unit,
@@ -127,35 +130,79 @@ fun AudioOnlyPlayer(
                         modifier = Modifier.clickable { onCloseAudioOnly() }
                     )
                     
-                    if (!subtitle.isNullOrEmpty()) {
+                    // Detailed Stream Title
+                    val displayTitle = streamTitle ?: subtitle
+                    if (!displayTitle.isNullOrEmpty()) {
                         Text(
-                            text = subtitle,
-                            color = Color.LightGray.copy(alpha = 0.8f),
+                            text = displayTitle,
+                            color = Color.LightGray.copy(alpha = 0.9f),
                             fontSize = if (availableHeight < 200.dp) 12.sp else 14.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    Surface(
-                        color = Color(0xFF9146FF).copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.padding(top = 4.dp).clickable { onCloseAudioOnly() }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 4.dp)
                     ) {
-                        Text(
-                            text = "AUDIO ONLY",
-                            color = Color(0xFFBF94FF),
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
+                        // Game/Category Pill
+                        if (!gameName.isNullOrEmpty()) {
+                            Surface(
+                                color = Color.White.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = gameName,
+                                    color = Color.LightGray,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        // Viewer Count
+                        if (viewersCount > 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .background(Color.Red, CircleShape)
+                                )
+                                Text(
+                                    text = formatViewerCount(viewersCount),
+                                    color = Color.LightGray,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Surface(
+                            color = Color(0xFF9146FF).copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.clickable { onCloseAudioOnly() }
+                        ) {
+                            Text(
+                                text = "AUDIO ONLY",
+                                color = Color(0xFFBF94FF),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 }
 
                 // RIGHT: Controls
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Return to Video (Close)
                     IconButton(
@@ -173,7 +220,7 @@ fun AudioOnlyPlayer(
                     // Play/Pause
                     IconButton(
                         onClick = onTogglePlayback,
-                        modifier = Modifier.size(if (availableHeight < 200.dp) 48.dp else 56.dp)
+                        modifier = Modifier.size(if (availableHeight < 200.dp) 56.dp else 64.dp)
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -212,3 +259,12 @@ fun AudioOnlyPlayer(
         }
     }
 }
+
+private fun formatViewerCount(count: Int): String {
+    return when {
+        count >= 1_000_000 -> "%.1fM".format(count / 1_000_000f)
+        count >= 1_000 -> "%.1fk".format(count / 1_000f)
+        else -> count.toString()
+    }
+}
+

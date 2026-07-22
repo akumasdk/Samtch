@@ -27,12 +27,51 @@ object TwitchGqlService {
     @Volatile
     private var cachedIntegrityToken: String? = null
 
+    @Volatile
+    private var cachedDynamicClientId: String? = null
+
     // Twitch internal endpoint for integrity tokens
     private const val INTEGRITY_URL = "https://gql.twitch.tv/integrity"
 
     // Add browser-ish headers (helps with Twitch tightening checks)
     private const val ORIGIN = "https://www.twitch.tv"
     private const val REFERER = "https://www.twitch.tv/"
+
+    /**
+     * Dynamically scrapes the Twitch Client ID from the homepage.
+     */
+    private suspend fun getDynamicClientId(): String = withContext(Dispatchers.IO) {
+        cachedDynamicClientId?.let { return@withContext it }
+
+        try {
+            val request = Request.Builder()
+                .url("https://www.twitch.tv")
+                .header("User-Agent", Constants.USER_AGENT)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string().orEmpty()
+
+            if (response.isSuccessful && body.isNotEmpty()) {
+                // Look for clientId="ID" (script block) or "Client-ID":"ID" (JSON/Legacy)
+                val regex = """(?:clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["'])""".toRegex()
+                val match = regex.find(body)
+                // The ID could be in group 1 or group 2 depending on which pattern matched
+                val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }
+                    ?: match?.groupValues?.get(2)
+
+                if (!scrapedId.isNullOrBlank()) {
+                    Log.d(TAG, "Successfully scraped dynamic Client-ID: $scrapedId")
+                    cachedDynamicClientId = scrapedId
+                    return@withContext scrapedId
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception while scraping dynamic Client-ID", e)
+        }
+
+        Constants.TWITCH_GRAPHQL_CLIENT_ID
+    }
 
     // Stable per app-process run (don’t use a constant)
     private val deviceId: String = UUID.randomUUID().toString().replace("-", "")
@@ -49,6 +88,31 @@ object TwitchGqlService {
         }
     """
 
+    private const val STREAM_METADATA_QUERY = """
+        query StreamMetadata(${"$"}login: String!) {
+          user(login: ${"$"}login) {
+            id
+            login
+            displayName
+            description
+            createdAt
+            roles {
+              isPartner
+            }
+            stream {
+              id
+              title
+              type
+              viewersCount
+              createdAt
+              game {
+                name
+              }
+            }
+          }
+        }
+    """
+
     private fun Request.Builder.addCommonHeaders(clientId: String): Request.Builder {
         return this
             .header("Client-Id", clientId)
@@ -57,6 +121,65 @@ object TwitchGqlService {
             .header("Origin", ORIGIN)
             .header("Referer", REFERER)
             .header("Accept", "application/json")
+    }
+
+    /**
+     * Fetches detailed stream and user metadata.
+     */
+    suspend fun getStreamMetadata(channelName: String): TwitchStreamMetadata? = withContext(Dispatchers.IO) {
+        try {
+            val clientId = getDynamicClientId()
+            val payload = JSONObject().apply {
+                put("operationName", "StreamMetadata")
+                put("query", STREAM_METADATA_QUERY.trimIndent())
+                put("variables", JSONObject().apply {
+                    put("login", channelName.lowercase())
+                })
+            }
+
+            val request = Request.Builder()
+                .url(Constants.TWITCH_GQL_ENDPOINT)
+                .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                .addCommonHeaders(clientId)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string().orEmpty()
+
+            if (!response.isSuccessful) return@withContext null
+
+            val json = JSONObject(body)
+            val data = json.optJSONObject("data")
+            val userJson = data?.optJSONObject("user") ?: return@withContext null
+
+            val rolesJson = userJson.optJSONObject("roles")
+            val streamJson = userJson.optJSONObject("stream")
+            val gameJson = streamJson?.optJSONObject("game")
+
+            val user = TwitchUser(
+                id = userJson.getString("id"),
+                login = userJson.getString("login"),
+                displayName = userJson.getString("displayName"),
+                description = userJson.optString("description"),
+                createdAt = userJson.optString("createdAt"),
+                roles = rolesJson?.let { TwitchRoles(it.getBoolean("isPartner")) },
+                stream = streamJson?.let {
+                    TwitchStream(
+                        id = it.getString("id"),
+                        title = it.getString("title"),
+                        type = it.optString("type"),
+                        viewersCount = it.getInt("viewersCount"),
+                        createdAt = it.optString("createdAt"),
+                        game = gameJson?.let { g -> TwitchGame(g.getString("name")) }
+                    )
+                }
+            )
+
+            TwitchStreamMetadata(user)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching stream metadata", e)
+            null
+        }
     }
 
     /**
@@ -95,9 +218,9 @@ object TwitchGqlService {
      * Fetch playback access token and signature for a channel
      */
     suspend fun getPlaybackAccessToken(
-        channelName: String,
-        clientId: String
+        channelName: String
     ): Pair<String, String>? = withContext(Dispatchers.IO) {
+        val clientId = getDynamicClientId()
 
         val firstIntegrity = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
         val first = getPlaybackAccessTokenOnce(channelName, clientId, firstIntegrity)

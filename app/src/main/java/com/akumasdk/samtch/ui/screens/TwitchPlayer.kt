@@ -30,6 +30,8 @@ import com.akumasdk.samtch.ui.screens.player.WebViewContainer
 import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
 import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.SettingsManager
+import com.akumasdk.samtch.util.TwitchGqlService
+import com.akumasdk.samtch.util.TwitchStreamMetadata
 import androidx.core.net.toUri
 
 @Composable
@@ -57,6 +59,7 @@ fun TwitchPlayer(
     
     var avatarUrl by remember { mutableStateOf<String?>(null) }
     var streamSubtitle by remember { mutableStateOf<String?>(null) }
+    var streamMetadata by remember { mutableStateOf<TwitchStreamMetadata?>(null) }
 
     val currentIsPlaying by rememberUpdatedState(isPlaying)
     val currentAvatarUrl by rememberUpdatedState(avatarUrl)
@@ -66,6 +69,8 @@ fun TwitchPlayer(
 
     LaunchedEffect(channel, refreshTrigger) {
         isUiLoading = true
+        // Fetch detailed metadata via GraphQL
+        streamMetadata = TwitchGqlService.getStreamMetadata(channel)
     }
 
     LaunchedEffect(isAudioOnly) {
@@ -214,6 +219,9 @@ fun TwitchPlayer(
                         channel = channel,
                         avatarUrl = avatarUrl,
                         subtitle = streamSubtitle,
+                        streamTitle = streamMetadata?.user?.stream?.title,
+                        gameName = streamMetadata?.user?.stream?.game?.name,
+                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         isPlaying = isPlaying,
                         onTogglePlayback = {
                             if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
@@ -279,6 +287,7 @@ fun TwitchPlayer(
             ) {
                 MiniPlayer(
                     channel = channel,
+                    streamTitle = streamMetadata?.user?.stream?.title,
                     playerContent = { modifier -> playerContent(modifier) {} },
                     onClick = onExpand,
                     onClose = {

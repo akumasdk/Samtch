@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun MiniPlayer(
     channel: String,
+    streamTitle: String? = null,
     playerContent: @Composable (Modifier) -> Unit,
     onClick: () -> Unit,
     onClose: () -> Unit,
@@ -79,11 +80,12 @@ fun MiniPlayer(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Live",
+                    text = streamTitle ?: "Live",
                     color = Color(0xFF9146FF), // Twitch purple
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 

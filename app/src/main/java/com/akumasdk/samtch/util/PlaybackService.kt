@@ -222,7 +222,13 @@ class PlaybackService : MediaSessionService() {
 
         private suspend fun resolveMediaItem(item: MediaItem): MutableList<MediaItem> {
             val channelName = item.mediaId
-            val tokenPair = TwitchGqlService.getPlaybackAccessToken(channelName, Constants.TWITCH_GRAPHQL_CLIENT_ID)
+            
+            // Parallel fetch for token and metadata
+            val tokenPairDeferred = serviceScope.async { TwitchGqlService.getPlaybackAccessToken(channelName) }
+            val metadataDeferred = serviceScope.async { TwitchGqlService.getStreamMetadata(channelName) }
+            
+            val tokenPair = tokenPairDeferred.await()
+            val detailedMetadata = metadataDeferred.await()
             
             return if (tokenPair != null) {
                 val hlsUrl = TwitchGqlService.buildHlsUrl(channelName, tokenPair.first, tokenPair.second)
@@ -230,12 +236,16 @@ class PlaybackService : MediaSessionService() {
                 
                 val finalUrl = audioOnlyUrl ?: hlsUrl
                 
+                val user = detailedMetadata?.user
+                val stream = user?.stream
+                
                 val newItem = item.buildUpon()
                     .setUri(Uri.parse(finalUrl))
                     .setMediaMetadata(
                         item.mediaMetadata.buildUpon()
-                            .setTitle(item.mediaMetadata.title ?: channelName)
-                            .setArtist(item.mediaMetadata.artist ?: channelName)
+                            .setTitle(stream?.title ?: item.mediaMetadata.title ?: channelName)
+                            .setArtist(user?.displayName ?: item.mediaMetadata.artist ?: channelName)
+                            .setAlbumTitle(stream?.game?.name)
                             .setArtworkUri(item.mediaMetadata.artworkUri)
                             .setIsBrowsable(false)
                             .setIsPlayable(true)
