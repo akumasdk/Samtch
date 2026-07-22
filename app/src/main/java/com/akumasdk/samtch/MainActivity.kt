@@ -269,14 +269,16 @@ class MainActivity : ComponentActivity() {
                                 animationSpec = tween(durationMillis = 300)
                             ) + fadeOut()
                         },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .then(
-                                if (isMinimized) 
-                                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp) 
-                                else 
-                                    Modifier
-                            )
+                        modifier = if (isMinimized) {
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
+                                .padding(bottom = 12.dp)
+                                .wrapContentHeight()
+                                .fillMaxWidth()
+                        } else {
+                            Modifier.fillMaxSize()
+                        }
                     ) {
                         // Use key(displayedChannel) to ensure the player state is tied to the current channel
                         // even while selectedChannel is null (during exit animation)
@@ -303,6 +305,9 @@ class MainActivity : ComponentActivity() {
                                     onClose = {
                                         selectedChannel = null
                                         isMinimized = false
+                                        // Stop the service explicitly to ensure notification and playback end
+                                        val stopIntent = Intent(this@MainActivity, PlaybackService::class.java)
+                                        stopService(stopIntent)
                                     },
                                     onMetadataUpdated = { avatar, subtitle ->
                                         lastAvatarUrl = avatar

@@ -113,6 +113,7 @@ fun TwitchPlayer(
     DisposableEffect(channel) {
         onDispose {
             android.util.Log.d("TwitchPlayer", "Disposing player for channel: $channel")
+            mediaController?.release()
             // Clean up WebView resources aggressively
             try {
                 state.nativeWebView.apply {
