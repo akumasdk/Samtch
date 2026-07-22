@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
     private var pipRectState = mutableStateOf<Rect?>(null)
     private var refreshTriggerState = mutableIntStateOf(0)
     private var isAppLoadedState = mutableStateOf(false)
+    private var isMinimizedState = mutableStateOf(false)
     private var currentChannel: String? = null // For PiP and Service access
     private var isAudioOnlyModeState = mutableStateOf(false)
     private var lastAvatarUrl: String? = null
@@ -153,7 +154,7 @@ class MainActivity : ComponentActivity() {
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
                 var isFullscreen by rememberSaveable { mutableStateOf(false) }
-                var isMinimized by rememberSaveable { mutableStateOf(false) }
+                var isMinimized by isMinimizedState
                 var isSettingsOpen by isSettingsOpenState
                 val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
 
@@ -209,7 +210,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Sync with class property for PiP and Background Service
-                LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled) {
+                LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled, isMinimized) {
                     currentChannel = selectedChannel
                     updatePipParams(isPipEnabled)
                 }
@@ -304,7 +305,6 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onClose = {
                                         selectedChannel = null
-                                        isMinimized = false
                                         // Stop the service explicitly to ensure notification and playback end
                                         val stopIntent = Intent(this@MainActivity, PlaybackService::class.java)
                                         stopService(stopIntent)
@@ -429,6 +429,9 @@ class MainActivity : ComponentActivity() {
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         isInPipModeState.value = isInPictureInPictureMode
+        if (isInPictureInPictureMode) {
+            isMinimizedState.value = false
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
