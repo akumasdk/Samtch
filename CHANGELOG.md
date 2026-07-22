@@ -1,3 +1,16 @@
+## Samtch v0.1.4
+
+### What's New
+- **Premium Audio-Only Experience**: Redesigned the audio-only player with a modern "music player" aesthetic, featuring a dark gradient background, Twitch-purple avatar rings, and a balanced horizontal layout for portrait mode.
+- **Rich Stream Metadata**: Integrated GraphQL queries to fetch and display detailed stream information, including titles, game categories, and real-time viewer counts, in both the audio-only player and the miniplayer.
+- **Polished Loading Sequence**: Implemented a themed loading overlay with a spinning wheel for both the player and the browser, ensuring a smooth transition while the UI is being cleaned of distractions.
+- **Smart Background Audio Lifecycle**: Optimized background playback to reuse existing playback sessions when minimizing, eliminating the "refresh" gap for a perfectly seamless listening experience.
+- **System Media Integration**: Enhanced background playback notifications with rich metadata (streamer name, title, category) and a custom notification icon for a more professional feel.
+- **Resilient Infrastructure**: Implemented dynamic scraping of the Twitch GraphQL Client-ID from the web frontend to ensure long-term stability of the HLS stream extraction logic.
+- **Improved Accessibility**: Enlarged the miniplayer's close button and hit target for better touch responsiveness.
+
+---
+
 ## Samtch v0.1.3
 
 ### What's New
