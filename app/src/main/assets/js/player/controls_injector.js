@@ -68,7 +68,27 @@
             injectedCount++;
         }
 
-        // 2. Fullscreen Toggle Button
+        // 2. Audio Only Toggle Button (Headset)
+        if (!document.getElementById('samtch-audio-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'samtch-audio-btn';
+            btn.className = 'samtch-control-btn';
+            btn.title = 'Audio Only Mode';
+            btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 1a9 9 0 0 0-9 9v7c0 1.1.9 2 2 2h3v-8H5V10a7 7 0 0 1 14 0v7h-3v8h3c1.1 0 2-.9 2-2v-7a9 9 0 0 0-9-9z"></path></svg>';
+            btn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.TwitchPlayerBridge) {
+                    window.TwitchPlayerBridge.toggleAudioOnly();
+                } else {
+                    console.error('[Samtch] Bridge not found for audio toggle');
+                }
+            };
+            rightGroup.appendChild(btn);
+            injectedCount++;
+        }
+
+        // 3. Fullscreen Toggle Button
         if (!document.getElementById('samtch-fullscreen-btn')) {
             const btn = document.createElement('button');
             btn.id = 'samtch-fullscreen-btn';

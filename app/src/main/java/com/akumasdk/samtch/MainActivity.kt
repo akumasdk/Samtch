@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -53,12 +54,17 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.MediaItem
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.ui.screens.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.ScriptLoader
 import com.akumasdk.samtch.util.SettingsManager
+import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -339,6 +345,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        
+        if (currentChannel != null && !isInPipModeState.value) {
+            lifecycleScope.launch {
+                val audioOnlyEnabled = SettingsManager.isAudioOnlyBackgroundEnabled(applicationContext).first()
+                if (audioOnlyEnabled) {
+                    val sessionToken = SessionToken(this@MainActivity, ComponentName(this@MainActivity, PlaybackService::class.java))
+                    val controllerFuture = MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
+                    controllerFuture.addListener({
+                        val controller = controllerFuture.get()
+                        controller.setMediaItem(MediaItem.Builder().setMediaId(currentChannel!!).build())
+                        controller.prepare()
+                        controller.play()
+                    }, MoreExecutors.directExecutor())
+                }
+            }
+        }
     }
 
     override fun onDestroy() {

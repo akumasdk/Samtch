@@ -13,6 +13,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 object SettingsManager {
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
+    private val AUDIO_ONLY_BACKGROUND_ENABLED = booleanPreferencesKey("audio_only_background_enabled")
 
     fun isPipEnabled(context: Context): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
@@ -23,6 +24,18 @@ object SettingsManager {
     suspend fun setPipEnabled(context: Context, enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PIP_ENABLED] = enabled
+        }
+    }
+
+    fun isAudioOnlyBackgroundEnabled(context: Context): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[AUDIO_ONLY_BACKGROUND_ENABLED] ?: false
+        }
+    }
+
+    suspend fun setAudioOnlyBackgroundEnabled(context: Context, enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AUDIO_ONLY_BACKGROUND_ENABLED] = enabled
         }
     }
 }

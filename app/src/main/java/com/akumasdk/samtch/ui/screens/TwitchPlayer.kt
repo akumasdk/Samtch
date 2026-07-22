@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.screens
 
+import android.content.ComponentName
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -10,21 +11,30 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.delay
-import com.multiplatform.webview.web.rememberSaveableWebViewState
-import com.multiplatform.webview.web.rememberWebViewNavigator
-import androidx.core.content.ContextCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.akumasdk.samtch.ui.screens.player.AudioOnlyPlayer
 import com.akumasdk.samtch.ui.screens.player.FullscreenPlayer
 import com.akumasdk.samtch.ui.screens.player.PortraitPlayer
 import com.akumasdk.samtch.ui.screens.player.WebViewContainer
 import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
+import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.ScriptLoader
+import com.akumasdk.samtch.util.SettingsManager
+import com.google.common.util.concurrent.MoreExecutors
+import kotlinx.coroutines.delay
+import com.multiplatform.webview.web.rememberSaveableWebViewState
+import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -38,6 +48,24 @@ fun TwitchPlayer(
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
     val context = LocalContext.current
+    var isAudioOnly by remember { mutableStateOf(false) }
+    var mediaController by remember { mutableStateOf<MediaController?>(null) }
+    var isPlaying by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+        controllerFuture.addListener({
+            val controller = controllerFuture.get()
+            mediaController = controller
+            isPlaying = controller.isPlaying
+            controller.addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(playing: Boolean) {
+                    isPlaying = playing
+                }
+            })
+        }, MoreExecutors.directExecutor())
+    }
 
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
@@ -138,7 +166,13 @@ fun TwitchPlayer(
                 navigator = navigator,
                 channel = channel,
                 onToggleFullscreen = onToggleFullscreen,
-                onToggleChat = onToggleChat
+                onToggleChat = onToggleChat,
+                onToggleAudioOnly = {
+                    isAudioOnly = true
+                    mediaController?.setMediaItem(MediaItem.Builder().setMediaId(channel).build())
+                    mediaController?.prepare()
+                    mediaController?.play()
+                }
             )
         }
     }
@@ -148,7 +182,19 @@ fun TwitchPlayer(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        if (isPip) {
+        if (isAudioOnly) {
+            AudioOnlyPlayer(
+                channel = channel,
+                isPlaying = isPlaying,
+                onTogglePlayback = {
+                    if (isPlaying) mediaController?.pause() else mediaController?.play()
+                },
+                onCloseAudioOnly = {
+                    isAudioOnly = false
+                    mediaController?.stop()
+                }
+            )
+        } else if (isPip) {
             // Simplified view for PiP: Just the WebView container
             webView(Modifier.fillMaxSize()) {}
         } else if (isFullscreen) {

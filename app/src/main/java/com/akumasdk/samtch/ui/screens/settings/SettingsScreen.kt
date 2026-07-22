@@ -137,6 +137,35 @@ fun SettingsScreen(
                 )
             }
 
+            item {
+                val isAudioBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.audio_only_background_title)) },
+                    supportingContent = { Text(stringResource(R.string.audio_only_background_summary)) },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_headset),
+                            contentDescription = null
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = isAudioBackgroundEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    SettingsManager.setAudioOnlyBackgroundEnabled(context, enabled)
+                                }
+                            }
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        scope.launch {
+                            SettingsManager.setAudioOnlyBackgroundEnabled(context, !isAudioBackgroundEnabled)
+                        }
+                    }
+                )
+            }
+
             if (BuildConfig.UPDATES_ENABLED) {
                 item {
                     ListItem(

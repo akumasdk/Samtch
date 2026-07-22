@@ -39,6 +39,12 @@
     <string name="update_download_title">Samtch Update</string>
     <string name="update_download_description">Downloading latest version…</string>
 
+    <!-- Audio Only Mode -->
+    <string name="audio_only_mode_toggle">Audio Only</string>
+    <string name="audio_only_notification_text">Listening to %s</string>
+    <string name="audio_only_background_title">Audio Background Play</string>
+    <string name="audio_only_background_summary">Automatically switch to audio-only mode when app is minimized</string>
+
     <!-- PiP Settings -->
     <string name="pip_enabled_title">Picture-in-Picture</string>
     <string name="pip_enabled_summary">Automatically enter PiP mode when app is minimized</string>
