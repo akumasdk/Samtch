@@ -11,6 +11,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,6 +52,11 @@ fun TwitchPlayer(
     var isAudioOnly by remember { mutableStateOf(false) }
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
+    
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+    var streamSubtitle by remember { mutableStateOf<String?>(null) }
+
+    var internalRefreshTrigger by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
@@ -81,19 +87,19 @@ fun TwitchPlayer(
     }
 
     // Handle URL loading and refresh logic
-    LaunchedEffect(channel, refreshTrigger) {
+    LaunchedEffect(channel, refreshTrigger, internalRefreshTrigger) {
         val baseUrl = createTwitchPlayerUrl(channel)
-        val finalUrl = if (refreshTrigger > 0) {
-            "$baseUrl&refresh=$refreshTrigger"
+        val finalUrl = if (refreshTrigger > 0 || internalRefreshTrigger > 0) {
+            "$baseUrl&refresh=${refreshTrigger + internalRefreshTrigger}"
         } else {
             baseUrl
         }
-        Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: $refreshTrigger)")
+        Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: ${refreshTrigger + internalRefreshTrigger})")
         navigator.loadUrl(finalUrl)
     }
 
     // Aggressive injection strategy: Polling loop to catch hydration
-    LaunchedEffect(channel, refreshTrigger) {
+    LaunchedEffect(channel, refreshTrigger, internalRefreshTrigger) {
         val scripts = listOf(
             //"js/player/video_swap.js",
             "js/player/vaft.js", // using vaft script as of now
@@ -172,6 +178,10 @@ fun TwitchPlayer(
                     mediaController?.setMediaItem(MediaItem.Builder().setMediaId(channel).build())
                     mediaController?.prepare()
                     mediaController?.play()
+                },
+                onMetadataDetected = { avatar, subtitle ->
+                    avatarUrl = avatar
+                    streamSubtitle = subtitle
                 }
             )
         }
@@ -182,31 +192,50 @@ fun TwitchPlayer(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        if (isAudioOnly) {
-            AudioOnlyPlayer(
-                channel = channel,
-                isPlaying = isPlaying,
-                onTogglePlayback = {
-                    if (isPlaying) mediaController?.pause() else mediaController?.play()
-                },
-                onCloseAudioOnly = {
-                    isAudioOnly = false
-                    mediaController?.stop()
+        val playerContent = remember(isAudioOnly, channel, avatarUrl, streamSubtitle, isPlaying) {
+            movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
+                if (isAudioOnly) {
+                    AudioOnlyPlayer(
+                        channel = channel,
+                        avatarUrl = avatarUrl,
+                        subtitle = streamSubtitle,
+                        isPlaying = isPlaying,
+                        onTogglePlayback = {
+                            if (isPlaying) mediaController?.pause() else mediaController?.play()
+                        },
+                        onCloseAudioOnly = {
+                            isAudioOnly = false
+                            mediaController?.stop()
+                            // Increment trigger to force reload and script re-injection
+                            internalRefreshTrigger++
+                        },
+                        onRefresh = {
+                            mediaController?.stop()
+                            mediaController?.setMediaItem(MediaItem.Builder().setMediaId(channel).build())
+                            mediaController?.prepare()
+                            mediaController?.play()
+                        },
+                        modifier = modifier
+                    )
+                } else {
+                    webView(modifier, onToggleChat)
                 }
-            )
-        } else if (isPip) {
-            // Simplified view for PiP: Just the WebView container
-            webView(Modifier.fillMaxSize()) {}
+            }
+        }
+
+        if (isPip) {
+            // Simplified view for PiP: Just the Player content
+            playerContent(Modifier.fillMaxSize()) {}
         } else if (isFullscreen) {
             FullscreenPlayer(
                 channel = channel,
-                webView = { modifier, onToggleChat -> webView(modifier, onToggleChat) }
+                webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
             )
         } else {
             PortraitPlayer(
                 channel = channel,
                 onToggleFullscreen = onToggleFullscreen,
-                webView = { modifier, onToggleChat -> webView(modifier, onToggleChat) }
+                webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
             )
         }
     }
