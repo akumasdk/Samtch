@@ -61,6 +61,13 @@
         injectStyles();
         extractMetadata();
 
+        // Signal UI clean finish if not already done
+        if (window.TwitchPlayerBridge && !window.samtch_ui_cleaned) {
+            console.log('[Samtch] UI cleaning finished, notifying bridge');
+            window.TwitchPlayerBridge.uiCleanFinish();
+            window.samtch_ui_cleaned = true;
+        }
+
         // Remove "Watch on Twitch" button manually if it persists
         document.querySelectorAll('.tw-svg').forEach(container => {
             const svg = container.querySelector('svg');

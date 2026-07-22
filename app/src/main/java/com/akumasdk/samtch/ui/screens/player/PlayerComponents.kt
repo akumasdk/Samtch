@@ -28,6 +28,7 @@ fun WebViewContainer(
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit = {},
     onToggleAudioOnly: () -> Unit = {},
+    onUiCleanFinish: () -> Unit = {},
     onMetadataDetected: (String, String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
@@ -35,6 +36,7 @@ fun WebViewContainer(
     val currentOnToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
     val currentOnToggleChat by rememberUpdatedState(onToggleChat)
     val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
+    val currentOnUiCleanFinish by rememberUpdatedState(onUiCleanFinish)
     val currentOnMetadataDetected by rememberUpdatedState(onMetadataDetected)
 
     // Script injection logic when page finishes loading
@@ -117,6 +119,9 @@ fun WebViewContainer(
                         onToggleAudioOnly = {
                             post { currentOnToggleAudioOnly() }
                         },
+                        onUiCleanFinish = {
+                            post { currentOnUiCleanFinish() }
+                        },
                         onMetadataDetected = { avatarUrl, subtitle ->
                             post { currentOnMetadataDetected(avatarUrl, subtitle) }
                         }
@@ -142,6 +147,7 @@ class TwitchPlayerBridge(
     private val onToggleFullscreen: () -> Unit,
     private val onToggleChat: () -> Unit = {},
     private val onToggleAudioOnly: () -> Unit = {},
+    private val onUiCleanFinish: () -> Unit = {},
     private val onMetadataDetected: (String, String) -> Unit = { _, _ -> }
 ) {
     @JavascriptInterface
@@ -157,6 +163,11 @@ class TwitchPlayerBridge(
     @JavascriptInterface
     fun toggleAudioOnly() {
         onToggleAudioOnly()
+    }
+
+    @JavascriptInterface
+    fun uiCleanFinish() {
+        onUiCleanFinish()
     }
 
     @JavascriptInterface

@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +62,11 @@ fun TwitchPlayer(
 ) {
     val context = LocalContext.current
     var isAudioOnly by remember { mutableStateOf(false) }
+    var isUiLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(channel, refreshTrigger) {
+        isUiLoading = true
+    }
 
     LaunchedEffect(isAudioOnly) {
         onAudioOnlyModeChanged(isAudioOnly)
@@ -173,6 +180,9 @@ fun TwitchPlayer(
                     mediaController?.prepare()
                     mediaController?.play()
                 },
+                onUiCleanFinish = {
+                    isUiLoading = false
+                },
                 onMetadataDetected = { avatar, subtitle ->
                     avatarUrl = avatar
                     streamSubtitle = subtitle
@@ -267,6 +277,26 @@ fun TwitchPlayer(
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
                 }
+            }
+        }
+
+        // Loading Overlay
+        AnimatedVisibility(
+            visible = !isAudioOnly && isUiLoading,
+            enter = fadeIn(),
+            exit = fadeOut(animationSpec = tween(durationMillis = 300)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = Color(0xFF9146FF), // Twitch Purple
+                    strokeWidth = 3.dp
+                )
             }
         }
     }

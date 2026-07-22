@@ -74,7 +74,7 @@
             btn.id = 'samtch-audio-btn';
             btn.className = 'samtch-control-btn';
             btn.title = 'Audio Only Mode';
-            btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 1a9 9 0 0 0-9 9v7c0 1.1.9 2 2 2h3v-8H5V10a7 7 0 0 1 14 0v7h-3v8h3c1.1 0 2-.9 2-2v-7a9 9 0 0 0-9-9z"></path></svg>';
+            btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 640 640"><path d="M160 288C160 199.6 231.6 128 320 128C408.4 128 480 199.6 480 288L480 325.5C470 322 459.2 320 448 320L432 320C405.5 320 384 341.5 384 368L384 496C384 522.5 405.5 544 432 544L448 544C501 544 544 501 544 448L544 288C544 164.3 443.7 64 320 64C196.3 64 96 164.3 96 288L96 448C96 501 139 544 192 544L208 544C234.5 544 256 522.5 256 496L256 368C256 341.5 234.5 320 208 320L192 320C180.8 320 170 321.9 160 325.5L160 288z"></path></svg>';
             btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
