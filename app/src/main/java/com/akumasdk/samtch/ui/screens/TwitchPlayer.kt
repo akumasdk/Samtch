@@ -3,23 +3,9 @@ package com.akumasdk.samtch.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.movableContentOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,6 +30,7 @@ import com.akumasdk.samtch.ui.screens.player.WebViewContainer
 import com.akumasdk.samtch.ui.screens.player.createTwitchPlayerUrl
 import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.SettingsManager
+import androidx.core.net.toUri
 
 @Composable
 fun TwitchPlayer(
@@ -65,6 +52,18 @@ fun TwitchPlayer(
     var isAudioOnly by remember { mutableStateOf(false) }
     var isUiLoading by remember { mutableStateOf(true) }
 
+    var mediaController by remember { mutableStateOf<MediaController?>(null) }
+    var isPlaying by remember { mutableStateOf(false) }
+    
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+    var streamSubtitle by remember { mutableStateOf<String?>(null) }
+
+    val currentIsPlaying by rememberUpdatedState(isPlaying)
+    val currentAvatarUrl by rememberUpdatedState(avatarUrl)
+    val currentSubtitle by rememberUpdatedState(streamSubtitle)
+
+    val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
+
     LaunchedEffect(channel, refreshTrigger) {
         isUiLoading = true
     }
@@ -73,20 +72,15 @@ fun TwitchPlayer(
         onAudioOnlyModeChanged(isAudioOnly)
     }
 
-    var mediaController by remember { mutableStateOf<MediaController?>(null) }
-    var isPlaying by remember { mutableStateOf(false) }
-    
-    var avatarUrl by remember { mutableStateOf<String?>(null) }
-    var streamSubtitle by remember { mutableStateOf<String?>(null) }
-
-    val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
-
-    LaunchedEffect(isAudioOnly, isAudioOnlyBackgroundEnabled) {
-        if (!isAudioOnly && !isAudioOnlyBackgroundEnabled) {
+    // Connect to service only when Audio Only mode is manually enabled
+    LaunchedEffect(isAudioOnly) {
+        if (!isAudioOnly) {
             mediaController?.release()
             mediaController = null
-            // Explicitly stop the service if we are in video mode and backgrounding is off
-            context.stopService(android.content.Intent(context, PlaybackService::class.java))
+            // If the background setting is also off, ensure the service is killed
+            if (!isAudioOnlyBackgroundEnabled) {
+                context.stopService(android.content.Intent(context, PlaybackService::class.java))
+            }
             return@LaunchedEffect
         }
 
@@ -103,6 +97,27 @@ fun TwitchPlayer(
                     }
                 })
             }, MoreExecutors.directExecutor())
+        }
+    }
+
+    // Handle initial playback when switching to Audio Only mode
+    LaunchedEffect(mediaController, isAudioOnly) {
+        if (isAudioOnly && mediaController != null && !isPlaying) {
+            val avatarUri = currentAvatarUrl?.toUri()
+            val metadata = MediaMetadata.Builder()
+                .setTitle(channel)
+                .setArtist(currentSubtitle)
+                .setArtworkUri(avatarUri)
+                .build()
+            
+            mediaController?.setMediaItem(
+                MediaItem.Builder()
+                    .setMediaId(channel)
+                    .setMediaMetadata(metadata)
+                    .build()
+            )
+            mediaController?.prepare()
+            mediaController?.play()
         }
     }
 
@@ -152,10 +167,6 @@ fun TwitchPlayer(
         }
     }
 
-    val currentIsPlaying by rememberUpdatedState(isPlaying)
-    val currentAvatarUrl by rememberUpdatedState(avatarUrl)
-    val currentSubtitle by rememberUpdatedState(streamSubtitle)
-
     // Stable WebView content that won't be recreated when moving in the tree
     val webView = remember(channel) {
         movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
@@ -178,20 +189,6 @@ fun TwitchPlayer(
                 onToggleChat = onToggleChat,
                 onToggleAudioOnly = {
                     isAudioOnly = true
-                    val avatarUri = currentAvatarUrl?.let { android.net.Uri.parse(it) }
-                    val metadata = MediaMetadata.Builder()
-                        .setTitle(channel)
-                        .setArtist(currentSubtitle)
-                        .setArtworkUri(avatarUri)
-                        .build()
-                    mediaController?.setMediaItem(
-                        MediaItem.Builder()
-                            .setMediaId(channel)
-                            .setMediaMetadata(metadata)
-                            .build()
-                    )
-                    mediaController?.prepare()
-                    mediaController?.play()
                 },
                 onUiCleanFinish = {
                     isUiLoading = false
@@ -229,7 +226,7 @@ fun TwitchPlayer(
                         },
                         onRefresh = {
                             mediaController?.stop()
-                            val avatarUri = currentAvatarUrl?.let { android.net.Uri.parse(it) }
+                            val avatarUri = currentAvatarUrl?.toUri()
                             mediaController?.setMediaItem(
                                 MediaItem.Builder()
                                     .setMediaId(channel)

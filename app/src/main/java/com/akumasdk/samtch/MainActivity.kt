@@ -14,15 +14,12 @@ import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -33,11 +30,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,17 +46,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.*
-import androidx.compose.animation.*
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.animation.core.animateDpAsState
-import com.multiplatform.webview.web.rememberSaveableWebViewState
-import com.multiplatform.webview.web.rememberWebViewNavigator
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -77,10 +66,10 @@ import com.akumasdk.samtch.util.PlaybackService
 import com.akumasdk.samtch.util.ScriptLoader
 import com.akumasdk.samtch.util.SettingsManager
 import com.google.common.util.concurrent.MoreExecutors
-import kotlinx.coroutines.delay
+import com.multiplatform.webview.web.rememberSaveableWebViewState
+import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     private var isInPipModeState = mutableStateOf(false)
@@ -92,6 +81,7 @@ class MainActivity : ComponentActivity() {
     private var isAudioOnlyModeState = mutableStateOf(false)
     private var lastAvatarUrl: String? = null
     private var lastSubtitle: String? = null
+    private var backgroundController: MediaController? = null
 
     private var isSettingsOpenState = mutableStateOf(false)
 
@@ -378,9 +368,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Stop background audio and refresh player to ensure video resumes
-        val stopIntent = Intent(this, PlaybackService::class.java)
-        stopService(stopIntent)
+        // Release the background controller and stop the service forcefully to ensure video resumes cleanly
+        backgroundController?.release()
+        backgroundController = null
+        
+        val stopIntent = Intent(this, PlaybackService::class.java).apply {
+            action = "STOP"
+        }
+        startService(stopIntent)
         
         if (currentChannel != null) {
             refreshTriggerState.intValue += 1
@@ -397,11 +392,12 @@ class MainActivity : ComponentActivity() {
                 val controllerFuture = MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
                 controllerFuture.addListener({
                     val controller = controllerFuture.get()
+                    backgroundController = controller
                     
                     val metadata = MediaMetadata.Builder()
                         .setTitle(currentChannel)
                         .setArtist(lastSubtitle)
-                        .setArtworkUri(lastAvatarUrl?.let { android.net.Uri.parse(it) })
+                        .setArtworkUri(lastAvatarUrl?.toUri())
                         .build()
 
                     controller.setMediaItem(
@@ -415,17 +411,25 @@ class MainActivity : ComponentActivity() {
                 }, MoreExecutors.directExecutor())
             } else {
                 // If background play is disabled or we're in PiP, ensure the HLS service is stopped
-                val stopIntent = Intent(this@MainActivity, PlaybackService::class.java)
-                stopService(stopIntent)
+                backgroundController?.release()
+                backgroundController = null
+                val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply {
+                    action = "STOP"
+                }
+                startService(stopIntent)
             }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // Final cleanup
-        val stopIntent = Intent(this, PlaybackService::class.java)
-        stopService(stopIntent)
+        // Final cleanup of the playback service when the app is closed
+        backgroundController?.release()
+        backgroundController = null
+        val stopIntent = Intent(this, PlaybackService::class.java).apply {
+            action = "STOP"
+        }
+        startService(stopIntent)
         
         try {
             unregisterReceiver(pipReceiver)
