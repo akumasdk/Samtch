@@ -88,12 +88,15 @@ fun MiniPlayer(
             }
 
             // Close Button
-            IconButton(onClick = onClose) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier.size(48.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close Player",
-                    tint = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(20.dp)
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
