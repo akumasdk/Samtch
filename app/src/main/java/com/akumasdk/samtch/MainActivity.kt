@@ -233,7 +233,7 @@ class MainActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(bottom = if (isMinimized && selectedChannel != null) 80.dp else 0.dp)
+                            .navigationBarsPadding()
                     ) {
                         TwitchBrowser(
                             state = browserState,
@@ -254,46 +254,64 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    if (selectedChannel != null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .then(if (isMinimized) Modifier.align(Alignment.BottomCenter) else Modifier)
-                        ) {
-                            TwitchPlayer(
-                                channel = selectedChannel!!,
-                                isFullscreen = isFullscreen,
-                                isPip = isInPipMode,
-                                isMinimized = isMinimized,
-                                refreshTrigger = refreshTrigger,
-                                onToggleFullscreen = { isFullscreen = !isFullscreen },
-                                onBack = {
-                                    if (isFullscreen) {
-                                        isFullscreen = false
-                                    } else {
-                                        isMinimized = true
-                                        isFullscreen = false
-                                    }
-                                },
-                                onExpand = {
-                                    isMinimized = false
-                                },
-                                onClose = {
-                                    selectedChannel = null
-                                    isMinimized = false
-                                },
-                                onMetadataUpdated = { avatar, subtitle ->
-                                    lastAvatarUrl = avatar
-                                    lastSubtitle = subtitle
-                                },
-                                onAudioOnlyModeChanged = { isAudioOnly ->
-                                    isAudioOnlyModeState.value = isAudioOnly
-                                    updatePipParams(isPipEnabled)
-                                },
-                                onVideoBoundsChanged = { rect ->
-                                    pipRectState.value = rect
-                                }
+                    AnimatedVisibility(
+                        visible = selectedChannel != null,
+                        enter = slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = spring(stiffness = 400f, dampingRatio = 0.8f)
+                        ) + fadeIn(),
+                        exit = slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(durationMillis = 300)
+                        ) + fadeOut(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (isMinimized) 
+                                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding() 
+                                else 
+                                    Modifier
                             )
+                    ) {
+                        // Use key(displayedChannel) to ensure the player state is tied to the current channel
+                        // even while selectedChannel is null (during exit animation)
+                        displayedChannel?.let { channel ->
+                            key(channel) {
+                                TwitchPlayer(
+                                    channel = channel,
+                                    isFullscreen = isFullscreen,
+                                    isPip = isInPipMode,
+                                    isMinimized = isMinimized,
+                                    refreshTrigger = refreshTrigger,
+                                    onToggleFullscreen = { isFullscreen = !isFullscreen },
+                                    onBack = {
+                                        if (isFullscreen) {
+                                            isFullscreen = false
+                                        } else {
+                                            isMinimized = true
+                                            isFullscreen = false
+                                        }
+                                    },
+                                    onExpand = {
+                                        isMinimized = false
+                                    },
+                                    onClose = {
+                                        selectedChannel = null
+                                        isMinimized = false
+                                    },
+                                    onMetadataUpdated = { avatar, subtitle ->
+                                        lastAvatarUrl = avatar
+                                        lastSubtitle = subtitle
+                                    },
+                                    onAudioOnlyModeChanged = { isAudioOnly ->
+                                        isAudioOnlyModeState.value = isAudioOnly
+                                        updatePipParams(isPipEnabled)
+                                    },
+                                    onVideoBoundsChanged = { rect ->
+                                        pipRectState.value = rect
+                                    }
+                                )
+                            }
                         }
                     }
 

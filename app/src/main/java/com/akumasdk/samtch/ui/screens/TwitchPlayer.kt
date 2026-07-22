@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -179,7 +180,9 @@ fun TwitchPlayer(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .then(if (isMinimized) Modifier.wrapContentHeight() else Modifier.fillMaxSize())
+            .animateContentSize()
     ) {
         val playerContent = remember(channel, isAudioOnly) {
             movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
@@ -233,7 +236,10 @@ fun TwitchPlayer(
                     channel = channel,
                     playerContent = { modifier -> playerContent(modifier) {} },
                     onClick = onExpand,
-                    onClose = onClose
+                    onClose = {
+                        mediaController?.stop()
+                        onClose()
+                    }
                 )
             }
         } else {
