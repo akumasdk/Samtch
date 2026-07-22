@@ -122,11 +122,11 @@ fun TwitchBrowser(
                     val channelMatch = extractChannelFromUrl(currentUrl)
                     val currentUser = getCurrentUserFromCookies()
 
-                    if (channelMatch != null && channelMatch != currentUser) {
+                    if (isPlayableChannel(channelMatch, currentUser)) {
                         Log.d("TwitchBrowser", "Channel detected in polling: $channelMatch. Redirecting and triggering player.")
                         
                         // 1. Trigger the player
-                        onChannelSelected(channelMatch)
+                        onChannelSelected(channelMatch!!)
                         
                         // 2. Prevent the browser from rendering the page by navigating back or to home
                         if (navigator.canGoBack) {
@@ -152,7 +152,7 @@ fun TwitchBrowser(
             val channelMatch = extractChannelFromUrl(currentUrl)
             val currentUser = getCurrentUserFromCookies()
 
-            if (channelMatch != null && channelMatch != currentUser) {
+            if (isPlayableChannel(channelMatch, currentUser)) {
                 Log.d("TwitchBrowser", "Channel page detected, skipping script injection and stopping load")
                 navigator.stopLoading()
                 return@LaunchedEffect
@@ -208,7 +208,7 @@ fun TwitchBrowser(
                 val channelMatch = restoredUrl?.let { extractChannelFromUrl(it) }
                 val currentUser = getCurrentUserFromCookies()
 
-                val urlToLoad = if (channelMatch != null && channelMatch != currentUser) {
+                val urlToLoad = if (isPlayableChannel(channelMatch, currentUser)) {
                     Log.d("TwitchBrowser", "onCreated: Restored URL is a channel ($channelMatch). Forcing Home instead.")
                     "https://m.twitch.tv/"
                 } else if (!restoredUrl.isNullOrEmpty()) {
@@ -263,11 +263,11 @@ fun TwitchBrowser(
                             val channelMatch = extractChannelFromUrl(url)
                             val currentUser = getCurrentUserFromCookies()
 
-                            if (channelMatch != null && channelMatch != currentUser) {
+                            if (isPlayableChannel(channelMatch, currentUser)) {
                                 Log.d("TwitchBrowser", "Channel detected in click: $channelMatch. Redirecting and triggering player.")
                                 
                                 // 1. Trigger the player
-                                onChannelSelected(channelMatch)
+                                onChannelSelected(channelMatch!!)
                                 
                                 // 2. Immediately navigate back or to home in the browser
                                 if (navigator.canGoBack) {
@@ -297,10 +297,10 @@ fun TwitchBrowser(
                                 val channelMatch = extractChannelFromUrl(it)
                                 val currentUser = getCurrentUserFromCookies()
 
-                                if (channelMatch != null && channelMatch != currentUser) {
+                                if (isPlayableChannel(channelMatch, currentUser)) {
                                     Log.d("TwitchBrowser", "Channel detected in page start: $channelMatch. Redirecting.")
                                     view?.stopLoading()
-                                    onChannelSelected(channelMatch)
+                                    onChannelSelected(channelMatch!!)
                                     
                                     if (navigator.canGoBack) {
                                         navigator.navigateBack()
@@ -366,6 +366,14 @@ fun TwitchBrowser(
     }
 }
 
+private fun isPlayableChannel(channelMatch: String?, currentUser: String?): Boolean {
+    if (channelMatch == null) return false
+    if (currentUser == null) return true // If not logged in, all channels are playable
+    
+    // The current user should never trigger the player
+    return !channelMatch.equals(currentUser, ignoreCase = true)
+}
+
 private fun extractChannelFromUrl(url: String): String? {
     // Match ONLY the root channel URL: twitch.tv/channelname
     // Exclude sub-paths like /channelname/videos, /channelname/home, etc.
@@ -413,9 +421,12 @@ private fun getCurrentUserFromCookies(): String? {
 
         // The login cookie contains the username: login=username;
         val loginCookie = cookies.split(";").find { it.trim().startsWith("login=") }
-        val username = loginCookie?.split("=")?.getOrNull(1)
-        Log.d("TwitchBrowser", "Detected logged-in user: $username")
-        username
+        val username = loginCookie?.split("=")?.getOrNull(1)?.trim()?.lowercase()
+        
+        if (!username.isNullOrEmpty()) {
+            Log.d("TwitchBrowser", "Detected logged-in user: $username")
+            username
+        } else null
     } catch (e: Exception) {
         Log.e("TwitchBrowser", "Error getting user from cookies", e)
         null

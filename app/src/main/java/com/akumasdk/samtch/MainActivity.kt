@@ -201,7 +201,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Sync with class property for PiP and Background Service
-                LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled, isMinimized) {
+                LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled, isMinimized, isSettingsOpen) {
                     currentChannel = selectedChannel
                     updatePipParams(isPipEnabled)
                 }
@@ -476,6 +476,7 @@ class MainActivity : ComponentActivity() {
         isInPipModeState.value = isInPictureInPictureMode
         if (isInPictureInPictureMode) {
             isMinimizedState.value = false
+            isSettingsOpenState.value = false // Ensure settings are closed in PiP
         }
     }
 
