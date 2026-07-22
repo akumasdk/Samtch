@@ -14,6 +14,7 @@ import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -368,17 +369,31 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Release the background controller and stop the service forcefully to ensure video resumes cleanly
-        backgroundController?.release()
-        backgroundController = null
         
-        val stopIntent = Intent(this, PlaybackService::class.java).apply {
-            action = "STOP"
-        }
-        startService(stopIntent)
-        
-        if (currentChannel != null) {
-            refreshTriggerState.intValue += 1
+        lifecycleScope.launch {
+            val audioOnlyBackgroundEnabled = SettingsManager.isAudioOnlyBackgroundEnabled(applicationContext).first()
+            val isAudioOnlyPlayerActive = isAudioOnlyModeState.value
+            
+            if (isAudioOnlyPlayerActive && audioOnlyBackgroundEnabled) {
+                // If we are manually in Audio Only mode and backgrounding is enabled, 
+                // DO NOT stop the service. We want the audio to continue seamlessly.
+                Log.d("MainActivity", "Resuming while in Audio Only mode with background enabled. Keeping service alive.")
+                backgroundController?.release()
+                backgroundController = null
+            } else {
+                // Otherwise, stop background audio and refresh player to ensure video resumes
+                backgroundController?.release()
+                backgroundController = null
+                
+                val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply {
+                    action = "STOP"
+                }
+                startService(stopIntent)
+                
+                if (currentChannel != null) {
+                    refreshTriggerState.intValue += 1
+                }
+            }
         }
     }
 
