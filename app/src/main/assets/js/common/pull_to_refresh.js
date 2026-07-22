@@ -4,7 +4,8 @@
 
     let startY = 0;
     let isPulling = false;
-    const threshold = 150; // increased threshold for mobile reliability
+    const threshold = 220; // High threshold to prevent accidents
+    const deadZone = 30;    // Ignore small jitters at the start of a scroll
 
     const indicator = document.createElement('div');
     indicator.id = 'samtch-pull-indicator';
@@ -22,7 +23,7 @@
         justify-content: center;
         box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         z-index: 2147483647;
-        transition: top 0.15s ease-out, opacity 0.15s ease-out;
+        transition: top 0.1s ease-out, opacity 0.1s ease-out;
         opacity: 0;
         pointer-events: none;
     `;
@@ -33,7 +34,6 @@
         if (window.scrollY === 0) {
             startY = e.touches[0].pageY;
             isPulling = true;
-            console.log('[Samtch] PTR: Start detected at top');
         } else {
             isPulling = false;
         }
@@ -45,21 +45,24 @@
         const currentY = e.touches[0].pageY;
         const diff = currentY - startY;
 
-        if (diff > 0 && window.scrollY === 0) {
+        // Apply dead-zone and only react to downward pulls
+        if (diff > deadZone && window.scrollY === 0) {
             // Resist scrolling down the page while pulling
             if (e.cancelable) e.preventDefault();
 
-            const pullDistance = Math.min(diff * 0.4, threshold + 20);
-            indicator.style.top = (pullDistance - 20) + 'px';
-            indicator.style.opacity = Math.min(pullDistance / threshold, 1).toString();
+            const effectiveDiff = diff - deadZone;
+            // Lower multiplier (0.3) for a "heavier" resistant feel
+            const pullDistance = Math.min(effectiveDiff * 0.3, threshold + 20);
 
-            // Rotation effect
-            const rotation = (diff * 2) % 360;
+            indicator.style.top = (pullDistance - 30) + 'px';
+            indicator.style.opacity = Math.min(pullDistance / 80, 1).toString();
+
+            // Rotation effect based on distance
+            const rotation = (effectiveDiff * 1.5) % 360;
             indicator.querySelector('svg').style.transform = `rotate(${rotation}deg)`;
-        } else if (diff < 0) {
-            isPulling = false;
-            indicator.style.top = '-100px';
-            indicator.style.opacity = '0';
+        } else if (diff < -10) {
+            // If user scrolls up, immediately cancel the pull
+            resetPull();
         }
     }
 
@@ -67,18 +70,19 @@
         if (!isPulling) return;
 
         const endY = e.changedTouches[0].pageY;
-        const diff = endY - startY;
-        console.log('[Samtch] PTR: End detected. Distance:', diff);
+        const diff = (endY - startY) - deadZone;
 
         if (diff >= threshold && window.scrollY === 0) {
             console.log('[Samtch] PTR: Threshold reached! Triggering refresh...');
             if (window.TwitchBrowserBridge && typeof window.TwitchBrowserBridge.onRefresh === 'function') {
                 window.TwitchBrowserBridge.onRefresh();
-            } else {
-                console.error('[Samtch] PTR Error: TwitchBrowserBridge.onRefresh is missing');
             }
         }
 
+        resetPull();
+    }
+
+    function resetPull() {
         indicator.style.top = '-100px';
         indicator.style.opacity = '0';
         isPulling = false;

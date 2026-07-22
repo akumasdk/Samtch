@@ -24,7 +24,7 @@
 
         let promotionFound = false;
 
-        const isInsideStreamCard = (el) => !!el.closest('[class*="streamCard"]');
+        const isInsideStreamCard = (el) => !!el.closest('[class*="streamCard"], [class*="stream-card-horizontal"]');
 
         // 1. Remove targeted promotion elements
         CONFIG.targetedSelectors.forEach(selector => {
