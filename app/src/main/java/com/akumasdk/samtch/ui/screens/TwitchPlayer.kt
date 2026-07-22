@@ -235,7 +235,29 @@ fun TwitchPlayer(
                         modifier = modifier
                     )
                 } else {
-                    webView(modifier, onToggleChat)
+                    Box(modifier = modifier) {
+                        webView(Modifier.fillMaxSize(), onToggleChat)
+                        
+                        // Loading Overlay constrained to video player area
+                        AnimatedVisibility(
+                            visible = isUiLoading,
+                            enter = fadeIn(),
+                            exit = fadeOut(animationSpec = tween(durationMillis = 300)),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color(0xFF9146FF), // Twitch Purple
+                                    strokeWidth = 3.dp
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -277,26 +299,6 @@ fun TwitchPlayer(
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
                 }
-            }
-        }
-
-        // Loading Overlay
-        AnimatedVisibility(
-            visible = !isAudioOnly && isUiLoading,
-            enter = fadeIn(),
-            exit = fadeOut(animationSpec = tween(durationMillis = 300)),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    color = Color(0xFF9146FF), // Twitch Purple
-                    strokeWidth = 3.dp
-                )
             }
         }
     }
