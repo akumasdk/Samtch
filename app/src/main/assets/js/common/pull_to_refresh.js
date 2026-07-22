@@ -30,8 +30,27 @@
     indicator.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><polyline points="21 3 21 8 16 8"></polyline></svg>';
     document.documentElement.appendChild(indicator);
 
+    // Helper to check if the current scroll context is at the absolute top
+    function isAtTop(el) {
+        // 1. Check window/document scroll
+        if (window.scrollY > 5 || document.documentElement.scrollTop > 5 || document.body.scrollTop > 5) {
+            return false;
+        }
+
+        // 2. Check all parents' scrollTop to catch internal scroll containers (common in SPAs)
+        let parent = el;
+        while (parent && parent !== document.body) {
+            if (parent.scrollTop > 5) {
+                return false;
+            }
+            parent = parent.parentElement;
+        }
+
+        return true;
+    }
+
     function handleTouchStart(e) {
-        if (window.scrollY === 0) {
+        if (isAtTop(e.target)) {
             startY = e.touches[0].pageY;
             isPulling = true;
         } else {
@@ -42,11 +61,17 @@
     function handleTouchMove(e) {
         if (!isPulling) return;
 
+        // Double check we haven't scrolled down during the gesture
+        if (!isAtTop(e.target)) {
+            resetPull();
+            return;
+        }
+
         const currentY = e.touches[0].pageY;
         const diff = currentY - startY;
 
         // Apply dead-zone and only react to downward pulls
-        if (diff > deadZone && window.scrollY === 0) {
+        if (diff > deadZone) {
             // Resist scrolling down the page while pulling
             if (e.cancelable) e.preventDefault();
 

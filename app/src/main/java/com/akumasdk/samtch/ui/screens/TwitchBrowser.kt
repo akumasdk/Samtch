@@ -102,6 +102,12 @@ fun TwitchBrowser(
                     Log.d("TwitchBrowser", "Global home path detected, triggering full reload")
                     navigator.reload()
                 } else {
+                    // Re-trigger UI cleanup on navigation (SPA transition)
+                    val cleanupScript = ScriptLoader.getScript(context, "js/common/app_banners_remover.js")
+                    if (cleanupScript.isNotEmpty()) {
+                        navigator.evaluateJavaScript(cleanupScript)
+                    }
+
                     val channelMatch = extractChannelFromUrl(currentUrl)
                     val currentUser = getCurrentUserFromCookies()
 
