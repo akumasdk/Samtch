@@ -33,6 +33,7 @@
             android:name=".util.PlaybackService"
             android:enabled="true"
             android:exported="false"
+            android:icon="@drawable/ic_notification"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaSessionService" />

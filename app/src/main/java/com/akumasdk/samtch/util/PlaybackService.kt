@@ -20,6 +20,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.session.CommandButton
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
@@ -119,6 +120,10 @@ class PlaybackService : MediaSessionService() {
             .setCustomLayout(ImmutableList.of(refreshButton))
             .setSessionActivity(pendingIntent)
             .build()
+
+        val provider = DefaultMediaNotificationProvider(this)
+        provider.setSmallIcon(R.drawable.ic_notification)
+        setMediaNotificationProvider(provider)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
