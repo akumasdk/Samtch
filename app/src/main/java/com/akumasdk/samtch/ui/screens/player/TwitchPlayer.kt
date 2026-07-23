@@ -337,6 +337,10 @@ fun TwitchPlayer(
                 } else if (isFullscreen) {
                     FullscreenPlayer(
                         channel = channel,
+                        displayName = streamMetadata?.user?.displayName,
+                        streamTitle = streamMetadata?.user?.stream?.title,
+                        gameName = streamMetadata?.user?.stream?.game?.name,
+                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
                 } else {

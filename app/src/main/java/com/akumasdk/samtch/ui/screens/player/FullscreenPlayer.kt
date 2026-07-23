@@ -4,20 +4,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +22,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.components.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.TwitchChat
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -40,6 +31,10 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun FullscreenPlayer(
     channel: String,
+    displayName: String? = null,
+    streamTitle: String? = null,
+    gameName: String? = null,
+    viewersCount: Int = 0,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var isChatVisible by remember { mutableStateOf(false) }
@@ -105,18 +100,31 @@ fun FullscreenPlayer(
             )
         }
 
-        // Optional Side Chat
+        // Optional Side Chat with Metadata Bar
         if (isChatVisible) {
-            Box(
+            Column(
                 modifier = Modifier
                     .width(300.dp)
                     .fillMaxHeight()
                     .background(Color(0xFF18181B))
             ) {
+                // Metadata space above chat (Only visible when chat is open)
+                if (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()) {
+                    StreamMetadataBar(
+                        channel = channel,
+                        displayName = displayName,
+                        streamTitle = streamTitle,
+                        gameName = gameName,
+                        viewersCount = viewersCount,
+                        modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
+                    )
+                }
+
                 TwitchChat(
                     channel = channel,
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .weight(1f)
                         .background(Color(0xFF18181B))
                 )
             }
