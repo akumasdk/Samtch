@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun MiniPlayer(
     channel: String,
+    displayName: String? = null,
     streamTitle: String? = null,
     playerContent: @Composable (Modifier) -> Unit,
     onClick: () -> Unit,
@@ -72,7 +73,7 @@ fun MiniPlayer(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = channel,
+                    text = displayName ?: channel,
                     color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.ExtraBold,

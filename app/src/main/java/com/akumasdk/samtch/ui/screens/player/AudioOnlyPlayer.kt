@@ -34,6 +34,7 @@ fun AudioOnlyPlayer(
     channel: String,
     avatarUrl: String?,
     subtitle: String?,
+    displayName: String? = null,
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
@@ -73,7 +74,7 @@ fun AudioOnlyPlayer(
                     )
                 } else {
                     Text(
-                        text = channel.take(1).uppercase(),
+                        text = (displayName ?: channel).take(1).uppercase(),
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
@@ -108,7 +109,7 @@ fun AudioOnlyPlayer(
                         )
                     } else {
                         Text(
-                            text = channel.take(1).uppercase(),
+                            text = (displayName ?: channel).take(1).uppercase(),
                             color = Color.White,
                             fontSize = if (availableHeight < 200.dp) 24.sp else 32.sp,
                             fontWeight = FontWeight.Black
@@ -122,7 +123,7 @@ fun AudioOnlyPlayer(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = channel,
+                        text = displayName ?: channel,
                         color = Color.White,
                         fontSize = if (availableHeight < 200.dp) 18.sp else 22.sp,
                         fontWeight = FontWeight.Black,

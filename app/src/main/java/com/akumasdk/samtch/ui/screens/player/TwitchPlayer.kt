@@ -62,7 +62,6 @@ fun TwitchPlayer(
 
     val currentIsPlaying by rememberUpdatedState(isPlaying)
     val currentAvatarUrl by rememberUpdatedState(avatarUrl)
-    val currentSubtitle by rememberUpdatedState(streamSubtitle)
 
     val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
 
@@ -246,6 +245,7 @@ fun TwitchPlayer(
                         channel = channel,
                         avatarUrl = avatarUrl,
                         subtitle = streamSubtitle,
+                        displayName = streamMetadata?.user?.displayName,
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
@@ -261,14 +261,15 @@ fun TwitchPlayer(
                         },
                         onRefresh = {
                             mediaController?.stop()
-                            val avatarUri = currentAvatarUrl?.toUri()
+                            val avatarUri = currentAvatarUrl?.let { it.toUri() }
                             mediaController?.setMediaItem(
                                 MediaItem.Builder()
                                     .setMediaId(channel)
                                     .setMediaMetadata(
                                         MediaMetadata.Builder()
-                                            .setTitle(channel)
-                                            .setArtist(currentSubtitle)
+                                            .setTitle(streamMetadata?.user?.stream?.title ?: channel)
+                                            .setArtist(streamMetadata?.user?.displayName ?: channel)
+                                            .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
                                             .setArtworkUri(avatarUri)
                                             .build()
                                     )
@@ -314,6 +315,7 @@ fun TwitchPlayer(
             ) {
                 MiniPlayer(
                     channel = channel,
+                    displayName = streamMetadata?.user?.displayName,
                     streamTitle = streamMetadata?.user?.stream?.title,
                     playerContent = { modifier -> playerContent(modifier) {} },
                     onClick = onExpand,
@@ -340,6 +342,7 @@ fun TwitchPlayer(
                 } else {
                     PortraitPlayer(
                         channel = channel,
+                        displayName = streamMetadata?.user?.displayName,
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,

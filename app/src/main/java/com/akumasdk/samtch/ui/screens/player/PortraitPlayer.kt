@@ -28,6 +28,7 @@ import kotlin.math.abs
 @Composable
 fun PortraitPlayer(
     channel: String,
+    displayName: String? = null,
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
@@ -119,55 +120,66 @@ fun PortraitPlayer(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Start
                 ) {
+                    // Streamer Name: (Fixed position start)
+                    Text(
+                        text = "${displayName ?: channel}: ",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1
+                    )
+
+                    // Flexible title in the middle (Scrolling)
                     if (!streamTitle.isNullOrEmpty()) {
                         Text(
                             text = streamTitle,
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            modifier = Modifier
-                                .weight(1f, fill = false)
-                                .basicMarquee()
-                        )
-                    }
-                    
-                    if (!gameName.isNullOrEmpty()) {
-                        Text(
-                            text = " • ",
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = gameName,
-                            color = Color(0xFFBF94FF), // Twitch light purple
+                            color = Color.White.copy(alpha = 0.9f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 8.dp)
+                                .basicMarquee()
                         )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
+                    
+                    // Fixed Category/Viewer info on the right
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        if (!gameName.isNullOrEmpty()) {
+                            Text(
+                                text = gameName,
+                                color = Color(0xFFBF94FF), // Twitch light purple
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.widthIn(max = 80.dp)
+                            )
+                        }
 
-                    if (viewersCount > 0) {
-                        Text(
-                            text = " • ",
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
+                        if (viewersCount > 0) {
+                            Text(
+                                text = " • ",
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
                             Box(
                                 modifier = Modifier
-                                    .size(6.dp)
+                                    .padding(end = 4.dp)
+                                    .size(5.dp)
                                     .background(Color.Red, androidx.compose.foundation.shape.CircleShape)
                             )
                             Text(
                                 text = formatViewerCount(viewersCount),
                                 color = Color.LightGray,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black
                             )
                         }
                     }
