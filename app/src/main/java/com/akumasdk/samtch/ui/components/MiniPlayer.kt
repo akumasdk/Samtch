@@ -1,5 +1,7 @@
 package com.akumasdk.samtch.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
@@ -80,14 +82,23 @@ fun MiniPlayer(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = streamTitle ?: "Live",
-                    color = Color(0xFFBF94FF), // Twitch light purple
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    modifier = Modifier.basicMarquee()
-                )
+                AnimatedContent(
+                    targetState = streamTitle ?: "Live",
+                    transitionSpec = {
+                        (slideInVertically { height -> height / 2 } + fadeIn())
+                            .togetherWith(slideOutVertically { height -> -height / 2 } + fadeOut())
+                    },
+                    label = "MiniTitleAnimation"
+                ) { targetTitle ->
+                    Text(
+                        text = targetTitle,
+                        color = Color(0xFFBF94FF), // Twitch light purple
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.basicMarquee()
+                    )
+                }
             }
 
             // Close Button - Large and easy to tap

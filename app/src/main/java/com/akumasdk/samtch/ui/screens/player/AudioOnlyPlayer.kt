@@ -1,5 +1,7 @@
 package com.akumasdk.samtch.ui.screens.player
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -135,14 +137,23 @@ fun AudioOnlyPlayer(
                     
                     // Detailed Stream Title
                     val displayTitle = streamTitle ?: subtitle
-                    if (!displayTitle.isNullOrEmpty()) {
-                        Text(
-                            text = displayTitle,
-                            color = Color.White.copy(alpha = 0.9f), // Unified white/alpha title
-                            fontSize = if (availableHeight < 200.dp) 12.sp else 14.sp,
-                            maxLines = 1,
-                            modifier = Modifier.basicMarquee()
-                        )
+                    AnimatedContent(
+                        targetState = displayTitle ?: "",
+                        transitionSpec = {
+                            (slideInVertically { height -> height / 2 } + fadeIn())
+                                .togetherWith(slideOutVertically { height -> -height / 2 } + fadeOut())
+                        },
+                        label = "AudioTitleAnimation"
+                    ) { targetTitle ->
+                        if (targetTitle.isNotEmpty()) {
+                            Text(
+                                text = targetTitle,
+                                color = Color.White.copy(alpha = 0.9f), // Unified white/alpha title
+                                fontSize = if (availableHeight < 200.dp) 12.sp else 14.sp,
+                                maxLines = 1,
+                                modifier = Modifier.basicMarquee()
+                            )
+                        }
                     }
 
                     Row(
@@ -151,18 +162,27 @@ fun AudioOnlyPlayer(
                         modifier = Modifier.padding(top = 4.dp)
                     ) {
                         // Game/Category Pill
-                        if (!gameName.isNullOrEmpty()) {
-                            Surface(
-                                color = Color.White.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    text = gameName,
-                                    color = Color(0xFFBF94FF), // Unified light purple category
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                        AnimatedContent(
+                            targetState = gameName ?: "",
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(220, delayMillis = 90))
+                                    .togetherWith(fadeOut(animationSpec = tween(90)))
+                            },
+                            label = "AudioGameAnimation"
+                        ) { targetGame ->
+                            if (targetGame.isNotEmpty()) {
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = targetGame,
+                                        color = Color(0xFFBF94FF), // Unified light purple category
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
 

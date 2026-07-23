@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.components
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
@@ -121,21 +122,31 @@ fun StreamMetadataBar(
                 fontSize = 12.sp
             )
 
-            // Flexible title (Marquee)
-            if (!streamTitle.isNullOrEmpty()) {
-                Text(
-                    text = streamTitle,
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                        .basicMarquee()
-                )
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
+            // Flexible title (Marquee with Animation)
+            Box(modifier = Modifier.weight(1f)) {
+                AnimatedContent(
+                    targetState = streamTitle ?: "",
+                    transitionSpec = {
+                        (slideInVertically { height -> height / 2 } + fadeIn())
+                            .togetherWith(slideOutVertically { height -> -height / 2 } + fadeOut())
+                    },
+                    label = "StreamTitleAnimation"
+                ) { targetTitle ->
+                    if (targetTitle.isNotEmpty()) {
+                        Text(
+                            text = targetTitle,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .basicMarquee()
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.fillMaxWidth())
+                    }
+                }
             }
 
             // Fixed Category/Viewer info on the right
@@ -149,16 +160,25 @@ fun StreamMetadataBar(
                     fontSize = 12.sp
                 )
 
-                if (!gameName.isNullOrEmpty()) {
-                    Text(
-                        text = gameName,
-                        color = Color(0xFFBF94FF),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 120.dp)
-                    )
+                AnimatedContent(
+                    targetState = gameName ?: "",
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(220, delayMillis = 90))
+                            .togetherWith(fadeOut(animationSpec = tween(90)))
+                    },
+                    label = "GameNameAnimation"
+                ) { targetGame ->
+                    if (targetGame.isNotEmpty()) {
+                        Text(
+                            text = targetGame,
+                            color = Color(0xFFBF94FF),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 120.dp)
+                        )
+                    }
                 }
 
                 if (viewersCount > 0) {
