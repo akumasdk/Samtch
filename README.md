@@ -23,8 +23,8 @@ Samtch is a lightweight Twitch client for Android designed for a clean, ad-free 
 ## ✨ Features
 
 - **Ad-Free Viewing**: Integrated scripts to bypass common video ads and tracking.
-- **Premium Audio-Only Mode**: A dedicated "music player" aesthetic for background listening, complete with dark gradients and streamer avatar rings.
-- **Rich Stream Metadata**: Real-time titles, game categories, and viewer counts fetched via GraphQL.
+- **Premium Audio-Only Mode**: A dedicated "music player" aesthetic for background listening, featuring high-resolution stream artwork, dark gradients, and streamer avatar rings.
+- **Rich Stream Metadata**: Real-time titles, game categories, viewer counts, and high-fidelity thumbnails fetched via GraphQL.
 - **Clean UI**: Custom JavaScript injection removes "Open in App" prompts and clutters from the player interface.
 - **Seamless Discovery**: Use the full Twitch mobile site for browsing, search, and following, while switching automatically to a native-feeling player when a stream is selected.
 - **Smart Navigation**:
