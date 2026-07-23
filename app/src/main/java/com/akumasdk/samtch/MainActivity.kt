@@ -47,6 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -69,8 +70,10 @@ import com.akumasdk.samtch.data.settings.SettingsManager
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     private var isInPipModeState = mutableStateOf(false)
@@ -144,7 +147,10 @@ class MainActivity : ComponentActivity() {
                 var selectedChannel by rememberSaveable { mutableStateOf<String?>(null) }
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
-                var isFullscreen by rememberSaveable { mutableStateOf(false) }
+                val configuration = LocalConfiguration.current
+                var isFullscreen by rememberSaveable { 
+                    mutableStateOf(configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) 
+                }
                 var isMinimized by isMinimizedState
                 var isSettingsOpen by isSettingsOpenState
                 val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
@@ -164,6 +170,13 @@ class MainActivity : ComponentActivity() {
 
                 val browserState = rememberSaveableWebViewState("https://m.twitch.tv/")
                 val browserNavigator = rememberWebViewNavigator()
+
+                // Auto-rotate handling: Always sync isFullscreen with physical orientation
+                LaunchedEffect(configuration.orientation) {
+                    if (!isMinimized && !isAudioOnlyModeState.value) {
+                        isFullscreen = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                    }
+                }
 
                 // Separately update source rect hint to avoid frequent heavy updates
                 LaunchedEffect(pipRectState.value) {
@@ -282,7 +295,20 @@ class MainActivity : ComponentActivity() {
                                     isPip = isInPipMode,
                                     isMinimized = isMinimized,
                                     refreshTrigger = refreshTrigger,
-                                    onToggleFullscreen = { isFullscreen = !isFullscreen },
+                                    onToggleFullscreen = {
+                                        if (isFullscreen) {
+                                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+                                            isFullscreen = false
+                                        } else {
+                                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+                                            isFullscreen = true
+                                        }
+                                        // Release orientation lock after a delay to allow sensor to take over again
+                                        lifecycleScope.launch {
+                                            delay(1000.milliseconds)
+                                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                        }
+                                    },
                                     onBack = {
                                         if (isFullscreen) {
                                             isFullscreen = false

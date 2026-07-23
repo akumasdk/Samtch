@@ -1,8 +1,7 @@
 package com.akumasdk.samtch.ui.screens.player
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -109,7 +108,11 @@ fun FullscreenPlayer(
                     .background(Color(0xFF18181B))
             ) {
                 // Metadata space above chat (Only visible when chat is open)
-                if (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()) {
+                AnimatedVisibility(
+                    visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
                     StreamMetadataBar(
                         channel = channel,
                         displayName = displayName,

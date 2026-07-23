@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.components
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -155,7 +156,7 @@ fun StreamMetadataBar(
                 horizontalArrangement = Arrangement.End
             ) {
                 Text(
-                    text = " • ",
+                    text = "• ",
                     color = Color.Gray,
                     fontSize = 12.sp
                 )
@@ -182,16 +183,27 @@ fun StreamMetadataBar(
                 }
 
                 if (viewersCount > 0) {
-                    Text(
-                        text = "  ",
-                        color = Color.Gray,
-                        fontSize = 12.sp
-                    )
-                    AnimatedViewerCount(
-                        count = viewersCount,
-                        fontSize = 10.sp,
-                        dotSize = 5.dp
-                    )
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = slideInHorizontally(
+                            initialOffsetX = { it },
+                            animationSpec = spring(stiffness = 300f, dampingRatio = 0.8f)
+                        ) + fadeIn(),
+                        label = "ViewerCountEntrance"
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "  ",
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
+                            AnimatedViewerCount(
+                                count = viewersCount,
+                                fontSize = 10.sp,
+                                dotSize = 5.dp
+                            )
+                        }
+                    }
                 }
             }
         }
