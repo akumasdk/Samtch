@@ -12,6 +12,7 @@ data class TwitchUser(
     val login: String,
     val displayName: String,
     val description: String?,
+    val profileImageUrl: String?,
     val createdAt: String?,
     val roles: TwitchRoles?,
     val stream: TwitchStream?
@@ -26,6 +27,7 @@ data class TwitchStream(
     val title: String,
     val type: String?,
     val viewersCount: Int,
+    val previewImageUrl: String?,
     val createdAt: String?,
     val game: TwitchGame?
 )

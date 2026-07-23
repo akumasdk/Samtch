@@ -70,7 +70,16 @@ fun TwitchPlayer(
         while (true) {
             // Fetch detailed metadata via GraphQL
             android.util.Log.d("TwitchPlayer", "Fetching periodic metadata for $channel")
-            streamMetadata = TwitchGqlService.getStreamMetadata(channel)
+            val metadata = TwitchGqlService.getStreamMetadata(channel)
+            streamMetadata = metadata
+            
+            // Update UI-facing metadata
+            metadata?.user?.let { user ->
+                avatarUrl = user.profileImageUrl
+                streamSubtitle = user.stream?.title
+                onMetadataUpdated(user.profileImageUrl, user.stream?.title)
+            }
+            
             delay(1.minutes)
         }
     }
@@ -110,12 +119,12 @@ fun TwitchPlayer(
     // Handle initial playback when switching to Audio Only mode
     LaunchedEffect(mediaController, isAudioOnly) {
         if (isAudioOnly && mediaController != null && !isPlaying) {
-            val avatarUri = currentAvatarUrl?.toUri()
+            val previewUri = streamMetadata?.user?.stream?.previewImageUrl?.toUri()
             val metadata = MediaMetadata.Builder()
                 .setTitle(streamMetadata?.user?.stream?.title ?: channel)
                 .setArtist(streamMetadata?.user?.displayName ?: channel)
                 .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
-                .setArtworkUri(avatarUri)
+                .setArtworkUri(previewUri)
                 .build()
             
             mediaController?.setMediaItem(
@@ -139,7 +148,7 @@ fun TwitchPlayer(
             .setTitle(stream.title)
             .setArtist(streamMetadata?.user?.displayName ?: channel)
             .setAlbumTitle(stream.game?.name)
-            .setArtworkUri(currentAvatarUrl?.toUri())
+            .setArtworkUri(stream.previewImageUrl?.toUri())
             .build()
             
         // Use replaceMediaItem to update metadata without disrupting the stream
@@ -223,11 +232,6 @@ fun TwitchPlayer(
                 },
                 onUiCleanFinish = {
                     isUiLoading = false
-                },
-                onMetadataDetected = { avatar, subtitle ->
-                    avatarUrl = avatar
-                    streamSubtitle = subtitle
-                    onMetadataUpdated(avatar, subtitle)
                 }
             )
         }

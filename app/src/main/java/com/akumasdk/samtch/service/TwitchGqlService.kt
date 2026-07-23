@@ -103,6 +103,7 @@ object TwitchGqlService {
             login
             displayName
             description
+            profileImageURL(width: 300)
             createdAt
             roles {
               isPartner
@@ -112,6 +113,7 @@ object TwitchGqlService {
               title
               type
               viewersCount
+              previewImageURL(height: 1080, width: 1920)
               createdAt
               game {
                 name
@@ -170,6 +172,7 @@ object TwitchGqlService {
                     login = userJson.getString("login"),
                     displayName = userJson.getString("displayName"),
                     description = userJson.optString("description"),
+                    profileImageUrl = userJson.optString("profileImageURL"),
                     createdAt = userJson.optString("createdAt"),
                     roles = rolesJson?.let { TwitchRoles(it.getBoolean("isPartner")) },
                     stream = streamJson?.let {
@@ -178,6 +181,7 @@ object TwitchGqlService {
                             title = it.getString("title"),
                             type = it.optString("type"),
                             viewersCount = it.getInt("viewersCount"),
+                            previewImageUrl = it.optString("previewImageURL"),
                             createdAt = it.optString("createdAt"),
                             game = gameJson?.let { g -> TwitchGame(g.getString("name")) }
                         )

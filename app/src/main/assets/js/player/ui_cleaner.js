@@ -35,24 +35,6 @@
         document.head.appendChild(style);
     }
 
-    function extractMetadata() {
-        const avatarImg = document.querySelector('img.tw-image-avatar');
-        const subtitleEl = document.querySelector('p[data-test-selector="stream-info-card-component__subtitle"]');
-
-        const avatarUrl = avatarImg ? avatarImg.src : null;
-        const subtitle = subtitleEl ? subtitleEl.textContent.trim() : null;
-
-        if ((avatarUrl && avatarUrl !== window.samtch_last_avatar) ||
-            (subtitle && subtitle !== window.samtch_last_subtitle)) {
-
-            if (window.TwitchPlayerBridge) {
-                window.TwitchPlayerBridge.updateMetadata(avatarUrl || '', subtitle || '');
-                window.samtch_last_avatar = avatarUrl;
-                window.samtch_last_subtitle = subtitle;
-            }
-        }
-    }
-
     function clean() {
         const playerExists = document.querySelector('.video-player') ||
                            document.querySelector('[data-a-target="video-player"]');
@@ -60,7 +42,6 @@
         if (!playerExists) return;
 
         injectStyles();
-        extractMetadata();
 
         // Signal UI clean finish if not already done
         if (window.TwitchPlayerBridge && !window.samtch_ui_cleaned) {

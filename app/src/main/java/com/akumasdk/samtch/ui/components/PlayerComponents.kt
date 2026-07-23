@@ -28,8 +28,7 @@ fun WebViewContainer(
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit = {},
     onToggleAudioOnly: () -> Unit = {},
-    onUiCleanFinish: () -> Unit = {},
-    onMetadataDetected: (String, String) -> Unit = { _, _ -> }
+    onUiCleanFinish: () -> Unit = {}
 ) {
     val context = LocalContext.current
     // Ensure the bridge always uses the latest lambdas from the current composition context
@@ -37,7 +36,6 @@ fun WebViewContainer(
     val currentOnToggleChat by rememberUpdatedState(onToggleChat)
     val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
     val currentOnUiCleanFinish by rememberUpdatedState(onUiCleanFinish)
-    val currentOnMetadataDetected by rememberUpdatedState(onMetadataDetected)
 
     // Script injection logic when page finishes loading
     LaunchedEffect(state.lastLoadedUrl, state.loadingState) {
@@ -121,9 +119,6 @@ fun WebViewContainer(
                         },
                         onUiCleanFinish = {
                             post { currentOnUiCleanFinish() }
-                        },
-                        onMetadataDetected = { avatarUrl, subtitle ->
-                            post { currentOnMetadataDetected(avatarUrl, subtitle) }
                         }
                     ),
                     "TwitchPlayerBridge"
@@ -147,8 +142,7 @@ class TwitchPlayerBridge(
     private val onToggleFullscreen: () -> Unit,
     private val onToggleChat: () -> Unit = {},
     private val onToggleAudioOnly: () -> Unit = {},
-    private val onUiCleanFinish: () -> Unit = {},
-    private val onMetadataDetected: (String, String) -> Unit = { _, _ -> }
+    private val onUiCleanFinish: () -> Unit = {}
 ) {
     @JavascriptInterface
     fun toggleFullscreen() {
@@ -168,10 +162,5 @@ class TwitchPlayerBridge(
     @JavascriptInterface
     fun uiCleanFinish() {
         onUiCleanFinish()
-    }
-
-    @JavascriptInterface
-    fun updateMetadata(avatarUrl: String, subtitle: String) {
-        onMetadataDetected(avatarUrl, subtitle)
     }
 }

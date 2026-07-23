@@ -248,7 +248,7 @@ class PlaybackService : MediaSessionService() {
                             .setTitle(stream?.title ?: item.mediaMetadata.title ?: channelName)
                             .setArtist(user?.displayName ?: item.mediaMetadata.artist ?: channelName)
                             .setAlbumTitle(stream?.game?.name)
-                            .setArtworkUri(item.mediaMetadata.artworkUri)
+                            .setArtworkUri(stream?.previewImageUrl?.let { Uri.parse(it) } ?: item.mediaMetadata.artworkUri)
                             .setIsBrowsable(false)
                             .setIsPlayable(true)
                             .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
