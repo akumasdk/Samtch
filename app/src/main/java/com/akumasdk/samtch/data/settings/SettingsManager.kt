@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.util
+package com.akumasdk.samtch.data.settings
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -12,20 +12,8 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 object SettingsManager {
-    private val BACKGROUND_PLAY_ENABLED = booleanPreferencesKey("background_play_enabled")
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
-
-    fun isBackgroundPlayEnabled(context: Context): Flow<Boolean> {
-        return context.dataStore.data.map { preferences ->
-            preferences[BACKGROUND_PLAY_ENABLED] ?: false
-        }
-    }
-
-    suspend fun setBackgroundPlayEnabled(context: Context, enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[BACKGROUND_PLAY_ENABLED] = enabled
-        }
-    }
+    private val AUDIO_ONLY_BACKGROUND_ENABLED = booleanPreferencesKey("audio_only_background_enabled")
 
     fun isPipEnabled(context: Context): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
@@ -36,6 +24,18 @@ object SettingsManager {
     suspend fun setPipEnabled(context: Context, enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PIP_ENABLED] = enabled
+        }
+    }
+
+    fun isAudioOnlyBackgroundEnabled(context: Context): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[AUDIO_ONLY_BACKGROUND_ENABLED] ?: false
+        }
+    }
+
+    suspend fun setAudioOnlyBackgroundEnabled(context: Context, enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AUDIO_ONLY_BACKGROUND_ENABLED] = enabled
         }
     }
 }

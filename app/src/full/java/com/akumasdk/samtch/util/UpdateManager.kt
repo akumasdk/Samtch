@@ -22,18 +22,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
-
-@Serializable
-data class GitHubRelease(
-    @SerialName("tag_name") val tagName: String,
-    val assets: List<GitHubAsset>
-)
-
-@Serializable
-data class GitHubAsset(
-    val name: String,
-    @SerialName("browser_download_url") val downloadUrl: String
-)
+import com.akumasdk.samtch.data.model.GitHubRelease
+import com.akumasdk.samtch.data.model.GitHubAsset
 
 object UpdateManager {
     private const val TAG = "UpdateManager"

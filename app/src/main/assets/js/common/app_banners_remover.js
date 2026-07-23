@@ -32,6 +32,14 @@
 
         injectPersistentStyles();
 
+        // Signal UI clean finish if not already done.
+        // We wait until at least the second pass to ensure late-appearing banners are caught.
+        if (window.TwitchBrowserBridge && !window.samtch_browser_cleaned && attempt >= 2) {
+            console.log('[Samtch] Browser UI cleaning finished, notifying bridge');
+            window.TwitchBrowserBridge.uiCleanFinish();
+            window.samtch_browser_cleaned = true;
+        }
+
         const isInsideStreamCard = (el) => !!el.closest('[class*="streamCard"], [class*="stream-card-horizontal"]');
 
         // 1. Surgical "Open in App" Banner Removal

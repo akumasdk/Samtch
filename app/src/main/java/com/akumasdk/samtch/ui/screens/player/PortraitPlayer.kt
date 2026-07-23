@@ -1,29 +1,44 @@
 package com.akumasdk.samtch.ui.screens.player
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.components.StreamMetadataBar
+import com.akumasdk.samtch.ui.components.TwitchChat
 import kotlin.math.abs
 
 @Composable
 fun PortraitPlayer(
     channel: String,
+    displayName: String? = null,
+    streamTitle: String? = null,
+    gameName: String? = null,
+    viewersCount: Int = 0,
+    isAudioOnly: Boolean = false,
     onToggleFullscreen: () -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
@@ -33,14 +48,21 @@ fun PortraitPlayer(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(Color.Black)
+            .animateContentSize(),
         verticalArrangement = if (isChatVisible) Arrangement.Top else Arrangement.Center
     ) {
-        // Video at top (16:9 aspect ratio)
+        // Dynamic height container
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
+                .then(
+                    if (isAudioOnly) {
+                        Modifier.height(240.dp) // Reclaimed space for Audio Only table design
+                    } else {
+                        Modifier.aspectRatio(16f / 9f)
+                    }
+                )
                 .onSizeChanged { size ->
                     playerSize = size
                 }
@@ -82,6 +104,21 @@ fun PortraitPlayer(
             webView(Modifier.fillMaxSize()) {
                 isChatVisible = !isChatVisible
             }
+        }
+
+        // Tiny metadata space above chat
+        AnimatedVisibility(
+            visible = isChatVisible && !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            StreamMetadataBar(
+                channel = channel,
+                displayName = displayName,
+                streamTitle = streamTitle,
+                gameName = gameName,
+                viewersCount = viewersCount
+            )
         }
 
         // Twitch Chat

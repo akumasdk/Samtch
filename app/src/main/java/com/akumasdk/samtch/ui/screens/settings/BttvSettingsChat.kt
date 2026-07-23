@@ -21,6 +21,7 @@ import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @SuppressLint("JavascriptInterface")
@@ -60,7 +61,7 @@ fun BttvSettingsChat(
             onComplete = {
                 coroutineScope.launch {
                     Log.d("BttvSettingsChat", "Automation complete signal received")
-                    delay(500)
+                    delay(500.milliseconds)
                     isReady = true
                 }
             }

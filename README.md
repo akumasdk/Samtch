@@ -4,7 +4,7 @@
 
 <h1 align="center">Samtch</h1>
 
-Samtch is a lightweight Twitch client for Android designed for a clean, ad-free viewing experience. It combines the power of the native Twitch web interface for discovery with a highly optimized custom player for watching.
+Samtch is a lightweight Twitch client for Android designed for a clean, ad-free viewing experience. It combines the power of the native Twitch web interface for discovery with a highly optimized custom player for watching, featuring a premium background audio mode.
 
 ## 🖼️ Gallery
 
@@ -23,18 +23,15 @@ Samtch is a lightweight Twitch client for Android designed for a clean, ad-free 
 ## ✨ Features
 
 - **Ad-Free Viewing**: Integrated scripts to bypass common video ads and tracking.
+- **Premium Audio-Only Mode**: A dedicated "music player" aesthetic for background listening, featuring high-resolution stream artwork, dark gradients, and streamer avatar rings.
+- **Rich Stream Metadata**: Real-time titles, game categories, viewer counts, and high-fidelity thumbnails fetched via GraphQL.
 - **Clean UI**: Custom JavaScript injection removes "Open in App" prompts and clutters from the player interface.
 - **Seamless Discovery**: Use the full Twitch mobile site for browsing, search, and following, while switching automatically to a native-feeling player when a stream is selected.
 - **Smart Navigation**:
   - Automatically triggers the custom player when navigating to a live channel.
-  - Allows full profile exploration (clips, videos, home tabs) without hijacking.
+  - Robust safeguards prevent hijacking your own profile page.
   - Remembers your browsing position when returning from the player.
-- **Fullscreen Support**: Landscape mode with immersive system bar handling and optional side-chat overlay.
-- **Picture-in-Picture (PiP)**: Watch streams while using other apps with automatic transition to PiP mode.
-- **Gesture Controls**:
-  - Double-tap the center of the player in portrait mode to quickly toggle **Fullscreen**.
-  - Double-tap the center of the player in fullscreen mode to toggle the **Chat overlay**.
-
+- **Fullscreen & PiP**: Immersive landscape mode and Picture-in-Picture support for multitasking.
 ## 📝 Changelog
 
 See the **[CHANGELOG.md](CHANGELOG.md)** for a full history of changes.
@@ -77,14 +74,14 @@ Contributions are welcome! If you have ideas for improvements or have found a bu
 ## 🗺️ Roadmap / Future Features
 
 - [x] **Chat in Fullscreen**: Overlay chat during landscape viewing.
-- [ ] **Navigation Improvements**: Faster transitions and better gesture support.
 - [x] **Picture-in-Picture (PiP)**: Watch streams while using other apps.
-- [ ] **Background Play**: Listen to stream audio even when the screen is off or the app is minimized.
+- [x] **Background Play**: Listen to stream audio even when the screen is off or the app is minimized.
+- [ ] **Navigation Improvements**: Faster transitions and better gesture support.
 - [ ] **Android TV Support**: Optimized interface for television and remote control navigation.
 
 ## 🙏 Credits & Acknowledgments
 
-- **[pixeltris/TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions)**: Special thanks for the `video-swap-new` script which powers the ad-blocking capabilities of this client.
+- **[pixeltris/TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions)**: Special thanks for the `vaft` and `video-swap` scripts which power the ad-blocking capabilities of this client.
 
 ---
 

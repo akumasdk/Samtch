@@ -1,6 +1,5 @@
 package com.akumasdk.samtch.ui.screens.settings
 
-import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -30,8 +29,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.akumasdk.samtch.BuildConfig
 import com.akumasdk.samtch.R
-import com.akumasdk.samtch.util.GitHubRelease
-import com.akumasdk.samtch.util.SettingsManager
+import com.akumasdk.samtch.data.model.GitHubRelease
+import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.UpdateManager
 import kotlinx.coroutines.launch
 
@@ -47,21 +46,9 @@ fun SettingsScreen(
     var isDownloading by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
-    val isBackgroundPlayEnabled by SettingsManager.isBackgroundPlayEnabled(context).collectAsState(initial = false)
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                scope.launch {
-                    SettingsManager.setBackgroundPlayEnabled(context, true)
-                }
-            }
-        }
-    )
 
     // Intercept system back button
     BackHandler {
@@ -151,57 +138,29 @@ fun SettingsScreen(
             }
 
             item {
+                val isAudioBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.bg_play_title)) },
-                    supportingContent = { Text(stringResource(R.string.bg_play_summary)) },
+                    headlineContent = { Text(stringResource(R.string.audio_only_background_title)) },
+                    supportingContent = { Text(stringResource(R.string.audio_only_background_summary)) },
                     leadingContent = {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_exit_fullscreen),
+                            painter = painterResource(id = R.drawable.ic_headset),
                             contentDescription = null
                         )
                     },
                     trailingContent = {
                         Switch(
-                            checked = isBackgroundPlayEnabled,
+                            checked = isAudioBackgroundEnabled,
                             onCheckedChange = { enabled ->
-                                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    if (ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.POST_NOTIFICATIONS
-                                        ) != PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    } else {
-                                        scope.launch {
-                                            SettingsManager.setBackgroundPlayEnabled(context, true)
-                                        }
-                                    }
-                                } else {
-                                    scope.launch {
-                                        SettingsManager.setBackgroundPlayEnabled(context, enabled)
-                                    }
+                                scope.launch {
+                                    SettingsManager.setAudioOnlyBackgroundEnabled(context, enabled)
                                 }
                             }
                         )
                     },
                     modifier = Modifier.clickable {
-                        val newEnabled = !isBackgroundPlayEnabled
-                        if (newEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            if (ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.POST_NOTIFICATIONS
-                                ) != PackageManager.PERMISSION_GRANTED
-                            ) {
-                                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            } else {
-                                scope.launch {
-                                    SettingsManager.setBackgroundPlayEnabled(context, true)
-                                }
-                            }
-                        } else {
-                            scope.launch {
-                                SettingsManager.setBackgroundPlayEnabled(context, newEnabled)
-                            }
+                        scope.launch {
+                            SettingsManager.setAudioOnlyBackgroundEnabled(context, !isAudioBackgroundEnabled)
                         }
                     }
                 )

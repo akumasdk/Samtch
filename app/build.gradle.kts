@@ -26,8 +26,8 @@ android {
         applicationId = "com.magumboi.samtch"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "0.1.3"
+        versionCode = 14
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -108,10 +108,14 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.coil.compose)
+    implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.media3.session)
     implementation(libs.media3.common)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.hls)
     testImplementation(libs.playwright)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

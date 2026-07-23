@@ -39,15 +39,12 @@
     <string name="update_download_title">Actualización de Samtch</string>
     <string name="update_download_description">Descargando la última versión…</string>
 
-    <!-- Background Play -->
-    <string name="bg_play_title">Reproducción en segundo plano (Beta)</string>
-    <string name="bg_play_summary">Mantiene el audio cuando la aplicación está minimizada</string>
-    <string name="bg_play_notification_text">Reproduciendo en segundo plano</string>
-    <string name="bg_play_now_playing">Reproduciendo ahora</string>
-    <string name="bg_play_status_background">Segundo plano</string>
-    <string name="bg_play_stop_action">Detener</string>
-    <string name="bg_play_channel_name">Reproducción</string>
-    <string name="bg_play_channel_description">Notificaciones para la reproducción de audio en segundo plano</string>
+    <!-- Audio Only Mode -->
+    <string name="audio_only_mode_toggle">Solo Audio</string>
+    <string name="audio_only_notification_text">Escuchando a %s</string>
+    <string name="audio_only_background_title">Reproducción de Audio de Fondo</string>
+    <string name="audio_only_background_summary">Cambiar automáticamente al modo de solo audio al minimizar la aplicación</string>
+    <string name="audio_only_hint">Puedes cerrar o minimizar la aplicación para seguir escuchando</string>
 
     <!-- PiP Settings -->
     <string name="pip_enabled_title">Imagen en imagen (PiP)</string>
