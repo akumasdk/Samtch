@@ -30,6 +30,8 @@ import com.akumasdk.samtch.ui.components.MiniPlayer
 import com.akumasdk.samtch.ui.components.WebViewContainer
 import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
 import androidx.core.net.toUri
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.minutes
 
 @Composable
 fun TwitchPlayer(
@@ -66,8 +68,12 @@ fun TwitchPlayer(
 
     LaunchedEffect(channel, refreshTrigger) {
         isUiLoading = true
-        // Fetch detailed metadata via GraphQL
-        streamMetadata = TwitchGqlService.getStreamMetadata(channel)
+        while (true) {
+            // Fetch detailed metadata via GraphQL
+            android.util.Log.d("TwitchPlayer", "Fetching periodic metadata for $channel")
+            streamMetadata = TwitchGqlService.getStreamMetadata(channel)
+            delay(1.minutes)
+        }
     }
 
     LaunchedEffect(isAudioOnly) {
@@ -107,8 +113,9 @@ fun TwitchPlayer(
         if (isAudioOnly && mediaController != null && !isPlaying) {
             val avatarUri = currentAvatarUrl?.toUri()
             val metadata = MediaMetadata.Builder()
-                .setTitle(channel)
-                .setArtist(currentSubtitle)
+                .setTitle(streamMetadata?.user?.stream?.title ?: channel)
+                .setArtist(streamMetadata?.user?.displayName ?: channel)
+                .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
                 .setArtworkUri(avatarUri)
                 .build()
             
@@ -121,6 +128,29 @@ fun TwitchPlayer(
             mediaController?.prepare()
             mediaController?.play()
         }
+    }
+
+    // Periodically update controller metadata if it's connected
+    LaunchedEffect(streamMetadata, mediaController) {
+        val controller = mediaController ?: return@LaunchedEffect
+        val stream = streamMetadata?.user?.stream ?: return@LaunchedEffect
+        
+        android.util.Log.d("TwitchPlayer", "Updating controller metadata for $channel")
+        val metadata = MediaMetadata.Builder()
+            .setTitle(stream.title)
+            .setArtist(streamMetadata?.user?.displayName ?: channel)
+            .setAlbumTitle(stream.game?.name)
+            .setArtworkUri(currentAvatarUrl?.toUri())
+            .build()
+            
+        // Use replaceMediaItem to update metadata without disrupting the stream
+        controller.replaceMediaItem(
+            0,
+            MediaItem.Builder()
+                .setMediaId(channel)
+                .setMediaMetadata(metadata)
+                .build()
+        )
     }
 
     val state = rememberSaveableWebViewState("")
@@ -310,6 +340,9 @@ fun TwitchPlayer(
                 } else {
                     PortraitPlayer(
                         channel = channel,
+                        streamTitle = streamMetadata?.user?.stream?.title,
+                        gameName = streamMetadata?.user?.stream?.game?.name,
+                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         isAudioOnly = isAudioOnly,
                         onToggleFullscreen = onToggleFullscreen,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }

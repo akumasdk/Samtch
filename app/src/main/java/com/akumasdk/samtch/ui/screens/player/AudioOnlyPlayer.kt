@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.screens.player
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -137,8 +138,8 @@ fun AudioOnlyPlayer(
                             text = displayTitle,
                             color = Color.LightGray.copy(alpha = 0.9f),
                             fontSize = if (availableHeight < 200.dp) 12.sp else 14.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            maxLines = 1,
+                            modifier = Modifier.basicMarquee()
                         )
                     }
 
