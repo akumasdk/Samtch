@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalContext
@@ -19,6 +20,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import android.content.ComponentName
+import coil.compose.AsyncImage
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
@@ -301,6 +303,20 @@ fun TwitchPlayer(
                                     .background(Color.Black),
                                 contentAlignment = Alignment.Center
                             ) {
+                                streamMetadata?.user?.stream?.previewImageUrl?.let { url ->
+                                    AsyncImage(
+                                        model = url,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    // Add a dark overlay to ensure the spinner is visible
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.6f))
+                                    )
+                                }
                                 CircularProgressIndicator(
                                     color = Color(0xFF9146FF), // Twitch Purple
                                     strokeWidth = 3.dp

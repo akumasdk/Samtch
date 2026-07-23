@@ -446,6 +446,6 @@ class MainActivity : ComponentActivity() {
     private fun extractChannelFromUrl(url: String?): String? {
         if (url.isNullOrEmpty()) return null
         val regex = """(?:www\.|m\.)?twitch\.tv/([^/?]+)""".toRegex()
-        return regex.find(url)?.groupValues?.getOrNull(1)
+        return regex.find(url)?.groupValues?.getOrNull(1)?.trim()
     }
 }

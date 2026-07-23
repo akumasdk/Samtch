@@ -396,7 +396,7 @@ private fun extractChannelFromUrl(url: String?): String? {
         return null
     }
 
-    val channelCandidate = segments[0]
+    val channelCandidate = segments[0].trim()
 
     val excludedNames = listOf(
         "directory", "search", "videos", "clips", "events",

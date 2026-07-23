@@ -113,7 +113,7 @@ object TwitchGqlService {
               title
               type
               viewersCount
-              previewImageURL(height: 1080, width: 1920)
+              previewImageURL(height: 480, width: 853)
               createdAt
               game {
                 name
@@ -168,22 +168,22 @@ object TwitchGqlService {
                 val gameJson = streamJson?.optJSONObject("game")
 
                 val user = TwitchUser(
-                    id = userJson.getString("id"),
-                    login = userJson.getString("login"),
-                    displayName = userJson.getString("displayName"),
-                    description = userJson.optString("description"),
-                    profileImageUrl = userJson.optString("profileImageURL"),
-                    createdAt = userJson.optString("createdAt"),
+                    id = userJson.getString("id").trim(),
+                    login = userJson.getString("login").trim(),
+                    displayName = userJson.getString("displayName").trim(),
+                    description = userJson.optString("description").trim(),
+                    profileImageUrl = userJson.optString("profileImageURL").trim(),
+                    createdAt = userJson.optString("createdAt").trim(),
                     roles = rolesJson?.let { TwitchRoles(it.getBoolean("isPartner")) },
                     stream = streamJson?.let {
                         TwitchStream(
-                            id = it.getString("id"),
-                            title = it.getString("title"),
-                            type = it.optString("type"),
+                            id = it.getString("id").trim(),
+                            title = it.getString("title").trim(),
+                            type = it.optString("type").trim(),
                             viewersCount = it.getInt("viewersCount"),
-                            previewImageUrl = it.optString("previewImageURL"),
-                            createdAt = it.optString("createdAt"),
-                            game = gameJson?.let { g -> TwitchGame(g.getString("name")) }
+                            previewImageUrl = it.optString("previewImageURL").trim(),
+                            createdAt = it.optString("createdAt").trim(),
+                            game = gameJson?.let { g -> TwitchGame(g.getString("name").trim()) }
                         )
                     }
                 )
