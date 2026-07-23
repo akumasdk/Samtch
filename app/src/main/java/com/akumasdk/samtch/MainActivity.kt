@@ -50,6 +50,7 @@ import com.akumasdk.samtch.util.ScriptLoader
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.DeviceOrientationManager
 import com.akumasdk.samtch.util.PhysicalOrientation
+import com.akumasdk.samtch.util.SystemSettingsUtil
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
@@ -126,6 +127,7 @@ class MainActivity : ComponentActivity() {
                 val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
 
                 val physicalOrientation by orientationManager.orientation.collectAsState()
+                val isAutoRotateEnabled by SystemSettingsUtil.observeAutoRotate(this@MainActivity).collectAsState(initial = false)
                 
                 // Unified Fullscreen State
                 var isFullscreen by rememberSaveable { 
@@ -133,8 +135,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // 1. AUTO-ROTATE LOGIC: Sync isFullscreen with physical tilt ONLY when in player mode
-                LaunchedEffect(physicalOrientation, selectedChannel, isMinimized) {
-                    if (selectedChannel != null && !isMinimized && !isAudioOnlyModeState.value) {
+                LaunchedEffect(physicalOrientation, isAutoRotateEnabled, selectedChannel, isMinimized) {
+                    if (isAutoRotateEnabled && selectedChannel != null && !isMinimized && !isAudioOnlyModeState.value) {
                         when (physicalOrientation) {
                             PhysicalOrientation.LANDSCAPE -> isFullscreen = true
                             PhysicalOrientation.PORTRAIT -> isFullscreen = false
