@@ -16,6 +16,7 @@
         style.id = styleId;
         style.textContent = `
             /* Hide distracting elements */
+            .stream-info-card,
             [data-a-target="player-fullscreen-button"],
             [data-a-target="player-clip-button"],
             [data-a-target="player-forward-button"],

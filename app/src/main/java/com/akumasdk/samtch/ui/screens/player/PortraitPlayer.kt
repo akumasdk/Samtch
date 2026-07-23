@@ -122,11 +122,17 @@ fun PortraitPlayer(
                 ) {
                     // Streamer Name: (Fixed position start)
                     Text(
-                        text = "${displayName ?: channel}: ",
-                        color = Color.White,
+                        text = "${displayName ?: channel}",
+                        color = Color(0xFFBF94FF),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1
+                    )
+
+                    Text(
+                        text = " • ",
+                        color = Color.Gray,
+                        fontSize = 12.sp
                     )
 
                     // Flexible title in the middle (Scrolling)
@@ -151,6 +157,12 @@ fun PortraitPlayer(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.End
                     ) {
+                        Text(
+                            text = " • ",
+                            color = Color.Gray,
+                            fontSize = 12.sp
+                        )
+
                         if (!gameName.isNullOrEmpty()) {
                             Text(
                                 text = gameName,
@@ -165,7 +177,7 @@ fun PortraitPlayer(
 
                         if (viewersCount > 0) {
                             Text(
-                                text = " • ",
+                                text = "  ",
                                 color = Color.Gray,
                                 fontSize = 12.sp
                             )
