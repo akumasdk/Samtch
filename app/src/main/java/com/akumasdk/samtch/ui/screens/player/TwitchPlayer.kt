@@ -265,7 +265,7 @@ fun TwitchPlayer(
                         },
                         onRefresh = {
                             mediaController?.stop()
-                            val avatarUri = currentAvatarUrl?.let { it.toUri() }
+                            val avatarUri = currentAvatarUrl?.toUri()
                             mediaController?.setMediaItem(
                                 MediaItem.Builder()
                                     .setMediaId(channel)

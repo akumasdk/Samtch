@@ -383,7 +383,7 @@ private fun extractChannelFromUrl(url: String?): String? {
         if (url == null) return null
         val cleanUrl = if (!url.startsWith("http")) "https://$url" else url
         java.net.URI(cleanUrl)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         return null
     }
 
@@ -436,7 +436,7 @@ private fun getCurrentUserFromCookies(): String? {
 
 private fun isGlobalHome(url: String?): Boolean {
     if (url.isNullOrEmpty()) return false
-    val uri = try { java.net.URI(url) } catch (e: Exception) { return false }
+    val uri = try { java.net.URI(url) } catch (_: Exception) { return false }
     val path = uri.path ?: "/"
     // Only /home and /home/ are considered "Exploration zones"
     // Root / is NOT home, so navigating from / to a user WILL trigger the player
@@ -445,7 +445,7 @@ private fun isGlobalHome(url: String?): Boolean {
 
 private fun isBrowserRoot(url: String?): Boolean {
     if (url.isNullOrEmpty()) return true
-    val uri = try { java.net.URI(url) } catch (e: Exception) { return false }
+    val uri = try { java.net.URI(url) } catch (_: Exception) { return false }
     val path = uri.path ?: ""
     return path == "/" || path == "" || path == "/home" || path == "/home/"
 }

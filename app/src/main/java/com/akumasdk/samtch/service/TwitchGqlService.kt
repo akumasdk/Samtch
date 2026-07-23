@@ -57,12 +57,12 @@ object TwitchGqlService {
                 .build()
 
             val response = client.newCall(request).execute()
-            val body = response.body?.string().orEmpty()
+            val body = response.body.string().orEmpty()
 
             if (response.isSuccessful && body.isNotEmpty()) {
                 // Look for clientId="ID" (script block) or "Client-ID":"ID" (JSON/Legacy)
                 val regex =
-                    """(?:clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["'])""".toRegex()
+                    """clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["']""".toRegex()
                 val match = regex.find(body)
                 // The ID could be in group 1 or group 2 depending on which pattern matched
                 val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }

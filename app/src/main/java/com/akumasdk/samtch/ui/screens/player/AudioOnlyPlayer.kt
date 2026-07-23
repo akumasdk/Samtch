@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.screens.player
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
@@ -45,7 +46,7 @@ fun AudioOnlyPlayer(
     onTogglePlayback: () -> Unit,
     onCloseAudioOnly: () -> Unit,
     onRefresh: () -> Unit,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(
         modifier = modifier

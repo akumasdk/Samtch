@@ -2,7 +2,6 @@ package com.akumasdk.samtch.service
 
 import android.app.PendingIntent
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -41,6 +40,7 @@ import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import androidx.core.net.toUri
 
 class PlaybackService : MediaSessionService() {
 
@@ -242,13 +242,13 @@ class PlaybackService : MediaSessionService() {
                 val stream = user?.stream
                 
                 val newItem = item.buildUpon()
-                    .setUri(Uri.parse(finalUrl))
+                    .setUri(finalUrl.toUri())
                     .setMediaMetadata(
                         item.mediaMetadata.buildUpon()
                             .setTitle(stream?.title ?: item.mediaMetadata.title ?: channelName)
                             .setArtist(user?.displayName ?: item.mediaMetadata.artist ?: channelName)
                             .setAlbumTitle(stream?.game?.name)
-                            .setArtworkUri(stream?.previewImageUrl?.let { Uri.parse(it) } ?: item.mediaMetadata.artworkUri)
+                            .setArtworkUri(stream?.previewImageUrl?.toUri() ?: item.mediaMetadata.artworkUri)
                             .setIsBrowsable(false)
                             .setIsPlayable(true)
                             .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
@@ -262,7 +262,7 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    private suspend fun fetchAudioOnlyUrl(masterUrl: String): String? {
+    private fun fetchAudioOnlyUrl(masterUrl: String): String? {
         return try {
             val client = OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
@@ -277,10 +277,10 @@ class PlaybackService : MediaSessionService() {
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return null
 
-            val body = response.body?.string() ?: return null
+            val body = response.body.string()
             val entries = ExtM3UParser().parse(body)
             entries.firstOrNull { it.name == "audio_only" }?.playlistUrl
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

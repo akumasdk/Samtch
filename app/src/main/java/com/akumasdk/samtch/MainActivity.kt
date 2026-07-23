@@ -1,5 +1,6 @@
 package com.akumasdk.samtch
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -19,16 +20,33 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -41,23 +59,21 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import com.akumasdk.samtch.ui.theme.SamtchTheme
-import com.akumasdk.samtch.service.PlaybackService
-import com.akumasdk.samtch.util.ScriptLoader
-import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.DeviceOrientationManager
 import com.akumasdk.samtch.util.PhysicalOrientation
+import com.akumasdk.samtch.util.ScriptLoader
 import com.akumasdk.samtch.util.SystemSettingsUtil
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     private var isInPipModeState = mutableStateOf(false)
@@ -94,6 +110,7 @@ class MainActivity : ComponentActivity() {
         private const val ACTION_STOP_PLAYER = "com.akumasdk.samtch.STOP_PLAYER"
     }
 
+    @SuppressLint("SourceLockedOrientationActivity")
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()

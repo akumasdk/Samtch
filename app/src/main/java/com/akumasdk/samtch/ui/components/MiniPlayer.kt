@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.components
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -32,7 +33,7 @@ fun MiniPlayer(
     playerContent: @Composable (Modifier) -> Unit,
     onClick: () -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier

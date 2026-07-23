@@ -139,27 +139,3 @@ fun PortraitPlayer(
         }
     }
 }
-
-@Composable
-private fun TapTooltip(visible: Boolean, modifier: Modifier = Modifier) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(),
-        exit = fadeOut(),
-        modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.Black.copy(alpha = 0.7f))
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.fullscreen_double_tap_hint),
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}

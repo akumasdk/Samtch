@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.components
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -92,7 +93,7 @@ fun StreamMetadataBar(
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier
