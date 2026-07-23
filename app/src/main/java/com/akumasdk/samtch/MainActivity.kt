@@ -61,6 +61,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
+import com.akumasdk.samtch.service.TwitchGqlService
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
@@ -72,6 +73,7 @@ import com.akumasdk.samtch.util.SystemSettingsUtil
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -124,6 +126,11 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            // Warm up Twitch GQL cache (Client ID and Integrity Token)
+            TwitchGqlService.getPlaybackAccessToken("twitch")
+        }
 
         val filter = IntentFilter().apply {
             addAction(ACTION_REFRESH)

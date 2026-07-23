@@ -1,13 +1,12 @@
 package com.akumasdk.samtch.service
 
 import android.util.Log
-import com.akumasdk.samtch.data.model.TwitchGame
-import com.akumasdk.samtch.data.model.TwitchRoles
-import com.akumasdk.samtch.data.model.TwitchStream
+import com.akumasdk.samtch.data.mapper.TwitchGqlMapper
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
-import com.akumasdk.samtch.data.model.TwitchUser
 import com.akumasdk.samtch.util.Constants
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -37,6 +36,8 @@ object TwitchGqlService {
     @Volatile
     private var cachedDynamicClientId: String? = null
 
+    private val clientIdMutex = Mutex()
+
     // Twitch internal endpoint for integrity tokens
     private const val INTEGRITY_URL = "https://gql.twitch.tv/integrity"
 
@@ -47,38 +48,44 @@ object TwitchGqlService {
     /**
      * Dynamically scrapes the Twitch Client ID from the homepage.
      */
-    private suspend fun getDynamicClientId(): String = withContext(Dispatchers.IO) {
-        cachedDynamicClientId?.let { return@withContext it }
+    private suspend fun getDynamicClientId(): String {
+        cachedDynamicClientId?.let { return it }
 
-        try {
-            val request = Request.Builder()
-                .url("https://www.twitch.tv")
-                .header("User-Agent", Constants.USER_AGENT)
-                .build()
+        return clientIdMutex.withLock {
+            cachedDynamicClientId?.let { return@withLock it }
 
-            val response = client.newCall(request).execute()
-            val body = response.body.string().orEmpty()
+            withContext(Dispatchers.IO) {
+                try {
+                    val request = Request.Builder()
+                        .url("https://www.twitch.tv")
+                        .header("User-Agent", Constants.USER_AGENT)
+                        .build()
 
-            if (response.isSuccessful && body.isNotEmpty()) {
-                // Look for clientId="ID" (script block) or "Client-ID":"ID" (JSON/Legacy)
-                val regex =
-                    """clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["']""".toRegex()
-                val match = regex.find(body)
-                // The ID could be in group 1 or group 2 depending on which pattern matched
-                val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }
-                    ?: match?.groupValues?.get(2)
+                    val response = client.newCall(request).execute()
+                    val body = response.body.string()
 
-                if (!scrapedId.isNullOrBlank()) {
-                    Log.d(TAG, "Successfully scraped dynamic Client-ID: $scrapedId")
-                    cachedDynamicClientId = scrapedId
-                    return@withContext scrapedId
+                    if (response.isSuccessful && body.isNotEmpty()) {
+                        // Look for clientId="ID" (script block) or "Client-ID":"ID" (JSON/Legacy)
+                        val regex =
+                            """clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["']""".toRegex()
+                        val match = regex.find(body)
+                        // The ID could be in group 1 or group 2 depending on which pattern matched
+                        val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }
+                            ?: match?.groupValues?.get(2)
+
+                        if (!scrapedId.isNullOrBlank()) {
+                            Log.d(TAG, "Successfully scraped dynamic Client-ID: $scrapedId")
+                            cachedDynamicClientId = scrapedId
+                            return@withContext scrapedId
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception while scraping dynamic Client-ID", e)
                 }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception while scraping dynamic Client-ID", e)
-        }
 
-        Constants.TWITCH_GRAPHQL_CLIENT_ID
+                Constants.TWITCH_GRAPHQL_CLIENT_ID
+            }
+        }
     }
 
     // Stable per app-process run (don’t use a constant)
@@ -155,40 +162,11 @@ object TwitchGqlService {
                     .build()
 
                 val response = client.newCall(request).execute()
-                val body = response.body?.string().orEmpty()
+                val body = response.body.string()
 
                 if (!response.isSuccessful) return@withContext null
 
-                val json = JSONObject(body)
-                val data = json.optJSONObject("data")
-                val userJson = data?.optJSONObject("user") ?: return@withContext null
-
-                val rolesJson = userJson.optJSONObject("roles")
-                val streamJson = userJson.optJSONObject("stream")
-                val gameJson = streamJson?.optJSONObject("game")
-
-                val user = TwitchUser(
-                    id = userJson.getString("id").trim(),
-                    login = userJson.getString("login").trim(),
-                    displayName = userJson.getString("displayName").trim(),
-                    description = userJson.optString("description").trim(),
-                    profileImageUrl = userJson.optString("profileImageURL").trim(),
-                    createdAt = userJson.optString("createdAt").trim(),
-                    roles = rolesJson?.let { TwitchRoles(it.getBoolean("isPartner")) },
-                    stream = streamJson?.let {
-                        TwitchStream(
-                            id = it.getString("id").trim(),
-                            title = it.getString("title").trim(),
-                            type = it.optString("type").trim(),
-                            viewersCount = it.getInt("viewersCount"),
-                            previewImageUrl = it.optString("previewImageURL").trim(),
-                            createdAt = it.optString("createdAt").trim(),
-                            game = gameJson?.let { g -> TwitchGame(g.getString("name").trim()) }
-                        )
-                    }
-                )
-
-                TwitchStreamMetadata(user)
+                TwitchGqlMapper.mapStreamMetadata(body)
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching stream metadata", e)
                 null
@@ -208,7 +186,7 @@ object TwitchGqlService {
                     .build()
 
                 val response = client.newCall(request).execute()
-                val body = response.body?.string().orEmpty()
+                val body = response.body.string()
 
                 if (!response.isSuccessful) {
                     Log.w(TAG, "Integrity token fetch failed: ${response.code} body=$body")
@@ -270,20 +248,11 @@ object TwitchGqlService {
             }
 
             val response = client.newCall(requestBuilder.build()).execute()
-            val responseBody = response.body?.string().orEmpty()
+            val responseBody = response.body.string()
 
             if (!response.isSuccessful) return null
 
-            val json = JSONObject(responseBody)
-            val data = json.optJSONObject("data")
-            val streamPlaybackAccessToken = data?.optJSONObject("streamPlaybackAccessToken")
-
-            val token = streamPlaybackAccessToken?.optString("value")
-            val signature = streamPlaybackAccessToken?.optString("signature")
-
-            if (token.isNullOrBlank() || signature.isNullOrBlank()) return null
-
-            Pair(token, signature)
+            TwitchGqlMapper.mapPlaybackAccessToken(responseBody)
         } catch (e: Exception) {
             Log.e(TAG, "Playback token request exception", e)
             null
