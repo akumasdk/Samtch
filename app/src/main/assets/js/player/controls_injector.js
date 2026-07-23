@@ -19,12 +19,16 @@
                 display: flex; align-items: center; justify-content: center;
                 padding: 0 8px; height: 100%;
                 opacity: 0.9; transition: opacity 0.2s;
+                flex-shrink: 0 !important;
             }
             .samtch-control-btn:hover { opacity: 1; background: rgba(255, 255, 255, 0.15); }
             .samtch-control-btn svg { fill: currentColor; }
 
-            /* Ensure the control group is visible enough */
-            .player-controls__right-control-group { overflow: visible !important; }
+            /* Ensure the control group is visible enough and doesn't wrap */
+            .player-controls__right-control-group {
+                overflow: visible !important;
+                flex-wrap: nowrap !important;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -64,7 +68,7 @@
                     console.error('[Samtch] Bridge not found for chat toggle');
                 }
             };
-            rightGroup.appendChild(btn);
+            rightGroup.prepend(btn);
             injectedCount++;
         }
 
@@ -84,7 +88,7 @@
                     console.error('[Samtch] Bridge not found for audio toggle');
                 }
             };
-            rightGroup.appendChild(btn);
+            rightGroup.prepend(btn);
             injectedCount++;
         }
 
@@ -104,7 +108,7 @@
                     console.error('[Samtch] Bridge not found for fullscreen toggle');
                 }
             };
-            rightGroup.appendChild(btn);
+            rightGroup.prepend(btn);
             injectedCount++;
         }
 
