@@ -1,5 +1,9 @@
 (function() {
     'use strict';
+
+    if (window.samtch_visibility_int) clearInterval(window.samtch_visibility_int);
+    if (window.samtch_visibility_obs) window.samtch_visibility_obs.disconnect();
+
     function syncVisibility() {
         const controls = document.querySelector('[data-a-target="player-controls"]');
         const isVisible = controls ? controls.getAttribute('data-a-visible') === 'true' : false;
@@ -8,8 +12,16 @@
             document.title = signal;
         }
     }
-    setInterval(syncVisibility, 500);
-    const observer = new MutationObserver(syncVisibility);
-    const target = document.body || document.documentElement;
-    observer.observe(target, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-a-visible'] });
+
+    window.samtch_visibility_int = setInterval(syncVisibility, 500);
+
+    window.samtch_visibility_obs = new MutationObserver(syncVisibility);
+    window.samtch_visibility_obs.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['data-a-visible']
+    });
+
+    syncVisibility();
 })();

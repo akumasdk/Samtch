@@ -16,7 +16,6 @@ import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
-import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -37,15 +36,15 @@ fun WebViewContainer(
     val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
     val currentOnUiCleanFinish by rememberUpdatedState(onUiCleanFinish)
 
-    // Script injection logic when page finishes loading
+    // Script injection logic
     LaunchedEffect(state.lastLoadedUrl, state.loadingState) {
-        if (state.loadingState is LoadingState.Finished) {
-            val url = state.lastLoadedUrl ?: ""
-            if (!url.contains("twitch.tv")) return@LaunchedEffect
+        val url = state.lastLoadedUrl ?: ""
+        if (!url.contains("twitch.tv")) return@LaunchedEffect
 
+        // Inject on Finished (and potentially during Loading for early hooks)
+        if (state.loadingState is LoadingState.Finished || state.loadingState is LoadingState.Loading) {
             val scripts = listOf(
-                //"js/player/vaft.js",
-                "js/player/video_swap.js", //using video swap for stability, will look for a way to use vaft in a future release
+                "js/player/vaft.js",
                 "js/player/ui_cleaner.js",
                 "js/player/controls_injector.js",
                 "js/player/visibility_monitor.js",
@@ -59,20 +58,9 @@ fun WebViewContainer(
             if (scripts.isEmpty()) return@LaunchedEffect
             val finalScripts = scripts.joinToString("\n")
 
-            // Wait for WebView to be ready
-            delay(800.milliseconds)
-
-            // Initial tight polling for early hooks (catch hydration)
-            repeat(10) {
-                navigator.evaluateJavaScript(finalScripts)
-                delay(300.milliseconds)
-            }
-
-            // Steady polling for dynamic hydration (catch late UI elements)
-            repeat(15) {
-                navigator.evaluateJavaScript(finalScripts)
-                delay(1500.milliseconds)
-            }
+            // For Loading state, we want to inject as early as possible for hooks
+            // For Finished state, we inject to ensure hydration
+            navigator.evaluateJavaScript(finalScripts)
         }
     }
 

@@ -1,5 +1,8 @@
 (function() {
     'use strict';
+
+    if (window.samtch_link_obs) window.samtch_link_obs.disconnect();
+
     function disableTwitchLinks() {
         document.querySelectorAll('.tw-link').forEach(link => {
             if (!link.hasAttribute('data-samtch-disabled')) {
@@ -9,7 +12,9 @@
             }
         });
     }
-    const observer = new MutationObserver(disableTwitchLinks);
-    observer.observe(document.body, { childList: true, subtree: true });
+
+    window.samtch_link_obs = new MutationObserver(disableTwitchLinks);
+    window.samtch_link_obs.observe(document.documentElement, { childList: true, subtree: true });
+
     disableTwitchLinks();
 })();

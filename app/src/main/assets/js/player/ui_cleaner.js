@@ -1,12 +1,13 @@
 (function() {
     'use strict';
+    const VERSION = 2;
 
     // Self-cleanup: Clear existing intervals and observers from previous runs
     if (window.samtch_cleaner_init_int) clearInterval(window.samtch_cleaner_init_int);
     if (window.samtch_cleaner_maint_int) clearInterval(window.samtch_cleaner_maint_int);
     if (window.samtch_cleaner_obs) window.samtch_cleaner_obs.disconnect();
 
-    console.log('[Samtch] ui_cleaner.js starting fresh session...');
+    console.log(`[Samtch] ui_cleaner.js v${VERSION} starting...`);
 
     function injectStyles() {
         const styleId = 'samtch-player-cleaner';
@@ -63,22 +64,20 @@
         document.querySelectorAll('[data-a-target="tw-core-button-label-text"]').forEach(el => {
             if (el.textContent.trim() === 'Clip') {
                 const button = el.closest('button');
-                if (button) {
-                    console.log('[Samtch] Removing clip button via label text');
-                    button.remove();
-                }
+                if (button) button.remove();
             }
         });
     }
 
-    // High frequency cleanup during initial load
+    // High frequency cleanup during initial load (Aggressive catch hydration)
     const startTime = Date.now();
     window.samtch_cleaner_init_int = setInterval(() => {
         clean();
-        if (Date.now() - startTime > 8000) {
+        // Keep aggressive for 15 seconds to ensure we catch late-loading elements
+        if (Date.now() - startTime > 15000) {
             clearInterval(window.samtch_cleaner_init_int);
             // Switch to maintenance cleaning
-            window.samtch_cleaner_maint_int = setInterval(clean, 2500);
+            window.samtch_cleaner_maint_int = setInterval(clean, 3000);
         }
     }, 500);
 
