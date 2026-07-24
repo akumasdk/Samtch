@@ -47,6 +47,13 @@
     }
     let isActivelyStrippingAds = false;
     let localStorageHookFailed = false;
+
+    function notifyAdStatus(isBlocking) {
+        console.log('[VAFT] Ad blocking status: ' + isBlocking);
+        if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onAdBlocked) {
+            window.TwitchPlayerBridge.onAdBlocked(isBlocking);
+        }
+    }
     const twitchWorkers = [];
     const workerStringConflicts = [
         'twitch',
@@ -462,6 +469,7 @@
             streamInfo.IsMidroll = textStr.includes('"MIDROLL"') || textStr.includes('"midroll"');
             if (!streamInfo.IsShowingAd) {
                 streamInfo.IsShowingAd = true;
+                notifyAdStatus(true);
                 postMessage({
                     key: 'UpdateAdBlockBanner',
                     isMidroll: streamInfo.IsMidroll,
@@ -581,8 +589,9 @@
                 textStr = stripAdSegments(textStr, stripHevc, streamInfo);
             }
         } else if (streamInfo.IsShowingAd) {
-            console.log('Finished blocking ads');
+            console.log('[VAFT] Finished blocking ads');
             streamInfo.IsShowingAd = false;
+            notifyAdStatus(false);
             streamInfo.IsStrippingAdSegments = false;
             streamInfo.NumStrippedAdSegments = 0;
             streamInfo.ActiveBackupPlayerType = null;
@@ -1093,6 +1102,12 @@
             onContentLoaded();
         });
     }
+
+    console.log('[VAFT] Script fully loaded and initialized');
+    if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onVaftReady) {
+        window.TwitchPlayerBridge.onVaftReady();
+    }
+
     window.simulateAds = (depth) => {
         if (depth === undefined || depth < 0) {
             console.log('Ad depth paramter required (0 = no simulated ad, 1+ = use backup player for given depth)');

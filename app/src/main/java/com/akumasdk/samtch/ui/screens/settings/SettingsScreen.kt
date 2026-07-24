@@ -40,6 +40,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showAdBlockDialog by remember { mutableStateOf(false) }
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
@@ -104,6 +105,30 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.clickable {
                         isBttvSettingsOpen = true
+                    }
+                )
+            }
+
+            item {
+                val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VAFT)
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.ad_block_mode_title)) },
+                    supportingContent = {
+                        Text(
+                            when (adBlockMode) {
+                                SettingsManager.AdBlockMode.VAFT -> stringResource(R.string.ad_block_mode_vaft)
+                                SettingsManager.AdBlockMode.VIDEO_SWAP -> stringResource(R.string.ad_block_mode_video_swap)
+                            }
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_refresh),
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showAdBlockDialog = true
                     }
                 )
             }
@@ -307,6 +332,62 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { showAboutDialog = false }) {
                     Text(stringResource(R.string.close_button))
+                }
+            }
+        )
+    }
+
+    if (showAdBlockDialog) {
+        val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
+        AlertDialog(
+            onDismissRequest = { showAdBlockDialog = false },
+            title = { Text(stringResource(R.string.ad_block_mode_title)) },
+            text = {
+                Column {
+                    SettingsManager.AdBlockMode.entries.forEach { mode ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch {
+                                        SettingsManager.setAdBlockMode(context, mode)
+                                        showAdBlockDialog = false
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = adBlockMode == mode,
+                                onClick = {
+                                    scope.launch {
+                                        SettingsManager.setAdBlockMode(context, mode)
+                                        showAdBlockDialog = false
+                                    }
+                                }
+                            )
+                            Text(
+                                text = when (mode) {
+                                    SettingsManager.AdBlockMode.VAFT -> stringResource(R.string.ad_block_mode_vaft)
+                                    SettingsManager.AdBlockMode.VIDEO_SWAP -> stringResource(R.string.ad_block_mode_video_swap)
+                                },
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                    
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    
+                    Text(
+                        text = stringResource(R.string.ad_block_mode_notice),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAdBlockDialog = false }) {
+                    Text(stringResource(R.string.cancel_button))
                 }
             }
         )
