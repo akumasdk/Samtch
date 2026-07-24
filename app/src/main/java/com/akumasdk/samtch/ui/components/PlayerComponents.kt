@@ -44,7 +44,8 @@ fun WebViewContainer(
             if (!url.contains("twitch.tv")) return@LaunchedEffect
 
             val scripts = listOf(
-                "js/player/vaft.js",
+                //"js/player/vaft.js",
+                "js/player/video_swap.js", //using video swap for stability, will look for a way to use vaft in a future release
                 "js/player/ui_cleaner.js",
                 "js/player/controls_injector.js",
                 "js/player/visibility_monitor.js",

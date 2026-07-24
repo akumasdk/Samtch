@@ -61,6 +61,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
+import com.akumasdk.samtch.service.TwitchGqlService
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
@@ -72,11 +73,13 @@ import com.akumasdk.samtch.util.SystemSettingsUtil
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var isInPipModeState = mutableStateOf(false)
+    private var wasInPip: Boolean = false
     private var pipRectState = mutableStateOf<Rect?>(null)
     private var refreshTriggerState = mutableIntStateOf(0)
     private var isAppLoadedState = mutableStateOf(false)
@@ -124,6 +127,11 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            // Warm up Twitch GQL cache (Client ID and Integrity Token)
+            TwitchGqlService.getPlaybackAccessToken("twitch")
+        }
 
         val filter = IntentFilter().apply {
             addAction(ACTION_REFRESH)
@@ -359,7 +367,10 @@ class MainActivity : ComponentActivity() {
                 backgroundController = null
                 val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
                 startService(stopIntent)
-                if (currentChannel != null) refreshTriggerState.intValue += 1
+                if (currentChannel != null && !wasInPip) {
+                    refreshTriggerState.intValue += 1
+                }
+                wasInPip = false
             }
         }
     }
@@ -420,6 +431,7 @@ class MainActivity : ComponentActivity() {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         isInPipModeState.value = isInPictureInPictureMode
         if (isInPictureInPictureMode) {
+            wasInPip = true
             isMinimizedState.value = false
             isSettingsOpenState.value = false
         }

@@ -20,6 +20,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import android.content.ComponentName
+import android.util.Log
 import coil.compose.AsyncImage
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
@@ -71,7 +72,7 @@ fun TwitchPlayer(
         isUiLoading = true
         while (true) {
             // Fetch detailed metadata via GraphQL
-            android.util.Log.d("TwitchPlayer", "Fetching periodic metadata for $channel")
+            Log.d("TwitchPlayer", "Fetching periodic metadata for $channel")
             val metadata = TwitchGqlService.getStreamMetadata(channel)
             streamMetadata = metadata
             
@@ -145,7 +146,7 @@ fun TwitchPlayer(
         val controller = mediaController ?: return@LaunchedEffect
         val stream = streamMetadata?.user?.stream ?: return@LaunchedEffect
         
-        android.util.Log.d("TwitchPlayer", "Updating controller metadata for $channel")
+        Log.d("TwitchPlayer", "Updating controller metadata for $channel")
         val metadata = MediaMetadata.Builder()
             .setTitle(stream.title)
             .setArtist(streamMetadata?.user?.displayName ?: channel)
@@ -166,12 +167,12 @@ fun TwitchPlayer(
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
 
-    android.util.Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, isMinimized: $isMinimized)")
+    Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, isMinimized: $isMinimized)")
 
     // Handle back button to return to browser (minimize)
     if (!isPip && !isMinimized) {
         androidx.activity.compose.BackHandler {
-            android.util.Log.d("TwitchPlayer", "BackHandler triggered for $channel")
+            Log.d("TwitchPlayer", "BackHandler triggered for $channel")
             onBack?.invoke()
         }
     }
@@ -184,13 +185,13 @@ fun TwitchPlayer(
         } else {
             baseUrl
         }
-        android.util.Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: $refreshTrigger)")
+        Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: $refreshTrigger)")
         navigator.loadUrl(finalUrl)
     }
 
     DisposableEffect(channel) {
         onDispose {
-            android.util.Log.d("TwitchPlayer", "Disposing player for channel: $channel")
+            Log.d("TwitchPlayer", "Disposing player for channel: $channel")
             mediaController?.release()
             // Clean up WebView resources aggressively
             try {
@@ -204,7 +205,7 @@ fun TwitchPlayer(
                     removeAllViews()
                 }
             } catch (e: Exception) {
-                android.util.Log.e("TwitchPlayer", "Error disposing WebView", e)
+                Log.e("TwitchPlayer", "Error disposing WebView", e)
             }
         }
     }
@@ -303,20 +304,21 @@ fun TwitchPlayer(
                                     .background(Color.Black),
                                 contentAlignment = Alignment.Center
                             ) {
-                                streamMetadata?.user?.stream?.previewImageUrl?.let { url ->
-                                    AsyncImage(
-                                        model = url,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                    // Add a dark overlay to ensure the spinner is visible
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.Black.copy(alpha = 0.6f))
-                                    )
-                                }
+                                val previewUrl = streamMetadata?.user?.stream?.previewImageUrl
+                                    ?: "https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.lowercase()}-853x480.jpg"
+
+                                AsyncImage(
+                                    model = previewUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                // Add a dark overlay to ensure the spinner is visible
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.6f))
+                                )
                                 CircularProgressIndicator(
                                     color = Color(0xFF9146FF), // Twitch Purple
                                     strokeWidth = 3.dp
