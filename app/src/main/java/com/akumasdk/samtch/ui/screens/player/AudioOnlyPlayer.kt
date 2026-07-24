@@ -169,7 +169,8 @@ fun AudioOnlyPlayer(
                                 fadeIn(animationSpec = tween(220, delayMillis = 90))
                                     .togetherWith(fadeOut(animationSpec = tween(90)))
                             },
-                            label = "AudioGameAnimation"
+                            label = "AudioGameAnimation",
+                            modifier = Modifier.weight(1f, fill = false)
                         ) { targetGame ->
                             if (targetGame.isNotEmpty()) {
                                 Surface(
@@ -181,7 +182,10 @@ fun AudioOnlyPlayer(
                                         color = Color(0xFFBF94FF), // Unified light purple category
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        maxLines = 1,
+                                        modifier = Modifier
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            .basicMarquee()
                                     )
                                 }
                             }

@@ -49,4 +49,11 @@
     <!-- PiP Settings -->
     <string name="pip_enabled_title">Picture-in-Picture</string>
     <string name="pip_enabled_summary">Automatically enter PiP mode when app is minimized</string>
+
+    <!-- Ad Block Settings -->
+    <string name="ad_block_mode_title">Ad-Blocking Method</string>
+    <string name="ad_block_mode_summary">Choose the script used to block Twitch ads</string>
+    <string name="ad_block_mode_vaft">VAFT (High Latency/Experimental)</string>
+    <string name="ad_block_mode_video_swap">Video Swap (Stable/Default)</string>
+    <string name="ad_block_mode_notice">Note: Changes to the ad-blocking method will take effect when you play the next stream.</string>
 </resources>

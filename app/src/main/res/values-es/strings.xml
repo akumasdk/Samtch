@@ -49,4 +49,11 @@
     <!-- PiP Settings -->
     <string name="pip_enabled_title">Imagen en imagen (PiP)</string>
     <string name="pip_enabled_summary">Entrar automáticamente en modo PiP cuando se minimiza la aplicación</string>
+
+    <!-- Ad Block Settings -->
+    <string name="ad_block_mode_title">Método de Bloqueo de Anuncios</string>
+    <string name="ad_block_mode_summary">Elige el script utilizado para bloquear anuncios de Twitch</string>
+    <string name="ad_block_mode_vaft">VAFT (Latencia Alta/Experimental)</string>
+    <string name="ad_block_mode_video_swap">Video Swap (Estable/Predeterminado)</string>
+    <string name="ad_block_mode_notice">Nota: Los cambios en el método de bloqueo de anuncios surtirán efecto la próxima vez que reproduzcas un stream.</string>
 </resources>

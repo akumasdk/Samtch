@@ -30,6 +30,13 @@
     }
     let twitchPlayerAndState = null;
     let localStorageHookFailed = false;
+
+    function notifyAdStatus(isBlocking) {
+        console.log('[VideoSwap] Ad blocking status: ' + isBlocking);
+        if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onAdBlocked) {
+            window.TwitchPlayerBridge.onAdBlocked(isBlocking);
+        }
+    }
     const twitchWorkers = [];
     const workerStringConflicts = [
         'twitch',
@@ -269,6 +276,7 @@
                                 if ((!backTextStr.includes(AD_SIGNIFIER) && (SimulatedAdsDepth == 0 || i >= SimulatedAdsDepth - 1)) || i >= playerTypes.length - 1) {
                                     result = backTextStr;
                                     backupPlayerTypeInfo = ' (' + playerType + ')';
+                                    notifyAdStatus(true);
                                     streamInfo.BackupEncodingsStatus.set(playerType, 1);
                                     streamInfo.BackupEncodingsPlayerTypeIndex = i;
                                     if (streamInfo.Encodings != null) {
@@ -375,7 +383,8 @@
                 const streamM3u8 = await streamM3u8Response.text();
                 if (streamM3u8 != null) {
                     if (!streamM3u8.includes(AD_SIGNIFIER) && SimulatedAdsDepth == 0) {
-                        console.log('No more ads on main stream. Triggering player reload to go back to main stream...');
+                        console.log('[VideoSwap] No more ads on main stream. Triggering player reload to go back to main stream...');
+                        notifyAdStatus(false);
                         streamInfo.IsMovingOffBackupEncodings = true;
                         streamInfo.BackupEncodings = null;
                         streamInfo.BackupEncodingsStatus.clear();
@@ -961,6 +970,12 @@
             onContentLoaded();
         });
     }
+
+    console.log('[VideoSwap] Script fully loaded and initialized');
+    if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onVaftReady) {
+        window.TwitchPlayerBridge.onVaftReady();
+    }
+
     window.simulateAds = (depth) => {
         if (depth === undefined || depth < 0) {
             console.log('Ad depth paramter required (0 = no simulated ad, 1+ = use backup player for given depth)');

@@ -1,3 +1,16 @@
+## Samtch v0.2.2
+
+### What's New
+- **Configurable Ad-Blocking**: Added a setting to choose between VAFT and Video Swap ad-blocking methods.
+- **Improved Ad-Blocking Stability**: Set **Video Swap** as the default ad-blocking method for better reliability.
+- **Refined Script Injection**: Enhanced the injection pipeline with high-priority early loading and JavaScript bridge signals for better coordination.
+- **Persistent Ad-Blocking Notice**: Added a notice in settings to clarify that ad-blocking changes take effect on the next stream.
+- **Enhanced Audio Player UI**: Fixed layout issues in the audio-only player and added a marquee effect for long game names.
+- **Improved Loading Feedback**: Refined the loading box dismissal logic with multiple safety fallbacks and better bridge communication.
+- **Localized Settings**: Full English and Spanish localization for the new ad-blocking selection settings.
+
+---
+
 ## Samtch v0.2.1
 
 ### What's New
