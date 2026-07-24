@@ -79,6 +79,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var isInPipModeState = mutableStateOf(false)
+    private var wasInPip: Boolean = false
     private var pipRectState = mutableStateOf<Rect?>(null)
     private var refreshTriggerState = mutableIntStateOf(0)
     private var isAppLoadedState = mutableStateOf(false)
@@ -366,7 +367,10 @@ class MainActivity : ComponentActivity() {
                 backgroundController = null
                 val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
                 startService(stopIntent)
-                if (currentChannel != null) refreshTriggerState.intValue += 1
+                if (currentChannel != null && !wasInPip) {
+                    refreshTriggerState.intValue += 1
+                }
+                wasInPip = false
             }
         }
     }
@@ -427,6 +431,7 @@ class MainActivity : ComponentActivity() {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         isInPipModeState.value = isInPictureInPictureMode
         if (isInPictureInPictureMode) {
+            wasInPip = true
             isMinimizedState.value = false
             isSettingsOpenState.value = false
         }

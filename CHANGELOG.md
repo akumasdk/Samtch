@@ -1,3 +1,13 @@
+## Samtch v0.2.1
+
+### What's New
+- **Optimized Video Playback**: Switched to the `video_swap` script for improved stream stability and addressed issues with the `vaft` implementation.
+- **Faster Player Startup**: Implemented GQL cache pre-warming on app startup and added a loading preview fallback for near-instant visual feedback.
+- **Enhanced Web UI Cleaning**: Refined the cleanup logic for single-page application transitions and improved pull-to-refresh reliability.
+- **Fluid UI Transitions**: Integrated polished animated transitions throughout the player interface.
+
+---
+
 ## Samtch v0.2.0
 
 ### What's New
