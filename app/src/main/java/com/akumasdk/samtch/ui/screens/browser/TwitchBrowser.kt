@@ -336,7 +336,7 @@ fun TwitchBrowser(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black),
+                    .background(androidx.compose.material3.MaterialTheme.colorScheme.background),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(

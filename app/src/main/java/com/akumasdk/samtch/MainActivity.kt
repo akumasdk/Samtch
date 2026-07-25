@@ -144,6 +144,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SamtchTheme {
+                val darkTheme = androidx.compose.foundation.isSystemInDarkTheme()
                 var selectedChannel by rememberSaveable { mutableStateOf<String?>(null) }
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
@@ -193,8 +194,8 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // Theme consistency
-                    windowInsetsController.isAppearanceLightStatusBars = false
-                    windowInsetsController.isAppearanceLightNavigationBars = false
+                    windowInsetsController.isAppearanceLightStatusBars = !darkTheme
+                    windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
                 }
 
                 val browserState = rememberSaveableWebViewState("https://m.twitch.tv/")
@@ -232,7 +233,7 @@ class MainActivity : ComponentActivity() {
                     if (selectedChannel != null) displayedChannel = selectedChannel
                 }
 
-                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
+                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background)) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
