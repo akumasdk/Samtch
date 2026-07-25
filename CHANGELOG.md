@@ -1,3 +1,13 @@
+## Samtch v0.2.3
+
+### What's New
+- **Sound-Synchronized Loading**: The loading overlay is now accurately dismissed only when video playback (with audio) is detected, ensuring a smoother transition.
+- **Reliable Playback Detection**: Implemented a dedicated JavaScript monitor for the video element with audio-level sensing and a 5-second fallback.
+- **Optimized Script Injection**: Refined the injection pipeline and removed redundant bridge signals for a cleaner, more stable implementation.
+- **Cleaned Up Script Monitors**: Removed legacy and redundant script monitors to improve performance and stability.
+
+---
+
 ## Samtch v0.2.2
 
 ### What's New
