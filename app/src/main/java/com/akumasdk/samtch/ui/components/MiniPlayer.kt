@@ -35,17 +35,33 @@ fun MiniPlayer(
     onClose: () -> Unit,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(80.dp)
-            .shadow(16.dp, RoundedCornerShape(40.dp))
-            .clip(RoundedCornerShape(40.dp))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), RoundedCornerShape(40.dp))
-            .clickable(onClick = onClick),
-        color = Color(0xFF1F1F23).copy(alpha = 0.95f),
-        tonalElevation = 12.dp
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = {
+            if (it == SwipeToDismissBoxValue.StartToEnd || it == SwipeToDismissBoxValue.EndToStart) {
+                onClose()
+                true
+            } else {
+                false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier,
+        backgroundContent = { /* Empty background */ }
     ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .shadow(16.dp, RoundedCornerShape(40.dp))
+                .clip(RoundedCornerShape(40.dp))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), RoundedCornerShape(40.dp))
+                .clickable(onClick = onClick),
+            color = Color(0xFF1F1F23).copy(alpha = 0.95f),
+            tonalElevation = 12.dp
+        ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
@@ -116,4 +132,5 @@ fun MiniPlayer(
             }
         }
     }
+}
 }
