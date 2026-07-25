@@ -247,8 +247,8 @@ fun TwitchPlayer(
                 onToggleAudioOnly = {
                     isAudioOnly = true
                 },
-                onUiCleanFinish = {
-                    Log.d("TwitchPlayer", "onUiCleanFinish called - hiding loading box")
+                onPlaybackStarted = {
+                    Log.d("TwitchPlayer", "onPlaybackStarted called - hiding loading box")
                     isUiLoading = false
                 }
             )
