@@ -35,7 +35,7 @@ fun WebViewContainer(
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit = {},
     onToggleAudioOnly: () -> Unit = {},
-    onUiCleanFinish: () -> Unit = {}
+    onPlaybackStarted: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var isVaftReady by remember { mutableStateOf(false) }
@@ -61,7 +61,7 @@ fun WebViewContainer(
     val currentOnToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
     val currentOnToggleChat by rememberUpdatedState(onToggleChat)
     val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
-    val currentOnUiCleanFinish by rememberUpdatedState(onUiCleanFinish)
+    val currentOnPlaybackStarted by rememberUpdatedState(onPlaybackStarted)
 
     // Script injection logic when page finishes loading
     LaunchedEffect(state.lastLoadedUrl, state.loadingState, isVaftReady, adBlockMode) {
@@ -84,9 +84,10 @@ fun WebViewContainer(
             val scripts = listOf(
                 "js/player/ui_cleaner.js",
                 "js/player/controls_injector.js",
-                "js/player/visibility_monitor.js",
-                "js/player/link_disabler.js",
-                "js/common/scroll_unlocker.js"
+                "js/player/playback_monitor.js",
+                //"js/player/visibility_monitor.js",
+                //"js/player/link_disabler.js",
+                //"js/common/scroll_unlocker.js"
             ).mapNotNull { path ->
                 val script = ScriptLoader.getScript(context, path)
                 if (script.isNotEmpty()) script else null
@@ -104,11 +105,11 @@ fun WebViewContainer(
                 delay(300.milliseconds)
             }
 
-            // Fallback: if ui_cleaner.js doesn't trigger onUiCleanFinish, do it ourselves
-            delay(2000.milliseconds)
+            // Fallback: if scripts don't trigger signals, do it ourselves
+            delay(4000.milliseconds)
             if (state.loadingState is LoadingState.Finished) {
-                Log.d("TwitchPlayer", "Fallback: Triggering onUiCleanFinish after timeout")
-                currentOnUiCleanFinish()
+                Log.d("TwitchPlayer", "Fallback: Triggering finish signals after timeout")
+                currentOnPlaybackStarted()
             }
 
             // Steady polling for dynamic hydration (catch late UI elements)
@@ -161,8 +162,8 @@ fun WebViewContainer(
                         onToggleAudioOnly = {
                             post { currentOnToggleAudioOnly() }
                         },
-                        onUiCleanFinish = {
-                            post { currentOnUiCleanFinish() }
+                        onPlaybackStartedCallback = {
+                            post { currentOnPlaybackStarted() }
                         },
                         adBlockedCallback = { isBlocking ->
                             Log.d("TwitchPlayer", "Ad blocking status: $isBlocking")
@@ -192,7 +193,7 @@ class TwitchPlayerBridge(
     private val onToggleFullscreen: () -> Unit,
     private val onToggleChat: () -> Unit = {},
     private val onToggleAudioOnly: () -> Unit = {},
-    private val onUiCleanFinish: () -> Unit = {},
+    private val onPlaybackStartedCallback: () -> Unit = {},
     private val adBlockedCallback: (Boolean) -> Unit = {},
     private val vaftReadyCallback: () -> Unit = {}
 ) {
@@ -212,8 +213,8 @@ class TwitchPlayerBridge(
     }
 
     @JavascriptInterface
-    fun uiCleanFinish() {
-        onUiCleanFinish()
+    fun onPlaybackStarted() {
+        onPlaybackStartedCallback()
     }
 
     @JavascriptInterface

@@ -46,6 +46,7 @@ fun AudioOnlyPlayer(
     onTogglePlayback: () -> Unit,
     onCloseAudioOnly: () -> Unit,
     onRefresh: () -> Unit,
+    previewImageUrl: String? = null,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(
@@ -61,6 +62,30 @@ fun AudioOnlyPlayer(
             ),
         contentAlignment = Alignment.Center
     ) {
+        // Background Image with Crossfade animation on refresh
+        Crossfade(
+            targetState = previewImageUrl,
+            animationSpec = tween(durationMillis = 1000),
+            label = "AudioOnlyBackgroundFade"
+        ) { url ->
+            if (!url.isNullOrEmpty()) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    // Add a dark overlay to ensure readability
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.7f))
+                    )
+                }
+            }
+        }
+
         val availableHeight = maxHeight
         val isMini = availableHeight < 100.dp
         
