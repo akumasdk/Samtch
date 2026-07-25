@@ -74,10 +74,24 @@ fun TwitchPlayer(
             // Fetch detailed metadata via GraphQL
             Log.d("TwitchPlayer", "Fetching periodic metadata for $channel")
             val metadata = TwitchGqlService.getStreamMetadata(channel)
-            streamMetadata = metadata
+            
+            // Append timestamp to preview image URL to force refresh in UI and MediaController
+            val timestampedMetadata = metadata?.copy(
+                user = metadata.user?.copy(
+                    stream = metadata.user.stream?.let { stream ->
+                        stream.copy(
+                            previewImageUrl = stream.previewImageUrl?.let { url ->
+                                val separator = if (url.contains("?")) "&" else "?"
+                                "$url${separator}t=${System.currentTimeMillis()}"
+                            }
+                        )
+                    }
+                )
+            )
+            streamMetadata = timestampedMetadata
             
             // Update UI-facing metadata
-            metadata?.user?.let { user ->
+            timestampedMetadata?.user?.let { user ->
                 avatarUrl = user.profileImageUrl
                 streamSubtitle = user.stream?.title
                 onMetadataUpdated(user.profileImageUrl, user.stream?.title)
@@ -286,6 +300,7 @@ fun TwitchPlayer(
                             mediaController?.prepare()
                             mediaController?.play()
                         },
+                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         modifier = modifier
                     )
                 } else {
