@@ -54,6 +54,12 @@ fun WebViewContainer(
                 Log.d("TwitchPlayer", "Injecting $adBlockMode early (Loading state detected)")
                 navigator.evaluateJavaScript(adScript)
             }
+
+            // Also inject playback monitor early to catch fast starts
+            val monitorScript = ScriptLoader.getScript(context, "js/player/playback_monitor.js")
+            if (monitorScript.isNotEmpty()) {
+                navigator.evaluateJavaScript(monitorScript)
+            }
         }
     }
 
@@ -94,16 +100,16 @@ fun WebViewContainer(
             val finalScripts = scripts.joinToString("\n")
 
             // Wait for WebView to be ready
-            delay(300.milliseconds)
+            delay(100.milliseconds)
 
             // Initial tight polling for early hooks (catch hydration)
-            repeat(5) {
+            repeat(8) {
                 navigator.evaluateJavaScript(finalScripts)
                 delay(300.milliseconds)
             }
 
             // Fallback: if scripts don't trigger signals, do it ourselves
-            delay(4000.milliseconds)
+            delay(3000.milliseconds)
             if (state.loadingState is LoadingState.Finished) {
                 Log.d("TwitchPlayer", "Fallback: Triggering finish signals after timeout")
                 currentOnPlaybackStarted()

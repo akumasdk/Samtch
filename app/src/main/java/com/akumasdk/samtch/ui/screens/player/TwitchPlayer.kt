@@ -35,6 +35,7 @@ import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
 import androidx.core.net.toUri
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun TwitchPlayer(
@@ -67,6 +68,17 @@ fun TwitchPlayer(
     val currentAvatarUrl by rememberUpdatedState(avatarUrl)
 
     val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
+
+    // Safety timeout for loading screen
+    LaunchedEffect(isUiLoading) {
+        if (isUiLoading) {
+            delay(12.seconds) // 12 second absolute maximum for loading screen
+            if (isUiLoading) {
+                Log.w("TwitchPlayer", "Loading timeout reached for $channel - forcing removal")
+                isUiLoading = false
+            }
+        }
+    }
 
     LaunchedEffect(channel, refreshTrigger) {
         isUiLoading = true

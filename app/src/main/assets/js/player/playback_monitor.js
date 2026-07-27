@@ -11,34 +11,53 @@
     function checkPlayback() {
         if (signalSent) return;
 
-        const video = document.querySelector('video');
-        if (!video) return;
+        // Look for all video elements, including those that might be in iframes
+        const videos = Array.from(document.querySelectorAll('video'));
 
-        // Check if video is actually playing (currentTime is moving)
-        const isPlaying = video.currentTime > 0 && !video.paused && !video.ended && video.readyState >= 3;
+        // Also check same-origin iframes recursively
+        try {
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                try {
+                    if (iframe.contentDocument) {
+                        const iframeVideos = iframe.contentDocument.querySelectorAll('video');
+                        videos.push(...Array.from(iframeVideos));
+                    }
+                } catch (e) {
+                    // Cross-origin iframe, ignore
+                }
+            });
+        } catch (e) {}
 
-        if (isPlaying) {
-            if (!playingStartTime) playingStartTime = Date.now();
+        if (videos.length === 0) return;
 
-            const isAudible = !video.muted && video.volume > 0;
-            const timeSinceStart = Date.now() - playingStartTime;
+        for (const video of videos) {
+            // Check if video is actually playing
+            // readyState 2 (HAVE_CURRENT_DATA) is often enough to start hearing/seeing something
+            const isPlaying = !video.paused && !video.ended && video.readyState >= 2;
 
-            // Trigger if:
-            // 1. Sound is detected
-            // 2. Or video has been playing for > 5 seconds even if muted (fallback)
-            if (isAudible || timeSinceStart > 5000) {
-                if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onPlaybackStarted) {
-                    console.log(`[Samtch] Playback detected (Audible: ${isAudible}, Fallback: ${timeSinceStart > 5000}). Signaling bridge.`);
-                    window.TwitchPlayerBridge.onPlaybackStarted();
-                    signalSent = true;
-                    clearInterval(window.samtch_playback_monitor_int);
+            if (isPlaying) {
+                if (!playingStartTime) playingStartTime = Date.now();
+
+                const isAudible = !video.muted && video.volume > 0;
+                const timeSinceStart = Date.now() - playingStartTime;
+
+                // Trigger if:
+                // 1. Sound is detected
+                // 2. Or video has been playing for > 3 seconds even if muted (fallback)
+                if (isAudible || timeSinceStart > 3000) {
+                    if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onPlaybackStarted) {
+                        console.log(`[Samtch] Playback detected (Audible: ${isAudible}, Fallback: ${timeSinceStart > 3000}). Signaling bridge.`);
+                        window.TwitchPlayerBridge.onPlaybackStarted();
+                        signalSent = true;
+                        clearInterval(window.samtch_playback_monitor_int);
+                        break;
+                    }
                 }
             }
-        } else {
-            playingStartTime = null;
         }
     }
 
-    // Poll frequently during startup
-    window.samtch_playback_monitor_int = setInterval(checkPlayback, 500);
+    // High frequency polling initially
+    window.samtch_playback_monitor_int = setInterval(checkPlayback, 300);
 })();
