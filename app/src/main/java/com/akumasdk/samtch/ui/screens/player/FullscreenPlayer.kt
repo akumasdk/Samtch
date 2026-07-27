@@ -36,6 +36,7 @@ fun FullscreenPlayer(
     gameName: String? = null,
     viewersCount: Int = 0,
     adblockText: String = "",
+    streamStartedAt: String? = null,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var isChatVisible by remember { mutableStateOf(false) }
@@ -127,6 +128,7 @@ fun FullscreenPlayer(
                         streamTitle = streamTitle,
                         gameName = gameName,
                         viewersCount = viewersCount,
+                        streamStartedAt = streamStartedAt,
                         modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
                     )
                 }

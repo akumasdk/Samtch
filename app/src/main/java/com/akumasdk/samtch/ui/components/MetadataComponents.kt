@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.Duration
+import java.time.Instant
 
 /**
  * Formats large viewer counts into human-readable strings (e.g., 1.2k, 1.5M).
@@ -29,6 +31,29 @@ fun formatViewerCount(count: Int): String {
         count >= 1_000_000 -> "%.1fM".format(count / 1_000_000f)
         count >= 1_000 -> "%.1fk".format(count / 1_000f)
         else -> count.toString()
+    }
+}
+
+/**
+ * Formats ISO 8601 timestamp into a human-readable duration string (e.g., 2h 15m).
+ */
+fun formatStreamDuration(createdAt: String?): String {
+    if (createdAt.isNullOrBlank()) return ""
+    return try {
+        val start = Instant.parse(createdAt)
+        val now = Instant.now()
+        val duration = Duration.between(start, now)
+        
+        val hours = duration.toHours()
+        val minutes = duration.toMinutes() % 60
+        
+        when {
+            hours > 0 -> "${hours}h ${minutes}m"
+            minutes > 0 -> "${minutes}m"
+            else -> "Just started"
+        }
+    } catch (e: Exception) {
+        ""
     }
 }
 
@@ -93,6 +118,7 @@ fun StreamMetadataBar(
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
+    streamStartedAt: String? = null,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     Surface(
@@ -181,6 +207,21 @@ fun StreamMetadataBar(
                             modifier = Modifier.widthIn(max = 120.dp)
                         )
                     }
+                }
+
+                val duration = formatStreamDuration(streamStartedAt)
+                if (duration.isNotEmpty()) {
+                    Text(
+                        text = " • ",
+                        color = Color.Gray,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = duration,
+                        color = Color.LightGray,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 if (viewersCount > 0) {

@@ -431,6 +431,7 @@ fun TwitchPlayer(
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         adblockText = adblockText,
+                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
                 } else {
@@ -442,6 +443,7 @@ fun TwitchPlayer(
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         isAudioOnly = isAudioOnly,
                         adblockText = adblockText,
+                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                         onToggleFullscreen = onToggleFullscreen,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )

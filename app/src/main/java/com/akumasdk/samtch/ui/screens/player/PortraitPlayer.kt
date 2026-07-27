@@ -41,6 +41,7 @@ fun PortraitPlayer(
     viewersCount: Int = 0,
     isAudioOnly: Boolean = false,
     adblockText: String = "",
+    streamStartedAt: String? = null,
     onToggleFullscreen: () -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
@@ -125,7 +126,8 @@ fun PortraitPlayer(
                 displayName = displayName,
                 streamTitle = streamTitle,
                 gameName = gameName,
-                viewersCount = viewersCount
+                viewersCount = viewersCount,
+                streamStartedAt = streamStartedAt
             )
         }
 
