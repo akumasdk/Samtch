@@ -40,7 +40,7 @@ fun PortraitPlayer(
     viewersCount: Int = 0,
     isAudioOnly: Boolean = false,
     onToggleFullscreen: () -> Unit,
-    webView: @Composable (Modifier, () -> Unit) -> Unit
+    playerContent: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var isChatVisible by remember { mutableStateOf(true) }
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -91,7 +91,7 @@ fun PortraitPlayer(
 
                                     if (isInCenterZone) {
                                         onToggleFullscreen()
-                                        // Consume the second tap to prevent WebView from seeing it
+                                        // Consume the second tap to prevent player from seeing it
                                         event.changes.forEach { it.consume() }
                                     }
                                 }
@@ -101,7 +101,7 @@ fun PortraitPlayer(
                     }
                 }
         ) {
-            webView(Modifier.fillMaxSize()) {
+            playerContent(Modifier.fillMaxSize()) {
                 isChatVisible = !isChatVisible
             }
         }

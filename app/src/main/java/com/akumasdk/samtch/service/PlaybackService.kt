@@ -61,7 +61,8 @@ class PlaybackService : MediaSessionService() {
             .setAllowCrossProtocolRedirects(true)
 
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
-        val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory)
+        val hlsMediaSourceFactory = androidx.media3.exoplayer.hls.HlsMediaSource.Factory(dataSourceFactory)
+            .setAllowChunklessPreparation(true)
 
         val trackSelector = DefaultTrackSelector(this).apply {
             parameters = buildUponParameters()
@@ -71,11 +72,17 @@ class PlaybackService : MediaSessionService() {
 
         val loadControl = DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
-            .setBufferDurationsMs(30_000, 120_000, 2_000, 5_000)
+            .setBufferDurationsMs(
+                3_000, // minBufferMs
+                10_000, // maxBufferMs
+                1_500, // bufferForPlaybackMs (increased from 1_000)
+                2_500  // bufferForPlaybackAfterRebufferMs (increased from 2_000)
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         exoPlayer = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(mediaSourceFactory)
+            .setMediaSourceFactory(hlsMediaSourceFactory)
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
             .setAudioAttributes(
@@ -243,6 +250,15 @@ class PlaybackService : MediaSessionService() {
                 
                 val newItem = item.buildUpon()
                     .setUri(finalUrl.toUri())
+                    .setLiveConfiguration(
+                        MediaItem.LiveConfiguration.Builder()
+                            .setTargetOffsetMs(2_500)
+                            .setMinOffsetMs(1_000)
+                            .setMaxOffsetMs(5_000)
+                            .setMinPlaybackSpeed(0.97f)
+                            .setMaxPlaybackSpeed(1.03f)
+                            .build()
+                    )
                     .setMediaMetadata(
                         item.mediaMetadata.buildUpon()
                             .setTitle(stream?.title ?: item.mediaMetadata.title ?: channelName)

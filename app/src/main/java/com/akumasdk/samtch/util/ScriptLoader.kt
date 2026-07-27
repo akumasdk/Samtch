@@ -15,16 +15,11 @@ object ScriptLoader {
             "js/common/scroll_unlocker.js",
             "js/common/splash_controller.js",
             "js/common/app_banners_remover.js",
+            "js/common/browser_nav_injector.js",
+            "js/common/pull_to_refresh.js",
             "js/chat/bttv.js",
             "js/chat/ui_cleaner.js",
-            "js/chat/chat_loader_observer.js",
-            "js/player/ui_cleaner.js",
-            "js/player/playback_monitor.js",
-            "js/player/video_swap.js",
-            "js/player/link_disabler.js",
-            "js/player/controls_injector.js",
-            "js/player/visibility_monitor.js",
-            "js/player/vaft.js"
+            "js/chat/chat_loader_observer.js"
         )
 
         scripts.forEach { path ->

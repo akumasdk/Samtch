@@ -1,226 +1,115 @@
 package com.akumasdk.samtch.ui.components
 
 import android.util.Log
-import android.view.View
-import android.webkit.JavascriptInterface
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebViewClient
-import android.webkit.WebView as NativeWebView
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
+import androidx.annotation.OptIn
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.util.ScriptLoader
-import com.multiplatform.webview.web.LoadingState
-import com.multiplatform.webview.web.WebView
-import com.multiplatform.webview.web.WebViewNavigator
-import com.multiplatform.webview.web.WebViewState
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.ui.PlayerView
+import com.akumasdk.samtch.player.SamtchDataSourceFactory
 
+@OptIn(UnstableApi::class)
 @Composable
-fun WebViewContainer(
+fun NativePlayer(
     modifier: Modifier,
-    state: WebViewState,
-    navigator: WebViewNavigator,
     channel: String,
-    onToggleFullscreen: () -> Unit,
-    onToggleChat: () -> Unit = {},
-    onToggleAudioOnly: () -> Unit = {},
     onPlaybackStarted: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    var isVaftReady by remember { mutableStateOf(false) }
-    val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VAFT)
-
-    // Reset VAFT status and inject early when loading starts
-    LaunchedEffect(state.loadingState, adBlockMode) {
-        if (state.loadingState is LoadingState.Loading) {
-            isVaftReady = false
-            val scriptPath = when (adBlockMode) {
-                SettingsManager.AdBlockMode.VAFT -> "js/player/vaft.js"
-                SettingsManager.AdBlockMode.VIDEO_SWAP -> "js/player/video_swap.js"
-            }
-            val adScript = ScriptLoader.getScript(context, scriptPath)
-            if (adScript.isNotEmpty()) {
-                Log.d("TwitchPlayer", "Injecting $adBlockMode early (Loading state detected)")
-                navigator.evaluateJavaScript(adScript)
-            }
-        }
-    }
-
-    // Ensure the bridge always uses the latest lambdas from the current composition context
-    val currentOnToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
-    val currentOnToggleChat by rememberUpdatedState(onToggleChat)
-    val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
-    val currentOnPlaybackStarted by rememberUpdatedState(onPlaybackStarted)
-
-    // Script injection logic when page finishes loading
-    LaunchedEffect(state.lastLoadedUrl, state.loadingState, isVaftReady, adBlockMode) {
-        if (state.loadingState is LoadingState.Finished) {
-            // Wait for VAFT to be ready, but don't hang forever (max 2.5s)
-            if (!isVaftReady) {
-                var waitCount = 0
-                while (!isVaftReady && waitCount < 25) {
-                    delay(100.milliseconds)
-                    waitCount++
-                }
-                if (!isVaftReady) {
-                    Log.w("TwitchPlayer", "AdBlock ($adBlockMode) ready signal timed out, proceeding with other scripts anyway")
-                }
-            }
-
-            val url = state.lastLoadedUrl ?: ""
-            if (!url.contains("twitch.tv")) return@LaunchedEffect
-
-            val scripts = listOf(
-                "js/player/ui_cleaner.js",
-                "js/player/controls_injector.js",
-                "js/player/playback_monitor.js"
-            ).mapNotNull { path ->
-                val script = ScriptLoader.getScript(context, path)
-                if (script.isNotEmpty()) script else null
-            }
-
-            if (scripts.isEmpty()) return@LaunchedEffect
-            val finalScripts = scripts.joinToString("\n")
-
-            // Wait for WebView to be ready
-            delay(300.milliseconds)
-
-            // Initial tight polling for early hooks (catch hydration)
-            repeat(5) {
-                navigator.evaluateJavaScript(finalScripts)
-                delay(300.milliseconds)
-            }
-
-            // Fallback: if scripts don't trigger signals, do it ourselves
-            delay(4000.milliseconds)
-            if (state.loadingState is LoadingState.Finished) {
-                Log.d("TwitchPlayer", "Fallback: Triggering finish signals after timeout")
-                currentOnPlaybackStarted()
-            }
-
-            // Steady polling for dynamic hydration (catch late UI elements)
-            repeat(10) {
-                navigator.evaluateJavaScript(finalScripts)
-                delay(1500.milliseconds)
-            }
-        }
-    }
-
-    WebView(
-        modifier = modifier,
-        state = state,
-        navigator = navigator,
-        captureBackPresses = false,
-        factory = { param ->
-            NativeWebView(param.context)
-        },
-        onCreated = { webView ->
-            Log.d("TwitchPlayer", "WebView created for channel: $channel")
-
-            // Prevent the renderer process from being killed when hidden
-            webView.setRendererPriorityPolicy(NativeWebView.RENDERER_PRIORITY_BOUND, false)
-
-            state.webSettings.apply {
-                isJavaScriptEnabled = true
-
-                androidWebSettings.apply {
-                    domStorageEnabled = true
-                    mediaPlaybackRequiresUserGesture = false
-                    allowFileAccess = true
-                }
-            }
-
-            webView.apply {
-                setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                overScrollMode = View.OVER_SCROLL_NEVER
-                isVerticalScrollBarEnabled = false
-                isHorizontalScrollBarEnabled = false
-
-                // Add bridge for fullscreen and chat using the dedicated class
-                addJavascriptInterface(
-                    TwitchPlayerBridge(
-                        onToggleFullscreen = {
-                            post { currentOnToggleFullscreen() }
-                        },
-                        onToggleChat = {
-                            post { currentOnToggleChat() }
-                        },
-                        onToggleAudioOnly = {
-                            post { currentOnToggleAudioOnly() }
-                        },
-                        onPlaybackStartedCallback = {
-                            post { currentOnPlaybackStarted() }
-                        },
-                        adBlockedCallback = { isBlocking ->
-                            Log.d("TwitchPlayer", "Ad blocking status: $isBlocking")
-                        },
-                        vaftReadyCallback = {
-                            post { isVaftReady = true }
-                        }
-                    ),
-                    "TwitchPlayerBridge"
+    var masterPlaylistUrl by remember { mutableStateOf<String?>(null) }
+    
+    // Fetch initial stream URL via GraphQL directly
+    LaunchedEffect(channel) {
+        masterPlaylistUrl = null
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val tokenPair = com.akumasdk.samtch.service.TwitchGqlService.getPlaybackAccessToken(channel)
+            if (tokenPair != null) {
+                masterPlaylistUrl = com.akumasdk.samtch.service.TwitchGqlService.buildHlsUrl(
+                    channel, tokenPair.first, tokenPair.second
                 )
-
-                // Enable fullscreen for videos
-                webChromeClient = WebChromeClient()
-
-                // Enable mixed content for Twitch
-                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             }
         }
-    )
-}
-
-fun createTwitchPlayerUrl(channel: String): String {
-    return "https://player.twitch.tv/?channel=$channel&parent=twitch.tv&muted=false&autoplay=true&enableExtensions=false&player=mobile"
-}
-
-class TwitchPlayerBridge(
-    private val onToggleFullscreen: () -> Unit,
-    private val onToggleChat: () -> Unit = {},
-    private val onToggleAudioOnly: () -> Unit = {},
-    private val onPlaybackStartedCallback: () -> Unit = {},
-    private val adBlockedCallback: (Boolean) -> Unit = {},
-    private val vaftReadyCallback: () -> Unit = {}
-) {
-    @JavascriptInterface
-    fun toggleFullscreen() {
-        onToggleFullscreen()
     }
 
-    @JavascriptInterface
-    fun toggleChat() {
-        onToggleChat()
-    }
+    Box(modifier = modifier) {
+        if (masterPlaylistUrl != null) {
+            val exoPlayer = remember {
+                val loadControl = DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(3_000, 10_000, 1_500, 2_500)
+                    .setPrioritizeTimeOverSizeThresholds(true)
+                    .build()
 
-    @JavascriptInterface
-    fun toggleAudioOnly() {
-        onToggleAudioOnly()
-    }
+                ExoPlayer.Builder(context)
+                    .setMediaSourceFactory(
+                        HlsMediaSource.Factory(
+                            SamtchDataSourceFactory(DefaultHttpDataSource.Factory())
+                        ).setAllowChunklessPreparation(true)
+                    )
+                    .setLoadControl(loadControl)
+                    .build().apply {
+                        playWhenReady = true
+                    }
+            }
 
-    @JavascriptInterface
-    fun onPlaybackStarted() {
-        onPlaybackStartedCallback()
-    }
+            val currentOnPlaybackStarted by rememberUpdatedState(onPlaybackStarted)
 
-    @JavascriptInterface
-    fun onAdBlocked(isBlocking: Boolean) {
-        adBlockedCallback(isBlocking)
-    }
+            DisposableEffect(exoPlayer) {
+                val listener = object : Player.Listener {
+                    override fun onPlaybackStateChanged(state: Int) {
+                        if (state == Player.STATE_READY) {
+                            currentOnPlaybackStarted()
+                        }
+                    }
+                }
+                exoPlayer.addListener(listener)
+                onDispose { 
+                    exoPlayer.removeListener(listener)
+                    exoPlayer.release() 
+                }
+            }
 
-    @JavascriptInterface
-    fun onVaftReady() {
-        vaftReadyCallback()
+            LaunchedEffect(masterPlaylistUrl) {
+                val mediaItem = MediaItem.Builder()
+                    .setUri(masterPlaylistUrl!!)
+                    .setLiveConfiguration(
+                        MediaItem.LiveConfiguration.Builder()
+                            .setTargetOffsetMs(2_500)
+                            .setMinOffsetMs(1_000)
+                            .setMaxOffsetMs(5_000)
+                            .setMinPlaybackSpeed(0.97f)
+                            .setMaxPlaybackSpeed(1.03f)
+                            .build()
+                    )
+                    .build()
+                exoPlayer.setMediaItem(mediaItem)
+                exoPlayer.prepare()
+            }
+
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        player = exoPlayer
+                        useController = true
+                        keepScreenOn = true
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
     }
 }

@@ -34,7 +34,7 @@ fun FullscreenPlayer(
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
-    webView: @Composable (Modifier, () -> Unit) -> Unit
+    playerContent: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var isChatVisible by remember { mutableStateOf(false) }
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -78,7 +78,7 @@ fun FullscreenPlayer(
 
                                     if (isInCenterZone) {
                                         isChatVisible = !isChatVisible
-                                        // Consume the second tap to prevent WebView from seeing it
+                                        // Consume the second tap to prevent player from seeing it
                                         event.changes.forEach { it.consume() }
                                     }
                                 }
@@ -88,7 +88,7 @@ fun FullscreenPlayer(
                     }
                 }
         ) {
-            webView(Modifier.fillMaxSize()) {
+            playerContent(Modifier.fillMaxSize()) {
                 isChatVisible = !isChatVisible
             }
 

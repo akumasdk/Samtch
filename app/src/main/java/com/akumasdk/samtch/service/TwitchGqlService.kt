@@ -25,6 +25,13 @@ object TwitchGqlService {
 
     private const val TAG = "TwitchGqlService"
 
+    enum class PlayerType(val value: String) {
+        SITE("site"),
+        EMBED("embed"),
+        POPOUT("popout"),
+        AUTOPLAY("autoplay")
+    }
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
@@ -210,23 +217,25 @@ object TwitchGqlService {
      * Fetch playback access token and signature for a channel
      */
     suspend fun getPlaybackAccessToken(
-        channelName: String
+        channelName: String,
+        playerType: PlayerType = PlayerType.SITE
     ): Pair<String, String>? = withContext(Dispatchers.IO) {
         val clientId = getDynamicClientId()
 
         val firstIntegrity = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
-        val first = getPlaybackAccessTokenOnce(channelName, clientId, firstIntegrity)
+        val first = getPlaybackAccessTokenOnce(channelName, clientId, firstIntegrity, playerType)
         if (first != null) return@withContext first
 
         cachedIntegrityToken = null
         val secondIntegrity = fetchIntegrityToken(clientId)
-        return@withContext getPlaybackAccessTokenOnce(channelName, clientId, secondIntegrity)
+        return@withContext getPlaybackAccessTokenOnce(channelName, clientId, secondIntegrity, playerType)
     }
 
     private fun getPlaybackAccessTokenOnce(
         channelName: String,
         clientId: String,
-        integrityToken: String?
+        integrityToken: String?,
+        playerType: PlayerType
     ): Pair<String, String>? {
         return try {
             val payload = JSONObject().apply {
@@ -234,7 +243,7 @@ object TwitchGqlService {
                 put("query", PLAYBACK_ACCESS_TOKEN_QUERY.trimIndent())
                 put("variables", JSONObject().apply {
                     put("login", channelName.lowercase())
-                    put("playerType", "site")
+                    put("playerType", playerType.value)
                 })
             }
 
@@ -259,16 +268,33 @@ object TwitchGqlService {
         }
     }
 
-    fun buildHlsUrl(channelName: String, token: String, signature: String): String {
+    fun buildHlsUrl(
+        channelName: String,
+        token: String,
+        signature: String,
+        playerType: PlayerType = PlayerType.SITE
+    ): String {
         val encodedToken = URLEncoder.encode(token, "UTF-8")
         val random = (Math.random() * 999999).toInt()
 
-        return "${Constants.TWITCH_HLS_BASE}${channelName.lowercase()}.m3u8" +
-                "?sig=$signature" +
-                "&token=$encodedToken" +
-                "&allow_source=true" +
-                "&allow_audio_only=true" +
-                "&fast_bread=false" +
-                "&p=$random"
+        val baseUrl = "${Constants.TWITCH_HLS_BASE}${channelName.lowercase()}.m3u8"
+        val params = mutableListOf(
+            "sig=$signature",
+            "token=$encodedToken",
+            "allow_source=true",
+            "allow_audio_only=true",
+            "fast_bread=true",
+            "reauthoring=true",
+            "p=$random"
+        )
+
+        // Add platform specific params if needed
+        if (playerType == PlayerType.AUTOPLAY) {
+            params.add("platform=android")
+        } else {
+            params.add("platform=web")
+        }
+
+        return "$baseUrl?${params.joinToString("&")}"
     }
 }
