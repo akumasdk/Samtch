@@ -37,17 +37,17 @@ fun WebViewContainer(
     onToggleChat: () -> Unit = {},
     onToggleAudioOnly: () -> Unit = {},
     onPlaybackStarted: () -> Unit = {},
-    onLoadingStatus: (String) -> Unit = {}
+    onLoadingStatus: (String) -> Unit = {},
+    onAdblocked: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val resources = context.resources
-    var isVaftReady by remember { mutableStateOf(false) }
     val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VAFT)
 
-    // Reset VAFT status and inject early when loading starts
+    // Reset status and inject early when loading starts
     LaunchedEffect(state.loadingState, adBlockMode) {
         if (state.loadingState is LoadingState.Loading) {
-            isVaftReady = false
+            onAdblocked("")
             
             // Inject localized strings for scripts
             val stringMap = mapOf(
@@ -90,22 +90,11 @@ fun WebViewContainer(
     val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
     val currentOnPlaybackStarted by rememberUpdatedState(onPlaybackStarted)
     val currentOnLoadingStatus by rememberUpdatedState(onLoadingStatus)
+    val currentOnAdblocked by rememberUpdatedState(onAdblocked)
 
     // Script injection logic when page finishes loading
-    LaunchedEffect(state.lastLoadedUrl, state.loadingState, isVaftReady, adBlockMode) {
+    LaunchedEffect(state.lastLoadedUrl, state.loadingState, adBlockMode) {
         if (state.loadingState is LoadingState.Finished) {
-            // Wait for VAFT to be ready, but don't hang forever (max 2.5s)
-            if (!isVaftReady) {
-                var waitCount = 0
-                while (!isVaftReady && waitCount < 25) {
-                    delay(100.milliseconds)
-                    waitCount++
-                }
-                if (!isVaftReady) {
-                    Log.w("TwitchPlayer", "AdBlock ($adBlockMode) ready signal timed out, proceeding with other scripts anyway")
-                }
-            }
-
             val url = state.lastLoadedUrl ?: ""
             if (!url.contains("twitch.tv")) return@LaunchedEffect
 
@@ -186,11 +175,8 @@ fun WebViewContainer(
                         onLoadingStatusCallback = { message ->
                             post { currentOnLoadingStatus(message) }
                         },
-                        adBlockedCallback = { isBlocking ->
-                            Log.d("TwitchPlayer", "Ad blocking status: $isBlocking")
-                        },
-                        vaftReadyCallback = {
-                            post { isVaftReady = true }
+                        onAdblockedCallback = { text ->
+                            post { currentOnAdblocked(text) }
                         }
                     ),
                     "TwitchPlayerBridge"
@@ -216,8 +202,7 @@ class TwitchPlayerBridge(
     private val onToggleAudioOnly: () -> Unit = {},
     private val onPlaybackStartedCallback: () -> Unit = {},
     private val onLoadingStatusCallback: (String) -> Unit = {},
-    private val adBlockedCallback: (Boolean) -> Unit = {},
-    private val vaftReadyCallback: () -> Unit = {}
+    private val onAdblockedCallback: (String) -> Unit = {}
 ) {
     @JavascriptInterface
     fun toggleFullscreen() {
@@ -245,12 +230,7 @@ class TwitchPlayerBridge(
     }
 
     @JavascriptInterface
-    fun onAdBlocked(isBlocking: Boolean) {
-        adBlockedCallback(isBlocking)
-    }
-
-    @JavascriptInterface
-    fun onVaftReady() {
-        vaftReadyCallback()
+    fun onAdblocked(text: String) {
+        onAdblockedCallback(text)
     }
 }

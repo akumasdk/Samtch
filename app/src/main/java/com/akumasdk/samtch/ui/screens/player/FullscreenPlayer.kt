@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.components.AdblockBanner
 import com.akumasdk.samtch.ui.components.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.TwitchChat
 import kotlinx.coroutines.delay
@@ -34,6 +35,7 @@ fun FullscreenPlayer(
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
+    adblockText: String = "",
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var isChatVisible by remember { mutableStateOf(false) }
@@ -91,6 +93,12 @@ fun FullscreenPlayer(
             webView(Modifier.fillMaxSize()) {
                 isChatVisible = !isChatVisible
             }
+
+            // Adblock status banner at the top
+            AdblockBanner(
+                text = adblockText,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
 
             // Double tap hint tooltip
             TapTooltip(

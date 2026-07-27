@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.components.AdblockBanner
 import com.akumasdk.samtch.ui.components.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.TwitchChat
 import kotlin.math.abs
@@ -39,6 +40,7 @@ fun PortraitPlayer(
     gameName: String? = null,
     viewersCount: Int = 0,
     isAudioOnly: Boolean = false,
+    adblockText: String = "",
     onToggleFullscreen: () -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
@@ -104,6 +106,12 @@ fun PortraitPlayer(
             webView(Modifier.fillMaxSize()) {
                 isChatVisible = !isChatVisible
             }
+
+            // Adblock status banner at the top
+            AdblockBanner(
+                text = adblockText,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
 
         // Tiny metadata space above chat

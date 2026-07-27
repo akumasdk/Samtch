@@ -210,3 +210,43 @@ fun StreamMetadataBar(
         }
     }
 }
+
+/**
+ * A banner that shows adblock status, styled similarly to the metadata bar.
+ */
+@Composable
+fun AdblockBanner(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = text.isNotEmpty(),
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+        modifier = modifier
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(28.dp),
+            color = Color.Black.copy(alpha = 0.7f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = text,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}

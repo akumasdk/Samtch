@@ -729,26 +729,12 @@
         };
     }
     function updateAdblockBanner(data) {
-        const playerRootDiv = document.querySelector('.video-player');
-        if (playerRootDiv != null) {
-            let adBlockDiv = null;
-            adBlockDiv = playerRootDiv.querySelector('.adblock-overlay');
-            if (adBlockDiv == null) {
-                adBlockDiv = document.createElement('div');
-                adBlockDiv.className = 'adblock-overlay';
-                adBlockDiv.innerHTML = '<div class="player-adblock-notice" style="color: white; background-color: rgba(0, 0, 0, 0.8); position: absolute; top: 0px; left: 0px; padding: 5px;"><p></p></div>';
-                adBlockDiv.style.display = 'none';
-                adBlockDiv.P = adBlockDiv.querySelector('p');
-                playerRootDiv.appendChild(adBlockDiv);
+        if (typeof TwitchPlayerBridge !== 'undefined' && TwitchPlayerBridge.onAdblocked) {
+            let message = '';
+            if (data.hasAds) {
+                message = 'Blocking' + (data.isMidroll ? ' midroll' : '') + ' ads' + (data.isStrippingAdSegments ? ' (stripping)' : '');
             }
-            if (adBlockDiv != null) {
-                if (!twitchPlayerAndState?.player?.core || !twitchPlayerAndState?.state) {
-                    twitchPlayerAndState = getPlayerAndState();
-                }
-                const isLive = twitchPlayerAndState?.state?.props?.content?.type === 'live';
-                adBlockDiv.P.textContent = 'Blocking' + (data.isMidroll ? ' midroll' : '') + ' ads' + (data.isStrippingAdSegments ? ' (stripping)' : '');// + (data.numStrippedAdSegments > 0 ? ` (${data.numStrippedAdSegments})` : '');
-                adBlockDiv.style.display = data.hasAds && isLive ? 'block' : 'none';
-            }
+            TwitchPlayerBridge.onAdblocked(message);
         }
     }
     function monitorLiveStatus() {

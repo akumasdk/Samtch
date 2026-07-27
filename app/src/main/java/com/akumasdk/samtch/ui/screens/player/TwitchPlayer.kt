@@ -65,6 +65,7 @@ fun TwitchPlayer(
     var isUiLoading by remember { mutableStateOf(true) }
     val defaultLoadingMessage = stringResource(R.string.loading_stream)
     var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
+    var adblockText by remember { mutableStateOf("") }
 
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -275,6 +276,9 @@ fun TwitchPlayer(
                 },
                 onLoadingStatus = { message ->
                     loadingMessage = message
+                },
+                onAdblocked = { text ->
+                    adblockText = text
                 }
             )
         }
@@ -422,6 +426,7 @@ fun TwitchPlayer(
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
+                        adblockText = adblockText,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
                 } else {
@@ -432,6 +437,7 @@ fun TwitchPlayer(
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         isAudioOnly = isAudioOnly,
+                        adblockText = adblockText,
                         onToggleFullscreen = onToggleFullscreen,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
