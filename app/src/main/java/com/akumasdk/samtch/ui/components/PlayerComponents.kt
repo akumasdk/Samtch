@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
@@ -35,9 +36,11 @@ fun WebViewContainer(
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit = {},
     onToggleAudioOnly: () -> Unit = {},
-    onPlaybackStarted: () -> Unit = {}
+    onPlaybackStarted: () -> Unit = {},
+    onLoadingStatus: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val resources = context.resources
     var isVaftReady by remember { mutableStateOf(false) }
     val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VAFT)
 
@@ -45,6 +48,18 @@ fun WebViewContainer(
     LaunchedEffect(state.loadingState, adBlockMode) {
         if (state.loadingState is LoadingState.Loading) {
             isVaftReady = false
+            
+            // Inject localized strings for scripts
+            val stringMap = mapOf(
+                "loading_stream" to resources.getString(R.string.loading_stream),
+                "searching_video" to resources.getString(R.string.searching_video),
+                "preparing_playback" to resources.getString(R.string.preparing_playback),
+                "initializing_player" to resources.getString(R.string.initializing_player),
+                "bypassing_ads" to resources.getString(R.string.bypassing_ads)
+            )
+            val stringsJson = stringMap.entries.joinToString(",") { "\"${it.key}\": \"${it.value}\"" }
+            navigator.evaluateJavaScript("window.SamtchStrings = { $stringsJson };")
+
             val scriptPath = when (adBlockMode) {
                 SettingsManager.AdBlockMode.VAFT -> "js/player/vaft.js"
                 SettingsManager.AdBlockMode.VIDEO_SWAP -> "js/player/video_swap.js"
@@ -74,6 +89,7 @@ fun WebViewContainer(
     val currentOnToggleChat by rememberUpdatedState(onToggleChat)
     val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
     val currentOnPlaybackStarted by rememberUpdatedState(onPlaybackStarted)
+    val currentOnLoadingStatus by rememberUpdatedState(onLoadingStatus)
 
     // Script injection logic when page finishes loading
     LaunchedEffect(state.lastLoadedUrl, state.loadingState, isVaftReady, adBlockMode) {
@@ -112,13 +128,6 @@ fun WebViewContainer(
             repeat(8) {
                 navigator.evaluateJavaScript(finalScripts)
                 delay(300.milliseconds)
-            }
-
-            // Fallback: if scripts don't trigger signals, do it ourselves
-            delay(3000.milliseconds)
-            if (state.loadingState is LoadingState.Finished) {
-                Log.d("TwitchPlayer", "Fallback: Triggering finish signals after timeout")
-                currentOnPlaybackStarted()
             }
 
             // Steady polling for dynamic hydration (catch late UI elements)
@@ -174,6 +183,9 @@ fun WebViewContainer(
                         onPlaybackStartedCallback = {
                             post { currentOnPlaybackStarted() }
                         },
+                        onLoadingStatusCallback = { message ->
+                            post { currentOnLoadingStatus(message) }
+                        },
                         adBlockedCallback = { isBlocking ->
                             Log.d("TwitchPlayer", "Ad blocking status: $isBlocking")
                         },
@@ -203,6 +215,7 @@ class TwitchPlayerBridge(
     private val onToggleChat: () -> Unit = {},
     private val onToggleAudioOnly: () -> Unit = {},
     private val onPlaybackStartedCallback: () -> Unit = {},
+    private val onLoadingStatusCallback: (String) -> Unit = {},
     private val adBlockedCallback: (Boolean) -> Unit = {},
     private val vaftReadyCallback: () -> Unit = {}
 ) {
@@ -224,6 +237,11 @@ class TwitchPlayerBridge(
     @JavascriptInterface
     fun onPlaybackStarted() {
         onPlaybackStartedCallback()
+    }
+
+    @JavascriptInterface
+    fun onLoadingStatus(message: String) {
+        onLoadingStatusCallback(message)
     }
 
     @JavascriptInterface

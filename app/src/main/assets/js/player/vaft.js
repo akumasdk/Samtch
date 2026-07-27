@@ -50,8 +50,14 @@
 
     function notifyAdStatus(isBlocking) {
         console.log('[VAFT] Ad blocking status: ' + isBlocking);
-        if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onAdBlocked) {
-            window.TwitchPlayerBridge.onAdBlocked(isBlocking);
+        if (window.TwitchPlayerBridge) {
+            if (window.TwitchPlayerBridge.onAdBlocked) {
+                window.TwitchPlayerBridge.onAdBlocked(isBlocking);
+            }
+            if (isBlocking && window.TwitchPlayerBridge.onLoadingStatus) {
+                const msg = (window.SamtchStrings && window.SamtchStrings.bypassing_ads) || 'Bypassing ads...';
+                window.TwitchPlayerBridge.onLoadingStatus(msg);
+            }
         }
     }
     const twitchWorkers = [];

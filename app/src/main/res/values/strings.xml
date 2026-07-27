@@ -56,4 +56,11 @@
     <string name="ad_block_mode_vaft">VAFT (High Latency/Experimental)</string>
     <string name="ad_block_mode_video_swap">Video Swap (Stable/Default)</string>
     <string name="ad_block_mode_notice">Note: Changes to the ad-blocking method will take effect when you play the next stream.</string>
+
+    <!-- Player Loading Status -->
+    <string name="loading_stream">Loading stream…</string>
+    <string name="searching_video">Searching for video stream…</string>
+    <string name="preparing_playback">Preparing playback…</string>
+    <string name="initializing_player">Initializing player components…</string>
+    <string name="bypassing_ads">Bypassing ads…</string>
 </resources>

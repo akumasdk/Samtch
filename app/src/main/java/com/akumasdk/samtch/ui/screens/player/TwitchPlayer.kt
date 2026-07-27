@@ -5,17 +5,24 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.akumasdk.samtch.R
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -56,6 +63,8 @@ fun TwitchPlayer(
     val context = LocalContext.current
     var isAudioOnly by remember { mutableStateOf(false) }
     var isUiLoading by remember { mutableStateOf(true) }
+    val defaultLoadingMessage = stringResource(R.string.loading_stream)
+    var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
 
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -82,6 +91,7 @@ fun TwitchPlayer(
 
     LaunchedEffect(channel, refreshTrigger) {
         isUiLoading = true
+        loadingMessage = defaultLoadingMessage
         while (true) {
             // Fetch detailed metadata via GraphQL
             Log.d("TwitchPlayer", "Fetching periodic metadata for $channel")
@@ -262,6 +272,9 @@ fun TwitchPlayer(
                 onPlaybackStarted = {
                     Log.d("TwitchPlayer", "onPlaybackStarted called - hiding loading box")
                     isUiLoading = false
+                },
+                onLoadingStatus = { message ->
+                    loadingMessage = message
                 }
             )
         }
@@ -350,6 +363,24 @@ fun TwitchPlayer(
                                 CircularProgressIndicator(
                                     color = Color(0xFF9146FF), // Twitch Purple
                                     strokeWidth = 3.dp
+                                )
+
+                                // Status message below spinner
+                                Text(
+                                    text = loadingMessage,
+                                    color = Color.White,
+                                    style = TextStyle(
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        shadow = Shadow(
+                                            color = Color.Black,
+                                            blurRadius = 8f
+                                        )
+                                    ),
+                                    modifier = Modifier
+                                        .padding(top = 16.dp)
+                                        .align(Alignment.Center)
+                                        .offset(y = 40.dp)
                                 )
                             }
                         }

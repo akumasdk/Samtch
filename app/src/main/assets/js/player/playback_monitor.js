@@ -7,9 +7,43 @@
 
     let signalSent = false;
     let playingStartTime = null;
+    let monitorStartTime = Date.now();
+    let lastStatusUpdate = 0;
+
+    function reportStatus(message) {
+        if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onLoadingStatus) {
+            // Use localized strings if available
+            let localizedMessage = message;
+            if (window.SamtchStrings) {
+                if (message === 'Initializing player components...') localizedMessage = window.SamtchStrings.initializing_player;
+                else if (message === 'Searching for video stream...') localizedMessage = window.SamtchStrings.searching_video;
+                else if (message === 'Preparing playback...') localizedMessage = window.SamtchStrings.preparing_playback;
+            }
+            window.TwitchPlayerBridge.onLoadingStatus(localizedMessage);
+        }
+    }
 
     function checkPlayback() {
         if (signalSent) return;
+
+        const now = Date.now();
+        const elapsed = now - monitorStartTime;
+
+        // Periodic status reporting during loading
+        if (now - lastStatusUpdate > 1500) {
+            lastStatusUpdate = now;
+            const videos = document.querySelectorAll('video');
+            if (videos.length === 0) {
+                if (elapsed > 5000) {
+                    reportStatus('Initializing player components...');
+                } else if (elapsed > 1500) {
+                    reportStatus('Searching for video stream...');
+                }
+            } else {
+                // We have a video element, but it's not "playing" according to our checks
+                reportStatus('Preparing playback...');
+            }
+        }
 
         // Look for all video elements, including those that might be in iframes
         const videos = Array.from(document.querySelectorAll('video'));
