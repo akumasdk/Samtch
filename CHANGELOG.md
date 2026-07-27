@@ -6,6 +6,7 @@
 - **Enhanced Playback Monitoring**: Improved detection of video elements within Shadow DOMs and iframes, ensuring the loading screen disappears promptly when audio starts.
 - **Improved Responsiveness**: The loading overlay now dismisses immediately when ad-blocking is detected, providing a snappier startup experience.
 - **Unified Script Bridge**: Refactored the communication between JavaScript and the native player for better reliability and faster script "ready" signals.
+- **Default Ad-Blocking**: Set **VAFT** as the default ad-blocking method for improved coverage.
 
 ---
 

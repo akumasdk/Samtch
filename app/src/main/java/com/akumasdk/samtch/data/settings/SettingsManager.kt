@@ -46,7 +46,7 @@ object SettingsManager {
 
     fun getAdBlockMode(context: Context): Flow<AdBlockMode> {
         return context.dataStore.data.map { preferences ->
-            if (preferences[AD_BLOCK_MODE] ?: false) AdBlockMode.VAFT else AdBlockMode.VIDEO_SWAP
+            if (preferences[AD_BLOCK_MODE] ?: true) AdBlockMode.VAFT else AdBlockMode.VIDEO_SWAP
         }
     }
 
