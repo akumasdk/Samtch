@@ -25,16 +25,17 @@ fun DynamicEmoteText(
     style: TextStyle = TextStyle.Default
 ) {
     val context = LocalContext.current
+    val baseHeight = 32f // Increased base height for readability
     
     val measuredWidths = remember { mutableStateMapOf<String, Float>() }
 
     val inlineContent = remember(emotes, measuredWidths.toMap()) {
         emotes.associate { emote ->
-            val width = measuredWidths[emote.id] ?: 32f
+            val width = measuredWidths[emote.id] ?: baseHeight
             val urls = emote.url.split("|")
             
             emote.id to InlineTextContent(
-                Placeholder(width.sp, 32.sp, PlaceholderVerticalAlign.Center)
+                Placeholder(width.sp, baseHeight.sp, PlaceholderVerticalAlign.Center)
             ) {
                 Box {
                     urls.forEach { url ->
@@ -51,7 +52,7 @@ fun DynamicEmoteText(
                                 if (url == urls.first()) {
                                     val drawable = state.result.drawable
                                     val ratio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
-                                    val calculatedWidth = 32f * ratio
+                                    val calculatedWidth = baseHeight * ratio
                                     if (measuredWidths[emote.id] != calculatedWidth) {
                                         measuredWidths[emote.id] = calculatedWidth
                                     }

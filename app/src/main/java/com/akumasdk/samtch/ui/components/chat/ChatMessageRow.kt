@@ -22,16 +22,6 @@ fun ChatMessageRow(
     when (message) {
         is ChatMessageUiState.PrivMessageUi -> {
             Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)) {
-                // Timestamp
-                if (message.timestamp.isNotEmpty()) {
-                    Text(
-                        text = message.timestamp,
-                        color = Color.Gray,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(end = 6.dp)
-                    )
-                }
-
                 // Name
                 if (!message.isAction) {
                     val annotatedName = buildAnnotatedString {

@@ -15,11 +15,9 @@ data class EmoteInfo(
 @Immutable
 sealed interface ChatMessageUiState {
     val id: String
-    val timestamp: String
 
     data class PrivMessageUi(
         override val id: String,
-        override val timestamp: String,
         val displayName: String,
         val userColor: Color,
         val messageText: String,
@@ -30,7 +28,6 @@ sealed interface ChatMessageUiState {
 
     data class SystemMessageUi(
         override val id: String,
-        override val timestamp: String,
         val message: String
     ) : ChatMessageUiState
 }

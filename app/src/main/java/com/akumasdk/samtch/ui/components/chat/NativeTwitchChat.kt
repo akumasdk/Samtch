@@ -77,6 +77,12 @@ fun NativeTwitchChat(
         viewModel.connect(channel)
     }
 
+    DisposableEffect(channel) {
+        onDispose {
+            viewModel.disconnect()
+        }
+    }
+
     // Auto-scroll when new messages arrive if enabled
     val newestMessageId = messages.lastOrNull()?.id
     LaunchedEffect(newestMessageId, shouldAutoScroll) {

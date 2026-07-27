@@ -84,8 +84,16 @@ class ChatViewModel : ViewModel() {
         }
     }
 
-    override fun onCleared() {
+    fun disconnect() {
+        Log.d(TAG, "Explicitly disconnecting chat client")
         chatClient.disconnect()
+        _messages.value = persistentListOf()
+        rawMessages.clear()
+        currentChannel = null
+    }
+
+    override fun onCleared() {
+        disconnect()
         super.onCleared()
     }
 }

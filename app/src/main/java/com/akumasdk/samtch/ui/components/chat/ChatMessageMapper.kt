@@ -10,9 +10,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 object ChatMessageMapper {
@@ -24,9 +21,6 @@ object ChatMessageMapper {
         val range: IntRange,
         val isZeroWidth: Boolean = false
     )
-
-    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-        .withZone(ZoneId.systemDefault())
 
     private fun Char.isWordSeparator(): Boolean = isWhitespace()
 
@@ -46,12 +40,6 @@ object ChatMessageMapper {
     }
 
     fun mapToUiState(channelName: String, message: IrcMessage): ChatMessageUiState {
-        val timestamp = message.tags["tmi-sent-ts"]?.toLongOrNull()?.let {
-            try {
-                timeFormatter.format(Instant.ofEpochMilli(it))
-            } catch (e: Exception) { "" }
-        } ?: ""
-
         if (message.command == "PRIVMSG") {
             val displayName = message.tags["display-name"] ?: message.prefix.substringBefore("!")
             val colorHex = message.tags["color"]
@@ -127,10 +115,6 @@ object ChatMessageMapper {
                         }
                     }
 
-                    // For zero-width stacking, we'll keep the previous cluster logic but pass urls
-                    // Actually, let's just create a list of EmoteInfo and DynamicEmoteText will handle them
-                    // Wait, InlineTextContent needs a string for the id
-                    
                     val cluster = mutableListOf(occurrence)
                     var j = i + 1
                     while (j < occurrences.size) {
@@ -144,13 +128,6 @@ object ChatMessageMapper {
                     }
 
                     val inlineId = "cluster_${i}_${occurrence.id}"
-                    // We'll use a special delimiter in the URL or just pass the first one for now
-                    // To handle stacking properly, we'd need EmoteInfo to have List<String> urls
-                    // Let's update EmoteInfo first.
-                    
-                    // Actually, I'll just use the first URL for now to verify width fixes, 
-                    // then handle stacking if necessary. Stacking is secondary to width/scroll.
-                    
                     val combinedUrl = cluster.joinToString("|") { it.url }
                     val emoteInfo = EmoteInfo(inlineId, cluster.first().code, combinedUrl, occurrence.isZeroWidth)
                     emotes.add(emoteInfo)
@@ -171,7 +148,6 @@ object ChatMessageMapper {
 
             return ChatMessageUiState.PrivMessageUi(
                 id = message.tags["id"] ?: UUID.randomUUID().toString(),
-                timestamp = timestamp,
                 displayName = displayName,
                 userColor = userColor,
                 messageText = cleanText,
@@ -183,7 +159,6 @@ object ChatMessageMapper {
 
         return ChatMessageUiState.SystemMessageUi(
             id = UUID.randomUUID().toString(),
-            timestamp = timestamp,
             message = message.raw
         )
     }
