@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.components.chat
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -39,39 +40,32 @@ fun NativeTwitchChat(
     var inputText by remember { mutableStateOf("") }
     var shouldAutoScroll by rememberSaveable { mutableStateOf(true) }
 
+    val isDragged by listState.interactionSource.collectIsDraggedAsState()
+
     val isAtBottom by remember {
         derivedStateOf {
-            (listState.firstVisibleItemIndex == 0) && (listState.firstVisibleItemScrollOffset == 0)
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
     }
 
-    // Hide the catch-up button only when very close to the bottom (within 50dp threshold)
+    // Hide the catch-up button only when very close to the bottom
     val showJumpToBottom by remember {
         derivedStateOf {
             listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 100
         }
     }
 
-    var lastIndex by remember { mutableIntStateOf(0) }
-    var lastOffset by remember { mutableIntStateOf(0) }
-
-    // Detect scroll direction and update auto-scroll state
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        if (listState.isScrollInProgress) {
-            val isScrollingUp = listState.firstVisibleItemIndex > lastIndex || 
-                                (listState.firstVisibleItemIndex == lastIndex && listState.firstVisibleItemScrollOffset > lastOffset)
-            
-            if (isScrollingUp) {
-                shouldAutoScroll = false
-            }
+    // Disable auto-scroll when user drags up, re-enable when they return to absolute bottom
+    LaunchedEffect(isDragged) {
+        if (isDragged) {
+            shouldAutoScroll = false
         }
-        
-        if (isAtBottom) {
+    }
+
+    LaunchedEffect(isAtBottom) {
+        if (isAtBottom && !isDragged) {
             shouldAutoScroll = true
         }
-        
-        lastIndex = listState.firstVisibleItemIndex
-        lastOffset = listState.firstVisibleItemScrollOffset
     }
 
     LaunchedEffect(channel) {
@@ -85,8 +79,8 @@ fun NativeTwitchChat(
     }
 
     // Auto-scroll when new messages arrive if enabled
-    val newestMessageId = messages.lastOrNull()?.id
-    LaunchedEffect(newestMessageId, shouldAutoScroll) {
+    // Key on messages.size for most reliable trigger
+    LaunchedEffect(messages.size, shouldAutoScroll) {
         if (messages.isNotEmpty() && shouldAutoScroll) {
             listState.scrollToItem(0)
         }
@@ -102,8 +96,14 @@ fun NativeTwitchChat(
                 contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp),
                 reverseLayout = true
             ) {
-                itemsIndexed(reversedMessages, key = { _, it -> it.id }) { _, msg ->
-                    ChatMessageRow(message = msg, isCompact = isCompact)
+                itemsIndexed(
+                    items = reversedMessages,
+                    key = { _, it -> it.id },
+                    contentType = { _, it -> it.contentType }
+                ) { _, msg ->
+                    key(msg.id, isCompact) {
+                        ChatMessageRow(message = msg, isCompact = isCompact)
+                    }
                 }
             }
 

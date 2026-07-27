@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
+import com.akumasdk.samtch.data.emote.EmoteRepository
 
 @Composable
 fun DynamicEmoteText(
@@ -32,8 +33,11 @@ fun DynamicEmoteText(
 
     val inlineContent = remember(emotes, measuredWidths.toMap(), baseHeight) {
         emotes.associate { emote ->
-            val width = measuredWidths[emote.id] ?: baseHeight
             val urls = emote.url.split("|")
+            val baseEmoteUrl = urls.first()
+            val cachedRatio = EmoteRepository.getAspectRatio(baseEmoteUrl)
+            
+            val width = measuredWidths[emote.id] ?: (if (cachedRatio != null) baseHeight * cachedRatio else baseHeight)
             
             emote.id to InlineTextContent(
                 Placeholder(width.sp, baseHeight.sp, PlaceholderVerticalAlign.Center)
@@ -49,13 +53,13 @@ fun DynamicEmoteText(
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Fit,
                             onSuccess = { state ->
-                                // We only measure based on the base emote (first in cluster)
-                                if (url == urls.first()) {
+                                if (url == baseEmoteUrl) {
                                     val drawable = state.result.drawable
                                     val ratio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
                                     val calculatedWidth = baseHeight * ratio
                                     if (measuredWidths[emote.id] != calculatedWidth) {
                                         measuredWidths[emote.id] = calculatedWidth
+                                        EmoteRepository.putAspectRatio(url, ratio)
                                     }
                                 }
                             }

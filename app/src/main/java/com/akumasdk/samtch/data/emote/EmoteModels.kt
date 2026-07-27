@@ -18,7 +18,7 @@ enum class EmoteType {
 data class BTTVEmote(
     val id: String,
     val code: String,
-    val imageType: String
+    val imageType: String = ""
 )
 
 @Serializable
@@ -70,30 +70,30 @@ data class SevenTVUserResponse(
     val id: String,
     val username: String = "",
     val display_name: String = "",
-    val emote_set: SevenTVEmoteSet
+    val emote_set: SevenTVEmoteSet? = null
 )
 
 @Serializable
 data class FFZEmote(
     val id: Int,
     val name: String,
-    val urls: Map<String, String>,
+    val urls: Map<String, String> = emptyMap(),
     val animated: Map<String, String>? = null
 )
 
 @Serializable
 data class FFZEmoteSet(
     val id: Int,
-    val emotes: List<FFZEmote>
+    val emotes: List<FFZEmote> = emptyList()
 )
 
 @Serializable
 data class FFZRoomResponse(
-    val sets: Map<String, FFZEmoteSet>
+    val sets: Map<String, FFZEmoteSet> = emptyMap()
 )
 
 @Serializable
 data class FFZGlobalResponse(
-    val default_sets: List<Int>,
-    val sets: Map<String, FFZEmoteSet>
+    val default_sets: List<Int> = emptyList(),
+    val sets: Map<String, FFZEmoteSet> = emptyMap()
 )

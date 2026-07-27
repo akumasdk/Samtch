@@ -18,12 +18,15 @@ import java.util.concurrent.ConcurrentHashMap
 object EmoteRepository {
     private const val TAG = "EmoteRepository"
     
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        explicitNulls = false
+    }
+
     private val client = HttpClient {
         install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                coerceInputValues = true
-            })
+            json(json)
         }
     }
 
@@ -31,6 +34,7 @@ object EmoteRepository {
         val bttvEmotes: Map<String, Emote> = emptyMap(),
         val seventvEmotes: Map<String, Emote> = emptyMap(),
         val ffzEmotes: Map<String, Emote> = emptyMap(),
+        val badges: Map<String, Map<String, TwitchBadgeDto>> = emptyMap(),
         val isLoaded: Boolean = false
     )
 
@@ -38,6 +42,8 @@ object EmoteRepository {
         val bttvEmotes: Map<String, Emote> = emptyMap(),
         val seventvEmotes: Map<String, Emote> = emptyMap(),
         val ffzEmotes: Map<String, Emote> = emptyMap(),
+        val badges: Map<String, Map<String, TwitchBadgeDto>> = emptyMap(),
+        val displayBadges: Map<String, TwitchBadgeDto> = emptyMap(),
         val isLoaded: Boolean = false
     )
 
@@ -45,6 +51,13 @@ object EmoteRepository {
     val globalState = _globalState.asStateFlow()
 
     private val _channelStates = ConcurrentHashMap<String, MutableStateFlow<ChannelEmoteState>>()
+    private val aspectRatioCache = ConcurrentHashMap<String, Float>()
+
+    fun getAspectRatio(url: String): Float? = aspectRatioCache[url]
+
+    fun putAspectRatio(url: String, ratio: Float) {
+        aspectRatioCache[url] = ratio
+    }
 
     fun getChannelState(channelName: String) = _channelStates.getOrPut(channelName) {
         MutableStateFlow(ChannelEmoteState())
@@ -87,7 +100,6 @@ object EmoteRepository {
                     
                     seventvMap[emote.name] = Emote(emote.id, emote.name, url, EmoteType.SEVENTV, isZeroWidth = emote.isZeroWidth)
                 }
-                Log.d(TAG, "Loaded ${seventvGlobal.emotes.size} 7TV global emotes")
             } catch (e: Exception) { Log.e(TAG, "7TV Global load failed", e) }
             
             // Load FFZ Global
@@ -109,13 +121,17 @@ object EmoteRepository {
                 }
             } catch (e: Exception) { Log.e(TAG, "FFZ Global load failed", e) }
 
+            // Load Global Badges via GQL
+            val globalBadges = parseFlatBadges(TwitchGqlService.getGlobalBadges())
+
             _globalState.update { it.copy(
                 bttvEmotes = bttvMap,
                 seventvEmotes = seventvMap,
                 ffzEmotes = ffzMap,
+                badges = globalBadges,
                 isLoaded = true
             ) }
-            Log.d(TAG, "Global emotes loaded")
+            Log.d(TAG, "Global emotes and ${globalBadges.size} badge sets loaded")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading global emotes", e)
         }
@@ -157,7 +173,7 @@ object EmoteRepository {
             // Load 7TV Channel
             try {
                 val seventvUser: SevenTVUserResponse = client.get("https://7tv.io/v3/users/twitch/$userId").body()
-                seventvUser.emote_set.emotes.forEach { emote ->
+                seventvUser.emote_set?.emotes?.forEach { emote ->
                     val hostUrl = emote.data.host.url
                     val bestFile = emote.data.host.files.find { it.name == "4x.webp" }
                                   ?: emote.data.host.files.find { it.format == "WEBP" }
@@ -169,7 +185,6 @@ object EmoteRepository {
                     
                     seventvMap[emote.name] = Emote(emote.id, emote.name, url, EmoteType.SEVENTV, isZeroWidth = emote.isZeroWidth)
                 }
-                Log.d(TAG, "Loaded ${seventvUser.emote_set.emotes.size} 7TV emotes for $channelName")
             } catch (e: Exception) { Log.e(TAG, "7TV Channel load failed for $channelName", e) }
 
             // Load FFZ Channel
@@ -189,20 +204,90 @@ object EmoteRepository {
                         }
                     }
                 }
-                Log.d(TAG, "Loaded FFZ emotes for $channelName")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading FFZ emotes for $channelName", e)
-            }
+            } catch (e: Exception) { Log.e(TAG, "FFZ Channel load failed for $channelName", e) }
+
+            // Load Channel Badges via GQL
+            val badgeData = parseBadgeData(TwitchGqlService.getBadgeSets(channelName))
 
             stateFlow.update { it.copy(
                 bttvEmotes = bttvMap,
                 seventvEmotes = seventvMap,
                 ffzEmotes = ffzMap,
+                badges = badgeData.first,
+                displayBadges = badgeData.second,
                 isLoaded = true
             ) }
-            Log.d(TAG, "Channel emotes loaded for $channelName")
+            Log.d(TAG, "Channel emotes and ${badgeData.first.size} badge sets loaded for $channelName")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading emotes for channel $channelName", e)
+        }
+    }
+
+    private fun parseFlatBadges(responseBody: String?): Map<String, Map<String, TwitchBadgeDto>> {
+        if (responseBody == null) return emptyMap()
+        return try {
+            val response = json.decodeFromString<TwitchBadgeSetsResponse>(responseBody)
+            val badgesList = response.data?.badges ?: emptyList()
+            groupBadges(badgesList)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse global flat badges", e)
+            emptyMap()
+        }
+    }
+
+    private fun groupBadges(badges: List<TwitchBadgeDto>): Map<String, Map<String, TwitchBadgeDto>> {
+        val result = mutableMapOf<String, MutableMap<String, TwitchBadgeDto>>()
+        badges.forEach { badge ->
+            if (badge.setID.isNotEmpty() && badge.version.isNotEmpty()) {
+                result.getOrPut(badge.setID) { mutableMapOf() }[badge.version] = badge
+            }
+        }
+        return result
+    }
+
+    private fun parseBadgeData(responseBody: String?): Pair<Map<String, Map<String, TwitchBadgeDto>>, Map<String, TwitchBadgeDto>> {
+        if (responseBody == null) return Pair(emptyMap(), emptyMap())
+        return try {
+            val response = json.decodeFromString<TwitchBadgeSetsResponse>(responseBody)
+            val data = response.data
+            
+            // Definitions from root badges and broadcastBadges
+            val allDefinitions = mutableListOf<TwitchBadgeDto>()
+            data?.badges?.let { allDefinitions.addAll(it) }
+            data?.user?.broadcastBadges?.let { allDefinitions.addAll(it) }
+            
+            val setsResult = groupBadges(allDefinitions)
+            
+            // Equipped icons
+            val displayBadges = data?.user?.displayBadges ?: emptyList()
+            val displayResult = mutableMapOf<String, TwitchBadgeDto>()
+            val discoveredGlobalBadges = mutableListOf<TwitchBadgeDto>()
+
+            displayBadges.forEach { badge ->
+                displayResult[badge.setID] = badge
+                
+                if (badge.isGlobal) {
+                    discoveredGlobalBadges.add(badge)
+                }
+            }
+            
+            if (discoveredGlobalBadges.isNotEmpty()) {
+                _globalState.update { state ->
+                    val newBadges = state.badges.toMutableMap()
+                    val newDiscovered = groupBadges(discoveredGlobalBadges)
+                    newDiscovered.forEach { (setId, versions) ->
+                        val currentVersions = newBadges[setId]?.toMutableMap() ?: mutableMapOf()
+                        currentVersions.putAll(versions)
+                        newBadges[setId] = currentVersions
+                    }
+                    state.copy(badges = newBadges)
+                }
+            }
+            
+            Pair(setsResult, displayResult)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse channel flat badge data", e)
+            Pair(emptyMap(), emptyMap())
         }
     }
 
@@ -216,5 +301,25 @@ object EmoteRepository {
             ?: globalState.seventvEmotes[code]
             ?: globalState.bttvEmotes[code]
             ?: globalState.ffzEmotes[code]
+    }
+
+    fun getBadgeUrl(channelName: String, setId: String, version: String): String? {
+        val channelState = _channelStates[channelName]?.value
+        val globalState = _globalState.value
+        
+        val badge = channelState?.displayBadges?.get(setId)?.takeIf { it.version == version }
+            ?: channelState?.badges?.get(setId)?.get(version)
+            ?: globalState.badges[setId]?.get(version)
+            
+        if (badge == null) {
+            Log.v(TAG, "Badge not found: $setId/$version in $channelName")
+        }
+
+        val url = badge?.bestUrl ?: return null
+        return when {
+            url.startsWith("http") -> url
+            url.startsWith("//") -> "https:$url"
+            else -> "https://$url"
+        }
     }
 }

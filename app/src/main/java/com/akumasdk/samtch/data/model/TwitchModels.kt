@@ -3,37 +3,42 @@ package com.akumasdk.samtch.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Serializable
 data class TwitchStreamMetadata(
-    val user: TwitchUser?
+    val user: TwitchUser? = null
 )
 
+@Serializable
 data class TwitchUser(
-    val id: String,
-    val login: String,
-    val displayName: String,
-    val description: String?,
-    val profileImageUrl: String?,
-    val createdAt: String?,
-    val roles: TwitchRoles?,
-    val stream: TwitchStream?
+    val id: String = "",
+    val login: String = "",
+    val displayName: String = "",
+    val description: String? = null,
+    val profileImageUrl: String? = null,
+    val createdAt: String? = null,
+    val roles: TwitchRoles? = null,
+    val stream: TwitchStream? = null
 )
 
+@Serializable
 data class TwitchRoles(
-    val isPartner: Boolean
+    val isPartner: Boolean = false
 )
 
+@Serializable
 data class TwitchStream(
-    val id: String,
-    val title: String,
-    val type: String?,
-    val viewersCount: Int,
-    val previewImageUrl: String?,
-    val createdAt: String?,
-    val game: TwitchGame?
+    val id: String = "",
+    val title: String = "",
+    val type: String? = null,
+    val viewersCount: Int = 0,
+    val previewImageUrl: String? = null,
+    val createdAt: String? = null,
+    val game: TwitchGame? = null
 )
 
+@Serializable
 data class TwitchGame(
-    val name: String
+    val name: String = ""
 )
 
 @Serializable

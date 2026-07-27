@@ -1,10 +1,10 @@
 package com.akumasdk.samtch.ui.components.chat
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 
 @Composable
 fun ChatMessageRow(
@@ -24,7 +25,21 @@ fun ChatMessageRow(
     
     when (message) {
         is ChatMessageUiState.PrivMessageUi -> {
-            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Badges
+                message.badgeUrls.forEach { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(if (isCompact) 14.dp else 18.dp)
+                    )
+                }
+
                 // Name
                 if (!message.isAction) {
                     val annotatedName = buildAnnotatedString {

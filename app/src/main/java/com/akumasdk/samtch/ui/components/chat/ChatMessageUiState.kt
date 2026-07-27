@@ -15,19 +15,23 @@ data class EmoteInfo(
 @Immutable
 sealed interface ChatMessageUiState {
     val id: String
+    val contentType: String
 
     data class PrivMessageUi(
         override val id: String,
+        override val contentType: String = "privmsg",
         val displayName: String,
         val userColor: Color,
         val messageText: String,
         val annotatedString: AnnotatedString,
         val emotes: List<EmoteInfo>,
+        val badgeUrls: List<String> = emptyList(),
         val isAction: Boolean = false
     ) : ChatMessageUiState
 
     data class SystemMessageUi(
         override val id: String,
+        override val contentType: String = "system",
         val message: String
     ) : ChatMessageUiState
 }

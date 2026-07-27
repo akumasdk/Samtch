@@ -48,7 +48,7 @@ object TwitchGqlService {
     /**
      * Dynamically scrapes the Twitch Client ID from the homepage.
      */
-    private suspend fun getDynamicClientId(): String {
+    suspend fun getDynamicClientId(): String {
         cachedDynamicClientId?.let { return it }
 
         return clientIdMutex.withLock {
@@ -138,6 +138,34 @@ object TwitchGqlService {
         }
     """
 
+    private const val CHANNEL_BADGES_QUERY = """
+        query ChannelBadges(${"$"}login: String!) {
+          badges {
+            setID
+            version
+            image1x: imageURL(size: NORMAL)
+            image2x: imageURL(size: DOUBLE)
+            image4x: imageURL(size: QUADRUPLE)
+            title
+            description
+          }
+        }
+    """
+
+    private const val GLOBAL_BADGES_QUERY = """
+        query GlobalBadges {
+          badges {
+            setID
+            version
+            image1x: imageURL(size: NORMAL)
+            image2x: imageURL(size: DOUBLE)
+            image4x: imageURL(size: QUADRUPLE)
+            title
+            description
+          }
+        }
+    """
+
     private fun Request.Builder.addCommonHeaders(clientId: String): Request.Builder {
         return this
             .header("Client-Id", clientId)
@@ -206,6 +234,57 @@ object TwitchGqlService {
             json.optJSONObject("data")?.optJSONObject("user")?.optString("id")
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching user ID", e)
+            null
+        }
+    }
+
+    suspend fun getBadgeSets(channelName: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val clientId = getDynamicClientId()
+            val payload = JSONObject().apply {
+                put("operationName", "ChannelBadges")
+                put("query", CHANNEL_BADGES_QUERY.trimIndent())
+                put("variables", JSONObject().apply {
+                    put("login", channelName.lowercase())
+                })
+            }
+
+            val request = Request.Builder()
+                .url(Constants.TWITCH_GQL_ENDPOINT)
+                .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                .addCommonHeaders(clientId)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body.string()
+            if (!response.isSuccessful) return@withContext null
+            body
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching badge sets for $channelName", e)
+            null
+        }
+    }
+
+    suspend fun getGlobalBadges(): String? = withContext(Dispatchers.IO) {
+        try {
+            val clientId = getDynamicClientId()
+            val payload = JSONObject().apply {
+                put("operationName", "GlobalBadges")
+                put("query", GLOBAL_BADGES_QUERY.trimIndent())
+            }
+
+            val request = Request.Builder()
+                .url(Constants.TWITCH_GQL_ENDPOINT)
+                .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                .addCommonHeaders(clientId)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body.string()
+            if (!response.isSuccessful) return@withContext null
+            body
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching global badges", e)
             null
         }
     }

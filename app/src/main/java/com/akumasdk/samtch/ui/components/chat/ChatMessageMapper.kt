@@ -100,6 +100,7 @@ object ChatMessageMapper {
 
             occurrences.sortBy { it.range.first }
 
+            val badges = parseBadges(message, channelName)
             val emotes = mutableListOf<EmoteInfo>()
             val annotatedString = buildAnnotatedString {
                 var lastPos = 0
@@ -148,18 +149,42 @@ object ChatMessageMapper {
 
             return ChatMessageUiState.PrivMessageUi(
                 id = message.tags["id"] ?: UUID.randomUUID().toString(),
+                contentType = "privmsg",
                 displayName = displayName,
                 userColor = userColor,
                 messageText = cleanText,
                 annotatedString = annotatedString,
                 emotes = emotes,
+                badgeUrls = badges,
                 isAction = isAction
             )
         }
 
         return ChatMessageUiState.SystemMessageUi(
             id = UUID.randomUUID().toString(),
+            contentType = "system",
             message = message.raw
         )
+    }
+
+    private fun parseBadges(message: IrcMessage, channelName: String): List<String> {
+        val badgesTag = message.tags["badges"] ?: return emptyList()
+        val urls = mutableListOf<String>()
+        
+        badgesTag.split(",").forEach { badge ->
+            val parts = badge.split("/")
+            if (parts.size == 2) {
+                val setId = parts[0]
+                val version = parts[1]
+                EmoteRepository.getBadgeUrl(channelName, setId, version)?.let {
+                    urls.add(it)
+                }
+            }
+        }
+        
+        if (urls.isNotEmpty()) {
+            Log.d("ChatMessageMapper", "Resolved ${urls.size} badges for ${message.prefix}")
+        }
+        return urls
     }
 }
