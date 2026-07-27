@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.ui.components.chat.NativeTwitchChat
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
@@ -34,11 +37,18 @@ fun TwitchChat(
     channel: String,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+
+    if (chatMode == SettingsManager.ChatMode.NATIVE) {
+        NativeTwitchChat(channel = channel, modifier = modifier)
+        return
+    }
+
     val chatUrl = "https://www.twitch.tv/embed/$channel/chat?parent=twitch.tv&darkpopout"
     val state = rememberSaveableWebViewState(chatUrl)
     val navigator = rememberWebViewNavigator()
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
 
     // Track if chat is fully loaded (chat-input element is present)
     var isChatFullyLoaded by remember { mutableStateOf(false) }

@@ -57,6 +57,13 @@
     <string name="ad_block_mode_video_swap">Video Swap (Stable/Default)</string>
     <string name="ad_block_mode_notice">Note: Changes to the ad-blocking method will take effect when you play the next stream.</string>
 
+    <!-- Chat Settings -->
+    <string name="chat_mode_title">Chat Experience</string>
+    <string name="chat_mode_summary">Choose between Native or Legacy (WebView) chat</string>
+    <string name="chat_mode_native">Native (Experimental/Fast)</string>
+    <string name="chat_mode_legacy">Legacy (Stable/Original)</string>
+    <string name="chat_mode_notice">Note: Native chat includes BetterTTV and 7TV emote support.</string>
+
     <!-- Player Loading Status -->
     <string name="loading_stream">Loading stream…</string>
     <string name="searching_video">Searching for video stream…</string>

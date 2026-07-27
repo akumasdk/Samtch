@@ -130,6 +130,14 @@ object TwitchGqlService {
         }
     """
 
+    private const val GET_USER_ID_QUERY = """
+        query GetUserId(${"$"}login: String!) {
+          user(login: ${"$"}login) {
+            id
+          }
+        }
+    """
+
     private fun Request.Builder.addCommonHeaders(clientId: String): Request.Builder {
         return this
             .header("Client-Id", clientId)
@@ -172,6 +180,35 @@ object TwitchGqlService {
                 null
             }
         }
+
+    suspend fun getUserId(channelName: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val clientId = getDynamicClientId()
+            val payload = JSONObject().apply {
+                put("operationName", "GetUserId")
+                put("query", GET_USER_ID_QUERY.trimIndent())
+                put("variables", JSONObject().apply {
+                    put("login", channelName.lowercase())
+                })
+            }
+
+            val request = Request.Builder()
+                .url(Constants.TWITCH_GQL_ENDPOINT)
+                .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                .addCommonHeaders(clientId)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body.string()
+            if (!response.isSuccessful) return@withContext null
+
+            val json = JSONObject(body)
+            json.optJSONObject("data")?.optJSONObject("user")?.optString("id")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching user ID", e)
+            null
+        }
+    }
 
     /**
      * Fetches a new Integrity Token from Twitch.
