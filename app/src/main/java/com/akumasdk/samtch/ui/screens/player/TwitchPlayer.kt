@@ -279,6 +279,10 @@ fun TwitchPlayer(
                 },
                 onAdblocked = { text ->
                     adblockText = text
+                    if (text.isNotEmpty() && isUiLoading) {
+                        Log.d("TwitchPlayer", "Adblock active - hiding loader early")
+                        isUiLoading = false
+                    }
                 }
             )
         }

@@ -23,16 +23,46 @@
         }
     }
 
+    function findAllVideos(root = document) {
+        let videos = Array.from(root.querySelectorAll('video'));
+
+        // Search in Shadow DOMs
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, null, false);
+        let node = walker.nextNode();
+        while (node) {
+            if (node.shadowRoot) {
+                videos.push(...findAllVideos(node.shadowRoot));
+            }
+            node = walker.nextNode();
+        }
+
+        // Search in same-origin iframes
+        if (root === document) {
+            try {
+                const iframes = document.querySelectorAll('iframe');
+                iframes.forEach(iframe => {
+                    try {
+                        if (iframe.contentDocument) {
+                            videos.push(...findAllVideos(iframe.contentDocument));
+                        }
+                    } catch (e) {}
+                });
+            } catch (e) {}
+        }
+
+        return videos;
+    }
+
     function checkPlayback() {
         if (signalSent) return;
 
         const now = Date.now();
         const elapsed = now - monitorStartTime;
+        const videos = findAllVideos();
 
         // Periodic status reporting during loading
         if (now - lastStatusUpdate > 1500) {
             lastStatusUpdate = now;
-            const videos = document.querySelectorAll('video');
             if (videos.length === 0) {
                 if (elapsed > 5000) {
                     reportStatus('Initializing player components...');
@@ -44,24 +74,6 @@
                 reportStatus('Preparing playback...');
             }
         }
-
-        // Look for all video elements, including those that might be in iframes
-        const videos = Array.from(document.querySelectorAll('video'));
-
-        // Also check same-origin iframes recursively
-        try {
-            const iframes = document.querySelectorAll('iframe');
-            iframes.forEach(iframe => {
-                try {
-                    if (iframe.contentDocument) {
-                        const iframeVideos = iframe.contentDocument.querySelectorAll('video');
-                        videos.push(...Array.from(iframeVideos));
-                    }
-                } catch (e) {
-                    // Cross-origin iframe, ignore
-                }
-            });
-        } catch (e) {}
 
         if (videos.length === 0) return;
 
@@ -78,10 +90,10 @@
 
                 // Trigger if:
                 // 1. Sound is detected
-                // 2. Or video has been playing for > 3 seconds even if muted (fallback)
-                if (isAudible || timeSinceStart > 3000) {
+                // 2. Or video has been playing for > 2 seconds even if muted (fallback)
+                if (isAudible || timeSinceStart > 2000) {
                     if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onPlaybackStarted) {
-                        console.log(`[Samtch] Playback detected (Audible: ${isAudible}, Fallback: ${timeSinceStart > 3000}). Signaling bridge.`);
+                        console.log(`[Samtch] Playback detected (Audible: ${isAudible}, Fallback: ${timeSinceStart > 2000}). Signaling bridge.`);
                         window.TwitchPlayerBridge.onPlaybackStarted();
                         signalSent = true;
                         clearInterval(window.samtch_playback_monitor_int);
@@ -93,5 +105,5 @@
     }
 
     // High frequency polling initially
-    window.samtch_playback_monitor_int = setInterval(checkPlayback, 300);
+    window.samtch_playback_monitor_int = setInterval(checkPlayback, 200);
 })();
