@@ -20,7 +20,7 @@ object ScriptLoader {
             "js/chat/chat_loader_observer.js",
             "js/player/ui_cleaner.js",
             "js/player/playback_monitor.js",
-            //"js/player/video_swap.js",
+            "js/player/video_swap.js",
             "js/player/link_disabler.js",
             "js/player/controls_injector.js",
             "js/player/visibility_monitor.js",

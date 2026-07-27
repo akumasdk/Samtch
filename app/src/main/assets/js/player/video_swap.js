@@ -1,6 +1,18 @@
+// ==UserScript==
+// @name         TwitchAdSolutions (video-swap-new)
+// @namespace    https://github.com/pixeltris/TwitchAdSolutions
+// @version      1.55
+// @updateURL    https://github.com/pixeltris/TwitchAdSolutions/raw/master/video-swap-new/video-swap-new.user.js
+// @downloadURL  https://github.com/pixeltris/TwitchAdSolutions/raw/master/video-swap-new/video-swap-new.user.js
+// @description  Multiple solutions for blocking Twitch ads (video-swap-new)
+// @author       pixeltris
+// @match        *://*.twitch.tv/*
+// @run-at       document-start
+// @inject-into  page
+// @grant        none
+// ==/UserScript==
 (function() {
     'use strict';
-    console.log('video-swap-new.js loaded');
     const ourTwitchAdSolutionsVersion = 23;// Used to prevent conflicts with outdated versions of the scripts
     if (typeof window.twitchAdSolutionsVersion !== 'undefined' && window.twitchAdSolutionsVersion >= ourTwitchAdSolutionsVersion) {
         console.log("skipping video-swap-new as there's another script active. ourVersion:" + ourTwitchAdSolutionsVersion + " activeVersion:" + window.twitchAdSolutionsVersion);
@@ -30,13 +42,6 @@
     }
     let twitchPlayerAndState = null;
     let localStorageHookFailed = false;
-
-    function notifyAdStatus(isBlocking) {
-        console.log('[VideoSwap] Ad blocking status: ' + isBlocking);
-        if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onAdBlocked) {
-            window.TwitchPlayerBridge.onAdBlocked(isBlocking);
-        }
-    }
     const twitchWorkers = [];
     const workerStringConflicts = [
         'twitch',
@@ -276,7 +281,6 @@
                                 if ((!backTextStr.includes(AD_SIGNIFIER) && (SimulatedAdsDepth == 0 || i >= SimulatedAdsDepth - 1)) || i >= playerTypes.length - 1) {
                                     result = backTextStr;
                                     backupPlayerTypeInfo = ' (' + playerType + ')';
-                                    notifyAdStatus(true);
                                     streamInfo.BackupEncodingsStatus.set(playerType, 1);
                                     streamInfo.BackupEncodingsPlayerTypeIndex = i;
                                     if (streamInfo.Encodings != null) {
@@ -383,8 +387,7 @@
                 const streamM3u8 = await streamM3u8Response.text();
                 if (streamM3u8 != null) {
                     if (!streamM3u8.includes(AD_SIGNIFIER) && SimulatedAdsDepth == 0) {
-                        console.log('[VideoSwap] No more ads on main stream. Triggering player reload to go back to main stream...');
-                        notifyAdStatus(false);
+                        console.log('No more ads on main stream. Triggering player reload to go back to main stream...');
                         streamInfo.IsMovingOffBackupEncodings = true;
                         streamInfo.BackupEncodings = null;
                         streamInfo.BackupEncodingsStatus.clear();
@@ -726,26 +729,12 @@
         };
     }
     function updateAdblockBanner(data) {
-        const playerRootDiv = document.querySelector('.video-player');
-        if (playerRootDiv != null) {
-            let adBlockDiv = null;
-            adBlockDiv = playerRootDiv.querySelector('.adblock-overlay');
-            if (adBlockDiv == null) {
-                adBlockDiv = document.createElement('div');
-                adBlockDiv.className = 'adblock-overlay';
-                adBlockDiv.innerHTML = '<div class="player-adblock-notice" style="color: white; background-color: rgba(0, 0, 0, 0.8); position: absolute; top: 0px; left: 0px; padding: 5px;"><p></p></div>';
-                adBlockDiv.style.display = 'none';
-                adBlockDiv.P = adBlockDiv.querySelector('p');
-                playerRootDiv.appendChild(adBlockDiv);
+        if (typeof TwitchPlayerBridge !== 'undefined' && TwitchPlayerBridge.onAdblocked) {
+            let message = '';
+            if (data.hasAds) {
+                message = 'Blocking' + (data.isMidroll ? ' midroll' : '') + ' ads' + (data.isStrippingAdSegments ? ' (stripping)' : '');
             }
-            if (adBlockDiv != null) {
-                if (!twitchPlayerAndState?.player?.core || !twitchPlayerAndState?.state) {
-                    twitchPlayerAndState = getPlayerAndState();
-                }
-                const isLive = twitchPlayerAndState?.state?.props?.content?.type === 'live';
-                adBlockDiv.P.textContent = 'Blocking' + (data.isMidroll ? ' midroll' : '') + ' ads' + (data.isStrippingAdSegments ? ' (stripping)' : '');// + (data.numStrippedAdSegments > 0 ? ` (${data.numStrippedAdSegments})` : '');
-                adBlockDiv.style.display = data.hasAds && isLive ? 'block' : 'none';
-            }
+            TwitchPlayerBridge.onAdblocked(message);
         }
     }
     function monitorLiveStatus() {
@@ -970,12 +959,6 @@
             onContentLoaded();
         });
     }
-
-    console.log('[VideoSwap] Script fully loaded and initialized');
-    if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onVaftReady) {
-        window.TwitchPlayerBridge.onVaftReady();
-    }
-
     window.simulateAds = (depth) => {
         if (depth === undefined || depth < 0) {
             console.log('Ad depth paramter required (0 = no simulated ad, 1+ = use backup player for given depth)');

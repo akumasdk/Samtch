@@ -1,3 +1,16 @@
+// ==UserScript==
+// @name         TwitchAdSolutions (vaft)
+// @namespace    https://github.com/pixeltris/TwitchAdSolutions
+// @version      37.0.0
+// @description  Multiple solutions for blocking Twitch ads (vaft)
+// @updateURL    https://github.com/pixeltris/TwitchAdSolutions/raw/master/vaft/vaft.user.js
+// @downloadURL  https://github.com/pixeltris/TwitchAdSolutions/raw/master/vaft/vaft.user.js
+// @author       https://github.com/cleanlock/VideoAdBlockForTwitch#credits
+// @match        *://*.twitch.tv/*
+// @run-at       document-start
+// @inject-into  page
+// @grant        none
+// ==/UserScript==
 (function() {
     'use strict';
     const ourTwitchAdSolutionsVersion = 24;// Used to prevent conflicts with outdated versions of the scripts
@@ -47,13 +60,6 @@
     }
     let isActivelyStrippingAds = false;
     let localStorageHookFailed = false;
-
-    function notifyAdStatus(isBlocking) {
-        console.log('[VAFT] Ad blocking status: ' + isBlocking);
-        if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onAdBlocked) {
-            window.TwitchPlayerBridge.onAdBlocked(isBlocking);
-        }
-    }
     const twitchWorkers = [];
     const workerStringConflicts = [
         'twitch',
@@ -469,7 +475,6 @@
             streamInfo.IsMidroll = textStr.includes('"MIDROLL"') || textStr.includes('"midroll"');
             if (!streamInfo.IsShowingAd) {
                 streamInfo.IsShowingAd = true;
-                notifyAdStatus(true);
                 postMessage({
                     key: 'UpdateAdBlockBanner',
                     isMidroll: streamInfo.IsMidroll,
@@ -589,9 +594,8 @@
                 textStr = stripAdSegments(textStr, stripHevc, streamInfo);
             }
         } else if (streamInfo.IsShowingAd) {
-            console.log('[VAFT] Finished blocking ads');
+            console.log('Finished blocking ads');
             streamInfo.IsShowingAd = false;
-            notifyAdStatus(false);
             streamInfo.IsStrippingAdSegments = false;
             streamInfo.NumStrippedAdSegments = 0;
             streamInfo.ActiveBackupPlayerType = null;
@@ -777,23 +781,12 @@
         setTimeout(monitorPlayerBuffering, PlayerBufferingDelay);
     }
     function updateAdblockBanner(data) {
-        const playerRootDiv = document.querySelector('.video-player');
-        if (playerRootDiv != null) {
-            let adBlockDiv = null;
-            adBlockDiv = playerRootDiv.querySelector('.adblock-overlay');
-            if (adBlockDiv == null) {
-                adBlockDiv = document.createElement('div');
-                adBlockDiv.className = 'adblock-overlay';
-                adBlockDiv.innerHTML = '<div class="player-adblock-notice" style="color: white; background-color: rgba(0, 0, 0, 0.8); position: absolute; top: 0px; left: 0px; padding: 5px;"><p></p></div>';
-                adBlockDiv.style.display = 'none';
-                adBlockDiv.P = adBlockDiv.querySelector('p');
-                playerRootDiv.appendChild(adBlockDiv);
+        if (typeof TwitchPlayerBridge !== 'undefined' && TwitchPlayerBridge.onAdblocked) {
+            let message = '';
+            if (data.hasAds) {
+                message = 'Blocking' + (data.isMidroll ? ' midroll' : '') + ' ads' + (data.isStrippingAdSegments ? ' (stripping)' : '');
             }
-            if (adBlockDiv != null) {
-                isActivelyStrippingAds = data.isStrippingAdSegments;
-                adBlockDiv.P.textContent = 'Blocking' + (data.isMidroll ? ' midroll' : '') + ' ads' + (data.isStrippingAdSegments ? ' (stripping)' : '');// + (data.numStrippedAdSegments > 0 ? ` (${data.numStrippedAdSegments})` : '');
-                adBlockDiv.style.display = data.hasAds && playerBufferState.isLive ? 'block' : 'none';
-            }
+            TwitchPlayerBridge.onAdblocked(message);
         }
     }
     function getPlayerAndState() {
@@ -1102,12 +1095,6 @@
             onContentLoaded();
         });
     }
-
-    console.log('[VAFT] Script fully loaded and initialized');
-    if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onVaftReady) {
-        window.TwitchPlayerBridge.onVaftReady();
-    }
-
     window.simulateAds = (depth) => {
         if (depth === undefined || depth < 0) {
             console.log('Ad depth paramter required (0 = no simulated ad, 1+ = use backup player for given depth)');

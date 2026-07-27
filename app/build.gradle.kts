@@ -26,10 +26,15 @@ android {
         applicationId = "com.magumboi.samtch"
         minSdk = 26
         targetSdk = 36
-        versionCode = 17
-        versionName = "0.2.3"
+        versionCode = 18
+        versionName = "0.2.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     signingConfigs {

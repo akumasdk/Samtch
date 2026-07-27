@@ -114,8 +114,12 @@
 
         if (injectedCount > 0) {
             console.log('[Samtch] Buttons injected successfully (' + injectedCount + ')');
+            document.documentElement.classList.add('samtch-ready');
+        } else if (document.getElementById('samtch-chat-btn')) {
+            // Already injected in previous run, ensure visibility
+            document.documentElement.classList.add('samtch-ready');
         }
-        return true;
+        return injectedCount > 0;
     }
 
     injectStyles();

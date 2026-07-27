@@ -5,17 +5,24 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.akumasdk.samtch.R
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -35,6 +42,7 @@ import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
 import androidx.core.net.toUri
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun TwitchPlayer(
@@ -55,6 +63,9 @@ fun TwitchPlayer(
     val context = LocalContext.current
     var isAudioOnly by remember { mutableStateOf(false) }
     var isUiLoading by remember { mutableStateOf(true) }
+    val defaultLoadingMessage = stringResource(R.string.loading_stream)
+    var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
+    var adblockText by remember { mutableStateOf("") }
 
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -68,8 +79,20 @@ fun TwitchPlayer(
 
     val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
 
+    // Safety timeout for loading screen
+    LaunchedEffect(isUiLoading) {
+        if (isUiLoading) {
+            delay(12.seconds) // 12 second absolute maximum for loading screen
+            if (isUiLoading) {
+                Log.w("TwitchPlayer", "Loading timeout reached for $channel - forcing removal")
+                isUiLoading = false
+            }
+        }
+    }
+
     LaunchedEffect(channel, refreshTrigger) {
         isUiLoading = true
+        loadingMessage = defaultLoadingMessage
         while (true) {
             // Fetch detailed metadata via GraphQL
             Log.d("TwitchPlayer", "Fetching periodic metadata for $channel")
@@ -250,6 +273,16 @@ fun TwitchPlayer(
                 onPlaybackStarted = {
                     Log.d("TwitchPlayer", "onPlaybackStarted called - hiding loading box")
                     isUiLoading = false
+                },
+                onLoadingStatus = { message ->
+                    loadingMessage = message
+                },
+                onAdblocked = { text ->
+                    adblockText = text
+                    if (text.isNotEmpty() && isUiLoading) {
+                        Log.d("TwitchPlayer", "Adblock active - hiding loader early")
+                        isUiLoading = false
+                    }
                 }
             )
         }
@@ -339,6 +372,24 @@ fun TwitchPlayer(
                                     color = Color(0xFF9146FF), // Twitch Purple
                                     strokeWidth = 3.dp
                                 )
+
+                                // Status message below spinner
+                                Text(
+                                    text = loadingMessage,
+                                    color = Color.White,
+                                    style = TextStyle(
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        shadow = Shadow(
+                                            color = Color.Black,
+                                            blurRadius = 8f
+                                        )
+                                    ),
+                                    modifier = Modifier
+                                        .padding(top = 16.dp)
+                                        .align(Alignment.Center)
+                                        .offset(y = 40.dp)
+                                )
                             }
                         }
                     }
@@ -379,6 +430,8 @@ fun TwitchPlayer(
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
+                        adblockText = adblockText,
+                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
                 } else {
@@ -389,6 +442,8 @@ fun TwitchPlayer(
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         isAudioOnly = isAudioOnly,
+                        adblockText = adblockText,
+                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                         onToggleFullscreen = onToggleFullscreen,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
