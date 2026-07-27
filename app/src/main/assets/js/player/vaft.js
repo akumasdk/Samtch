@@ -1,3 +1,16 @@
+// ==UserScript==
+// @name         TwitchAdSolutions (vaft)
+// @namespace    https://github.com/pixeltris/TwitchAdSolutions
+// @version      37.0.0
+// @description  Multiple solutions for blocking Twitch ads (vaft)
+// @updateURL    https://github.com/pixeltris/TwitchAdSolutions/raw/master/vaft/vaft.user.js
+// @downloadURL  https://github.com/pixeltris/TwitchAdSolutions/raw/master/vaft/vaft.user.js
+// @author       https://github.com/cleanlock/VideoAdBlockForTwitch#credits
+// @match        *://*.twitch.tv/*
+// @run-at       document-start
+// @inject-into  page
+// @grant        none
+// ==/UserScript==
 (function() {
     'use strict';
     const ourTwitchAdSolutionsVersion = 24;// Used to prevent conflicts with outdated versions of the scripts
@@ -47,19 +60,6 @@
     }
     let isActivelyStrippingAds = false;
     let localStorageHookFailed = false;
-
-    function notifyAdStatus(isBlocking) {
-        console.log('[VAFT] Ad blocking status: ' + isBlocking);
-        if (window.TwitchPlayerBridge) {
-            if (window.TwitchPlayerBridge.onAdBlocked) {
-                window.TwitchPlayerBridge.onAdBlocked(isBlocking);
-            }
-            if (isBlocking && window.TwitchPlayerBridge.onLoadingStatus) {
-                const msg = (window.SamtchStrings && window.SamtchStrings.bypassing_ads) || 'Bypassing ads...';
-                window.TwitchPlayerBridge.onLoadingStatus(msg);
-            }
-        }
-    }
     const twitchWorkers = [];
     const workerStringConflicts = [
         'twitch',
@@ -475,7 +475,6 @@
             streamInfo.IsMidroll = textStr.includes('"MIDROLL"') || textStr.includes('"midroll"');
             if (!streamInfo.IsShowingAd) {
                 streamInfo.IsShowingAd = true;
-                notifyAdStatus(true);
                 postMessage({
                     key: 'UpdateAdBlockBanner',
                     isMidroll: streamInfo.IsMidroll,
@@ -595,9 +594,8 @@
                 textStr = stripAdSegments(textStr, stripHevc, streamInfo);
             }
         } else if (streamInfo.IsShowingAd) {
-            console.log('[VAFT] Finished blocking ads');
+            console.log('Finished blocking ads');
             streamInfo.IsShowingAd = false;
-            notifyAdStatus(false);
             streamInfo.IsStrippingAdSegments = false;
             streamInfo.NumStrippedAdSegments = 0;
             streamInfo.ActiveBackupPlayerType = null;
@@ -1108,12 +1106,6 @@
             onContentLoaded();
         });
     }
-
-    console.log('[VAFT] Script fully loaded and initialized');
-    if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onVaftReady) {
-        window.TwitchPlayerBridge.onVaftReady();
-    }
-
     window.simulateAds = (depth) => {
         if (depth === undefined || depth < 0) {
             console.log('Ad depth paramter required (0 = no simulated ad, 1+ = use backup player for given depth)');
