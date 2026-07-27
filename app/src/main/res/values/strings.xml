@@ -70,4 +70,8 @@
     <string name="preparing_playback">Preparing playback…</string>
     <string name="initializing_player">Initializing player components…</string>
     <string name="bypassing_ads">Bypassing ads…</string>
+
+    <!-- Chat UI -->
+    <string name="chat_jump_to_bottom">Jump to bottom</string>
+    <string name="chat_connecting">Connecting to chat…</string>
 </resources>

@@ -70,4 +70,8 @@
     <string name="preparing_playback">Preparando reproducción…</string>
     <string name="initializing_player">Inicializando componentes del reproductor…</string>
     <string name="bypassing_ads">Omitiendo anuncios…</string>
+
+    <!-- Chat UI -->
+    <string name="chat_jump_to_bottom">Ir al final</string>
+    <string name="chat_connecting">Conectando al chat…</string>
 </resources>

@@ -312,7 +312,7 @@ object EmoteRepository {
             ?: globalState.badges[setId]?.get(version)
             
         if (badge == null) {
-            Log.v(TAG, "Badge not found: $setId/$version in $channelName")
+            Log.d(TAG, "Badge not found: $setId/$version in $channelName")
         }
 
         val url = badge?.bestUrl ?: return null

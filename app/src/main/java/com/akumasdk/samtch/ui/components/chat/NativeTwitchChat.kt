@@ -19,11 +19,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.akumasdk.samtch.R
 import kotlinx.coroutines.launch
 
 @Composable
@@ -42,9 +44,10 @@ fun NativeTwitchChat(
 
     val isDragged by listState.interactionSource.collectIsDraggedAsState()
 
+    // More lenient at-bottom detection to handle minor layout shifts from images
     val isAtBottom by remember {
         derivedStateOf {
-            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 10
         }
     }
 
@@ -68,8 +71,9 @@ fun NativeTwitchChat(
         }
     }
 
+    val loadingText = stringResource(R.string.chat_connecting)
     LaunchedEffect(channel) {
-        viewModel.connect(channel)
+        viewModel.connect(channel, loadingText)
     }
 
     DisposableEffect(channel) {
@@ -79,9 +83,9 @@ fun NativeTwitchChat(
     }
 
     // Auto-scroll when new messages arrive if enabled
-    // Key on messages.size for most reliable trigger
     LaunchedEffect(messages.size, shouldAutoScroll) {
         if (messages.isNotEmpty() && shouldAutoScroll) {
+            // Use scrollToItem(0) for instant snap in reverseLayout
             listState.scrollToItem(0)
         }
     }
@@ -137,7 +141,7 @@ fun NativeTwitchChat(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Jump to bottom",
+                            text = stringResource(R.string.chat_jump_to_bottom),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )

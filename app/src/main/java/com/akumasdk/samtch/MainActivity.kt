@@ -366,8 +366,11 @@ class MainActivity : ComponentActivity() {
             } else {
                 backgroundController?.release()
                 backgroundController = null
-                val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                startService(stopIntent)
+                try {
+                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
+                    stopService(stopIntent)
+                } catch (_: Exception) {}
+                
                 if (currentChannel != null && !wasInPip) {
                     refreshTriggerState.intValue += 1
                 }
@@ -407,8 +410,10 @@ class MainActivity : ComponentActivity() {
             } else {
                 backgroundController?.release()
                 backgroundController = null
-                val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                startService(stopIntent)
+                try {
+                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
+                    stopService(stopIntent)
+                } catch (_: Exception) {}
             }
         }
     }
@@ -417,8 +422,10 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         backgroundController?.release()
         backgroundController = null
-        val stopIntent = Intent(this, PlaybackService::class.java).apply { action = "STOP" }
-        startService(stopIntent)
+        try {
+            val stopIntent = Intent(this, PlaybackService::class.java).apply { action = "STOP" }
+            stopService(stopIntent)
+        } catch (_: Exception) {}
         try {
             unregisterReceiver(pipReceiver)
         } catch (_: Exception) {}

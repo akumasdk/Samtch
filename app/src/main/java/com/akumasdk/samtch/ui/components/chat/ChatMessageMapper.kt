@@ -148,7 +148,7 @@ object ChatMessageMapper {
             }
 
             return ChatMessageUiState.PrivMessageUi(
-                id = message.tags["id"] ?: UUID.randomUUID().toString(),
+                id = message.id, // Use stable ID from IrcMessage
                 contentType = "privmsg",
                 displayName = displayName,
                 userColor = userColor,
@@ -161,7 +161,7 @@ object ChatMessageMapper {
         }
 
         return ChatMessageUiState.SystemMessageUi(
-            id = UUID.randomUUID().toString(),
+            id = message.id, // Use stable ID from IrcMessage
             contentType = "system",
             message = message.raw
         )

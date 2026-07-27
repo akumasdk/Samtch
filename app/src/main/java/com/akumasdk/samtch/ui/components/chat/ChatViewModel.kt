@@ -10,11 +10,9 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class ChatViewModel : ViewModel() {
     private val TAG = "ChatViewModel"
@@ -24,17 +22,50 @@ class ChatViewModel : ViewModel() {
     val messages = _messages.asStateFlow()
 
     private var currentChannel: String? = null
-    private val rawMessages = mutableListOf<IrcMessage>()
+    private val messageHistory = mutableListOf<ChatMessageUiState>()
+    private val rawIrcMessages = mutableListOf<IrcMessage>()
+    private val messageBuffer = MutableSharedFlow<ChatMessageUiState>(extraBufferCapacity = 100)
 
-    fun connect(channel: String) {
+    fun connect(channel: String, loadingMessage: String = "Connecting to chat…") {
         if (currentChannel == channel) return
         currentChannel = channel
-        rawMessages.clear()
-        _messages.value = persistentListOf()
+        rawIrcMessages.clear()
+        messageHistory.clear()
+        
+        // Start with a loading message
+        val initialMsg = ChatMessageUiState.SystemMessageUi(
+            id = UUID.randomUUID().toString(),
+            message = loadingMessage
+        )
+        messageHistory.add(initialMsg)
+        _messages.value = persistentListOf(initialMsg)
         
         viewModelScope.launch {
             Log.d(TAG, "Connecting to channel: $channel")
             
+            // Collect messages in batches to prevent UI lag in high-traffic channels
+            launch {
+                messageBuffer
+                    .chunked(150) // Batch updates every 150ms
+                    .collect { newBatch ->
+                        // Deduplicate by ID to prevent LazyColumn duplicate key crash
+                        newBatch.forEach { newMessage ->
+                            val existingIndex = messageHistory.indexOfFirst { it.id == newMessage.id }
+                            if (existingIndex != -1) {
+                                messageHistory[existingIndex] = newMessage
+                            } else {
+                                messageHistory.add(newMessage)
+                            }
+                        }
+                        
+                        if (messageHistory.size > 300) {
+                            val toRemove = messageHistory.size - 300
+                            repeat(toRemove) { messageHistory.removeAt(0) }
+                        }
+                        _messages.value = messageHistory.toImmutableList()
+                    }
+            }
+
             // Watch for emote load status to trigger remapping
             launch {
                 combine(
@@ -44,38 +75,54 @@ class ChatViewModel : ViewModel() {
                     global.isLoaded || channelState.isLoaded
                 }.collectLatest { anyLoaded ->
                     if (anyLoaded) {
-                        delay(500) // Batch re-mapping
+                        delay(1000) // Debounce re-mapping
                         remapMessages(channel)
                     }
                 }
             }
 
-            // Load emotes
+            // Load emotes and badges
             launch { EmoteRepository.loadGlobalEmotes() }
             launch { EmoteRepository.loadChannelEmotes(channel) }
 
             chatClient.connect(channel)
             chatClient.messages.collect { msg ->
                 if (msg.command == "PRIVMSG") {
-                    rawMessages.add(msg)
-                    if (rawMessages.size > 300) rawMessages.removeAt(0)
+                    // Check for duplicate PRIVMSG IDs before adding to raw list
+                    if (rawIrcMessages.none { it.id == msg.id }) {
+                        rawIrcMessages.add(msg)
+                        if (rawIrcMessages.size > 300) rawIrcMessages.removeAt(0)
+                    }
                     
                     val uiState = ChatMessageMapper.mapToUiState(channel, msg)
-                    _messages.value = (_messages.value + uiState).takeLast(300).toImmutableList()
+                    messageBuffer.emit(uiState)
                 } else if (msg.command == "NOTICE" || msg.command == "USERNOTICE") {
-                    // Handle other message types if needed
+                    val systemMsg = ChatMessageUiState.SystemMessageUi(
+                        id = msg.id,
+                        message = msg.params.lastOrNull() ?: msg.raw
+                    )
+                    messageBuffer.emit(systemMsg)
                 }
             }
         }
     }
 
     private fun remapMessages(channel: String) {
-        if (rawMessages.isEmpty()) return
-        Log.d(TAG, "Remapping ${rawMessages.size} messages for channel: $channel")
-        val newMessages = rawMessages.map { 
-            ChatMessageMapper.mapToUiState(channel, it) 
-        }.toImmutableList()
-        _messages.value = newMessages
+        if (rawIrcMessages.isEmpty()) return
+        Log.d(TAG, "Remapping ${rawIrcMessages.size} messages for channel: $channel")
+        
+        val idToNewState = rawIrcMessages.associate { 
+            it.id to ChatMessageMapper.mapToUiState(channel, it) 
+        }
+        
+        // Update history in-place while preserving non-IRC messages
+        val newHistory = messageHistory.map { oldState ->
+            idToNewState[oldState.id] ?: oldState
+        }
+        
+        messageHistory.clear()
+        messageHistory.addAll(newHistory)
+        _messages.value = messageHistory.toImmutableList()
     }
 
     suspend fun sendMessage(message: String) {
@@ -88,12 +135,31 @@ class ChatViewModel : ViewModel() {
         Log.d(TAG, "Explicitly disconnecting chat client")
         chatClient.disconnect()
         _messages.value = persistentListOf()
-        rawMessages.clear()
+        messageHistory.clear()
+        rawIrcMessages.clear()
         currentChannel = null
     }
 
     override fun onCleared() {
         disconnect()
         super.onCleared()
+    }
+}
+
+/**
+ * Custom flow operator to chunk elements by time
+ */
+fun <T> Flow<T>.chunked(durationMillis: Long): Flow<List<T>> = flow {
+    val buffer = mutableListOf<T>()
+    var lastEmitTime = System.currentTimeMillis()
+    
+    collect { value ->
+        buffer.add(value)
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastEmitTime >= durationMillis || buffer.size >= 50) {
+            emit(buffer.toList())
+            buffer.clear()
+            lastEmitTime = currentTime
+        }
     }
 }
