@@ -141,6 +141,7 @@ fun PortraitPlayer(
             ) {
                 TwitchChat(
                     channel = channel,
+                    isCompact = false,
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color(0xFF18181B))

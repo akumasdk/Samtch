@@ -135,6 +135,7 @@ fun FullscreenPlayer(
 
                 TwitchChat(
                     channel = channel,
+                    isCompact = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)

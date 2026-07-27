@@ -35,14 +35,15 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun TwitchChat(
     channel: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCompact: Boolean = false
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
 
     if (chatMode == SettingsManager.ChatMode.NATIVE) {
-        NativeTwitchChat(channel = channel, modifier = modifier)
+        NativeTwitchChat(channel = channel, modifier = modifier, isCompact = isCompact)
         return
     }
 

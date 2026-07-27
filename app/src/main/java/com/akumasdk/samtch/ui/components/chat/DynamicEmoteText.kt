@@ -22,14 +22,15 @@ fun DynamicEmoteText(
     text: AnnotatedString,
     emotes: List<EmoteInfo>,
     modifier: Modifier = Modifier,
+    isCompact: Boolean = false,
     style: TextStyle = TextStyle.Default
 ) {
     val context = LocalContext.current
-    val baseHeight = 32f // Increased base height for readability
+    val baseHeight = if (isCompact) 24f else 32f
     
     val measuredWidths = remember { mutableStateMapOf<String, Float>() }
 
-    val inlineContent = remember(emotes, measuredWidths.toMap()) {
+    val inlineContent = remember(emotes, measuredWidths.toMap(), baseHeight) {
         emotes.associate { emote ->
             val width = measuredWidths[emote.id] ?: baseHeight
             val urls = emote.url.split("|")

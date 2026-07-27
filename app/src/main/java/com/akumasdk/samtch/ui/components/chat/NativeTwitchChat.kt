@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 fun NativeTwitchChat(
     channel: String,
     modifier: Modifier = Modifier,
+    isCompact: Boolean = false,
     viewModel: ChatViewModel = viewModel()
 ) {
     val messages by viewModel.messages.collectAsState()
@@ -102,7 +103,7 @@ fun NativeTwitchChat(
                 reverseLayout = true
             ) {
                 itemsIndexed(reversedMessages, key = { _, it -> it.id }) { _, msg ->
-                    ChatMessageRow(message = msg)
+                    ChatMessageRow(message = msg, isCompact = isCompact)
                 }
             }
 

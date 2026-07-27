@@ -17,8 +17,11 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ChatMessageRow(
-    message: ChatMessageUiState
+    message: ChatMessageUiState,
+    isCompact: Boolean = false
 ) {
+    val fontSize = if (isCompact) 14.sp else 18.sp
+    
     when (message) {
         is ChatMessageUiState.PrivMessageUi -> {
             Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)) {
@@ -32,7 +35,7 @@ fun ChatMessageRow(
                     }
                     Text(
                         text = annotatedName,
-                        fontSize = 18.sp
+                        fontSize = fontSize
                     )
                 }
 
@@ -40,9 +43,10 @@ fun ChatMessageRow(
                 DynamicEmoteText(
                     text = message.annotatedString,
                     emotes = message.emotes,
+                    isCompact = isCompact,
                     style = TextStyle(
                         color = if (message.isAction) message.userColor else Color.White,
-                        fontSize = 18.sp,
+                        fontSize = fontSize,
                         fontWeight = if (message.isAction) FontWeight.Bold else FontWeight.Normal
                     )
                 )
@@ -52,7 +56,7 @@ fun ChatMessageRow(
             Text(
                 text = message.message,
                 color = Color.Gray,
-                fontSize = 15.sp,
+                fontSize = if (isCompact) 12.sp else 15.sp,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                 style = MaterialTheme.typography.bodySmall
             )
