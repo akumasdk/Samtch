@@ -3,7 +3,6 @@ package com.akumasdk.samtch.ui.components.chat
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -39,8 +38,6 @@ fun NativeTwitchChat(
     var inputText by remember { mutableStateOf("") }
     var shouldAutoScroll by rememberSaveable { mutableStateOf(true) }
 
-    val isDragged by listState.interactionSource.collectIsDraggedAsState()
-
     val isAtBottom by remember {
         derivedStateOf {
             (listState.firstVisibleItemIndex == 0) && (listState.firstVisibleItemScrollOffset == 0)
@@ -54,18 +51,26 @@ fun NativeTwitchChat(
         }
     }
 
-    // Disable auto-scroll when user manually drags up
-    LaunchedEffect(isDragged) {
-        if (isDragged) {
-            shouldAutoScroll = false
-        }
-    }
+    var lastIndex by remember { mutableIntStateOf(0) }
+    var lastOffset by remember { mutableIntStateOf(0) }
 
-    // Re-enable auto-scroll when user returns to absolute bottom
-    LaunchedEffect(isAtBottom) {
-        if (isAtBottom && !isDragged) {
+    // Detect scroll direction and update auto-scroll state
+    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        if (listState.isScrollInProgress) {
+            val isScrollingUp = listState.firstVisibleItemIndex > lastIndex || 
+                                (listState.firstVisibleItemIndex == lastIndex && listState.firstVisibleItemScrollOffset > lastOffset)
+            
+            if (isScrollingUp) {
+                shouldAutoScroll = false
+            }
+        }
+        
+        if (isAtBottom) {
             shouldAutoScroll = true
         }
+        
+        lastIndex = listState.firstVisibleItemIndex
+        lastOffset = listState.firstVisibleItemScrollOffset
     }
 
     LaunchedEffect(channel) {

@@ -27,7 +27,7 @@ fun ChatMessageRow(
                     Text(
                         text = message.timestamp,
                         color = Color.Gray,
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         modifier = Modifier.padding(end = 6.dp)
                     )
                 }
@@ -42,7 +42,7 @@ fun ChatMessageRow(
                     }
                     Text(
                         text = annotatedName,
-                        fontSize = 14.sp
+                        fontSize = 18.sp
                     )
                 }
 
@@ -52,7 +52,7 @@ fun ChatMessageRow(
                     emotes = message.emotes,
                     style = TextStyle(
                         color = if (message.isAction) message.userColor else Color.White,
-                        fontSize = 14.sp,
+                        fontSize = 18.sp,
                         fontWeight = if (message.isAction) FontWeight.Bold else FontWeight.Normal
                     )
                 )
@@ -62,7 +62,7 @@ fun ChatMessageRow(
             Text(
                 text = message.message,
                 color = Color.Gray,
-                fontSize = 12.sp,
+                fontSize = 15.sp,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                 style = MaterialTheme.typography.bodySmall
             )

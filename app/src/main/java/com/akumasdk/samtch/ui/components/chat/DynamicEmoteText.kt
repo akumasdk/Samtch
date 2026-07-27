@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
@@ -29,11 +30,11 @@ fun DynamicEmoteText(
 
     val inlineContent = remember(emotes, measuredWidths.toMap()) {
         emotes.associate { emote ->
-            val width = measuredWidths[emote.id] ?: 20f
+            val width = measuredWidths[emote.id] ?: 32f
             val urls = emote.url.split("|")
             
             emote.id to InlineTextContent(
-                Placeholder(width.sp, 20.sp, PlaceholderVerticalAlign.Center)
+                Placeholder(width.sp, 32.sp, PlaceholderVerticalAlign.Center)
             ) {
                 Box {
                     urls.forEach { url ->
@@ -44,12 +45,13 @@ fun DynamicEmoteText(
                                 .build(),
                             contentDescription = emote.code,
                             modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit,
                             onSuccess = { state ->
                                 // We only measure based on the base emote (first in cluster)
                                 if (url == urls.first()) {
                                     val drawable = state.result.drawable
                                     val ratio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
-                                    val calculatedWidth = 20f * ratio
+                                    val calculatedWidth = 32f * ratio
                                     if (measuredWidths[emote.id] != calculatedWidth) {
                                         measuredWidths[emote.id] = calculatedWidth
                                     }
