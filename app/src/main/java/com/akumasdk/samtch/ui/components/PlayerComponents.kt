@@ -84,10 +84,7 @@ fun WebViewContainer(
             val scripts = listOf(
                 "js/player/ui_cleaner.js",
                 "js/player/controls_injector.js",
-                "js/player/playback_monitor.js",
-                //"js/player/visibility_monitor.js",
-                //"js/player/link_disabler.js",
-                //"js/common/scroll_unlocker.js"
+                "js/player/playback_monitor.js"
             ).mapNotNull { path ->
                 val script = ScriptLoader.getScript(context, path)
                 if (script.isNotEmpty()) script else null

@@ -40,7 +40,7 @@
             window.samtch_browser_cleaned = true;
         }
 
-        const isInsideStreamCard = (el) => !!el.closest('[class*="streamCard"], [class*="stream-card-horizontal"]');
+        const isInsideMainContent = (el) => !!el.closest('[class*="streamCard"], [class*="stream-card-horizontal"], div[role="list"]');
 
         // 1. Surgical "Open in App" Banner Removal
         const TARGET_CONTENT = "light_upsell_bottom_sheet_open_in_app";
@@ -79,7 +79,7 @@
 
         // 2. Text-based Safety Net (for variants without the specific link)
         document.querySelectorAll('div, section, aside').forEach(el => {
-            if (isInsideStreamCard(el)) return;
+            if (isInsideMainContent(el)) return;
 
             const style = window.getComputedStyle(el);
             if (style.position === 'fixed' || style.position === 'absolute') {
@@ -98,7 +98,7 @@
         const patterns = ['desktop-redirect=true', 'mweb_upsell', 'top_nav_open_in_app'];
 
         document.querySelectorAll('a[href]').forEach(link => {
-            if (isInsideStreamCard(link)) return;
+            if (isInsideMainContent(link)) return;
             const href = link.getAttribute('href');
             if (patterns.some(p => href.includes(p))) {
                 link.style.setProperty('display', 'none', 'important');
