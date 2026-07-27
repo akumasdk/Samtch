@@ -55,10 +55,16 @@ fun WebViewContainer(
                 navigator.evaluateJavaScript(adScript)
             }
 
-            // Also inject playback monitor early to catch fast starts
-            val monitorScript = ScriptLoader.getScript(context, "js/player/playback_monitor.js")
-            if (monitorScript.isNotEmpty()) {
-                navigator.evaluateJavaScript(monitorScript)
+            // Also inject playback monitor and early hider to catch fast starts
+            val earlyScripts = listOf(
+                "js/player/playback_monitor.js",
+                "js/player/early_hider.js"
+            ).mapNotNull { path ->
+                val s = ScriptLoader.getScript(context, path)
+                if (s.isNotEmpty()) s else null
+            }
+            if (earlyScripts.isNotEmpty()) {
+                navigator.evaluateJavaScript(earlyScripts.joinToString("\n"))
             }
         }
     }
