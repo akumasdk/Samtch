@@ -1,8 +1,7 @@
 package com.akumasdk.samtch.ui.screens.player
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
@@ -85,6 +84,8 @@ fun TwitchPlayer(
     val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
 
     val chatViewModel: ChatViewModel = viewModel()
+
+    val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
 
     // Manage chat connection lifecycle based on player state and app background status
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -395,6 +396,12 @@ fun TwitchPlayer(
         }
     }
 
+    LaunchedEffect(isMinimized) {
+        if (isMinimized && !hintShown) {
+            SettingsManager.setMiniPlayerHintShown(context, true)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -417,7 +424,8 @@ fun TwitchPlayer(
                     onClose = {
                         mediaController?.stop()
                         onClose()
-                    }
+                    },
+                    showHint = !hintShown
                 )
             }
         } else {

@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.components.chat.ChatInputBox
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel

@@ -16,6 +16,7 @@ object SettingsManager {
     private val AUDIO_ONLY_BACKGROUND_ENABLED = booleanPreferencesKey("audio_only_background_enabled")
     private val AD_BLOCK_MODE = booleanPreferencesKey("ad_block_mode_is_vaft") // true = VAFT, false = VideoSwap
     private val CHAT_MODE = booleanPreferencesKey("chat_mode_is_native") // true = NATIVE, false = LEGACY
+    private val MINI_PLAYER_HINT_SHOWN = booleanPreferencesKey("mini_player_hint_shown")
 
     enum class AdBlockMode {
         VAFT, VIDEO_SWAP
@@ -70,6 +71,18 @@ object SettingsManager {
     suspend fun setChatMode(context: Context, mode: ChatMode) {
         context.dataStore.edit { preferences ->
             preferences[CHAT_MODE] = mode == ChatMode.NATIVE
+        }
+    }
+
+    fun isMiniPlayerHintShown(context: Context): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[MINI_PLAYER_HINT_SHOWN] ?: false
+        }
+    }
+
+    suspend fun setMiniPlayerHintShown(context: Context, shown: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[MINI_PLAYER_HINT_SHOWN] = shown
         }
     }
 }
