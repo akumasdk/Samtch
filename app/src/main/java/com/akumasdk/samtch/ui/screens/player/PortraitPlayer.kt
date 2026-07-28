@@ -36,6 +36,7 @@ import kotlin.math.abs
 fun PortraitPlayer(
     channel: String,
     displayName: String? = null,
+    avatarUrl: String? = null,
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
@@ -124,6 +125,7 @@ fun PortraitPlayer(
             StreamMetadataBar(
                 channel = channel,
                 displayName = displayName,
+                avatarUrl = avatarUrl,
                 streamTitle = streamTitle,
                 gameName = gameName,
                 viewersCount = viewersCount,

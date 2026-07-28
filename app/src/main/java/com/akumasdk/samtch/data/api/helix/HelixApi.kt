@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.data.api.helix
 
+import android.util.Log
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import io.ktor.client.HttpClient
@@ -14,6 +15,8 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 object HelixApi {
+    private const val TAG = "HelixApi"
+
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
@@ -36,15 +39,19 @@ object HelixApi {
     }
 
     suspend fun getGlobalBadges(): HttpResponse {
+        val clientId = getClientId()
+        Log.d(TAG, "getGlobalBadges: ID=$clientId")
         return client.get("https://api.twitch.tv/helix/chat/badges/global") {
-            header("Client-Id", getClientId())
+            header("Client-Id", clientId)
             addAuth()
         }
     }
 
     suspend fun getChannelBadges(broadcasterId: String): HttpResponse {
+        val clientId = getClientId()
+        Log.d(TAG, "getChannelBadges: CID=$broadcasterId ID=$clientId")
         return client.get("https://api.twitch.tv/helix/chat/badges") {
-            header("Client-Id", getClientId())
+            header("Client-Id", clientId)
             addAuth()
             parameter("broadcaster_id", broadcasterId)
         }

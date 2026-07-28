@@ -427,6 +427,7 @@ fun TwitchPlayer(
                     FullscreenPlayer(
                         channel = channel,
                         displayName = streamMetadata?.user?.displayName,
+                        avatarUrl = avatarUrl,
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
@@ -438,6 +439,7 @@ fun TwitchPlayer(
                     PortraitPlayer(
                         channel = channel,
                         displayName = streamMetadata?.user?.displayName,
+                        avatarUrl = avatarUrl,
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,

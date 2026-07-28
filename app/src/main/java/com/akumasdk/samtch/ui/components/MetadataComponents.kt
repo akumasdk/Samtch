@@ -8,18 +8,25 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import java.time.Duration
 import java.time.Instant
 
@@ -64,19 +71,20 @@ fun formatStreamDuration(createdAt: String?): String {
 fun AnimatedViewerCount(
     count: Int,
     textColor: Color = Color.LightGray,
-    fontSize: TextUnit = 11.sp,
-    fontWeight: FontWeight = FontWeight.Black,
-    dotSize: Dp = 5.dp
+    fontSize: TextUnit = 10.sp,
+    fontWeight: FontWeight = FontWeight.ExtraBold,
+    dotSize: Dp = 6.dp
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Red Live Dot
+        // Red Live Dot - Ensuring perfect circle and vertical alignment
         Box(
             modifier = Modifier
                 .size(dotSize)
                 .background(Color.Red, CircleShape)
+                .align(Alignment.CenterVertically)
         )
         
         // Animated text content
@@ -84,25 +92,30 @@ fun AnimatedViewerCount(
             targetState = count,
             transitionSpec = {
                 if (targetState > initialState) {
-                    // Scroll up
                     (slideInVertically { height -> height } + fadeIn())
                         .togetherWith(slideOutVertically { height -> -height } + fadeOut())
                 } else {
-                    // Scroll down
                     (slideInVertically { height -> -height } + fadeIn())
                         .togetherWith(slideOutVertically { height -> height } + fadeOut())
                 }.using(
                     SizeTransform(clip = false)
                 )
             },
-            label = "ViewerCountAnimation"
+            label = "ViewerCountAnimation",
+            contentAlignment = Alignment.CenterStart
         ) { targetCount ->
             Text(
                 text = formatViewerCount(targetCount),
                 color = textColor,
                 fontSize = fontSize,
                 fontWeight = fontWeight,
-                maxLines = 1
+                maxLines = 1,
+                softWrap = false,
+                textAlign = TextAlign.Start,
+                style = TextStyle(
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    lineHeight = 10.sp
+                )
             )
         }
     }
@@ -115,6 +128,7 @@ fun AnimatedViewerCount(
 fun StreamMetadataBar(
     channel: String,
     displayName: String? = null,
+    avatarUrl: String? = null,
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
@@ -124,126 +138,137 @@ fun StreamMetadataBar(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(30.dp),
+            .height(68.dp),
         color = Color(0xFF1F1F23), // Twitch dark gray
         tonalElevation = 2.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Streamer Name
-            Text(
-                text = displayName ?: channel,
-                color = Color(0xFFBF94FF),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1
-            )
+            // LEFT: Streamer Avatar
+            if (!avatarUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
 
-            Text(
-                text = " • ",
-                color = Color.Gray,
-                fontSize = 12.sp
-            )
-
-            // Flexible title (Marquee with Animation)
-            Box(modifier = Modifier.weight(1f)) {
+            // RIGHT: Info Column
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Row 1: Stream Title (Marquee)
                 AnimatedContent(
                     targetState = streamTitle ?: "",
                     transitionSpec = {
                         (slideInVertically { height -> height / 2 } + fadeIn())
                             .togetherWith(slideOutVertically { height -> -height / 2 } + fadeOut())
                     },
-                    label = "StreamTitleAnimation"
+                    label = "StreamTitleAnimation",
+                    modifier = Modifier.fillMaxWidth()
                 ) { targetTitle ->
-                    if (targetTitle.isNotEmpty()) {
-                        Text(
-                            text = targetTitle,
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            modifier = Modifier
-                                .padding(end = 8.dp)
-                                .basicMarquee()
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.fillMaxWidth())
-                    }
-                }
-            }
-
-            // Fixed Category/Viewer info on the right
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = "• ",
-                    color = Color.Gray,
-                    fontSize = 12.sp
-                )
-
-                AnimatedContent(
-                    targetState = gameName ?: "",
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(220, delayMillis = 90))
-                            .togetherWith(fadeOut(animationSpec = tween(90)))
-                    },
-                    label = "GameNameAnimation"
-                ) { targetGame ->
-                    if (targetGame.isNotEmpty()) {
-                        Text(
-                            text = targetGame,
-                            color = Color(0xFFBF94FF),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 120.dp)
-                        )
-                    }
-                }
-
-                val duration = formatStreamDuration(streamStartedAt)
-                if (duration.isNotEmpty()) {
                     Text(
-                        text = " • ",
-                        color = Color.Gray,
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = duration,
-                        color = Color.LightGray,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                        text = targetTitle.ifEmpty { "Stream Offline" },
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.basicMarquee()
                     )
                 }
 
-                if (viewersCount > 0) {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = slideInHorizontally(
-                            initialOffsetX = { it },
-                            animationSpec = spring(stiffness = 300f, dampingRatio = 0.8f)
-                        ) + fadeIn(),
-                        label = "ViewerCountEntrance"
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Row 2: Streamer Name, Category, and Live Stats
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Name & Category (Flexible)
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = displayName ?: channel,
+                            color = Color(0xFFBF94FF),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1
+                        )
+
+                        if (!gameName.isNullOrEmpty()) {
                             Text(
-                                text = "  ",
+                                text = " • ",
                                 color = Color.Gray,
                                 fontSize = 12.sp
                             )
-                            AnimatedViewerCount(
-                                count = viewersCount,
-                                fontSize = 10.sp,
-                                dotSize = 5.dp
+                            Text(
+                                text = gameName,
+                                color = Color.LightGray,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.basicMarquee()
                             )
+                        }
+                    }
+
+                    // Stats (Fixed on the right)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        val duration = formatStreamDuration(streamStartedAt)
+                        if (duration.isNotEmpty()) {
+                            Surface(
+                                color = Color.White.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = duration,
+                                    color = Color.LightGray,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    softWrap = false,
+                                    style = TextStyle(
+                                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                                        lineHeight = 10.sp
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+
+                        if (viewersCount > 0) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AnimatedViewerCount(
+                                        count = viewersCount,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
                         }
                     }
                 }
