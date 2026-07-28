@@ -105,6 +105,7 @@ dependencies {
     implementation(libs.ktor.websockets)
     implementation(libs.ktor.content.negotiation)
     implementation(libs.ktor.serialization.json)
+    implementation(libs.ktor.client.logging)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -104,8 +104,9 @@ object EmoteRepository {
                 }
             } catch (e: Exception) { Log.e(TAG, "FFZ Global load failed", e) }
 
-            // Load Global Badges via Helix
-            val globalBadges = mapHelixBadges(HelixApiClient.getGlobalBadges())
+            // Load Global Badges via Helix (Disabled for now)
+            // val globalBadges = mapHelixBadges(HelixApiClient.getGlobalBadges())
+            val globalBadges = emptyMap<String, Map<String, TwitchBadgeDto>>()
 
             _globalState.update { it.copy(
                 bttvEmotes = bttvMap,
@@ -182,8 +183,9 @@ object EmoteRepository {
                 }
             } catch (e: Exception) { Log.e(TAG, "FFZ Channel load failed for $channelName", e) }
 
-            // Load Channel Badges via Helix
-            val channelBadges = mapHelixBadges(HelixApiClient.getChannelBadges(userId))
+            // Load Channel Badges via Helix (Disabled for now)
+            // val channelBadges = mapHelixBadges(HelixApiClient.getChannelBadges(userId))
+            val channelBadges = emptyMap<String, Map<String, TwitchBadgeDto>>()
 
             stateFlow.update { it.copy(
                 bttvEmotes = bttvMap,

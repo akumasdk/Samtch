@@ -6,9 +6,17 @@ import android.webkit.CookieManager
 object TwitchAuthManager {
     private const val TAG = "TwitchAuthManager"
 
+    @Volatile
+    private var validatedClientId: String? = null
+
+    fun setValidatedClientId(id: String) {
+        validatedClientId = id
+    }
+
     data class AuthState(
         val userName: String? = null,
         val authToken: String? = null,
+        val clientId: String? = null,
         val isLoggedIn: Boolean = false
     )
 
@@ -31,7 +39,7 @@ object TwitchAuthManager {
                 Log.d(TAG, "Detected logged-in user: $userName")
             }
 
-            AuthState(userName, authToken, isLoggedIn)
+            AuthState(userName, authToken, validatedClientId, isLoggedIn)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting auth state from cookies", e)
             AuthState()

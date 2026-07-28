@@ -11,6 +11,8 @@ object HelixApiClient {
     private const val TAG = "HelixApiClient"
 
     suspend fun getGlobalBadges(): List<BadgeSetDto> {
+        return emptyList() // Disabled for now
+        /*
         if (!TwitchAuthManager.getAuthState().isLoggedIn) {
             Log.d(TAG, "getGlobalBadges: User not logged in, skipping")
             return emptyList()
@@ -29,9 +31,12 @@ object HelixApiClient {
             Log.e(TAG, "getGlobalBadges error", e)
             emptyList()
         }
+        */
     }
 
     suspend fun getChannelBadges(broadcasterId: String): List<BadgeSetDto> {
+        return emptyList() // Disabled for now
+        /*
         if (!TwitchAuthManager.getAuthState().isLoggedIn) {
             Log.d(TAG, "getChannelBadges: User not logged in, skipping for $broadcasterId")
             return emptyList()
@@ -50,5 +55,6 @@ object HelixApiClient {
             Log.e(TAG, "getChannelBadges error for $broadcasterId", e)
             emptyList()
         }
+        */
     }
 }
