@@ -61,7 +61,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
-import com.akumasdk.samtch.service.TwitchGqlService
+import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen

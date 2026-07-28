@@ -34,7 +34,7 @@ import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.service.TwitchGqlService
+import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.ui.components.MiniPlayer
 import com.akumasdk.samtch.ui.components.WebViewContainer

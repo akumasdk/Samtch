@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.data.mapper
+package com.akumasdk.samtch.data.api.gql
 
 import com.akumasdk.samtch.data.model.*
 import org.json.JSONObject

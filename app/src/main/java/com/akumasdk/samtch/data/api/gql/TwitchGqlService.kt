@@ -1,7 +1,6 @@
-package com.akumasdk.samtch.service
+package com.akumasdk.samtch.data.api.gql
 
 import android.util.Log
-import com.akumasdk.samtch.data.mapper.TwitchGqlMapper
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.util.Constants
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +18,9 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Service for fetching Twitch stream access tokens via GraphQL
- * Required for direct HLS playback
+ * Required for direct HLS playback.
+ * 
+ * Note: Non-HLS functions (Badges, User ID, Stream Metadata) have been migrated to Helix.
  */
 object TwitchGqlService {
 
@@ -65,11 +66,9 @@ object TwitchGqlService {
                     val body = response.body.string()
 
                     if (response.isSuccessful && body.isNotEmpty()) {
-                        // Look for clientId="ID" (script block) or "Client-ID":"ID" (JSON/Legacy)
                         val regex =
                             """clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["']""".toRegex()
                         val match = regex.find(body)
-                        // The ID could be in group 1 or group 2 depending on which pattern matched
                         val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }
                             ?: match?.groupValues?.get(2)
 
@@ -86,94 +85,6 @@ object TwitchGqlService {
                 Constants.TWITCH_GRAPHQL_CLIENT_ID
             }
         }
-    }
-
-    // Stable per app-process run (don’t use a constant)
-    private val deviceId: String = UUID.randomUUID().toString().replace("-", "")
-
-    private const val PLAYBACK_ACCESS_TOKEN_QUERY = """
-        query PlaybackAccessToken(${"$"}login: String!, ${"$"}playerType: String!) {
-          streamPlaybackAccessToken(
-            channelName: ${"$"}login,
-            params: { platform: "web", playerBackend: "mediaplayer", playerType: ${"$"}playerType }
-          ) {
-            value
-            signature
-          }
-        }
-    """
-
-    private const val STREAM_METADATA_QUERY = """
-        query StreamMetadata(${"$"}login: String!) {
-          user(login: ${"$"}login) {
-            id
-            login
-            displayName
-            description
-            profileImageURL(width: 300)
-            createdAt
-            roles {
-              isPartner
-            }
-            stream {
-              id
-              title
-              type
-              viewersCount
-              previewImageURL(height: 480, width: 853)
-              createdAt
-              game {
-                name
-              }
-            }
-          }
-        }
-    """
-
-    private const val GET_USER_ID_QUERY = """
-        query GetUserId(${"$"}login: String!) {
-          user(login: ${"$"}login) {
-            id
-          }
-        }
-    """
-
-    private const val CHANNEL_BADGES_QUERY = """
-        query ChannelBadges(${"$"}login: String!) {
-          badges {
-            setID
-            version
-            image1x: imageURL(size: NORMAL)
-            image2x: imageURL(size: DOUBLE)
-            image4x: imageURL(size: QUADRUPLE)
-            title
-            description
-          }
-        }
-    """
-
-    private const val GLOBAL_BADGES_QUERY = """
-        query GlobalBadges {
-          badges {
-            setID
-            version
-            image1x: imageURL(size: NORMAL)
-            image2x: imageURL(size: DOUBLE)
-            image4x: imageURL(size: QUADRUPLE)
-            title
-            description
-          }
-        }
-    """
-
-    private fun Request.Builder.addCommonHeaders(clientId: String): Request.Builder {
-        return this
-            .header("Client-Id", clientId)
-            .header("X-Device-Id", deviceId)
-            .header("User-Agent", Constants.USER_AGENT)
-            .header("Origin", ORIGIN)
-            .header("Referer", REFERER)
-            .header("Accept", "application/json")
     }
 
     /**
@@ -238,55 +149,64 @@ object TwitchGqlService {
         }
     }
 
-    suspend fun getBadgeSets(channelName: String): String? = withContext(Dispatchers.IO) {
-        try {
-            val clientId = getDynamicClientId()
-            val payload = JSONObject().apply {
-                put("operationName", "ChannelBadges")
-                put("query", CHANNEL_BADGES_QUERY.trimIndent())
-                put("variables", JSONObject().apply {
-                    put("login", channelName.lowercase())
-                })
-            }
+    // Stable per app-process run
+    private val deviceId: String = UUID.randomUUID().toString().replace("-", "")
 
-            val request = Request.Builder()
-                .url(Constants.TWITCH_GQL_ENDPOINT)
-                .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                .addCommonHeaders(clientId)
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body.string()
-            if (!response.isSuccessful) return@withContext null
-            body
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching badge sets for $channelName", e)
-            null
+    private const val PLAYBACK_ACCESS_TOKEN_QUERY = """
+        query PlaybackAccessToken(${"$"}login: String!, ${"$"}playerType: String!) {
+          streamPlaybackAccessToken(
+            channelName: ${"$"}login,
+            params: { platform: "web", playerBackend: "mediaplayer", playerType: ${"$"}playerType }
+          ) {
+            value
+            signature
+          }
         }
-    }
+    """
 
-    suspend fun getGlobalBadges(): String? = withContext(Dispatchers.IO) {
-        try {
-            val clientId = getDynamicClientId()
-            val payload = JSONObject().apply {
-                put("operationName", "GlobalBadges")
-                put("query", GLOBAL_BADGES_QUERY.trimIndent())
+    private const val STREAM_METADATA_QUERY = """
+        query StreamMetadata(${"$"}login: String!) {
+          user(login: ${"$"}login) {
+            id
+            login
+            displayName
+            description
+            profileImageURL(width: 300)
+            createdAt
+            roles {
+              isPartner
             }
-
-            val request = Request.Builder()
-                .url(Constants.TWITCH_GQL_ENDPOINT)
-                .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                .addCommonHeaders(clientId)
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body.string()
-            if (!response.isSuccessful) return@withContext null
-            body
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching global badges", e)
-            null
+            stream {
+              id
+              title
+              type
+              viewersCount
+              previewImageURL(height: 480, width: 853)
+              createdAt
+              game {
+                name
+              }
+            }
+          }
         }
+    """
+
+    private const val GET_USER_ID_QUERY = """
+        query GetUserId(${"$"}login: String!) {
+          user(login: ${"$"}login) {
+            id
+          }
+        }
+    """
+
+    private fun Request.Builder.addCommonHeaders(clientId: String): Request.Builder {
+        return this
+            .header("Client-Id", clientId)
+            .header("X-Device-Id", deviceId)
+            .header("User-Agent", Constants.USER_AGENT)
+            .header("Origin", ORIGIN)
+            .header("Referer", REFERER)
+            .header("Accept", "application/json")
     }
 
     /**

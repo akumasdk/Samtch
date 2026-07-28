@@ -3,14 +3,13 @@ package com.akumasdk.samtch.ui.components.chat
 import android.util.Log
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
-import java.util.UUID
 
 object ChatMessageMapper {
 
@@ -169,6 +168,8 @@ object ChatMessageMapper {
 
     private fun parseBadges(message: IrcMessage, channelName: String): List<String> {
         val badgesTag = message.tags["badges"] ?: return emptyList()
+        if (!TwitchAuthManager.getAuthState().isLoggedIn) return emptyList()
+        
         val urls = mutableListOf<String>()
         
         badgesTag.split(",").forEach { badge ->
