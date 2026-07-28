@@ -167,6 +167,8 @@ object ChatMessageMapper {
     }
 
     private fun parseBadges(message: IrcMessage, channelName: String): List<String> {
+        return emptyList() // Badges disabled for now
+        /*
         val badgesTag = message.tags["badges"] ?: return emptyList()
         if (!TwitchAuthManager.getAuthState().isLoggedIn) return emptyList()
         
@@ -187,5 +189,6 @@ object ChatMessageMapper {
             Log.d("ChatMessageMapper", "Resolved ${urls.size} badges for ${message.prefix}")
         }
         return urls
+        */
     }
 }

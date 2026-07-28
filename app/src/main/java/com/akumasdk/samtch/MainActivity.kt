@@ -247,8 +247,8 @@ class MainActivity : ComponentActivity() {
                             onChannelSelected = { channel ->
                                 if (selectedChannel != channel) {
                                     selectedChannel = channel
-                                    isMinimized = false
                                 }
+                                isMinimized = false
                             },
                             onSettingsClick = { isSettingsOpen = true },
                             onLoaded = { isAppLoadedState.value = true }

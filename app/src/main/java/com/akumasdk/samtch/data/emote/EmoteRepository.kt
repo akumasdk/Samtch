@@ -234,6 +234,8 @@ object EmoteRepository {
     }
 
     fun getBadgeUrl(channelName: String, setId: String, version: String): String? {
+        return null // Badges disabled for now
+        /*
         val channelState = _channelStates[channelName]?.value
         val globalState = _globalState.value
         
@@ -251,5 +253,6 @@ object EmoteRepository {
             url.startsWith("//") -> "https:$url"
             else -> "https://$url"
         }
+        */
     }
 }
