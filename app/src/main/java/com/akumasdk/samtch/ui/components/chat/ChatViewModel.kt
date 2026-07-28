@@ -3,12 +3,14 @@ package com.akumasdk.samtch.ui.components.chat
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
 import com.akumasdk.samtch.service.TwitchChatClient
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,32 +23,54 @@ class ChatViewModel : ViewModel() {
     private val _messages = MutableStateFlow<ImmutableList<ChatMessageUiState>>(persistentListOf())
     val messages = _messages.asStateFlow()
 
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn = _isLoggedIn.asStateFlow()
+
+    private val _loggedInUser = MutableStateFlow<String?>(null)
+    val loggedInUser = _loggedInUser.asStateFlow()
+
     private var currentChannel: String? = null
+    private var connectionJob: Job? = null
     private val messageHistory = mutableListOf<ChatMessageUiState>()
     private val rawIrcMessages = mutableListOf<IrcMessage>()
-    private val messageBuffer = MutableSharedFlow<ChatMessageUiState>(extraBufferCapacity = 100)
+    private val messageBuffer = MutableSharedFlow<ChatMessageUiState>(extraBufferCapacity = 200)
 
-    fun connect(channel: String, loadingMessage: String = "Connecting to chat…") {
+    fun connect(
+        channel: String, 
+        loadingMessage: String, 
+        welcomeMessageTemplate: String = "Welcome to %s's chat!"
+    ) {
         if (currentChannel == channel) return
+        
+        // 1. Instantly cancel any active session logic for the previous channel
+        connectionJob?.cancel()
         currentChannel = channel
+        
+        // 2. Wipe all state immediately to prevent "leakage" in UI
         rawIrcMessages.clear()
         messageHistory.clear()
+        _messages.value = persistentListOf()
+
+        // 3. Check login status
+        val authState = TwitchAuthManager.getAuthState()
+        _isLoggedIn.value = authState.isLoggedIn
+        _loggedInUser.value = authState.userName
         
-        // Start with a loading message
-        val initialMsg = ChatMessageUiState.SystemMessageUi(
-            id = UUID.randomUUID().toString(),
-            message = loadingMessage
-        )
-        messageHistory.add(initialMsg)
-        _messages.value = persistentListOf(initialMsg)
-        
-        viewModelScope.launch {
-            Log.d(TAG, "Connecting to channel: $channel")
+        // 4. Start new managed session job
+        connectionJob = viewModelScope.launch {
+            Log.d(TAG, "Starting new chat session for channel: $channel")
+            
+            val initialMsg = ChatMessageUiState.SystemMessageUi(
+                id = "loading_${UUID.randomUUID()}",
+                message = loadingMessage
+            )
+            messageHistory.add(initialMsg)
+            _messages.value = messageHistory.toImmutableList()
             
             // Collect messages in batches to prevent UI lag in high-traffic channels
             launch {
                 messageBuffer
-                    .chunked(150) // Batch updates every 150ms
+                    .adaptiveChunked(150, 400, 10) // Batch updates every 150-400ms
                     .collect { newBatch ->
                         // Deduplicate by ID to prevent LazyColumn duplicate key crash
                         newBatch.forEach { newMessage ->
@@ -58,8 +82,8 @@ class ChatViewModel : ViewModel() {
                             }
                         }
                         
-                        if (messageHistory.size > 300) {
-                            val toRemove = messageHistory.size - 300
+                        if (messageHistory.size > 500) { // Slightly larger history for high-traffic
+                            val toRemove = messageHistory.size - 500
                             repeat(toRemove) { messageHistory.removeAt(0) }
                         }
                         _messages.value = messageHistory.toImmutableList()
@@ -86,12 +110,25 @@ class ChatViewModel : ViewModel() {
             launch { EmoteRepository.loadChannelEmotes(channel) }
 
             chatClient.connect(channel)
+            
+            // Welcome message once connected
+            launch {
+                chatClient.isConnected.collect { connected ->
+                    if (connected) {
+                        val welcomeMsg = ChatMessageUiState.SystemMessageUi(
+                            id = "welcome_${UUID.randomUUID()}",
+                            message = welcomeMessageTemplate.format(channel)
+                        )
+                        messageBuffer.emit(welcomeMsg)
+                    }
+                }
+            }
+
             chatClient.messages.collect { msg ->
                 if (msg.command == "PRIVMSG") {
-                    // Check for duplicate PRIVMSG IDs before adding to raw list
                     if (rawIrcMessages.none { it.id == msg.id }) {
                         rawIrcMessages.add(msg)
-                        if (rawIrcMessages.size > 300) rawIrcMessages.removeAt(0)
+                        if (rawIrcMessages.size > 500) rawIrcMessages.removeAt(0)
                     }
                     
                     val uiState = ChatMessageMapper.mapToUiState(channel, msg)
@@ -133,6 +170,7 @@ class ChatViewModel : ViewModel() {
 
     fun disconnect() {
         Log.d(TAG, "Explicitly disconnecting chat client")
+        connectionJob?.cancel()
         chatClient.disconnect()
         _messages.value = persistentListOf()
         messageHistory.clear()
@@ -147,16 +185,22 @@ class ChatViewModel : ViewModel() {
 }
 
 /**
- * Custom flow operator to chunk elements by time
+ * Custom flow operator to chunk elements by time with adaptive interval for high traffic
  */
-fun <T> Flow<T>.chunked(durationMillis: Long): Flow<List<T>> = flow {
+fun <T> Flow<T>.adaptiveChunked(
+    minInterval: Long,
+    maxInterval: Long,
+    floodThreshold: Int
+): Flow<List<T>> = flow {
     val buffer = mutableListOf<T>()
     var lastEmitTime = System.currentTimeMillis()
     
     collect { value ->
         buffer.add(value)
         val currentTime = System.currentTimeMillis()
-        if (currentTime - lastEmitTime >= durationMillis || buffer.size >= 50) {
+        val currentInterval = if (buffer.size > floodThreshold) maxInterval else minInterval
+        
+        if (currentTime - lastEmitTime >= currentInterval || buffer.size >= 80) {
             emit(buffer.toList())
             buffer.clear()
             lastEmitTime = currentTime

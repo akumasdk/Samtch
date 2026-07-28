@@ -74,4 +74,7 @@
     <!-- Chat UI -->
     <string name="chat_jump_to_bottom">Jump to bottom</string>
     <string name="chat_connecting">Connecting to chat…</string>
+    <string name="chat_welcome">Welcome to %s\'s chat!</string>
+    <string name="chat_login_required">Log in to chat</string>
+    <string name="chat_login_prompt">You must be logged in to participate in chat.</string>
 </resources>
