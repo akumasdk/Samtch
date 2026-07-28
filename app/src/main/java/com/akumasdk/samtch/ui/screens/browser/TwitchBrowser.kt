@@ -153,22 +153,26 @@ fun TwitchBrowser(
             onLoadedCallback = { currentOnLoaded() },
             onUiCleanFinished = { isUiLoading = false },
             onRefreshRequested = { navigator.reload() },
-            onUrlChanged = { url ->
+            onUrlChanged = { url, _ ->
                 try {
                     val channelMatch = extractChannelFromUrl(url)
                     val currentUser = getCurrentUserFromCookies()
+                    val isSafe = isSafeExplorationUrl(url)
 
-                    if (isPlayableChannel(channelMatch, currentUser)) {
-                        Log.d("TwitchBrowser", "Channel detected via bridge: $channelMatch. Redirecting.")
+                    if (!isSafe) {
+                        Log.d("TwitchBrowser", "Unsafe page detected: $url. Redirecting.")
                         
                         // 1. Trigger the player
-                        currentOnChannelSelected(channelMatch!!)
+                        if (isPlayableChannel(channelMatch, currentUser)) {
+                            currentOnChannelSelected(channelMatch!!)
+                        }
                         
                         // 2. Immediately restore context
                         restoreSafeContext(webViewRef, lastSafeUrl)
                     } else {
                         // Track last safe exploration URL
                         if (url.isNotEmpty() && !url.contains("about:blank")) {
+                            Log.d("TwitchBrowser", "Updating lastSafeUrl: $url")
                             lastSafeUrl = url
                         }
                     }
@@ -245,15 +249,18 @@ fun TwitchBrowser(
                                 return true
                             }
 
-                            // Detect if user navigated to a channel
+                            // Detect if user navigated to an unsafe page
                             val channelMatch = extractChannelFromUrl(url)
                             val currentUser = getCurrentUserFromCookies()
+                            val isSafe = isSafeExplorationUrl(url)
 
-                            if (isPlayableChannel(channelMatch, currentUser)) {
-                                Log.d("TwitchBrowser", "Channel detected in click: $channelMatch. Redirecting and triggering player.")
+                            if (!isSafe) {
+                                Log.d("TwitchBrowser", "Click to unsafe page: $url. Redirecting.")
                                 
                                 // 1. Trigger the player
-                                currentOnChannelSelected(channelMatch!!)
+                                if (isPlayableChannel(channelMatch, currentUser)) {
+                                    currentOnChannelSelected(channelMatch!!)
+                                }
                                 
                                 // 2. Immediately restore context
                                 restoreSafeContext(view, lastSafeUrl)
@@ -274,14 +281,17 @@ fun TwitchBrowser(
                                 view?.evaluateJavascript(splashScript, null)
                             }
 
-                            // Detect if a channel is loading (e.g., via direct entry or SPA glitch)
+                            // Detect if an unsafe page is loading
                             url?.let {
                                 val channelMatch = extractChannelFromUrl(it)
                                 val currentUser = getCurrentUserFromCookies()
+                                val isSafe = isSafeExplorationUrl(it)
 
-                                if (isPlayableChannel(channelMatch, currentUser)) {
-                                    Log.d("TwitchBrowser", "Channel detected in page start: $channelMatch. Redirecting.")
-                                    currentOnChannelSelected(channelMatch!!)
+                                if (!isSafe) {
+                                    Log.d("TwitchBrowser", "Page started on unsafe page: $it. Redirecting.")
+                                    if (isPlayableChannel(channelMatch, currentUser)) {
+                                        currentOnChannelSelected(channelMatch!!)
+                                    }
                                     restoreSafeContext(view, lastSafeUrl)
                                 }
                             }
@@ -343,15 +353,66 @@ fun TwitchBrowser(
 }
 
 private fun restoreSafeContext(view: NativeWebView?, fallbackUrl: String) {
+    // If we're already on a safe page, don't interrupt
+    val currentUrl = view?.url ?: ""
+    if (isSafeExplorationUrl(currentUrl)) return
+
+    // Immediately stop loading to prevent web player from initializing
     view?.stopLoading()
-    // Try to stay on current page by going back if possible, otherwise reload fallback
+    
+    // Try to stay on current page by going back if possible
     if (view?.canGoBack() == true) {
+        Log.d("TwitchBrowser", "restoreSafeContext: going back to previous page")
         view.goBack()
     } else {
+        // Hard fallback if goBack isn't available
+        Log.d("TwitchBrowser", "restoreSafeContext: hard fallback to $fallbackUrl")
         view?.loadUrl(fallbackUrl)
     }
+
+    // Safety check after a short delay
+    val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    handler.postDelayed({
+        val urlAfterDelay = view?.url ?: ""
+        if (!isSafeExplorationUrl(urlAfterDelay)) {
+            Log.d("TwitchBrowser", "restoreSafeContext: still unsafe after delay, forcing load")
+            view?.loadUrl(fallbackUrl)
+        }
+        
+        // Soft refresh to reset SPA router state and prevent "bad routes"
+        softRefresh(view)
+    }, 400)
 }
 
+private fun softRefresh(view: NativeWebView?) {
+    Log.d("TwitchBrowser", "softRefresh: Triggering SPA route reset")
+    view?.evaluateJavascript("window.location.replace(window.location.href);", null)
+}
+
+private fun isSafeExplorationUrl(url: String?): Boolean {
+    if (url.isNullOrEmpty() || url.contains("about:blank")) return true
+    
+    val uri = try { java.net.URI(url) } catch (_: Exception) { return false }
+    if (uri.host != null && !uri.host.contains("twitch.tv")) return true
+
+    val path = uri.path ?: "/"
+    val segments = path.split("/").filter { it.isNotEmpty() }
+
+    // Root/Home cases
+    if (segments.isEmpty() || path == "/" || path == "/home" || path == "/home/") return true
+    
+    // Exploration zones
+    val safeRoots = setOf(
+        "directory", "search", "following", "browse", "p", 
+        "settings", "inventory", "wallet", "drops", "turbo", 
+        "friends", "activity", "bits", "about", "jobs", "security"
+    )
+    
+    if (safeRoots.contains(segments[0].lowercase())) return true
+    
+    // Everything else (single segment usernames or /username/home) is "Unsafe"
+    return false
+}
 
 private fun isPlayableChannel(channelMatch: String?, currentUser: String?): Boolean {
     if (channelMatch == null) return false
@@ -362,10 +423,6 @@ private fun isPlayableChannel(channelMatch: String?, currentUser: String?): Bool
 }
 
 private fun extractChannelFromUrl(url: String?): String? {
-    // Match ONLY the root channel URL: twitch.tv/channelname
-    // Exclude sub-paths like /channelname/videos, /channelname/home, etc.
-    // Also exclude reserved paths like /directory, /search
-
     val uri = try {
         if (url == null) return null
         val cleanUrl = if (!url.startsWith("http")) "https://$url" else url
@@ -374,31 +431,27 @@ private fun extractChannelFromUrl(url: String?): String? {
         return null
     }
 
+    if (uri.host != null && !uri.host.contains("twitch.tv")) return null
+
     val path = uri.path ?: return null
     val segments = path.split("/").filter { it.isNotEmpty() }
 
-    // Channel root URLs have exactly one segment: /channelname
-    if (segments.size != 1) {
-        Log.d("TwitchBrowser", "extractChannelFromUrl - URL: $url, Channel: null (too many segments)")
-        return null
-    }
+    if (segments.isEmpty()) return null
 
     val channelCandidate = segments[0].trim()
 
-    val excludedNames = listOf(
+    val excludedNames = setOf(
         "directory", "search", "videos", "clips", "events",
         "esports", "music", "about", "jobs", "security",
         "p", "settings", "subscriptions", "inventory", "wallet",
         "drops", "turbo", "friends", "popout", "embed", "home",
-        "activity", "bits"
+        "activity", "bits", "browse", "following"
     )
 
     if (excludedNames.any { it.equals(channelCandidate, ignoreCase = true) }) {
-        Log.d("TwitchBrowser", "extractChannelFromUrl - URL: $url, Channel: null (reserved name: $channelCandidate)")
         return null
     }
 
-    Log.d("TwitchBrowser", "extractChannelFromUrl - URL: $url, Channel: $channelCandidate")
     return channelCandidate
 }
 
@@ -443,13 +496,13 @@ class TwitchBrowserBridge(
     private val onLoadedCallback: () -> Unit,
     private val onUiCleanFinished: () -> Unit = {},
     private val onRefreshRequested: () -> Unit,
-    private val onUrlChanged: (String) -> Unit
+    private val onUrlChanged: (String, Boolean) -> Unit
 ) {
     @JavascriptInterface
-    fun onUrlChange(url: String) {
+    fun onUrlChange(url: String, blocked: Boolean) {
         activity?.runOnUiThread {
-            Log.d("TwitchBrowser", "URL change via JS Bridge: $url")
-            onUrlChanged(url)
+            Log.d("TwitchBrowser", "URL change via JS Bridge: $url (blocked=$blocked)")
+            onUrlChanged(url, blocked)
         }
     }
 

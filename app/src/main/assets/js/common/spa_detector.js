@@ -2,14 +2,10 @@
     'use strict';
     console.log('[Samtch] spa_detector.js active');
 
-    let lastUrl = window.location.href;
-
     function notifyUrlChange() {
         const currentUrl = window.location.href;
-        // Even if URL is same, we might want to notify for initial injection
-        // but to avoid loops, let's be careful.
         if (window.TwitchBrowserBridge) {
-            window.TwitchBrowserBridge.onUrlChange(currentUrl);
+            window.TwitchBrowserBridge.onUrlChange(currentUrl, false);
         }
     }
 
