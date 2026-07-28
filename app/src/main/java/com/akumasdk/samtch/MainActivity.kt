@@ -21,21 +21,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -155,6 +156,13 @@ class MainActivity : ComponentActivity() {
                 val physicalOrientation by orientationManager.orientation.collectAsState()
                 val isAutoRotateEnabled by SystemSettingsUtil.observeAutoRotate(this@MainActivity).collectAsState(initial = false)
                 
+                // Animated browser padding for smooth layout transitions
+                val browserBottomPadding by animateDpAsState(
+                    targetValue = if (isMinimized && selectedChannel != null) 104.dp else 0.dp,
+                    animationSpec = spring(stiffness = 500f, dampingRatio = 0.85f),
+                    label = "BrowserPaddingAnimation"
+                )
+
                 // Unified Fullscreen State
                 var isFullscreen by rememberSaveable { 
                     mutableStateOf(orientationManager.orientation.value == PhysicalOrientation.LANDSCAPE) 
@@ -238,7 +246,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .navigationBarsPadding()
-                            .padding(bottom = if (isMinimized && selectedChannel != null) 104.dp else 0.dp)
+                            .padding(bottom = browserBottomPadding.coerceAtLeast(0.dp))
                     ) {
                         TwitchBrowser(
                             state = browserState,
@@ -261,24 +269,8 @@ class MainActivity : ComponentActivity() {
                             initialOffsetY = { it },
                             animationSpec = spring(stiffness = 400f, dampingRatio = 0.8f)
                         ) + fadeIn(),
-                        exit = if (isMinimized) {
-                            fadeOut(animationSpec = tween(durationMillis = 200))
-                        } else {
-                            slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(durationMillis = 300)
-                            ) + fadeOut()
-                        },
-                        modifier = if (isMinimized) {
-                            Modifier
-                                .align(Alignment.BottomCenter)
-                                .navigationBarsPadding()
-                                .padding(bottom = 12.dp)
-                                .wrapContentHeight()
-                                .fillMaxWidth()
-                        } else {
-                            Modifier.fillMaxSize()
-                        }
+                        exit = fadeOut(animationSpec = tween(durationMillis = 300)),
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         displayedChannel?.let { channel ->
                             key(channel) {

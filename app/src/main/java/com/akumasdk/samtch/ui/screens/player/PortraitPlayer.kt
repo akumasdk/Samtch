@@ -30,6 +30,7 @@ import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.components.AdblockBanner
 import com.akumasdk.samtch.ui.components.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.TwitchChat
+import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import kotlin.math.abs
 
 @Composable
@@ -44,6 +45,7 @@ fun PortraitPlayer(
     adblockText: String = "",
     streamStartedAt: String? = null,
     onToggleFullscreen: () -> Unit,
+    chatViewModel: ChatViewModel,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var isChatVisible by remember { mutableStateOf(true) }
@@ -144,6 +146,7 @@ fun PortraitPlayer(
                 TwitchChat(
                     channel = channel,
                     isCompact = false,
+                    viewModel = chatViewModel,
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color(0xFF18181B))

@@ -24,6 +24,7 @@ import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.components.AdblockBanner
 import com.akumasdk.samtch.ui.components.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.TwitchChat
+import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
@@ -38,6 +39,7 @@ fun FullscreenPlayer(
     viewersCount: Int = 0,
     adblockText: String = "",
     streamStartedAt: String? = null,
+    chatViewModel: ChatViewModel,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var isChatVisible by remember { mutableStateOf(false) }
@@ -138,6 +140,7 @@ fun FullscreenPlayer(
                 TwitchChat(
                     channel = channel,
                     isCompact = true,
+                    viewModel = chatViewModel,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)

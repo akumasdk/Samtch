@@ -74,20 +74,6 @@ fun NativeTwitchChat(
         lastOffset = listState.firstVisibleItemScrollOffset
     }
 
-    val loadingText = stringResource(R.string.chat_connecting)
-    val welcomeTemplate = stringResource(R.string.chat_welcome)
-    val loginTemplate = stringResource(R.string.chat_logged_in_as)
-
-    LaunchedEffect(channel) {
-        viewModel.connect(channel, loadingText, welcomeTemplate, loginTemplate)
-    }
-
-    DisposableEffect(channel) {
-        onDispose {
-            viewModel.disconnect()
-        }
-    }
-
     // Process auto-scroll updates
     LaunchedEffect(messages.size, shouldAutoScroll) {
         if (messages.isNotEmpty() && shouldAutoScroll) {

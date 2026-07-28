@@ -34,7 +34,7 @@ fun TwitchChat(
     channel: String,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
-    viewModel: ChatViewModel = viewModel()
+    viewModel: ChatViewModel
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()

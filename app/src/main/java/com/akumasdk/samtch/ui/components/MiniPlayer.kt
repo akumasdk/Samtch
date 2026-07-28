@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,10 +51,19 @@ fun MiniPlayer(
         state = dismissState,
         modifier = modifier,
         backgroundContent = {
+            val color by animateColorAsState(
+                when (dismissState.targetValue) {
+                    SwipeToDismissBoxValue.Settled -> Color.Transparent
+                    else -> Color.Red.copy(alpha = 0.2f)
+                },
+                label = "DismissBackground"
+            )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(40.dp))
+                    .background(color)
             )
         }
     ) {
@@ -61,12 +71,19 @@ fun MiniPlayer(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(80.dp)
-                .shadow(16.dp, RoundedCornerShape(40.dp))
+                .padding(horizontal = 8.dp) // Slight margin from screen edges
+                .shadow(12.dp, RoundedCornerShape(40.dp))
                 .clip(RoundedCornerShape(40.dp))
-                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)), RoundedCornerShape(40.dp))
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    ),
+                    RoundedCornerShape(40.dp)
+                )
                 .clickable(onClick = onClick),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-            tonalElevation = 12.dp
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+            tonalElevation = 8.dp
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
