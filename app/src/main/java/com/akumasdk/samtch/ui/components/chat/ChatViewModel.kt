@@ -38,7 +38,8 @@ class ChatViewModel : ViewModel() {
     fun connect(
         channel: String, 
         loadingMessage: String, 
-        welcomeMessageTemplate: String = "Welcome to %s's chat!"
+        welcomeMessageTemplate: String = "Welcome to %s's chat!",
+        loginMessageTemplate: String? = null
     ) {
         if (currentChannel == channel) return
         
@@ -54,8 +55,17 @@ class ChatViewModel : ViewModel() {
         // 3. Check login status
         val authState = TwitchAuthManager.getAuthState()
         _isLoggedIn.value = authState.isLoggedIn
-        _loggedInUser.value = authState.userName
+        val loggedInUser = authState.userName
+        _loggedInUser.value = loggedInUser
         
+        if (authState.isLoggedIn && !loggedInUser.isNullOrEmpty() && !loginMessageTemplate.isNullOrEmpty()) {
+            val loginMsg = ChatMessageUiState.SystemMessageUi(
+                id = "login_${UUID.randomUUID()}",
+                message = loginMessageTemplate.format(loggedInUser)
+            )
+            messageHistory.add(loginMsg)
+        }
+
         // 4. Start new managed session job
         connectionJob = viewModelScope.launch {
             Log.d(TAG, "Starting new chat session for channel: $channel")

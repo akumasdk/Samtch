@@ -33,13 +33,9 @@ fun NativeTwitchChat(
     val messages by viewModel.messages.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
     
     var shouldAutoScroll by rememberSaveable { mutableStateOf(true) }
     var lastJumpTime by remember { mutableLongStateOf(0L) }
-
-    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
-    val loggedInUser by viewModel.loggedInUser.collectAsState()
 
     // More lenient at-bottom detection to handle minor layout shifts from images
     val isAtBottom by remember {
@@ -80,18 +76,10 @@ fun NativeTwitchChat(
 
     val loadingText = stringResource(R.string.chat_connecting)
     val welcomeTemplate = stringResource(R.string.chat_welcome)
-    LaunchedEffect(channel) {
-        viewModel.connect(channel, loadingText, welcomeTemplate)
-    }
+    val loginTemplate = stringResource(R.string.chat_logged_in_as)
 
-    // Show login snackbar when session starts
-    LaunchedEffect(isLoggedIn, loggedInUser, channel) {
-        if (isLoggedIn && loggedInUser != null) {
-            snackbarHostState.showSnackbar(
-                message = "Logged in as $loggedInUser",
-                duration = SnackbarDuration.Short
-            )
-        }
+    LaunchedEffect(channel) {
+        viewModel.connect(channel, loadingText, welcomeTemplate, loginTemplate)
     }
 
     DisposableEffect(channel) {
@@ -131,12 +119,6 @@ fun NativeTwitchChat(
                 }
             }
         }
-
-        // Snackbar Host for login confirmation
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
 
         // Jump to bottom button only shown when auto-scroll is manually paused
         androidx.compose.animation.AnimatedVisibility(

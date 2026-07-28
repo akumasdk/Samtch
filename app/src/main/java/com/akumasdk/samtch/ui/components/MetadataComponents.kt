@@ -219,7 +219,6 @@ fun StreamMetadataBar(
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.basicMarquee()
                             )
                         }
