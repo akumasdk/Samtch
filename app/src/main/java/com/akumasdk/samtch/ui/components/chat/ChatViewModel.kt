@@ -173,9 +173,31 @@ class ChatViewModel : ViewModel() {
     }
 
     suspend fun sendMessage(message: String) {
-        currentChannel?.let {
-            chatClient.sendMessage(it, message)
+        val channel = currentChannel ?: return
+        val authState = TwitchAuthManager.getAuthState()
+        
+        // 1. Manually inject the message for immediate feedback
+        if (authState.isLoggedIn && !authState.userName.isNullOrEmpty()) {
+            val syntheticMsg = IrcMessage(
+                id = UUID.randomUUID().toString(),
+                raw = "", // Raw isn't needed for mapping
+                prefix = "${authState.userName}!${authState.userName}@${authState.userName}.tmi.twitch.tv",
+                command = "PRIVMSG",
+                params = listOf("#$channel", message),
+                tags = mapOf("display-name" to authState.userName)
+            )
+            
+            val uiState = ChatMessageMapper.mapToUiState(channel, syntheticMsg)
+            
+            messageHistory.add(uiState)
+            if (messageHistory.size > 500) {
+                messageHistory.removeAt(0)
+            }
+            _messages.value = messageHistory.toImmutableList()
         }
+
+        // 2. Transmit to server
+        chatClient.sendMessage(channel, message)
     }
 
     fun disconnect() {
