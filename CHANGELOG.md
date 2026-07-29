@@ -1,3 +1,23 @@
+## Samtch v0.3.0
+
+### What's New
+- **Full Native Twitch Chat**: Implemented a comprehensive native chat experience with support for **BetterTTV** and **7TV** emotes. Includes high-performance auto-scrolling, compact mode, and badge support.
+- **Aggressive Navigation Sentinel**: Introduced a high-performance SPA navigation interception system that proactively blocks transitions to channel pages, ensuring the browser remains perfectly stable while the native player opens.
+- **Intelligent Resource Management**: The browser now completely unloads (navigating to `about:blank`) when the player is active to save system resources, and automatically pre-loads your dashboard context in the background for an instant return.
+- **Dynamic Stream Metadata Bar**: Redesigned the metadata bar with an expandable/collapsible layout. It features an intelligent auto-shrink "Slim" mode that triggers after 15 seconds to maximize chat visibility.
+- **Safe History Management**: Implemented a custom Kotlin-side history stack to replace standard WebView history, ensuring back-navigation always lands on safe exploration pages.
+- **Interactive Escape Mechanisms**: Added detection for web UI "back" and "home" buttons, allowing users to reliably escape from accidental channel loads back to the safe dashboard.
+- **Refined Viewer Experience**:
+    - **Marquee Preservation**: Title scroll positions are now synchronized across metadata bar styles for a seamless transition.
+    - **Visual Indicators**: Moved the red "Live" indicator to the stream time pill and added a person icon for viewer counts.
+    - **Mini-Player Enhancements**: Added a nudge animation and hint system for first-time mini-player users.
+- **Stability & Security**:
+    - **Mobile Domain Enforcement**: Strictly forces `m.twitch.tv` to prevent accidental drifting to the desktop site, especially after login.
+    - **Backup Exclusion**: Updated configuration to prevent Android from restoring potentially "poisoned" settings after an uninstall.
+    - **Loading State Refinements**: Synchronized the loading overlay with custom JavaScript cleanup signals to eliminate visual UI flashes.
+
+---
+
 ## Samtch v0.2.4
 
 ### What's New

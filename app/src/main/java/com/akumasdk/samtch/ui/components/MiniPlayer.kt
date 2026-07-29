@@ -2,7 +2,7 @@ package com.akumasdk.samtch.ui.components
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
@@ -12,18 +12,24 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun MiniPlayer(
@@ -33,6 +39,7 @@ fun MiniPlayer(
     playerContent: @Composable (Modifier) -> Unit,
     onClick: () -> Unit,
     onClose: () -> Unit,
+    showHint: Boolean = false,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
@@ -46,27 +53,83 @@ fun MiniPlayer(
         }
     )
 
+    // Nudge animation for first-time users
+    val nudgeOffset = remember { Animatable(0f) }
+    LaunchedEffect(showHint) {
+        if (showHint) {
+            delay(500.milliseconds)
+            // Nudge right
+            nudgeOffset.animateTo(
+                targetValue = 40f,
+                animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy)
+            )
+            // Back to center
+            nudgeOffset.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(stiffness = Spring.StiffnessMedium)
+            )
+        }
+    }
+
     SwipeToDismissBox(
         state = dismissState,
-        modifier = modifier,
+        modifier = modifier.offset { IntOffset(nudgeOffset.value.roundToInt(), 0) },
         backgroundContent = {
+            val direction = dismissState.dismissDirection
+            val isSwiping = direction != SwipeToDismissBoxValue.Settled
+            val progress = if (isSwiping) dismissState.progress else 0f
+            
+            val color by animateColorAsState(
+                if (isSwiping) Color.Red.copy(alpha = (0.1f + (0.3f * progress)).coerceIn(0f, 0.4f)) else Color.Transparent,
+                label = "DismissBackground"
+            )
+
+            val iconScale by animateFloatAsState(
+                if (isSwiping) 0.8f + (0.4f * progress) else 0.5f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "TrashIconScale"
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            )
+                    .padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(40.dp))
+                    .background(color),
+                contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) 
+                    Alignment.CenterStart else Alignment.CenterEnd
+            ) {
+                if (isSwiping) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = (0.2f + progress).coerceIn(0f, 1f)),
+                        modifier = Modifier
+                            .padding(horizontal = 28.dp)
+                            .size(28.dp)
+                            .scale(iconScale)
+                    )
+                }
+            }
         }
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(80.dp)
-                .shadow(16.dp, RoundedCornerShape(40.dp))
+                .padding(horizontal = 8.dp) // Slight margin from screen edges
+                .shadow(12.dp, RoundedCornerShape(40.dp))
                 .clip(RoundedCornerShape(40.dp))
-                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)), RoundedCornerShape(40.dp))
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    ),
+                    RoundedCornerShape(40.dp)
+                )
                 .clickable(onClick = onClick),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-            tonalElevation = 12.dp
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+            tonalElevation = 8.dp
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

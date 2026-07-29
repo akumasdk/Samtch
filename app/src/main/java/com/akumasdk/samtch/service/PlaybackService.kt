@@ -25,6 +25,8 @@ import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
+import com.akumasdk.samtch.data.api.gql.TwitchGqlService
+import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ExtM3UParser

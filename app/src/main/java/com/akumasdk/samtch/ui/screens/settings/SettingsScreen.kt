@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,6 +42,7 @@ fun SettingsScreen(
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
     var showAdBlockDialog by remember { mutableStateOf(false) }
+    var showChatModeDialog by remember { mutableStateOf(false) }
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
@@ -105,6 +107,30 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.clickable {
                         isBttvSettingsOpen = true
+                    }
+                )
+            }
+
+            item {
+                val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.chat_mode_title)) },
+                    supportingContent = {
+                        Text(
+                            when (chatMode) {
+                                SettingsManager.ChatMode.NATIVE -> stringResource(R.string.chat_mode_native)
+                                SettingsManager.ChatMode.LEGACY -> stringResource(R.string.chat_mode_legacy)
+                            }
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showChatModeDialog = true
                     }
                 )
             }
@@ -332,6 +358,62 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { showAboutDialog = false }) {
                     Text(stringResource(R.string.close_button))
+                }
+            }
+        )
+    }
+
+    if (showChatModeDialog) {
+        val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+        AlertDialog(
+            onDismissRequest = { showChatModeDialog = false },
+            title = { Text(stringResource(R.string.chat_mode_title)) },
+            text = {
+                Column {
+                    SettingsManager.ChatMode.entries.forEach { mode ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch {
+                                        SettingsManager.setChatMode(context, mode)
+                                        showChatModeDialog = false
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = chatMode == mode,
+                                onClick = {
+                                    scope.launch {
+                                        SettingsManager.setChatMode(context, mode)
+                                        showChatModeDialog = false
+                                    }
+                                }
+                            )
+                            Text(
+                                text = when (mode) {
+                                    SettingsManager.ChatMode.NATIVE -> stringResource(R.string.chat_mode_native)
+                                    SettingsManager.ChatMode.LEGACY -> stringResource(R.string.chat_mode_legacy)
+                                },
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                    Text(
+                        text = stringResource(R.string.chat_mode_notice),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showChatModeDialog = false }) {
+                    Text(stringResource(R.string.cancel_button))
                 }
             }
         )

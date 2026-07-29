@@ -22,15 +22,12 @@ Samtch is a lightweight Twitch client for Android designed for a clean, ad-free 
 
 ## ✨ Features
 
+- **Native Twitch Chat**: A full native chat experience featuring support for **BetterTTV** and **7TV** emotes, and smooth auto-scrolling.
 - **Ad-Free Viewing**: Integrated scripts to bypass common video ads and tracking.
 - **Premium Audio-Only Mode**: A dedicated "music player" aesthetic for background listening, featuring high-resolution stream artwork, dark gradients, and streamer avatar rings.
-- **Rich Stream Metadata**: Real-time titles, game categories, viewer counts, and high-fidelity thumbnails fetched via GraphQL.
+- **Rich Stream Metadata**: Real-time titles, game categories, viewer counts, and high-fidelity thumbnails fetched via GraphQL. Features a dynamic metadata bar that automatically shrinks to a slim mode to maximize chat space.
 - **Clean UI**: Custom JavaScript injection removes "Open in App" prompts and clutters from the player interface.
 - **Seamless Discovery**: Use the full Twitch mobile site for browsing, search, and following, while switching automatically to a native-feeling player when a stream is selected.
-- **Smart Navigation**:
-  - Automatically triggers the custom player when navigating to a live channel.
-  - Robust safeguards prevent hijacking your own profile page.
-  - Remembers your browsing position when returning from the player.
 - **Fullscreen & PiP**: Immersive landscape mode and Picture-in-Picture support for multitasking.
 ## 📝 Changelog
 
@@ -73,6 +70,7 @@ Contributions are welcome! If you have ideas for improvements or have found a bu
 
 ## 🗺️ Roadmap / Future Features
 
+- [x] **Native Chat Integration**: Integrated chat with 3rd-party emote support.
 - [x] **Chat in Fullscreen**: Overlay chat during landscape viewing.
 - [x] **Picture-in-Picture (PiP)**: Watch streams while using other apps.
 - [x] **Background Play**: Listen to stream audio even when the screen is off or the app is minimized.

@@ -57,10 +57,25 @@
     <string name="ad_block_mode_video_swap">Video Swap (Estable/Predeterminado)</string>
     <string name="ad_block_mode_notice">Nota: Los cambios en el método de bloqueo de anuncios surtirán efecto la próxima vez que reproduzcas un stream.</string>
 
+    <!-- Chat Settings -->
+    <string name="chat_mode_title">Experiencia de Chat</string>
+    <string name="chat_mode_summary">Elige entre el chat Nativo o el Heredado (WebView)</string>
+    <string name="chat_mode_native">Nativo (Experimental/Rápido)</string>
+    <string name="chat_mode_legacy">Heredado (Estable/Original)</string>
+    <string name="chat_mode_notice">Nota: El chat nativo incluye soporte para emoticonos de BetterTTV y 7TV.</string>
+
     <!-- Player Loading Status -->
     <string name="loading_stream">Cargando stream…</string>
     <string name="searching_video">Buscando stream de video…</string>
     <string name="preparing_playback">Preparando reproducción…</string>
     <string name="initializing_player">Inicializando componentes del reproductor…</string>
     <string name="bypassing_ads">Omitiendo anuncios…</string>
+
+    <!-- Chat UI -->
+    <string name="chat_jump_to_bottom">Ir al final</string>
+    <string name="chat_connecting">Conectando al chat…</string>
+    <string name="chat_welcome">¡Bienvenido al chat de %s!</string>
+    <string name="chat_login_required">Inicia sesión para chatear</string>
+    <string name="chat_login_prompt">Debes iniciar sesión para participar en el chat.</string>
+    <string name="chat_logged_in_as">Sesión iniciada como %s</string>
 </resources>

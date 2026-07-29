@@ -1,7 +1,6 @@
-package com.akumasdk.samtch.service
+package com.akumasdk.samtch.data.api.gql
 
 import android.util.Log
-import com.akumasdk.samtch.data.mapper.TwitchGqlMapper
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.util.Constants
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +18,9 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Service for fetching Twitch stream access tokens via GraphQL
- * Required for direct HLS playback
+ * Required for direct HLS playback.
+ * 
+ * Note: Non-HLS functions (Badges, User ID, Stream Metadata) have been migrated to Helix.
  */
 object TwitchGqlService {
 
@@ -48,7 +49,7 @@ object TwitchGqlService {
     /**
      * Dynamically scrapes the Twitch Client ID from the homepage.
      */
-    private suspend fun getDynamicClientId(): String {
+    suspend fun getDynamicClientId(): String {
         cachedDynamicClientId?.let { return it }
 
         return clientIdMutex.withLock {
@@ -65,11 +66,9 @@ object TwitchGqlService {
                     val body = response.body.string()
 
                     if (response.isSuccessful && body.isNotEmpty()) {
-                        // Look for clientId="ID" (script block) or "Client-ID":"ID" (JSON/Legacy)
                         val regex =
                             """clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["']""".toRegex()
                         val match = regex.find(body)
-                        // The ID could be in group 1 or group 2 depending on which pattern matched
                         val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }
                             ?: match?.groupValues?.get(2)
 
@@ -88,7 +87,69 @@ object TwitchGqlService {
         }
     }
 
-    // Stable per app-process run (don’t use a constant)
+    /**
+     * Fetches detailed stream and user metadata.
+     */
+    suspend fun getStreamMetadata(channelName: String): TwitchStreamMetadata? =
+        withContext(Dispatchers.IO) {
+            try {
+                val clientId = getDynamicClientId()
+                val payload = JSONObject().apply {
+                    put("operationName", "StreamMetadata")
+                    put("query", STREAM_METADATA_QUERY.trimIndent())
+                    put("variables", JSONObject().apply {
+                        put("login", channelName.lowercase())
+                    })
+                }
+
+                val request = Request.Builder()
+                    .url(Constants.TWITCH_GQL_ENDPOINT)
+                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                    .addCommonHeaders(clientId)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val body = response.body.string()
+
+                if (!response.isSuccessful) return@withContext null
+
+                TwitchGqlMapper.mapStreamMetadata(body)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching stream metadata", e)
+                null
+            }
+        }
+
+    suspend fun getUserId(channelName: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val clientId = getDynamicClientId()
+            val payload = JSONObject().apply {
+                put("operationName", "GetUserId")
+                put("query", GET_USER_ID_QUERY.trimIndent())
+                put("variables", JSONObject().apply {
+                    put("login", channelName.lowercase())
+                })
+            }
+
+            val request = Request.Builder()
+                .url(Constants.TWITCH_GQL_ENDPOINT)
+                .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                .addCommonHeaders(clientId)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body.string()
+            if (!response.isSuccessful) return@withContext null
+
+            val json = JSONObject(body)
+            json.optJSONObject("data")?.optJSONObject("user")?.optString("id")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching user ID", e)
+            null
+        }
+    }
+
+    // Stable per app-process run
     private val deviceId: String = UUID.randomUUID().toString().replace("-", "")
 
     private const val PLAYBACK_ACCESS_TOKEN_QUERY = """
@@ -130,6 +191,14 @@ object TwitchGqlService {
         }
     """
 
+    private const val GET_USER_ID_QUERY = """
+        query GetUserId(${"$"}login: String!) {
+          user(login: ${"$"}login) {
+            id
+          }
+        }
+    """
+
     private fun Request.Builder.addCommonHeaders(clientId: String): Request.Builder {
         return this
             .header("Client-Id", clientId)
@@ -139,39 +208,6 @@ object TwitchGqlService {
             .header("Referer", REFERER)
             .header("Accept", "application/json")
     }
-
-    /**
-     * Fetches detailed stream and user metadata.
-     */
-    suspend fun getStreamMetadata(channelName: String): TwitchStreamMetadata? =
-        withContext(Dispatchers.IO) {
-            try {
-                val clientId = getDynamicClientId()
-                val payload = JSONObject().apply {
-                    put("operationName", "StreamMetadata")
-                    put("query", STREAM_METADATA_QUERY.trimIndent())
-                    put("variables", JSONObject().apply {
-                        put("login", channelName.lowercase())
-                    })
-                }
-
-                val request = Request.Builder()
-                    .url(Constants.TWITCH_GQL_ENDPOINT)
-                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                    .addCommonHeaders(clientId)
-                    .build()
-
-                val response = client.newCall(request).execute()
-                val body = response.body.string()
-
-                if (!response.isSuccessful) return@withContext null
-
-                TwitchGqlMapper.mapStreamMetadata(body)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error fetching stream metadata", e)
-                null
-            }
-        }
 
     /**
      * Fetches a new Integrity Token from Twitch.

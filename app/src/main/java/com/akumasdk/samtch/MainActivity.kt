@@ -21,21 +21,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -61,7 +62,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
-import com.akumasdk.samtch.service.TwitchGqlService
+import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
@@ -155,6 +156,13 @@ class MainActivity : ComponentActivity() {
                 val physicalOrientation by orientationManager.orientation.collectAsState()
                 val isAutoRotateEnabled by SystemSettingsUtil.observeAutoRotate(this@MainActivity).collectAsState(initial = false)
                 
+                // Animated browser padding for smooth layout transitions
+                val browserBottomPadding by animateDpAsState(
+                    targetValue = if (isMinimized && selectedChannel != null) 104.dp else 0.dp,
+                    animationSpec = spring(stiffness = 500f, dampingRatio = 0.85f),
+                    label = "BrowserPaddingAnimation"
+                )
+
                 // Unified Fullscreen State
                 var isFullscreen by rememberSaveable { 
                     mutableStateOf(orientationManager.orientation.value == PhysicalOrientation.LANDSCAPE) 
@@ -238,17 +246,17 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .navigationBarsPadding()
-                            .padding(bottom = if (isMinimized && selectedChannel != null) 104.dp else 0.dp)
+                            .padding(bottom = browserBottomPadding.coerceAtLeast(0.dp))
                     ) {
                         TwitchBrowser(
                             state = browserState,
                             navigator = browserNavigator,
-                            isVisible = true,
+                            isPlayerActive = selectedChannel != null && !isMinimized,
                             onChannelSelected = { channel ->
                                 if (selectedChannel != channel) {
                                     selectedChannel = channel
-                                    isMinimized = false
                                 }
+                                isMinimized = false
                             },
                             onSettingsClick = { isSettingsOpen = true },
                             onLoaded = { isAppLoadedState.value = true }
@@ -261,24 +269,8 @@ class MainActivity : ComponentActivity() {
                             initialOffsetY = { it },
                             animationSpec = spring(stiffness = 400f, dampingRatio = 0.8f)
                         ) + fadeIn(),
-                        exit = if (isMinimized) {
-                            fadeOut(animationSpec = tween(durationMillis = 200))
-                        } else {
-                            slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(durationMillis = 300)
-                            ) + fadeOut()
-                        },
-                        modifier = if (isMinimized) {
-                            Modifier
-                                .align(Alignment.BottomCenter)
-                                .navigationBarsPadding()
-                                .padding(bottom = 12.dp)
-                                .wrapContentHeight()
-                                .fillMaxWidth()
-                        } else {
-                            Modifier.fillMaxSize()
-                        }
+                        exit = fadeOut(animationSpec = tween(durationMillis = 300)),
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         displayedChannel?.let { channel ->
                             key(channel) {
@@ -366,8 +358,11 @@ class MainActivity : ComponentActivity() {
             } else {
                 backgroundController?.release()
                 backgroundController = null
-                val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                startService(stopIntent)
+                try {
+                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
+                    stopService(stopIntent)
+                } catch (_: Exception) {}
+                
                 if (currentChannel != null && !wasInPip) {
                     refreshTriggerState.intValue += 1
                 }
@@ -407,8 +402,10 @@ class MainActivity : ComponentActivity() {
             } else {
                 backgroundController?.release()
                 backgroundController = null
-                val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                startService(stopIntent)
+                try {
+                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
+                    stopService(stopIntent)
+                } catch (_: Exception) {}
             }
         }
     }
@@ -417,8 +414,10 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         backgroundController?.release()
         backgroundController = null
-        val stopIntent = Intent(this, PlaybackService::class.java).apply { action = "STOP" }
-        startService(stopIntent)
+        try {
+            val stopIntent = Intent(this, PlaybackService::class.java).apply { action = "STOP" }
+            stopService(stopIntent)
+        } catch (_: Exception) {}
         try {
             unregisterReceiver(pipReceiver)
         } catch (_: Exception) {}

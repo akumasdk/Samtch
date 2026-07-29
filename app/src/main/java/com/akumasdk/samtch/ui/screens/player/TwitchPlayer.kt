@@ -1,7 +1,7 @@
 package com.akumasdk.samtch.ui.screens.player
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,12 +34,16 @@ import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.service.TwitchGqlService
+import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.ui.components.MiniPlayer
 import com.akumasdk.samtch.ui.components.WebViewContainer
 import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
 import androidx.core.net.toUri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -78,6 +82,29 @@ fun TwitchPlayer(
     val currentAvatarUrl by rememberUpdatedState(avatarUrl)
 
     val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
+
+    val chatViewModel: ChatViewModel = viewModel()
+
+    val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
+
+    // Manage chat connection lifecycle based on player state and app background status
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val chatLoadingText = stringResource(R.string.chat_connecting)
+    val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
+    val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
+
+    LaunchedEffect(channel, isPip, lifecycleState) {
+        // Only stay connected if NOT in PiP and the app is in the foreground (at least STARTED)
+        val shouldBeConnected = !isPip && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+        
+        if (shouldBeConnected) {
+            chatViewModel.connect(channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
+        } else {
+            // Disconnect when entering PiP or going to background (Background Audio)
+            chatViewModel.disconnect()
+        }
+    }
 
     // Safety timeout for loading screen
     LaunchedEffect(isUiLoading) {
@@ -230,6 +257,7 @@ fun TwitchPlayer(
         onDispose {
             Log.d("TwitchPlayer", "Disposing player for channel: $channel")
             mediaController?.release()
+            chatViewModel.disconnect()
             // Clean up WebView resources aggressively
             try {
                 state.nativeWebView.apply {
@@ -248,159 +276,144 @@ fun TwitchPlayer(
     }
 
     // Stable WebView content that won't be recreated when moving in the tree
-    val webView = remember(channel) {
+    val playerContent = remember(channel, isAudioOnly) {
         movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
-            WebViewContainer(
-                modifier = modifier.onGloballyPositioned { layoutCoordinates ->
-                    val rect = layoutCoordinates.boundsInWindow()
-                    onVideoBoundsChanged(
-                        android.graphics.Rect(
-                            rect.left.toInt(),
-                            rect.top.toInt(),
-                            rect.right.toInt(),
-                            rect.bottom.toInt()
+            if (isAudioOnly) {
+                AudioOnlyPlayer(
+                    channel = channel,
+                    avatarUrl = avatarUrl,
+                    subtitle = streamSubtitle,
+                    displayName = streamMetadata?.user?.displayName,
+                    streamTitle = streamMetadata?.user?.stream?.title,
+                    gameName = streamMetadata?.user?.stream?.game?.name,
+                    viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
+                    isPlaying = isPlaying,
+                    onTogglePlayback = {
+                        if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
+                    },
+                    onCloseAudioOnly = {
+                        isAudioOnly = false
+                        mediaController?.stop()
+                        onRefreshRequested()
+                    },
+                    onRefresh = {
+                        mediaController?.stop()
+                        val avatarUri = currentAvatarUrl?.toUri()
+                        mediaController?.setMediaItem(
+                            MediaItem.Builder()
+                                .setMediaId(channel)
+                                .setMediaMetadata(
+                                    MediaMetadata.Builder()
+                                        .setTitle(streamMetadata?.user?.stream?.title ?: channel)
+                                        .setArtist(streamMetadata?.user?.displayName ?: channel)
+                                        .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
+                                        .setArtworkUri(avatarUri)
+                                        .build()
+                                )
+                                .build()
                         )
-                    )
-                },
-                state = state,
-                navigator = navigator,
-                channel = channel,
-                onToggleFullscreen = onToggleFullscreen,
-                onToggleChat = onToggleChat,
-                onToggleAudioOnly = {
-                    isAudioOnly = true
-                },
-                onPlaybackStarted = {
-                    Log.d("TwitchPlayer", "onPlaybackStarted called - hiding loading box")
-                    isUiLoading = false
-                },
-                onLoadingStatus = { message ->
-                    loadingMessage = message
-                },
-                onAdblocked = { text ->
-                    adblockText = text
-                    if (text.isNotEmpty() && isUiLoading) {
-                        Log.d("TwitchPlayer", "Adblock active - hiding loader early")
-                        isUiLoading = false
-                    }
-                }
-            )
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .then(if (isMinimized) Modifier.wrapContentHeight() else Modifier.fillMaxSize())
-            .animateContentSize()
-    ) {
-        val playerContent = remember(channel, isAudioOnly) {
-            movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
-                if (isAudioOnly) {
-                    AudioOnlyPlayer(
-                        channel = channel,
-                        avatarUrl = avatarUrl,
-                        subtitle = streamSubtitle,
-                        displayName = streamMetadata?.user?.displayName,
-                        streamTitle = streamMetadata?.user?.stream?.title,
-                        gameName = streamMetadata?.user?.stream?.game?.name,
-                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
-                        isPlaying = isPlaying,
-                        onTogglePlayback = {
-                            if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
-                        },
-                        onCloseAudioOnly = {
-                            isAudioOnly = false
-                            mediaController?.stop()
-                            // Trigger the global refresh (adds &refresh=N to URL)
-                            onRefreshRequested()
-                        },
-                        onRefresh = {
-                            mediaController?.stop()
-                            val avatarUri = currentAvatarUrl?.toUri()
-                            mediaController?.setMediaItem(
-                                MediaItem.Builder()
-                                    .setMediaId(channel)
-                                    .setMediaMetadata(
-                                        MediaMetadata.Builder()
-                                            .setTitle(streamMetadata?.user?.stream?.title ?: channel)
-                                            .setArtist(streamMetadata?.user?.displayName ?: channel)
-                                            .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
-                                            .setArtworkUri(avatarUri)
-                                            .build()
-                                    )
-                                    .build()
+                        mediaController?.prepare()
+                        mediaController?.play()
+                    },
+                    previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                    modifier = modifier
+                )
+            } else {
+                Box(modifier = modifier.background(Color.Black)) {
+                    WebViewContainer(
+                        modifier = Modifier.fillMaxSize().onGloballyPositioned { layoutCoordinates ->
+                            val rect = layoutCoordinates.boundsInWindow()
+                            onVideoBoundsChanged(
+                                android.graphics.Rect(
+                                    rect.left.toInt(),
+                                    rect.top.toInt(),
+                                    rect.right.toInt(),
+                                    rect.bottom.toInt()
+                                )
                             )
-                            mediaController?.prepare()
-                            mediaController?.play()
                         },
-                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                        modifier = modifier
+                        state = state,
+                        navigator = navigator,
+                        channel = channel,
+                        onToggleFullscreen = onToggleFullscreen,
+                        onToggleChat = onToggleChat,
+                        onToggleAudioOnly = { isAudioOnly = true },
+                        onPlaybackStarted = { isUiLoading = false },
+                        onLoadingStatus = { message -> loadingMessage = message },
+                        onAdblocked = { text ->
+                            adblockText = text
+                            if (text.isNotEmpty() && isUiLoading) isUiLoading = false
+                        }
                     )
-                } else {
-                    Box(modifier = modifier.background(Color.Black)) {
-                        webView(Modifier.fillMaxSize(), onToggleChat)
-                        
-                        // Loading Overlay constrained to video player area
-                        AnimatedVisibility(
-                            visible = isUiLoading,
-                            enter = fadeIn(),
-                            exit = fadeOut(animationSpec = tween(durationMillis = 300)),
-                            modifier = Modifier.matchParentSize()
+                    
+                    AnimatedVisibility(
+                        visible = isUiLoading,
+                        enter = fadeIn(),
+                        exit = fadeOut(animationSpec = tween(durationMillis = 300)),
+                        modifier = Modifier.matchParentSize()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black),
+                            contentAlignment = Alignment.Center
                         ) {
+                            val previewUrl = streamMetadata?.user?.stream?.previewImageUrl
+                                ?: "https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.lowercase()}-853x480.jpg"
+
+                            AsyncImage(
+                                model = previewUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.Black),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                val previewUrl = streamMetadata?.user?.stream?.previewImageUrl
-                                    ?: "https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.lowercase()}-853x480.jpg"
-
-                                AsyncImage(
-                                    model = previewUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                                // Add a dark overlay to ensure the spinner is visible
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.6f))
-                                )
-                                CircularProgressIndicator(
-                                    color = Color(0xFF9146FF), // Twitch Purple
-                                    strokeWidth = 3.dp
-                                )
-
-                                // Status message below spinner
-                                Text(
-                                    text = loadingMessage,
-                                    color = Color.White,
-                                    style = TextStyle(
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        shadow = Shadow(
-                                            color = Color.Black,
-                                            blurRadius = 8f
-                                        )
-                                    ),
-                                    modifier = Modifier
-                                        .padding(top = 16.dp)
-                                        .align(Alignment.Center)
-                                        .offset(y = 40.dp)
-                                )
-                            }
+                                    .background(Color.Black.copy(alpha = 0.6f))
+                            )
+                            CircularProgressIndicator(
+                                color = Color(0xFF9146FF),
+                                strokeWidth = 3.dp
+                            )
+                            Text(
+                                text = loadingMessage,
+                                color = Color.White,
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    shadow = Shadow(color = Color.Black, blurRadius = 8f)
+                                ),
+                                modifier = Modifier
+                                    .padding(top = 16.dp)
+                                    .align(Alignment.Center)
+                                    .offset(y = 40.dp)
+                            )
                         }
                     }
                 }
             }
         }
+    }
 
+    LaunchedEffect(isMinimized) {
+        if (isMinimized && !hintShown) {
+            SettingsManager.setMiniPlayerHintShown(context, true)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .animateContentSize(animationSpec = spring(stiffness = 500f))
+    ) {
         if (isMinimized) {
             Box(
-                modifier = Modifier.fillMaxWidth().height(92.dp), // Height adjusted for 80dp pill + shadows
-                contentAlignment = Alignment.Center
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+                    .padding(bottom = 12.dp),
+                contentAlignment = Alignment.BottomCenter
             ) {
                 MiniPlayer(
                     channel = channel,
@@ -411,7 +424,8 @@ fun TwitchPlayer(
                     onClose = {
                         mediaController?.stop()
                         onClose()
-                    }
+                    },
+                    showHint = !hintShown
                 )
             }
         } else {
@@ -421,23 +435,25 @@ fun TwitchPlayer(
                     .background(Color.Black)
             ) {
                 if (isPip) {
-                    // Simplified view for PiP: Just the WebView container
                     playerContent(Modifier.fillMaxSize()) {}
                 } else if (isFullscreen) {
                     FullscreenPlayer(
                         channel = channel,
                         displayName = streamMetadata?.user?.displayName,
+                        avatarUrl = avatarUrl,
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         adblockText = adblockText,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
+                        chatViewModel = chatViewModel,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
                 } else {
                     PortraitPlayer(
                         channel = channel,
                         displayName = streamMetadata?.user?.displayName,
+                        avatarUrl = avatarUrl,
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
@@ -445,6 +461,7 @@ fun TwitchPlayer(
                         adblockText = adblockText,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                         onToggleFullscreen = onToggleFullscreen,
+                        chatViewModel = chatViewModel,
                         webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
                     )
                 }
