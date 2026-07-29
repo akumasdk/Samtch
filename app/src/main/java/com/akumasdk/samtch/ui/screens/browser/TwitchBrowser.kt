@@ -89,6 +89,7 @@ fun TwitchBrowser(
         webViewRef?.let { webView ->
             if (isPlayerActive) {
                 Log.d("TwitchBrowser", "Player active: Purging browser to about:blank")
+                isUiLoading = true
                 webView.stopLoading()
                 webView.loadUrl("about:blank")
                 webView.clearHistory()
@@ -101,12 +102,11 @@ fun TwitchBrowser(
             } else {
                 val restoreUrl = safeHistory.lastOrNull() ?: "https://m.twitch.tv/"
                 Log.d("TwitchBrowser", "Player inactive: Ensuring restoration of $restoreUrl")
-                // Only reload if we aren't already there (it might have finished pre-loading)
-                if (webView.url != restoreUrl && !webView.url.isNullOrEmpty() && webView.url != "about:blank") {
-                    // We are on a different page, reload to be safe
-                    webView.loadUrl(restoreUrl)
-                } else if (webView.url == "about:blank" || webView.url.isNullOrEmpty()) {
-                    // We haven't pre-loaded yet or were cleared, force load
+                
+                // If the browser is still blank or on the wrong page, show the loading overlay
+                if (webView.url != restoreUrl || webView.url == "about:blank") {
+                    Log.d("TwitchBrowser", "Context not ready, showing loading overlay")
+                    isUiLoading = true
                     webView.loadUrl(restoreUrl)
                 }
             }
