@@ -13,7 +13,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 object SettingsManager {
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
-    private val AUDIO_ONLY_BACKGROUND_ENABLED = booleanPreferencesKey("audio_only_background_enabled")
+    private val AUDIO_ONLY_BACKGROUND_ENABLED = booleanPreferencesKey("audio_background_v2")
     private val AD_BLOCK_MODE = booleanPreferencesKey("ad_block_mode_is_vaft") // true = VAFT, false = VideoSwap
     private val CHAT_MODE = booleanPreferencesKey("chat_mode_is_native") // true = NATIVE, false = LEGACY
     private val MINI_PLAYER_HINT_SHOWN = booleanPreferencesKey("mini_player_hint_shown")
