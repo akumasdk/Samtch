@@ -24,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -48,7 +49,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun TwitchBrowser(
     state: WebViewState,
     navigator: WebViewNavigator,
-    isVisible: Boolean,
+    isPlayerActive: Boolean,
     onChannelSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     onSettingsClick: () -> Unit = {},
@@ -59,48 +60,55 @@ fun TwitchBrowser(
     var webViewRef by remember { mutableStateOf<NativeWebView?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
     var isUiLoading by remember { mutableStateOf(true) }
-    var lastSafeUrl by remember { mutableStateOf("https://m.twitch.tv/") }
+    
+    // Custom history stack for safe exploration URLs
+    val safeHistory = remember { mutableStateListOf<String>("https://m.twitch.tv/") }
     
     // Safety: ensure callbacks are always fresh without bridge recreation
     val currentOnChannelSelected by rememberUpdatedState(onChannelSelected)
     val currentOnSettingsClick by rememberUpdatedState(onSettingsClick)
     val currentOnLoaded by rememberUpdatedState(onLoaded)
 
-    // Handle back button - only when browser is visible
-    if (isVisible) {
-        BackHandler {
-            val currentUrl = state.lastLoadedUrl
-            Log.d("TwitchBrowser", "BackHandler triggered. currentUrl=$currentUrl")
-            if (isBrowserRoot(currentUrl)) {
-                Log.d("TwitchBrowser", "At root, showing exit dialog")
-                showExitDialog = true
-            } else if (navigator.canGoBack) {
-                Log.d("TwitchBrowser", "Can go back in history, navigating back")
-                navigator.navigateBack()
-            } else {
-                Log.d("TwitchBrowser", "Cannot go back, returning to root home")
-                // Not at root and can't go back -> navigate to root instead of finishing
-                navigator.loadUrl("https://m.twitch.tv/")
-            }
+    // Handle back button
+    BackHandler(enabled = !isPlayerActive) {
+        Log.d("TwitchBrowser", "BackHandler triggered. safeHistory.size=${safeHistory.size}")
+        if (safeHistory.size <= 1) {
+            Log.d("TwitchBrowser", "At root of safe history, showing exit dialog")
+            showExitDialog = true
+        } else {
+            // Pop the current page and load the previous one
+            safeHistory.removeAt(safeHistory.size - 1)
+            val previousUrl = safeHistory.last()
+            Log.d("TwitchBrowser", "Navigating back to managed history: $previousUrl")
+            navigator.loadUrl(previousUrl)
         }
     }
 
-    // Safety timeout to ensure splash screen eventually disappears
-    LaunchedEffect(Unit) {
-        delay(8000.milliseconds)
-        Log.d("TwitchBrowser", "Safety timeout reached, forcing splash screen dismissal")
-        currentOnLoaded()
-    }
-
-    // Suspend/Resume WebView activity based on visibility
-    LaunchedEffect(isVisible) {
+    // Hard Unload / Background Pre-load logic based on player state
+    LaunchedEffect(isPlayerActive) {
         webViewRef?.let { webView ->
-            if (isVisible) {
-                Log.d("TwitchBrowser", "Resuming WebView")
-                webView.onResume()
+            if (isPlayerActive) {
+                Log.d("TwitchBrowser", "Player active: Purging browser to about:blank")
+                webView.stopLoading()
+                webView.loadUrl("about:blank")
+                webView.clearHistory()
+                
+                // Wait a bit then pre-load the restoration context in the background
+                delay(1500.milliseconds)
+                val preLoadUrl = safeHistory.lastOrNull() ?: "https://m.twitch.tv/"
+                Log.d("TwitchBrowser", "Pre-loading restoration context: $preLoadUrl")
+                webView.loadUrl(preLoadUrl)
             } else {
-                Log.d("TwitchBrowser", "Pausing WebView")
-                webView.onPause()
+                val restoreUrl = safeHistory.lastOrNull() ?: "https://m.twitch.tv/"
+                Log.d("TwitchBrowser", "Player inactive: Ensuring restoration of $restoreUrl")
+                // Only reload if we aren't already there (it might have finished pre-loading)
+                if (webView.url != restoreUrl && !webView.url.isNullOrEmpty() && webView.url != "about:blank") {
+                    // We are on a different page, reload to be safe
+                    webView.loadUrl(restoreUrl)
+                } else if (webView.url == "about:blank" || webView.url.isNullOrEmpty()) {
+                    // We haven't pre-loaded yet or were cleared, force load
+                    webView.loadUrl(restoreUrl)
+                }
             }
         }
     }
@@ -153,27 +161,36 @@ fun TwitchBrowser(
             onLoadedCallback = { currentOnLoaded() },
             onUiCleanFinished = { isUiLoading = false },
             onRefreshRequested = { navigator.reload() },
-            onUrlChanged = { url, _ ->
+            onUrlChanged = { url, blocked, requestBack ->
                 try {
-                    val channelMatch = extractChannelFromUrl(url)
-                    val currentUser = getCurrentUserFromCookies()
-                    val isSafe = isSafeExplorationUrl(url)
+                    val mobileUrl = ensureMobileUrl(url)
+                    val channelMatch = extractChannelFromUrl(mobileUrl)
+                    val isSafe = isSafeExplorationUrl(mobileUrl)
 
-                    if (!isSafe) {
-                        Log.d("TwitchBrowser", "Unsafe page detected: $url. Redirecting.")
+                    if (!isSafe || requestBack) {
+                        Log.d("TwitchBrowser", "Sentinel: Unsafe or Escape detected. blocked=$blocked, url=$mobileUrl")
                         
-                        // 1. Trigger the player
-                        if (isPlayableChannel(channelMatch, currentUser)) {
+                        // 1. Trigger the player (if it's a channel)
+                        if (isPlayableChannel(channelMatch, getCurrentUserFromCookies())) {
                             currentOnChannelSelected(channelMatch!!)
                         }
                         
-                        // 2. Immediately restore context
-                        restoreSafeContext(webViewRef, lastSafeUrl)
+                        // 2. Redirection:
+                        // If it WAS blocked in JS, the browser is already frozen on a safe page.
+                        // If it was NOT blocked (leaked), we force a hard return to safety.
+                        if (!blocked) {
+                            val lastSafeUrl = safeHistory.lastOrNull() ?: "https://m.twitch.tv/"
+                            Log.d("TwitchBrowser", "Navigation leaked, forcing hard return to $lastSafeUrl")
+                            webViewRef?.loadUrl(lastSafeUrl)
+                        }
                     } else {
-                        // Track last safe exploration URL
-                        if (url.isNotEmpty() && !url.contains("about:blank")) {
-                            Log.d("TwitchBrowser", "Updating lastSafeUrl: $url")
-                            lastSafeUrl = url
+                        // Track safe exploration URL in our custom stack
+                        if (mobileUrl.isNotEmpty() && !mobileUrl.contains("about:blank")) {
+                            if (safeHistory.lastOrNull() != mobileUrl) {
+                                Log.d("TwitchBrowser", "Adding to safe history stack: $mobileUrl")
+                                safeHistory.add(mobileUrl)
+                                if (safeHistory.size > 20) safeHistory.removeAt(0)
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -242,6 +259,14 @@ fun TwitchBrowser(
                             val url = request?.url?.toString() ?: return false
                             Log.d("TwitchBrowser", "shouldOverrideUrlLoading: $url")
 
+                            // Force mobile domain
+                            val mobileUrl = ensureMobileUrl(url)
+                            if (mobileUrl != url) {
+                                Log.d("TwitchBrowser", "Desktop URL detected, forcing mobile: $mobileUrl")
+                                view?.loadUrl(mobileUrl)
+                                return true
+                            }
+
                             // Force full reload for the global home to avoid SPA issues
                             if (isGlobalHome(url)) {
                                 Log.d("TwitchBrowser", "Global home path detected in shouldOverride, forcing full load")
@@ -251,20 +276,16 @@ fun TwitchBrowser(
 
                             // Detect if user navigated to an unsafe page
                             val channelMatch = extractChannelFromUrl(url)
-                            val currentUser = getCurrentUserFromCookies()
                             val isSafe = isSafeExplorationUrl(url)
 
                             if (!isSafe) {
-                                Log.d("TwitchBrowser", "Click to unsafe page: $url. Redirecting.")
-                                
-                                // 1. Trigger the player
-                                if (isPlayableChannel(channelMatch, currentUser)) {
+                                val lastSafeUrl = safeHistory.lastOrNull() ?: "https://m.twitch.tv/"
+                                Log.d("TwitchBrowser", "Intercepted unsafe URL: $url. Redirecting to $lastSafeUrl")
+                                if (isPlayableChannel(channelMatch, getCurrentUserFromCookies())) {
                                     currentOnChannelSelected(channelMatch!!)
                                 }
-                                
-                                // 2. Immediately restore context
-                                restoreSafeContext(view, lastSafeUrl)
-                                return true // Prevent the browser from actually loading the channel page
+                                view?.loadUrl(lastSafeUrl)
+                                return true
                             }
 
                             return false // Allow normal navigation
@@ -281,18 +302,27 @@ fun TwitchBrowser(
                                 view?.evaluateJavascript(splashScript, null)
                             }
 
-                            // Detect if an unsafe page is loading
+                            // Detect if a desktop URL leaked through and force mobile
+                            url?.let {
+                                val mobileUrl = ensureMobileUrl(it)
+                                if (mobileUrl != it) {
+                                    Log.d("TwitchBrowser", "onPageStarted: Desktop URL detected, forcing mobile: $mobileUrl")
+                                    view?.loadUrl(mobileUrl)
+                                    return
+                                }
+                            }
+
                             url?.let {
                                 val channelMatch = extractChannelFromUrl(it)
-                                val currentUser = getCurrentUserFromCookies()
                                 val isSafe = isSafeExplorationUrl(it)
 
                                 if (!isSafe) {
-                                    Log.d("TwitchBrowser", "Page started on unsafe page: $it. Redirecting.")
-                                    if (isPlayableChannel(channelMatch, currentUser)) {
+                                    val lastSafeUrl = safeHistory.lastOrNull() ?: "https://m.twitch.tv/"
+                                    Log.d("TwitchBrowser", "Page started on unsafe URL: $it. Redirecting to $lastSafeUrl")
+                                    if (isPlayableChannel(channelMatch, getCurrentUserFromCookies())) {
                                         currentOnChannelSelected(channelMatch!!)
                                     }
-                                    restoreSafeContext(view, lastSafeUrl)
+                                    view?.loadUrl(lastSafeUrl)
                                 }
                             }
                         }
@@ -352,41 +382,12 @@ fun TwitchBrowser(
     }
 }
 
-private fun restoreSafeContext(view: NativeWebView?, fallbackUrl: String) {
-    // If we're already on a safe page, don't interrupt
-    val currentUrl = view?.url ?: ""
-    if (isSafeExplorationUrl(currentUrl)) return
-
-    // Immediately stop loading to prevent web player from initializing
-    view?.stopLoading()
-    
-    // Try to stay on current page by going back if possible
-    if (view?.canGoBack() == true) {
-        Log.d("TwitchBrowser", "restoreSafeContext: going back to previous page")
-        view.goBack()
-    } else {
-        // Hard fallback if goBack isn't available
-        Log.d("TwitchBrowser", "restoreSafeContext: hard fallback to $fallbackUrl")
-        view?.loadUrl(fallbackUrl)
+private fun ensureMobileUrl(url: String): String {
+    val uri = try { java.net.URI(url) } catch (_: Exception) { return url }
+    if (uri.host == "www.twitch.tv" || uri.host == "twitch.tv") {
+        return url.replaceFirst(uri.host ?: "", "m.twitch.tv")
     }
-
-    // Safety check after a short delay
-    val handler = android.os.Handler(android.os.Looper.getMainLooper())
-    handler.postDelayed({
-        val urlAfterDelay = view?.url ?: ""
-        if (!isSafeExplorationUrl(urlAfterDelay)) {
-            Log.d("TwitchBrowser", "restoreSafeContext: still unsafe after delay, forcing load")
-            view?.loadUrl(fallbackUrl)
-        }
-        
-        // Soft refresh to reset SPA router state and prevent "bad routes"
-        softRefresh(view)
-    }, 400)
-}
-
-private fun softRefresh(view: NativeWebView?) {
-    Log.d("TwitchBrowser", "softRefresh: Triggering SPA route reset")
-    view?.evaluateJavascript("window.location.replace(window.location.href);", null)
+    return url
 }
 
 private fun isSafeExplorationUrl(url: String?): Boolean {
@@ -496,13 +497,18 @@ class TwitchBrowserBridge(
     private val onLoadedCallback: () -> Unit,
     private val onUiCleanFinished: () -> Unit = {},
     private val onRefreshRequested: () -> Unit,
-    private val onUrlChanged: (String, Boolean) -> Unit
+    private val onUrlChanged: (String, Boolean, Boolean) -> Unit
 ) {
     @JavascriptInterface
     fun onUrlChange(url: String, blocked: Boolean) {
+        onUrlChange(url, blocked, false)
+    }
+
+    @JavascriptInterface
+    fun onUrlChange(url: String, blocked: Boolean, requestBack: Boolean) {
         activity?.runOnUiThread {
-            Log.d("TwitchBrowser", "URL change via JS Bridge: $url (blocked=$blocked)")
-            onUrlChanged(url, blocked)
+            Log.d("TwitchBrowser", "URL change via JS Bridge: $url (blocked=$blocked, requestBack=$requestBack)")
+            onUrlChanged(url, blocked, requestBack)
         }
     }
 

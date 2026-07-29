@@ -251,7 +251,7 @@ class MainActivity : ComponentActivity() {
                         TwitchBrowser(
                             state = browserState,
                             navigator = browserNavigator,
-                            isVisible = true,
+                            isPlayerActive = selectedChannel != null && !isMinimized,
                             onChannelSelected = { channel ->
                                 if (selectedChannel != channel) {
                                     selectedChannel = channel
