@@ -220,8 +220,7 @@ fun AudioOnlyPlayer(
                         if (viewersCount > 0) {
                             AnimatedViewerCount(
                                 count = viewersCount,
-                                fontSize = 10.sp,
-                                dotSize = 6.dp
+                                fontSize = 10.sp
                             )
                         }
 
