@@ -101,13 +101,26 @@ fun TwitchBrowser(
                 webView.loadUrl(preLoadUrl)
             } else {
                 val restoreUrl = safeHistory.lastOrNull() ?: "https://m.twitch.tv/"
-                Log.d("TwitchBrowser", "Player inactive: Ensuring restoration of $restoreUrl")
+                val currentUrl = webView.url ?: ""
                 
-                // If the browser is still blank or on the wrong page, show the loading overlay
-                if (webView.url != restoreUrl || webView.url == "about:blank") {
-                    Log.d("TwitchBrowser", "Context not ready, showing loading overlay")
+                Log.d("TwitchBrowser", "Player inactive: Checking restoration. current=$currentUrl, target=$restoreUrl")
+                
+                // Use normalized comparison to avoid redundant loads (ignore trailing slash)
+                val isAlreadyLoaded = currentUrl.trimEnd('/') == restoreUrl.trimEnd('/')
+                
+                if (!isAlreadyLoaded || currentUrl == "about:blank") {
+                    Log.d("TwitchBrowser", "Context not ready or mismatch, forcing reload")
                     isUiLoading = true
                     webView.loadUrl(restoreUrl)
+                } else {
+                    Log.d("TwitchBrowser", "Context already pre-loaded, skipping reload")
+                }
+                
+                // Safety Timeout: If JS bridge doesn't clear the loading state, we do it eventually
+                delay(5000.milliseconds)
+                if (isUiLoading) {
+                    Log.d("TwitchBrowser", "Restoration timeout: Force clearing loading state")
+                    isUiLoading = false
                 }
             }
         }
