@@ -38,11 +38,14 @@ fun WebViewContainer(
     onToggleAudioOnly: () -> Unit = {},
     onPlaybackStarted: () -> Unit = {},
     onLoadingStatus: (String) -> Unit = {},
-    onAdblocked: (String) -> Unit = {}
+    onAdblocked: (String) -> Unit = {},
+    isInteractive: Boolean = true
 ) {
     val context = LocalContext.current
     val resources = context.resources
     val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VAFT)
+
+    // ... (rest of the code)
 
     // Reset status and inject early when loading starts
     LaunchedEffect(state.loadingState, adBlockMode) {
@@ -100,7 +103,6 @@ fun WebViewContainer(
 
             val scripts = listOf(
                 "js/player/ui_cleaner.js",
-                "js/player/controls_injector.js",
                 "js/player/playback_monitor.js"
             ).mapNotNull { path ->
                 val script = ScriptLoader.getScript(context, path)
@@ -156,6 +158,10 @@ fun WebViewContainer(
                 overScrollMode = View.OVER_SCROLL_NEVER
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false
+
+                isFocusable = isInteractive
+                isFocusableInTouchMode = isInteractive
+                isClickable = isInteractive
 
                 // Add bridge for fullscreen and chat using the dedicated class
                 addJavascriptInterface(

@@ -92,8 +92,8 @@ class ChatViewModel : ViewModel() {
                             }
                         }
                         
-                        if (messageHistory.size > 500) { // Slightly larger history for high-traffic
-                            val toRemove = messageHistory.size - 500
+                        if (messageHistory.size > 25) { 
+                            val toRemove = messageHistory.size - 25
                             repeat(toRemove) { messageHistory.removeAt(0) }
                         }
                         _messages.value = messageHistory.toImmutableList()
@@ -138,7 +138,7 @@ class ChatViewModel : ViewModel() {
                 if (msg.command == "PRIVMSG") {
                     if (rawIrcMessages.none { it.id == msg.id }) {
                         rawIrcMessages.add(msg)
-                        if (rawIrcMessages.size > 500) rawIrcMessages.removeAt(0)
+                        if (rawIrcMessages.size > 25) rawIrcMessages.removeAt(0)
                     }
                     
                     val uiState = ChatMessageMapper.mapToUiState(channel, msg)
@@ -190,7 +190,7 @@ class ChatViewModel : ViewModel() {
             val uiState = ChatMessageMapper.mapToUiState(channel, syntheticMsg)
             
             messageHistory.add(uiState)
-            if (messageHistory.size > 500) {
+            if (messageHistory.size > 25) {
                 messageHistory.removeAt(0)
             }
             _messages.value = messageHistory.toImmutableList()

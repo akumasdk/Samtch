@@ -75,7 +75,7 @@ fun NativeTwitchChat(
     }
 
     // Process auto-scroll updates
-    LaunchedEffect(messages.size, shouldAutoScroll) {
+    LaunchedEffect(messages, shouldAutoScroll) {
         if (messages.isNotEmpty() && shouldAutoScroll) {
             listState.scrollToItem(0)
         }

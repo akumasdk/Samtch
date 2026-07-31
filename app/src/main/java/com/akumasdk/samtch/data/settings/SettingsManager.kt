@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +18,7 @@ object SettingsManager {
     private val AD_BLOCK_MODE = booleanPreferencesKey("ad_block_mode_is_vaft") // true = VAFT, false = VideoSwap
     private val CHAT_MODE = booleanPreferencesKey("chat_mode_is_native") // true = NATIVE, false = LEGACY
     private val MINI_PLAYER_HINT_SHOWN = booleanPreferencesKey("mini_player_hint_shown")
+    private val SEARCH_HISTORY = stringPreferencesKey("search_history_csv")
 
     enum class AdBlockMode {
         VAFT, VIDEO_SWAP
@@ -83,6 +85,32 @@ object SettingsManager {
     suspend fun setMiniPlayerHintShown(context: Context, shown: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[MINI_PLAYER_HINT_SHOWN] = shown
+        }
+    }
+
+    fun getSearchHistory(context: Context): Flow<List<String>> {
+        return context.dataStore.data.map { preferences ->
+            preferences[SEARCH_HISTORY]?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
+        }
+    }
+
+    suspend fun addToSearchHistory(context: Context, name: String) {
+        context.dataStore.edit { preferences ->
+            val current = preferences[SEARCH_HISTORY]?.split(",")?.filter { it.isNotEmpty() }?.toMutableList() ?: mutableListOf()
+            current.remove(name)
+            current.add(0, name)
+            if (current.size > 10) {
+                current.removeAt(current.size - 1)
+            }
+            preferences[SEARCH_HISTORY] = current.joinToString(",")
+        }
+    }
+
+    suspend fun removeFromSearchHistory(context: Context, name: String) {
+        context.dataStore.edit { preferences ->
+            val current = preferences[SEARCH_HISTORY]?.split(",")?.filter { it.isNotEmpty() }?.toMutableList() ?: mutableListOf()
+            current.remove(name)
+            preferences[SEARCH_HISTORY] = current.joinToString(",")
         }
     }
 }

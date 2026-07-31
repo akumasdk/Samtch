@@ -1,82 +1,166 @@
 (function() {
     'use strict';
 
-    // Self-cleanup: Clear existing intervals and observers from previous runs
-    if (window.samtch_cleaner_init_int) clearInterval(window.samtch_cleaner_init_int);
-    if (window.samtch_cleaner_maint_int) clearInterval(window.samtch_cleaner_maint_int);
-    if (window.samtch_cleaner_obs) window.samtch_cleaner_obs.disconnect();
+    console.log("[Twitch TV Script] Initializing merged UI Cleaner and Quality Selector...");
 
-    console.log('[Samtch] ui_cleaner.js starting fresh session...');
+    let controlsHidden = false;
 
-    function injectStyles() {
-        const styleId = 'samtch-player-cleaner';
+    function injectHidingStyles() {
+        if (controlsHidden) return;
+        const styleId = 'samtch-tv-cleaner';
         if (document.getElementById(styleId)) return;
 
+        console.log("[Twitch TV Script] Injecting hiding styles...");
         const style = document.createElement('style');
         style.id = styleId;
         style.textContent = `
-            /* Hide distracting elements */
-            .stream-info-card,
-            [data-a-target="player-fullscreen-button"],
-            [data-a-target="player-clip-button"],
-            [data-a-target="player-forward-button"],
-            [data-a-target="player-rewind-button"],
-            [data-a-target="player-theatre-mode-button"],
-            button[aria-label*="Clip"],
-            button[title*="Clip"],
-            .stream-info-social-panel,
-            .samtch-hidden-button,
+            /* Hide player controls but keep them in DOM for scripts */
+            .video-player__controls,
+            [data-a-target="player-controls"],
+            .video-player__overlay,
+            .tw-tower {
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+
+            /* Ensure video takes full screen */
+            .video-player__container, .video-player__default-player {
+                background: black !important;
+            }
+
+            /* Hide unnecessary banners completely */
             .ad-banner,
-            .disclosure-card,
             .tw-upsell-banner {
                 display: none !important;
             }
         `;
         document.head.appendChild(style);
+        controlsHidden = true;
     }
 
-    function clean() {
-        const playerExists = document.querySelector('.video-player') ||
-                           document.querySelector('[data-a-target="video-player"]');
-
-        if (!playerExists) return;
-
-        injectStyles();
-
-        // Remove "Watch on Twitch" button manually if it persists
-        document.querySelectorAll('.tw-svg').forEach(container => {
-            const svg = container.querySelector('svg');
-            if (svg && svg.getAttribute('viewBox') === '0 0 65 16') {
-                const button = container.closest('button');
-                if (button) button.remove();
-            }
-        });
-
-        // Remove Clip buttons by label text
-        document.querySelectorAll('[data-a-target="tw-core-button-label-text"]').forEach(el => {
-            if (el.textContent.trim() === 'Clip') {
-                const button = el.closest('button');
-                if (button) {
-                    console.log('[Samtch] Removing clip button via label text');
-                    button.remove();
-                }
-            }
-        });
-    }
-
-    // High frequency cleanup during initial load
-    const startTime = Date.now();
-    window.samtch_cleaner_init_int = setInterval(() => {
-        clean();
-        if (Date.now() - startTime > 8000) {
-            clearInterval(window.samtch_cleaner_init_int);
-            // Switch to maintenance cleaning
-            window.samtch_cleaner_maint_int = setInterval(clean, 2500);
+    function waitForElement(selector, callback) {
+        const element = document.querySelector(selector);
+        if (element) {
+            callback(element);
+            return;
         }
-    }, 500);
 
-    window.samtch_cleaner_obs = new MutationObserver(clean);
-    window.samtch_cleaner_obs.observe(document.documentElement, { childList: true, subtree: true });
+        const observer = new MutationObserver((mutations, obs) => {
+            const el = document.querySelector(selector);
+            if (el) {
+                obs.disconnect();
+                callback(el);
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
 
-    clean();
+    function runAutomation() {
+        waitForElement('[data-a-target="player-settings-button"]', (settingsButton) => {
+            console.log("[Twitch TV Script] Found settings button. Attempting to set quality...");
+
+            let attempts = 0;
+            const maxAttempts = 5;
+
+            const tryClickSettings = () => {
+                attempts++;
+                settingsButton.click();
+
+                // Verify if settings menu appeared
+                setTimeout(() => {
+                    const qualityMenuItem = document.querySelector('[data-a-target="player-settings-menu-item-quality"]');
+                    const settingsButtonCheck = document.querySelector('[data-a-target="player-settings-button"]');
+
+                    if (qualityMenuItem && settingsButtonCheck) {
+                        console.log("[Twitch TV Script] Settings menu confirmed. Proceeding with quality automation...");
+
+                        // Proceed to quality selection
+                        handleQualitySelection(qualityMenuItem);
+                    } else if (attempts < maxAttempts) {
+                        console.warn(`[Twitch TV Script] Verification failed (Menu: ${!!qualityMenuItem}, Button: ${!!settingsButtonCheck}). Retrying click...`);
+                        tryClickSettings();
+                    } else {
+                        console.error("[Twitch TV Script] Failed to verify settings menu. Forcing UI hide anyway.");
+                        injectHidingStyles();
+                    }
+                }, 500);
+            };
+
+            tryClickSettings();
+        });
+    }
+
+    function handleQualitySelection(qualityButton) {
+        console.log("[Twitch TV Script] Clicking quality menu...");
+
+        let qAttempts = 0;
+        const tryQualityClick = () => {
+            qAttempts++;
+            qualityButton.click();
+
+            setTimeout(() => {
+                const subMenu = document.querySelector('[data-a-target="player-settings-submenu-quality-option"]');
+                if (subMenu) {
+                    console.log("[Twitch TV Script] Quality submenu opened.");
+                    selectSourceQuality();
+                } else if (qAttempts < 5) {
+                    tryQualityClick();
+                }
+            }, 500);
+        };
+
+        tryQualityClick();
+    }
+
+    function selectSourceQuality() {
+        const options = document.querySelectorAll('[data-a-target="player-settings-submenu-quality-option"]');
+        const sourceOption = [...options].find(el => el.innerText.includes("1080p") || el.innerText.includes("Source"));
+
+        if (sourceOption) {
+            console.log("[Twitch TV Script] Selecting Source quality...");
+            sourceOption.click();
+
+            // Wait for selection to apply, then close menu with verification
+            let closeAttempts = 0;
+            const tryCloseMenu = () => {
+                closeAttempts++;
+                const settingsButton = document.querySelector('[data-a-target="player-settings-button"]');
+                if (settingsButton) {
+                    console.log(`[Twitch TV Script] Closing menu (Attempt ${closeAttempts})...`);
+                    settingsButton.click();
+
+                    // Verification check
+                    setTimeout(() => {
+                        const isMenuStillOpen = !!document.querySelector('[data-a-target="player-settings-menu"]') ||
+                                              !!document.querySelector('[data-a-target="player-settings-submenu-quality-option"]');
+
+                        if (!isMenuStillOpen) {
+                            console.log("[Twitch TV Script] Menu closed successfully. Finalizing UI...");
+                            setTimeout(injectHidingStyles, 200);
+                        } else if (closeAttempts < 3) {
+                            console.warn("[Twitch TV Script] Menu still detected. Retrying close...");
+                            tryCloseMenu();
+                        } else {
+                            console.error("[Twitch TV Script] Menu failed to close. Forcing hide.");
+                            injectHidingStyles();
+                        }
+                    }, 600);
+                } else {
+                    injectHidingStyles();
+                }
+            };
+
+            setTimeout(tryCloseMenu, 800);
+        } else {
+            console.warn("[Twitch TV Script] Source quality option not found. Hiding UI as fallback.");
+            injectHidingStyles();
+        }
+    }
+
+    // Start logic
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        runAutomation();
+    } else {
+        window.addEventListener("load", runAutomation);
+    }
 })();
