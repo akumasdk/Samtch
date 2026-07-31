@@ -21,8 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.*
 import com.akumasdk.samtch.MainActivity
-import com.akumasdk.samtch.ui.components.KWebView
+import com.akumasdk.samtch.ui.components.WebViewContainer
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
+import com.multiplatform.webview.web.rememberSaveableWebViewState
+import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -52,14 +54,19 @@ fun TVPlayerScreen(
     
     val chatViewModel: ChatViewModel = viewModel()
     
-    val playerUrl = remember(channel, refreshTrigger) {
+    val state = rememberSaveableWebViewState("")
+    val navigator = rememberWebViewNavigator()
+
+    // Handle URL loading and refresh logic
+    LaunchedEffect(channel, refreshTrigger) {
         val baseUrl = "https://player.twitch.tv/?channel=$channel&parent=twitch.tv&muted=false&autoplay=true&enableExtensions=false&player=mobile"
-        if (refreshTrigger > 0) "$baseUrl&refresh=$refreshTrigger" else baseUrl
-    }
-    
-    // Reset loading state whenever the URL changes (e.g. on refresh)
-    LaunchedEffect(playerUrl) {
+        val finalUrl = if (refreshTrigger > 0) {
+            "$baseUrl&refresh=$refreshTrigger"
+        } else {
+            baseUrl
+        }
         isUiLoading = true
+        navigator.loadUrl(finalUrl)
     }
 
     val rootFocusRequester = remember { FocusRequester() }
@@ -154,14 +161,18 @@ fun TVPlayerScreen(
         Row(modifier = Modifier.fillMaxSize()) {
             // Main content (Player)
             Box(modifier = Modifier.weight(if (isChatOpen) 0.75f else 1f).fillMaxHeight()) {
-                KWebView(
-                    url = playerUrl,
+                WebViewContainer(
                     modifier = Modifier.fillMaxSize(),
-                    enableJavaScript = true,
-                    enableDomStorageForAndroid = true,
-                    isLoading = { loading ->
-                        if (!loading) isUiLoading = false
-                    }
+                    state = state,
+                    navigator = navigator,
+                    channel = channel,
+                    onToggleFullscreen = {},
+                    onToggleChat = {},
+                    onToggleAudioOnly = {},
+                    onPlaybackStarted = { isUiLoading = false },
+                    onLoadingStatus = {},
+                    onAdblocked = {},
+                    isInteractive = false
                 )
 
                 if (isUiLoading) {

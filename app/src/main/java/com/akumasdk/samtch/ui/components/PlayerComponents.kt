@@ -2,6 +2,8 @@ package com.akumasdk.samtch.ui.components
 
 import android.util.Log
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -135,10 +137,17 @@ fun WebViewContainer(
         navigator = navigator,
         captureBackPresses = false,
         factory = { param ->
-            NativeWebView(param.context)
+            val webView = if (!isInteractive) {
+                NonInteractiveTVWebView(param.context)
+            } else {
+                NativeWebView(param.context)
+            }
+            webView
         },
         onCreated = { webView ->
             Log.d("TwitchPlayer", "WebView created for channel: $channel")
+
+            webView.setBackgroundColor(android.graphics.Color.BLACK)
 
             // Prevent the renderer process from being killed when hidden
             webView.setRendererPriorityPolicy(NativeWebView.RENDERER_PRIORITY_BOUND, false)
@@ -238,5 +247,18 @@ class TwitchPlayerBridge(
     @JavascriptInterface
     fun onAdblocked(text: String) {
         onAdblockedCallback(text)
+    }
+}
+
+private class NonInteractiveTVWebView(context: android.content.Context) : NativeWebView(context) {
+    override fun onCheckIsTextEditor(): Boolean = false
+    override fun onCreateInputConnection(outAttrs: EditorInfo?): InputConnection? = null
+
+    // Deny all focus requests to prevent the engine from ever being the primary focus target
+    override fun requestFocus(direction: Int, previouslyFocusedRect: android.graphics.Rect?): Boolean = false
+
+    @android.annotation.SuppressLint("MissingSuperCall")
+    override fun onFocusChanged(focused: Boolean, direction: Int, previouslyFocusedRect: android.graphics.Rect?) {
+        // Do nothing, we don't want to handle focus
     }
 }

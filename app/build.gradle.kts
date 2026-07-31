@@ -117,7 +117,6 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.tv.foundation)
     implementation(libs.androidx.tv.material)
-    implementation(libs.kwebview)
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     implementation(libs.coil.svg)
