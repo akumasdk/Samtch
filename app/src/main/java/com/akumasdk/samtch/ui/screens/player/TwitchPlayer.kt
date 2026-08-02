@@ -442,8 +442,8 @@ fun TwitchPlayer(
                     
                     AnimatedVisibility(
                         visible = isUiLoading,
-                        enter = fadeIn(),
-                        exit = fadeOut(animationSpec = tween(durationMillis = 300)),
+                        enter = fadeIn(animationSpec = SamtchAnimation.StandardTween),
+                        exit = fadeOut(animationSpec = SamtchAnimation.StandardTween),
                         modifier = Modifier.matchParentSize()
                     ) {
                         Box(

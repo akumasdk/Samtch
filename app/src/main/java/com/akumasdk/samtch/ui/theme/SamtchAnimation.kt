@@ -58,13 +58,13 @@ object SamtchAnimation {
 
     val PlayerEnterTransition = slideInVertically(
         initialOffsetY = { it },
-        animationSpec = spring(stiffness = 400f, dampingRatio = 0.8f)
-    ) + fadeIn()
+        animationSpec = springInteractive<IntOffset>()
+    ) + fadeIn(animationSpec = StandardTween)
 
     val PlayerExitTransition = slideOutVertically(
         targetOffsetY = { it },
-        animationSpec = tween(StandardDuration)
-    ) + fadeOut()
+        animationSpec = tween(StandardDuration, easing = StandardEasing)
+    ) + fadeOut(animationSpec = tween(StandardDuration, easing = StandardEasing))
 
     val FadeIn = fadeIn(animationSpec = tween(StandardDuration))
     val FadeOut = fadeOut(animationSpec = tween(StandardDuration))

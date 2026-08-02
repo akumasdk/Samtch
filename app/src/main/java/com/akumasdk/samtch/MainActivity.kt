@@ -22,7 +22,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -124,6 +123,15 @@ class MainActivity : ComponentActivity() {
         ScriptLoader.initialize(this)
         orientationManager = DeviceOrientationManager(this)
 
+        lifecycleScope.launch {
+            val lastVersion = SettingsManager.getLastVersionCode(this@MainActivity).first()
+            if (lastVersion != -1 && lastVersion != BuildConfig.VERSION_CODE) {
+                // Version change detected, clear persistent settings
+                SettingsManager.clear(this@MainActivity)
+            }
+            SettingsManager.setLastVersionCode(this@MainActivity, BuildConfig.VERSION_CODE)
+        }
+
         handleIntent(intent)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -145,9 +153,11 @@ class MainActivity : ComponentActivity() {
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         setContent {
-            SamtchTheme {
-                val darkTheme = androidx.compose.foundation.isSystemInDarkTheme()
-                var selectedChannel by rememberSaveable { mutableStateOf<String?>(null) }
+            // Use VERSION_CODE as a key to force-reset all rememberSaveable state after an update
+            key(BuildConfig.VERSION_CODE) {
+                SamtchTheme {
+                    val darkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+                    var selectedChannel by rememberSaveable { mutableStateOf<String?>(null) }
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
                 var isMinimized by isMinimizedState
@@ -238,8 +248,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var displayedChannel by remember { mutableStateOf<String?>(null) }
-                LaunchedEffect(selectedChannel) {
-                    if (selectedChannel != null) displayedChannel = selectedChannel
+                if (selectedChannel != null) {
+                    displayedChannel = selectedChannel
                 }
 
                 Box(modifier = Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background)) {
@@ -315,9 +325,10 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
 
-    @RequiresApi(Build.VERSION_CODES.S)
-    private fun updatePipParams(isPipEnabled: Boolean = true) {
+@RequiresApi(Build.VERSION_CODES.S)
+private fun updatePipParams(isPipEnabled: Boolean = true) {
         val actions = if (currentChannel != null && isInPipModeState.value) {
             listOf(
                 RemoteAction(
