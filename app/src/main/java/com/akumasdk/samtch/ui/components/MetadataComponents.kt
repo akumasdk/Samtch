@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -145,25 +147,30 @@ fun StreamMetadataBar(
     viewersCount: Int = 0,
     streamStartedAt: String? = null,
     expandTrigger: Int = 0,
+    forceExpanded: Boolean = false,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     var isSlim by rememberSaveable { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
 
     val animatedHeight by animateDpAsState(
-        targetValue = if (isSlim) 38.dp else 68.dp,
+        targetValue = if (isSlim && !forceExpanded) 38.dp else 68.dp,
         animationSpec = SamtchAnimation.DpSpring,
         label = "MetadataBarHeight"
     )
 
-    // Manual expansion / Title change
-    LaunchedEffect(expandTrigger, streamTitle) {
-        isSlim = false
+    // Manual expansion / Title change / Force expansion
+    LaunchedEffect(expandTrigger, streamTitle, forceExpanded) {
+        if (forceExpanded) {
+            isSlim = false
+        } else {
+            isSlim = false
+        }
     }
 
     // Auto-shrink timer (Resets on expansion/trigger/title)
-    LaunchedEffect(isSlim, expandTrigger, streamTitle) {
-        if (!isSlim) {
+    LaunchedEffect(isSlim, expandTrigger, streamTitle, forceExpanded) {
+        if (!isSlim && !forceExpanded) {
             delay(15.seconds)
             isSlim = true
         }
@@ -298,7 +305,7 @@ fun StreamMetadataBar(
                         Text(
                             text = streamTitle ?: "Stream Offline",
                             color = Color.White,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -316,9 +323,9 @@ fun StreamMetadataBar(
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                    // COLUMN 3: Stats Column (Fixed width / Content size)
+                    // COLUMN 3: Stats Column
                     Column(
                         horizontalAlignment = Alignment.End,
                         verticalArrangement = Arrangement.Center

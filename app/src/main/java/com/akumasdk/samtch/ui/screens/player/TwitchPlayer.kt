@@ -105,6 +105,11 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
+enum class PortraitMode {
+    VIDEO_AND_CHAT,
+    CHAT_ONLY
+}
+
 @Composable
 fun TwitchPlayer(
     channel: String = "forsen",
@@ -145,6 +150,7 @@ fun TwitchPlayer(
     val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
 
     var isChatVisible by remember { mutableStateOf(true) }
+    var portraitMode by remember { mutableStateOf(PortraitMode.VIDEO_AND_CHAT) }
     var metadataExpandTrigger by remember { mutableIntStateOf(0) }
 
     // Nudge animation for first-time users
@@ -321,14 +327,19 @@ fun TwitchPlayer(
     }
 
     // Handle URL loading and refresh logic
-    LaunchedEffect(channel, refreshTrigger) {
+    LaunchedEffect(channel, refreshTrigger, portraitMode) {
+        if (portraitMode == PortraitMode.CHAT_ONLY) return@LaunchedEffect
+        
+        isUiLoading = true
+        loadingMessage = defaultLoadingMessage
+
         val baseUrl = createTwitchPlayerUrl(channel)
         val finalUrl = if (refreshTrigger > 0) {
             "$baseUrl&refresh=$refreshTrigger"
         } else {
             baseUrl
         }
-        Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: $refreshTrigger)")
+        Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: $refreshTrigger, mode: $portraitMode)")
         navigator.loadUrl(finalUrl)
     }
 
@@ -496,6 +507,7 @@ fun TwitchPlayer(
             isMinimized -> 64.dp
             isAudioOnly -> 240.dp
             isFullscreen -> screenHeight
+            portraitMode == PortraitMode.CHAT_ONLY -> 1.dp // Hidden but kept in tree for stability
             else -> (screenWidth * 9 / 16)
         },
         animationSpec = SamtchAnimation.DpSpring,
@@ -506,6 +518,7 @@ fun TwitchPlayer(
         targetValue = when {
             isMinimized -> 120.dp
             isFullscreen && isChatVisible -> (screenWidth - 300.dp)
+            portraitMode == PortraitMode.CHAT_ONLY -> 1.dp
             else -> screenWidth
         },
         animationSpec = SamtchAnimation.DpSpring,
@@ -566,7 +579,11 @@ fun TwitchPlayer(
                         expandTrigger = metadataExpandTrigger,
                         onToggleChat = { isChatVisible = !isChatVisible },
                         chatViewModel = chatViewModel,
-                        webView = { _, _ -> /* Stable player is shared */ }
+                        webView = { modifier, _ -> 
+                            playerContent(modifier) {
+                                isChatVisible = !isChatVisible
+                            }
+                        }
                     )
                 } else {
                     PortraitPlayer(
@@ -579,11 +596,27 @@ fun TwitchPlayer(
                         isAudioOnly = isAudioOnly,
                         adblockText = adblockText,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                        isChatVisible = isChatVisible,
+                        portraitMode = portraitMode,
                         expandTrigger = metadataExpandTrigger,
-                        onToggleChat = { isChatVisible = !isChatVisible },
+                        onToggleMode = {
+                            portraitMode = if (portraitMode == PortraitMode.VIDEO_AND_CHAT) 
+                                PortraitMode.CHAT_ONLY else PortraitMode.VIDEO_AND_CHAT
+                            if (portraitMode == PortraitMode.VIDEO_AND_CHAT) {
+                                isUiLoading = true
+                            }
+                            isChatVisible = true
+                        },
                         chatViewModel = chatViewModel,
-                        webView = { _, _ -> /* Stable player is shared */ }
+                        webView = { modifier, _ -> 
+                            playerContent(modifier) {
+                                portraitMode = if (portraitMode == PortraitMode.VIDEO_AND_CHAT) 
+                                    PortraitMode.CHAT_ONLY else PortraitMode.VIDEO_AND_CHAT
+                                if (portraitMode == PortraitMode.VIDEO_AND_CHAT) {
+                                    isUiLoading = true
+                                }
+                                isChatVisible = true
+                            }
+                        }
                     )
                 }
             }
@@ -702,107 +735,121 @@ fun TwitchPlayer(
             }
 
             // 3. THE STABLE PLAYER (Stable during layout changes)
-            Box(
-                modifier = if (isPip) {
-                    Modifier.fillMaxSize()
-                } else if (isMinimized) {
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .navigationBarsPadding()
-                        .padding(bottom = playerPaddingBottom)
-                        .padding(start = playerPaddingStart)
-                        .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
-                        .offset { 
-                            // Follow the swipe to dismiss offset
-                            IntOffset(dismissState.requireOffset().roundToInt(), 0) 
-                        }
-                        .size(playerWidth, playerHeight)
-                        .clip(RoundedCornerShape(playerCornerRadius))
-                } else {
-                    Modifier
-                        .align(Alignment.TopStart) // Align start to handle side chat in fullscreen
-                        .size(playerWidth, playerHeight)
-                        .clip(RectangleShape)
-                }
-                .onSizeChanged { stablePlayerSize = it }
-                .pointerInput(isFullscreen, isMinimized) {
-                    var lastTapTime = 0L
-                    awaitPointerEventScope {
-                        while (true) {
-                            // 1. Double tap detection on Initial pass (priority)
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            val isPress = event.type == PointerEventType.Press
-                            
-                            if (isPress) {
-                                val currentTime = event.changes.first().uptimeMillis
-                                val isDoubleTap = (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
-
-                                if (isDoubleTap) {
-                                    val position = event.changes.first().position
-                                    val centerX = stablePlayerSize.width / 2f
-                                    val centerY = stablePlayerSize.height / 2f
-
-                                    // Define central region (40% width and height from center)
-                                    val radiusX = stablePlayerSize.width * 0.2f
-                                    val radiusY = stablePlayerSize.height * 0.2f
-
-                                    val isInCenterZone = kotlin.math.abs(position.x - centerX) <= radiusX &&
-                                            kotlin.math.abs(position.y - centerY) <= radiusY
-
-                                    if (isInCenterZone) {
-                                        if (isFullscreen) {
-                                            Log.d("TwitchPlayer", "Double tap: toggling chat")
-                                            isChatVisible = !isChatVisible
-                                        } else if (!isMinimized) {
-                                            Log.d("TwitchPlayer", "Double tap: toggling fullscreen")
-                                            onToggleFullscreen()
-                                        }
-                                        // Consume the second tap to prevent WebView from seeing it
-                                        event.changes.forEach { it.consume() }
-                                    }
-                                } else {
-                                    // Potential single tap - wait for Main pass to see if WebView consumes it
-                                }
-                                lastTapTime = currentTime
-                            }
-                        }
-                    }
-                }
-                .pointerInput(isFullscreen, isMinimized) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            // 2. Single tap detection on Main pass (to avoid double-toggle with WebView controls)
-                            val event = awaitPointerEvent(PointerEventPass.Main)
-                            if (event.type == PointerEventType.Press && !isFullscreen && !isMinimized) {
-                                // Wait a bit to see if it's a double tap (we handle double tap in Initial pass anyway)
-                                // Actually, if we are here and it's NOT consumed by children, it's a safe single tap
-                                val isConsumed = event.changes.any { it.isConsumed }
-                                if (!isConsumed) {
-                                    metadataExpandTrigger++
-                                    if (!isChatVisible) isChatVisible = true
-                                }
-                            }
-                        }
-                    }
-                }
-            ) {
-                playerContent(Modifier.fillMaxSize()) {
-                    Log.d("TwitchPlayer", "Toggle chat requested via bridge. Current visible: $isChatVisible")
-                    isChatVisible = !isChatVisible
-                }
-                if (isMinimized) {
+            if (portraitMode != PortraitMode.CHAT_ONLY) {
+                key(channel, portraitMode) { // Use key to ensure fresh WebView initialization on toggle
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Transparent)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null, // No ripple here, the parent Surface will show it or we just want the action
-                                onClick = onExpand
-                            )
-                    )
+                        modifier = if (isPip) {
+                            Modifier.fillMaxSize()
+                        } else if (isMinimized) {
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .navigationBarsPadding()
+                            .padding(bottom = playerPaddingBottom)
+                            .padding(start = playerPaddingStart)
+                            .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
+                            .offset { 
+                                // Follow the swipe to dismiss offset
+                                IntOffset(dismissState.requireOffset().roundToInt(), 0) 
+                            }
+                            .size(playerWidth, playerHeight)
+                            .clip(RoundedCornerShape(playerCornerRadius))
+                    } else {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .size(playerWidth, playerHeight)
+                            .clip(RectangleShape)
+                    }
+                    .onSizeChanged { stablePlayerSize = it }
+                    .pointerInput(isFullscreen, isMinimized, portraitMode) {
+                        var lastTapTime = 0L
+                        awaitPointerEventScope {
+                            while (true) {
+                                // 1. Double tap detection on Initial pass (priority)
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val isPress = event.type == PointerEventType.Press
+                                
+                                if (isPress) {
+                                    val currentTime = event.changes.first().uptimeMillis
+                                    val isDoubleTap = (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
+
+                                    if (isDoubleTap) {
+                                        val position = event.changes.first().position
+                                        val centerX = stablePlayerSize.width / 2f
+                                        val centerY = stablePlayerSize.height / 2f
+
+                                        // Define central region (40% width and height from center)
+                                        val radiusX = stablePlayerSize.width * 0.2f
+                                        val radiusY = stablePlayerSize.height * 0.2f
+
+                                        val isInCenterZone = kotlin.math.abs(position.x - centerX) <= radiusX &&
+                                                kotlin.math.abs(position.y - centerY) <= radiusY
+
+                                        if (isInCenterZone) {
+                                            if (isFullscreen) {
+                                                Log.d("TwitchPlayer", "Double tap: toggling chat")
+                                                isChatVisible = !isChatVisible
+                                            } else if (!isMinimized) {
+                                                Log.d("TwitchPlayer", "Double tap: toggling fullscreen")
+                                                onToggleFullscreen()
+                                            }
+                                            // Consume the second tap to prevent WebView from seeing it
+                                            event.changes.forEach { it.consume() }
+                                        }
+                                    } else {
+                                        // Potential single tap - wait for Main pass to see if WebView consumes it
+                                    }
+                                    lastTapTime = currentTime
+                                }
+                            }
+                        }
+                    }
+                    .pointerInput(isFullscreen, isMinimized) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                // 2. Single tap detection on Main pass (to avoid double-toggle with WebView controls)
+                                val event = awaitPointerEvent(PointerEventPass.Main)
+                                if (event.type == PointerEventType.Press && !isFullscreen && !isMinimized) {
+                                    // Actually, if we are here and it's NOT consumed by children, it's a safe single tap
+                                    val isConsumed = event.changes.any { it.isConsumed }
+                                    if (!isConsumed) {
+                                        metadataExpandTrigger++
+                                        // If we were in chat only, return to standard mode to show metadata
+                                        if (portraitMode == PortraitMode.CHAT_ONLY) {
+                                            portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    playerContent(Modifier.fillMaxSize()) {
+                        Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")
+                        if (isFullscreen) {
+                            isChatVisible = !isChatVisible
+                        } else {
+                            // Cycle modes in portrait
+                            portraitMode = when (portraitMode) {
+                                PortraitMode.VIDEO_AND_CHAT -> PortraitMode.CHAT_ONLY
+                                PortraitMode.CHAT_ONLY -> PortraitMode.VIDEO_AND_CHAT
+                            }
+                        }
+                    }
+                    if (isMinimized) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Transparent)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null, // No ripple here, the parent Surface will show it or we just want the action
+                                    onClick = onExpand
+                                )
+                        )
+                    }
                 }
             }
         }
     }
+}
 }

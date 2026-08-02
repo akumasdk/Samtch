@@ -92,23 +92,6 @@ fun FullscreenPlayer(
                     .fillMaxHeight()
                     .background(Color(0xFF18181B))
             ) {
-                // Header with Close Button
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onToggleChat) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close Chat",
-                            tint = Color.White.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-
                 // Metadata space above chat (Only visible when chat is open)
                 AnimatedVisibility(
                     visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),

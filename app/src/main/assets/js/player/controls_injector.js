@@ -52,27 +52,7 @@
 
         let injectedCount = 0;
 
-        // 1. Chat Toggle Button
-        if (!document.getElementById('samtch-chat-btn')) {
-            const btn = document.createElement('button');
-            btn.id = 'samtch-chat-btn';
-            btn.className = 'samtch-control-btn';
-            btn.title = 'Toggle Chat';
-            btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
-            btn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.TwitchPlayerBridge) {
-                    window.TwitchPlayerBridge.toggleChat();
-                } else {
-                    console.error('[Samtch] Bridge not found for chat toggle');
-                }
-            };
-            rightGroup.prepend(btn);
-            injectedCount++;
-        }
-
-        // 2. Audio Only Toggle Button (Headset)
+        // 1. Audio Only Toggle Button (Headset)
         if (!document.getElementById('samtch-audio-btn')) {
             const btn = document.createElement('button');
             btn.id = 'samtch-audio-btn';
@@ -92,7 +72,7 @@
             injectedCount++;
         }
 
-        // 3. Fullscreen Toggle Button
+        // 2. Fullscreen Toggle Button
         if (!document.getElementById('samtch-fullscreen-btn')) {
             const btn = document.createElement('button');
             btn.id = 'samtch-fullscreen-btn';

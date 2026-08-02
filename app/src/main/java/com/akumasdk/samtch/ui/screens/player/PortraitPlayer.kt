@@ -11,9 +11,12 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.SmartDisplay
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,85 +50,119 @@ fun PortraitPlayer(
     isAudioOnly: Boolean = false,
     adblockText: String = "",
     streamStartedAt: String? = null,
-    isChatVisible: Boolean = true,
+    portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
     expandTrigger: Int = 0,
-    onToggleChat: () -> Unit = {},
+    onToggleMode: () -> Unit = {},
     chatViewModel: ChatViewModel,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
-        verticalArrangement = Arrangement.Top
-    ) {
-        // Dynamic height container
-        Box(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (isAudioOnly) {
-                        Modifier.height(240.dp) // Reclaimed space for Audio Only table design
-                    } else {
-                        Modifier.aspectRatio(16f / 9f)
-                    }
-                )
-                .onSizeChanged { size ->
-                    playerSize = size
-                }
+                .fillMaxSize()
+                .background(Color.Black)
+                .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
+            verticalArrangement = Arrangement.Top
         ) {
-            webView(Modifier.fillMaxSize(), onToggleChat)
-
-            // Adblock status banner at the top
-            AdblockBanner(
-                text = adblockText,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-        }
-
-        // Tiny metadata space above chat
-        AnimatedVisibility(
-            visible = isChatVisible && !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
-            enter = SamtchAnimation.FadeIn,
-            exit = SamtchAnimation.FadeOut
-        ) {
-            StreamMetadataBar(
-                channel = channel,
-                displayName = displayName,
-                avatarUrl = avatarUrl,
-                streamTitle = streamTitle,
-                gameName = gameName,
-                viewersCount = viewersCount,
-                streamStartedAt = streamStartedAt,
-                expandTrigger = expandTrigger
-            )
-        }
-
-        // Twitch Chat
-        AnimatedVisibility(
-            visible = isChatVisible,
-            enter = expandVertically(animationSpec = SamtchAnimation.springInteractive()) + fadeIn(),
-            exit = shrinkVertically(animationSpec = SamtchAnimation.springInteractive()) + fadeOut(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) {
+            // Dynamic height container (Placeholder for the stable WebView)
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF18181B)) // Twitch background color
+                    .fillMaxWidth()
+                    .then(
+                        if (isAudioOnly) {
+                            Modifier.height(240.dp)
+                        } else if (portraitMode == PortraitMode.CHAT_ONLY) {
+                            Modifier.height(0.dp)
+                        } else {
+                            Modifier.aspectRatio(16f / 9f)
+                        }
+                    )
+                    .onSizeChanged { size ->
+                        playerSize = size
+                    }
             ) {
-                TwitchChat(
+                webView(Modifier.fillMaxSize()) {
+                    // Internal toggle ignored as per request to drop injected toggle
+                }
+
+                // Adblock status banner at the top
+                AdblockBanner(
+                    text = adblockText,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
+
+            // Tiny metadata space above chat
+            AnimatedVisibility(
+                visible = !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
+                enter = SamtchAnimation.FadeIn,
+                exit = SamtchAnimation.FadeOut
+            ) {
+                StreamMetadataBar(
                     channel = channel,
-                    isCompact = false,
-                    viewModel = chatViewModel,
+                    displayName = displayName,
+                    avatarUrl = avatarUrl,
+                    streamTitle = streamTitle,
+                    gameName = gameName,
+                    viewersCount = viewersCount,
+                    streamStartedAt = streamStartedAt,
+                    expandTrigger = expandTrigger,
+                    forceExpanded = portraitMode == PortraitMode.CHAT_ONLY
+                )
+            }
+
+            // Twitch Chat & Mode Toggle Container
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF18181B))
-                )
+                        .background(Color(0xFF18181B)) // Twitch background color
+                ) {
+                    TwitchChat(
+                        channel = channel,
+                        isCompact = false,
+                        viewModel = chatViewModel,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF18181B))
+                    )
+                }
+
+                // Floating Toggle Mode Circle
+                if (!isAudioOnly) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = 100.dp, end = 16.dp) // Elevated further to avoid overlapping with message input
+                            .navigationBarsPadding()
+                    ) {
+                        Surface(
+                            onClick = onToggleMode,
+                            shape = CircleShape,
+                            color = Color(0xFFBF94FF).copy(alpha = 0.8f),
+                            contentColor = Color.White,
+                            tonalElevation = 6.dp,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = when (portraitMode) {
+                                        PortraitMode.VIDEO_AND_CHAT -> Icons.Default.SmartDisplay
+                                        PortraitMode.CHAT_ONLY -> Icons.AutoMirrored.Filled.Chat
+                                    },
+                                    contentDescription = "Toggle Mode",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
