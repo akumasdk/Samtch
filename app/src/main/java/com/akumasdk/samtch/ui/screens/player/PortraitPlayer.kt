@@ -48,8 +48,8 @@ fun PortraitPlayer(
     adblockText: String = "",
     streamStartedAt: String? = null,
     isChatVisible: Boolean = true,
+    expandTrigger: Int = 0,
     onToggleChat: () -> Unit = {},
-    onToggleFullscreen: () -> Unit,
     chatViewModel: ChatViewModel,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
@@ -60,7 +60,7 @@ fun PortraitPlayer(
             .fillMaxSize()
             .background(Color.Black)
             .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
-        verticalArrangement = if (isChatVisible) Arrangement.Top else Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
         // Dynamic height container
         Box(
@@ -75,40 +75,6 @@ fun PortraitPlayer(
                 )
                 .onSizeChanged { size ->
                     playerSize = size
-                }
-                .pointerInput(Unit) {
-                    var lastTapTime = 0L
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type == PointerEventType.Press) {
-                                val currentTime = event.changes.first().uptimeMillis
-                                val isDoubleTap =
-                                    (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
-
-                                if (isDoubleTap) {
-                                    val position = event.changes.first().position
-                                    val centerX = playerSize.width / 2f
-                                    val centerY = playerSize.height / 2f
-
-                                    // Define central region (30% width and height from center)
-                                    val radiusX = playerSize.width * 0.15f
-                                    val radiusY = playerSize.height * 0.15f
-
-                                    val isInCenterZone =
-                                        abs(position.x - centerX) <= radiusX &&
-                                                abs(position.y - centerY) <= radiusY
-
-                                    if (isInCenterZone) {
-                                        onToggleFullscreen()
-                                        // Consume the second tap to prevent WebView from seeing it
-                                        event.changes.forEach { it.consume() }
-                                    }
-                                }
-                                lastTapTime = currentTime
-                            }
-                        }
-                    }
                 }
         ) {
             webView(Modifier.fillMaxSize(), onToggleChat)
@@ -133,7 +99,8 @@ fun PortraitPlayer(
                 streamTitle = streamTitle,
                 gameName = gameName,
                 viewersCount = viewersCount,
-                streamStartedAt = streamStartedAt
+                streamStartedAt = streamStartedAt,
+                expandTrigger = expandTrigger
             )
         }
 

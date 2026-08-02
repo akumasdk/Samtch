@@ -6,7 +6,9 @@ import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +43,7 @@ fun FullscreenPlayer(
     adblockText: String = "",
     streamStartedAt: String? = null,
     isChatVisible: Boolean = false,
+    expandTrigger: Int = 0,
     onToggleChat: () -> Unit = {},
     chatViewModel: ChatViewModel,
     webView: @Composable (Modifier, () -> Unit) -> Unit
@@ -60,40 +63,6 @@ fun FullscreenPlayer(
                 .weight(1f)
                 .onSizeChanged { size ->
                     playerSize = size
-                }
-                .pointerInput(Unit) {
-                    var lastTapTime = 0L
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type == PointerEventType.Press) {
-                                val currentTime = event.changes.first().uptimeMillis
-                                val isDoubleTap =
-                                    (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
-
-                                if (isDoubleTap) {
-                                    val position = event.changes.first().position
-                                    val centerX = playerSize.width / 2f
-                                    val centerY = playerSize.height / 2f
-
-                                    // Define central region (30% width and height from center)
-                                    val radiusX = playerSize.width * 0.15f
-                                    val radiusY = playerSize.height * 0.15f
-
-                                    val isInCenterZone =
-                                        abs(position.x - centerX) <= radiusX &&
-                                                abs(position.y - centerY) <= radiusY
-
-                                    if (isInCenterZone) {
-                                        onToggleChat()
-                                        // Consume the second tap to prevent WebView from seeing it
-                                        event.changes.forEach { it.consume() }
-                                    }
-                                }
-                                lastTapTime = currentTime
-                            }
-                        }
-                    }
                 }
         ) {
             webView(Modifier.fillMaxSize(), onToggleChat)
@@ -123,6 +92,23 @@ fun FullscreenPlayer(
                     .fillMaxHeight()
                     .background(Color(0xFF18181B))
             ) {
+                // Header with Close Button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onToggleChat) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close Chat",
+                            tint = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
                 // Metadata space above chat (Only visible when chat is open)
                 AnimatedVisibility(
                     visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
@@ -137,6 +123,7 @@ fun FullscreenPlayer(
                         gameName = gameName,
                         viewersCount = viewersCount,
                         streamStartedAt = streamStartedAt,
+                        expandTrigger = expandTrigger,
                         modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
                     )
                 }

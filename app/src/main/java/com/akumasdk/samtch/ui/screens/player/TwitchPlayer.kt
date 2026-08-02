@@ -47,7 +47,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -61,8 +63,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -139,6 +145,7 @@ fun TwitchPlayer(
     val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
 
     var isChatVisible by remember { mutableStateOf(true) }
+    var metadataExpandTrigger by remember { mutableIntStateOf(0) }
 
     // Nudge animation for first-time users
     val nudgeOffset = remember { Animatable(0f) }
@@ -481,16 +488,26 @@ fun TwitchPlayer(
     // --- STABLE ANIMATION SYSTEM ---
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
 
     // Size & Position animations
     val playerHeight by animateDpAsState(
-        targetValue = if (isMinimized) 64.dp else if (isAudioOnly) 240.dp else (screenWidth * 9 / 16),
+        targetValue = when {
+            isMinimized -> 64.dp
+            isAudioOnly -> 240.dp
+            isFullscreen -> screenHeight
+            else -> (screenWidth * 9 / 16)
+        },
         animationSpec = SamtchAnimation.DpSpring,
         label = "StablePlayerHeight"
     )
 
     val playerWidth by animateDpAsState(
-        targetValue = if (isMinimized) 120.dp else screenWidth,
+        targetValue = when {
+            isMinimized -> 120.dp
+            isFullscreen && isChatVisible -> (screenWidth - 300.dp)
+            else -> screenWidth
+        },
         animationSpec = SamtchAnimation.DpSpring,
         label = "StablePlayerWidth"
     )
@@ -521,6 +538,8 @@ fun TwitchPlayer(
 
     // Root Container
     SharedTransitionLayout {
+        var stablePlayerSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+
         Box(modifier = Modifier.fillMaxSize()) {
             // Fullscreen Background
             if (!isMinimized) {
@@ -544,6 +563,7 @@ fun TwitchPlayer(
                         adblockText = adblockText,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                         isChatVisible = isChatVisible,
+                        expandTrigger = metadataExpandTrigger,
                         onToggleChat = { isChatVisible = !isChatVisible },
                         chatViewModel = chatViewModel,
                         webView = { _, _ -> /* Stable player is shared */ }
@@ -560,8 +580,8 @@ fun TwitchPlayer(
                         adblockText = adblockText,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                         isChatVisible = isChatVisible,
+                        expandTrigger = metadataExpandTrigger,
                         onToggleChat = { isChatVisible = !isChatVisible },
-                        onToggleFullscreen = onToggleFullscreen,
                         chatViewModel = chatViewModel,
                         webView = { _, _ -> /* Stable player is shared */ }
                     )
@@ -700,12 +720,74 @@ fun TwitchPlayer(
                         .clip(RoundedCornerShape(playerCornerRadius))
                 } else {
                     Modifier
-                        .align(Alignment.TopCenter)
+                        .align(Alignment.TopStart) // Align start to handle side chat in fullscreen
                         .size(playerWidth, playerHeight)
                         .clip(RectangleShape)
                 }
+                .onSizeChanged { stablePlayerSize = it }
+                .pointerInput(isFullscreen, isMinimized) {
+                    var lastTapTime = 0L
+                    awaitPointerEventScope {
+                        while (true) {
+                            // 1. Double tap detection on Initial pass (priority)
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val isPress = event.type == PointerEventType.Press
+                            
+                            if (isPress) {
+                                val currentTime = event.changes.first().uptimeMillis
+                                val isDoubleTap = (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
+
+                                if (isDoubleTap) {
+                                    val position = event.changes.first().position
+                                    val centerX = stablePlayerSize.width / 2f
+                                    val centerY = stablePlayerSize.height / 2f
+
+                                    // Define central region (40% width and height from center)
+                                    val radiusX = stablePlayerSize.width * 0.2f
+                                    val radiusY = stablePlayerSize.height * 0.2f
+
+                                    val isInCenterZone = kotlin.math.abs(position.x - centerX) <= radiusX &&
+                                            kotlin.math.abs(position.y - centerY) <= radiusY
+
+                                    if (isInCenterZone) {
+                                        if (isFullscreen) {
+                                            Log.d("TwitchPlayer", "Double tap: toggling chat")
+                                            isChatVisible = !isChatVisible
+                                        } else if (!isMinimized) {
+                                            Log.d("TwitchPlayer", "Double tap: toggling fullscreen")
+                                            onToggleFullscreen()
+                                        }
+                                        // Consume the second tap to prevent WebView from seeing it
+                                        event.changes.forEach { it.consume() }
+                                    }
+                                } else {
+                                    // Potential single tap - wait for Main pass to see if WebView consumes it
+                                }
+                                lastTapTime = currentTime
+                            }
+                        }
+                    }
+                }
+                .pointerInput(isFullscreen, isMinimized) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            // 2. Single tap detection on Main pass (to avoid double-toggle with WebView controls)
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            if (event.type == PointerEventType.Press && !isFullscreen && !isMinimized) {
+                                // Wait a bit to see if it's a double tap (we handle double tap in Initial pass anyway)
+                                // Actually, if we are here and it's NOT consumed by children, it's a safe single tap
+                                val isConsumed = event.changes.any { it.isConsumed }
+                                if (!isConsumed) {
+                                    metadataExpandTrigger++
+                                    if (!isChatVisible) isChatVisible = true
+                                }
+                            }
+                        }
+                    }
+                }
             ) {
                 playerContent(Modifier.fillMaxSize()) {
+                    Log.d("TwitchPlayer", "Toggle chat requested via bridge. Current visible: $isChatVisible")
                     isChatVisible = !isChatVisible
                 }
                 if (isMinimized) {

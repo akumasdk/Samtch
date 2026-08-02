@@ -78,4 +78,10 @@
     <string name="chat_login_required">Log in to chat</string>
     <string name="chat_login_prompt">You must be logged in to participate in chat.</string>
     <string name="chat_logged_in_as">Logged in as %s</string>
+
+    <!-- Stream Info Dialog -->
+    <string name="stream_title_label">Title</string>
+    <string name="category_label">Category</string>
+    <string name="viewers_label">Viewers</string>
+    <string name="uptime_label">Uptime</string>
 </resources>

@@ -184,7 +184,7 @@ fun MiniPlayer(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
-                            modifier = Modifier.basicMarquee()
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
