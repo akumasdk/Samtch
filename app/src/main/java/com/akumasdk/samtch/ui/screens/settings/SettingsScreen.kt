@@ -32,6 +32,7 @@ import com.akumasdk.samtch.BuildConfig
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.model.GitHubRelease
 import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.util.UpdateManager
 import kotlinx.coroutines.launch
 
@@ -304,8 +305,8 @@ fun SettingsScreen(
 
     AnimatedVisibility(
         visible = isBttvSettingsOpen,
-        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+        enter = SamtchAnimation.ScreenEnterTransition,
+        exit = SamtchAnimation.ScreenExitTransition
     ) {
         BttvSettingsScreen(
             onBack = { isBttvSettingsOpen = false }

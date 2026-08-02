@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -61,12 +62,12 @@ fun MiniPlayer(
             // Nudge right
             nudgeOffset.animateTo(
                 targetValue = 40f,
-                animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy)
+                animationSpec = SamtchAnimation.springBouncy()
             )
             // Back to center
             nudgeOffset.animateTo(
                 targetValue = 0f,
-                animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                animationSpec = SamtchAnimation.springInteractive()
             )
         }
     }
@@ -81,12 +82,13 @@ fun MiniPlayer(
             
             val color by animateColorAsState(
                 if (isSwiping) Color.Red.copy(alpha = (0.1f + (0.3f * progress)).coerceIn(0f, 0.4f)) else Color.Transparent,
+                animationSpec = SamtchAnimation.ColorTween,
                 label = "DismissBackground"
             )
 
             val iconScale by animateFloatAsState(
                 if (isSwiping) 0.8f + (0.4f * progress) else 0.5f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                animationSpec = SamtchAnimation.springBouncy(),
                 label = "TrashIconScale"
             )
 
@@ -171,8 +173,8 @@ fun MiniPlayer(
                     AnimatedContent(
                         targetState = streamTitle ?: "Live",
                         transitionSpec = {
-                            (slideInVertically { height -> height / 2 } + fadeIn())
-                                .togetherWith(slideOutVertically { height -> -height / 2 } + fadeOut())
+                            (slideInVertically(animationSpec = SamtchAnimation.springInteractive()) { height -> height / 2 } + fadeIn())
+                                .togetherWith(slideOutVertically(animationSpec = SamtchAnimation.springInteractive()) { height -> -height / 2 } + fadeOut())
                         },
                         label = "MiniTitleAnimation"
                     ) { targetTitle ->

@@ -14,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.animation.AnimatedVisibility
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
@@ -197,7 +199,11 @@ fun BttvSettingsChat(
             }
         )
 
-        if (!isReady) {
+        AnimatedVisibility(
+            visible = !isReady,
+            enter = SamtchAnimation.FadeIn,
+            exit = SamtchAnimation.FadeOut
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

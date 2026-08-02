@@ -2,6 +2,7 @@ package com.akumasdk.samtch.ui.screens.player
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,10 +40,11 @@ fun FullscreenPlayer(
     viewersCount: Int = 0,
     adblockText: String = "",
     streamStartedAt: String? = null,
+    isChatVisible: Boolean = false,
+    onToggleChat: () -> Unit = {},
     chatViewModel: ChatViewModel,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
-    var isChatVisible by remember { mutableStateOf(false) }
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
     var showTooltip by remember { mutableStateOf(true) }
 
@@ -83,7 +85,7 @@ fun FullscreenPlayer(
                                                 abs(position.y - centerY) <= radiusY
 
                                     if (isInCenterZone) {
-                                        isChatVisible = !isChatVisible
+                                        onToggleChat()
                                         // Consume the second tap to prevent WebView from seeing it
                                         event.changes.forEach { it.consume() }
                                     }
@@ -94,9 +96,7 @@ fun FullscreenPlayer(
                     }
                 }
         ) {
-            webView(Modifier.fillMaxSize()) {
-                isChatVisible = !isChatVisible
-            }
+            webView(Modifier.fillMaxSize(), onToggleChat)
 
             // Adblock status banner at the top
             AdblockBanner(
@@ -112,7 +112,11 @@ fun FullscreenPlayer(
         }
 
         // Optional Side Chat with Metadata Bar
-        if (isChatVisible) {
+        AnimatedVisibility(
+            visible = isChatVisible,
+            enter = slideInHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeIn(),
+            exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
+        ) {
             Column(
                 modifier = Modifier
                     .width(300.dp)
@@ -122,8 +126,8 @@ fun FullscreenPlayer(
                 // Metadata space above chat (Only visible when chat is open)
                 AnimatedVisibility(
                     visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
-                    enter = fadeIn(),
-                    exit = fadeOut()
+                    enter = SamtchAnimation.FadeIn,
+                    exit = SamtchAnimation.FadeOut
                 ) {
                     StreamMetadataBar(
                         channel = channel,

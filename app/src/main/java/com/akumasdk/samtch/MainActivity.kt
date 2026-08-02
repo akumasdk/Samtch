@@ -66,6 +66,7 @@ import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.DeviceOrientationManager
 import com.akumasdk.samtch.util.PhysicalOrientation
@@ -159,7 +160,7 @@ class MainActivity : ComponentActivity() {
                 // Animated browser padding for smooth layout transitions
                 val browserBottomPadding by animateDpAsState(
                     targetValue = if (isMinimized && selectedChannel != null) 104.dp else 0.dp,
-                    animationSpec = spring(stiffness = 500f, dampingRatio = 0.85f),
+                    animationSpec = SamtchAnimation.DpSpring,
                     label = "BrowserPaddingAnimation"
                 )
 
@@ -265,11 +266,8 @@ class MainActivity : ComponentActivity() {
 
                     AnimatedVisibility(
                         visible = selectedChannel != null,
-                        enter = slideInVertically(
-                            initialOffsetY = { it },
-                            animationSpec = spring(stiffness = 400f, dampingRatio = 0.8f)
-                        ) + fadeIn(),
-                        exit = fadeOut(animationSpec = tween(durationMillis = 300)),
+                        enter = SamtchAnimation.PlayerEnterTransition,
+                        exit = SamtchAnimation.PlayerExitTransition,
                         modifier = Modifier.fillMaxSize()
                     ) {
                         displayedChannel?.let { channel ->
@@ -308,8 +306,8 @@ class MainActivity : ComponentActivity() {
 
                     AnimatedVisibility(
                         visible = isSettingsOpen,
-                        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-                        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                        enter = SamtchAnimation.ScreenEnterTransition,
+                        exit = SamtchAnimation.ScreenExitTransition
                     ) {
                         SettingsScreen(onBack = { isSettingsOpen = false })
                     }

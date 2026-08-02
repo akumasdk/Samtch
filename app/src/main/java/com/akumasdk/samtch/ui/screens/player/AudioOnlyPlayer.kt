@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.components.AnimatedViewerCount
 
 @Composable
@@ -166,8 +167,8 @@ fun AudioOnlyPlayer(
                     AnimatedContent(
                         targetState = displayTitle ?: "",
                         transitionSpec = {
-                            (slideInVertically { height -> height / 2 } + fadeIn())
-                                .togetherWith(slideOutVertically { height -> -height / 2 } + fadeOut())
+                            (slideInVertically(animationSpec = SamtchAnimation.springInteractive()) { height -> height / 2 } + fadeIn())
+                                .togetherWith(slideOutVertically(animationSpec = SamtchAnimation.springInteractive()) { height -> -height / 2 } + fadeOut())
                         },
                         label = "AudioTitleAnimation"
                     ) { targetTitle ->
@@ -191,8 +192,8 @@ fun AudioOnlyPlayer(
                         AnimatedContent(
                             targetState = gameName ?: "",
                             transitionSpec = {
-                                fadeIn(animationSpec = tween(220, delayMillis = 90))
-                                    .togetherWith(fadeOut(animationSpec = tween(90)))
+                                (fadeIn(animationSpec = SamtchAnimation.StandardTween) + scaleIn(initialScale = 0.9f))
+                                    .togetherWith(fadeOut(animationSpec = SamtchAnimation.FastTween) + scaleOut(targetScale = 0.9f))
                             },
                             label = "AudioGameAnimation",
                             modifier = Modifier.weight(1f, fill = false)

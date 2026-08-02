@@ -2,8 +2,10 @@ package com.akumasdk.samtch.ui.screens.player
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.spring
@@ -27,6 +29,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.components.AdblockBanner
 import com.akumasdk.samtch.ui.components.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.TwitchChat
@@ -44,18 +47,19 @@ fun PortraitPlayer(
     isAudioOnly: Boolean = false,
     adblockText: String = "",
     streamStartedAt: String? = null,
+    isChatVisible: Boolean = true,
+    onToggleChat: () -> Unit = {},
     onToggleFullscreen: () -> Unit,
     chatViewModel: ChatViewModel,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
-    var isChatVisible by remember { mutableStateOf(true) }
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .animateContentSize(),
+            .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
         verticalArrangement = if (isChatVisible) Arrangement.Top else Arrangement.Center
     ) {
         // Dynamic height container
@@ -107,9 +111,7 @@ fun PortraitPlayer(
                     }
                 }
         ) {
-            webView(Modifier.fillMaxSize()) {
-                isChatVisible = !isChatVisible
-            }
+            webView(Modifier.fillMaxSize(), onToggleChat)
 
             // Adblock status banner at the top
             AdblockBanner(
@@ -121,8 +123,8 @@ fun PortraitPlayer(
         // Tiny metadata space above chat
         AnimatedVisibility(
             visible = isChatVisible && !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
-            enter = fadeIn(),
-            exit = fadeOut()
+            enter = SamtchAnimation.FadeIn,
+            exit = SamtchAnimation.FadeOut
         ) {
             StreamMetadataBar(
                 channel = channel,
@@ -136,11 +138,17 @@ fun PortraitPlayer(
         }
 
         // Twitch Chat
-        if (isChatVisible) {
+        AnimatedVisibility(
+            visible = isChatVisible,
+            enter = expandVertically(animationSpec = SamtchAnimation.springInteractive()) + fadeIn(),
+            exit = shrinkVertically(animationSpec = SamtchAnimation.springInteractive()) + fadeOut(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+                    .fillMaxSize()
                     .background(Color(0xFF18181B)) // Twitch background color
             ) {
                 TwitchChat(

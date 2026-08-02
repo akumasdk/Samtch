@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
@@ -99,11 +100,11 @@ fun AnimatedViewerCount(
             targetState = count,
             transitionSpec = {
                 if (targetState > initialState) {
-                    (slideInVertically { height -> height } + fadeIn())
-                        .togetherWith(slideOutVertically { height -> -height } + fadeOut())
+                    (slideInVertically { height -> height } + fadeIn(animationSpec = SamtchAnimation.FastTween))
+                        .togetherWith(slideOutVertically { height -> -height } + fadeOut(animationSpec = SamtchAnimation.FastTween))
                 } else {
-                    (slideInVertically { height -> -height } + fadeIn())
-                        .togetherWith(slideOutVertically { height -> height } + fadeOut())
+                    (slideInVertically { height -> -height } + fadeIn(animationSpec = SamtchAnimation.FastTween))
+                        .togetherWith(slideOutVertically { height -> height } + fadeOut(animationSpec = SamtchAnimation.FastTween))
                 }.using(
                     SizeTransform(clip = false)
                 )
@@ -145,7 +146,7 @@ fun StreamMetadataBar(
     var isSlim by rememberSaveable { mutableStateOf(false) }
     val animatedHeight by animateDpAsState(
         targetValue = if (isSlim) 38.dp else 68.dp,
-        animationSpec = spring(stiffness = 500f, dampingRatio = 0.85f),
+        animationSpec = SamtchAnimation.DpSpring,
         label = "MetadataBarHeight"
     )
 
@@ -168,7 +169,7 @@ fun StreamMetadataBar(
         AnimatedContent(
             targetState = isSlim,
             transitionSpec = {
-                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                SamtchAnimation.FadeIn togetherWith SamtchAnimation.FadeOut
             },
             label = "MetadataBarStyleTransition"
         ) { slimMode ->
@@ -241,8 +242,8 @@ fun StreamMetadataBar(
                         AnimatedContent(
                             targetState = streamTitle ?: "",
                             transitionSpec = {
-                                (slideInVertically { height -> height / 2 } + fadeIn())
-                                    .togetherWith(slideOutVertically { height -> -height / 2 } + fadeOut())
+                                (slideInVertically(animationSpec = SamtchAnimation.springInteractive()) { height -> height / 2 } + fadeIn())
+                                    .togetherWith(slideOutVertically(animationSpec = SamtchAnimation.springInteractive()) { height -> -height / 2 } + fadeOut())
                             },
                             label = "StreamTitleAnimation",
                             modifier = Modifier.fillMaxWidth()
@@ -370,8 +371,8 @@ fun AdblockBanner(
 ) {
     AnimatedVisibility(
         visible = text.isNotEmpty(),
-        enter = expandVertically() + fadeIn(),
-        exit = shrinkVertically() + fadeOut(),
+        enter = expandVertically(animationSpec = SamtchAnimation.springInteractive()) + fadeIn(),
+        exit = shrinkVertically(animationSpec = SamtchAnimation.springInteractive()) + fadeOut(),
         modifier = modifier
     ) {
         Surface(

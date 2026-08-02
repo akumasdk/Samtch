@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.WebViewNavigator
@@ -358,8 +359,8 @@ fun TwitchBrowser(
         // Loading Overlay
         AnimatedVisibility(
             visible = isUiLoading,
-            enter = fadeIn(),
-            exit = fadeOut(animationSpec = tween(durationMillis = 300)),
+            enter = SamtchAnimation.FadeIn,
+            exit = SamtchAnimation.FadeOut,
             modifier = Modifier.fillMaxSize()
         ) {
             Box(

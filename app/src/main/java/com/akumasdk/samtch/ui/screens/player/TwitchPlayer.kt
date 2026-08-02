@@ -1,50 +1,101 @@
 package com.akumasdk.samtch.ui.screens.player
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import android.content.ComponentName
+import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import com.akumasdk.samtch.R
-import androidx.media3.common.Player
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
-import android.content.ComponentName
-import android.util.Log
-import coil.compose.AsyncImage
-import com.google.common.util.concurrent.MoreExecutors
-import com.multiplatform.webview.web.rememberSaveableWebViewState
-import com.multiplatform.webview.web.rememberWebViewNavigator
-import com.akumasdk.samtch.service.PlaybackService
-import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.data.api.gql.TwitchGqlService
-import com.akumasdk.samtch.data.model.TwitchStreamMetadata
-import com.akumasdk.samtch.ui.components.MiniPlayer
-import com.akumasdk.samtch.ui.components.WebViewContainer
-import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import coil.compose.AsyncImage
+import com.akumasdk.samtch.R
+import com.akumasdk.samtch.data.api.gql.TwitchGqlService
+import com.akumasdk.samtch.data.model.TwitchStreamMetadata
+import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.service.PlaybackService
+import com.akumasdk.samtch.ui.components.WebViewContainer
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
+import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.google.common.util.concurrent.MoreExecutors
+import com.multiplatform.webview.web.rememberSaveableWebViewState
+import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -86,6 +137,27 @@ fun TwitchPlayer(
     val chatViewModel: ChatViewModel = viewModel()
 
     val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
+
+    var isChatVisible by remember { mutableStateOf(true) }
+
+    // Nudge animation for first-time users
+    val nudgeOffset = remember { Animatable(0f) }
+    LaunchedEffect(isMinimized, hintShown) {
+        if (isMinimized && !hintShown) {
+            delay(1000.milliseconds)
+            // Nudge right
+            nudgeOffset.animateTo(
+                targetValue = 40f,
+                animationSpec = SamtchAnimation.springBouncy()
+            )
+            // Back to center
+            nudgeOffset.animateTo(
+                targetValue = 0f,
+                animationSpec = SamtchAnimation.springInteractive()
+            )
+            SettingsManager.setMiniPlayerHintShown(context, true)
+        }
+    }
 
     // Manage chat connection lifecycle based on player state and app background status
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -321,17 +393,21 @@ fun TwitchPlayer(
             } else {
                 Box(modifier = modifier.background(Color.Black)) {
                     WebViewContainer(
-                        modifier = Modifier.fillMaxSize().onGloballyPositioned { layoutCoordinates ->
-                            val rect = layoutCoordinates.boundsInWindow()
-                            onVideoBoundsChanged(
-                                android.graphics.Rect(
-                                    rect.left.toInt(),
-                                    rect.top.toInt(),
-                                    rect.right.toInt(),
-                                    rect.bottom.toInt()
-                                )
-                            )
-                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .onGloballyPositioned { layoutCoordinates ->
+                                if (!isMinimized) {
+                                    val rect = layoutCoordinates.boundsInWindow()
+                                    onVideoBoundsChanged(
+                                        android.graphics.Rect(
+                                            rect.left.toInt(),
+                                            rect.top.toInt(),
+                                            rect.right.toInt(),
+                                            rect.bottom.toInt()
+                                        )
+                                    )
+                                }
+                            },
                         state = state,
                         navigator = navigator,
                         channel = channel,
@@ -402,41 +478,62 @@ fun TwitchPlayer(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .animateContentSize(animationSpec = spring(stiffness = 500f))
-    ) {
-        if (isMinimized) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .navigationBarsPadding()
-                    .padding(bottom = 12.dp),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                MiniPlayer(
-                    channel = channel,
-                    displayName = streamMetadata?.user?.displayName,
-                    streamTitle = streamMetadata?.user?.stream?.title,
-                    playerContent = { modifier -> playerContent(modifier) {} },
-                    onClick = onExpand,
-                    onClose = {
-                        mediaController?.stop()
-                        onClose()
-                    },
-                    showHint = !hintShown
-                )
+    // --- STABLE ANIMATION SYSTEM ---
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+
+    // Size & Position animations
+    val playerHeight by animateDpAsState(
+        targetValue = if (isMinimized) 64.dp else if (isAudioOnly) 240.dp else (screenWidth * 9 / 16),
+        animationSpec = SamtchAnimation.DpSpring,
+        label = "StablePlayerHeight"
+    )
+
+    val playerWidth by animateDpAsState(
+        targetValue = if (isMinimized) 120.dp else screenWidth,
+        animationSpec = SamtchAnimation.DpSpring,
+        label = "StablePlayerWidth"
+    )
+
+    val playerPaddingStart by animateDpAsState(
+        targetValue = if (isMinimized) (8.dp + 16.dp) else 0.dp,
+        animationSpec = SamtchAnimation.DpSpring,
+        label = "StablePlayerPaddingStart"
+    )
+
+    val playerPaddingBottom by animateDpAsState(
+        targetValue = if (isMinimized) (12.dp + 8.dp) else 0.dp,
+        animationSpec = SamtchAnimation.DpSpring,
+        label = "StablePlayerPaddingBottom"
+    )
+
+    val playerCornerRadius by animateDpAsState(
+        targetValue = if (isMinimized) 20.dp else 0.dp,
+        animationSpec = SamtchAnimation.DpSpring,
+        label = "StablePlayerCornerRadius"
+    )
+
+    val playerElevation by animateDpAsState(
+        targetValue = if (isMinimized) 12.dp else 0.dp,
+        animationSpec = SamtchAnimation.DpSpring,
+        label = "StablePlayerElevation"
+    )
+
+    // Root Container
+    SharedTransitionLayout {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Fullscreen Background
+            if (!isMinimized) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black))
             }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
+
+            // 1. FULL PLAYER OVERLAY (Chat, Metadata)
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !isMinimized,
+                enter = fadeIn(animationSpec = SamtchAnimation.EmphasizedTween),
+                exit = fadeOut(animationSpec = SamtchAnimation.FastTween)
             ) {
-                if (isPip) {
-                    playerContent(Modifier.fillMaxSize()) {}
-                } else if (isFullscreen) {
+                if (isFullscreen) {
                     FullscreenPlayer(
                         channel = channel,
                         displayName = streamMetadata?.user?.displayName,
@@ -446,8 +543,10 @@ fun TwitchPlayer(
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         adblockText = adblockText,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
+                        isChatVisible = isChatVisible,
+                        onToggleChat = { isChatVisible = !isChatVisible },
                         chatViewModel = chatViewModel,
-                        webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
+                        webView = { _, _ -> /* Stable player is shared */ }
                     )
                 } else {
                     PortraitPlayer(
@@ -460,9 +559,165 @@ fun TwitchPlayer(
                         isAudioOnly = isAudioOnly,
                         adblockText = adblockText,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
+                        isChatVisible = isChatVisible,
+                        onToggleChat = { isChatVisible = !isChatVisible },
                         onToggleFullscreen = onToggleFullscreen,
                         chatViewModel = chatViewModel,
-                        webView = { modifier, onToggleChat -> playerContent(modifier, onToggleChat) }
+                        webView = { _, _ -> /* Stable player is shared */ }
+                    )
+                }
+            }
+
+            // 2. MINI PLAYER SHELL & DISMISS LOGIC
+            val dismissState = rememberSwipeToDismissBoxState(
+                confirmValueChange = {
+                    if (it == SwipeToDismissBoxValue.StartToEnd || it == SwipeToDismissBoxValue.EndToStart) {
+                        onClose()
+                        true
+                    } else {
+                        false
+                    }
+                }
+            )
+
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isMinimized,
+                enter = fadeIn(animationSpec = SamtchAnimation.StandardTween) + scaleIn(initialScale = 0.92f, animationSpec = SamtchAnimation.StandardTween),
+                exit = fadeOut(animationSpec = SamtchAnimation.FastTween) + scaleOut(targetScale = 0.92f, animationSpec = SamtchAnimation.FastTween),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 12.dp)
+                    .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) }
+            ) {
+                SwipeToDismissBox(
+                    state = dismissState,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    backgroundContent = {
+                        val direction = dismissState.dismissDirection
+                        val isSwiping = direction != SwipeToDismissBoxValue.Settled
+                        val progress = if (isSwiping) dismissState.progress else 0f
+                        
+                        val color by animateColorAsState(
+                            if (isSwiping) Color.Red.copy(alpha = (0.1f + (0.3f * progress)).coerceIn(0f, 0.4f)) else Color.Transparent,
+                            label = "DismissBackground"
+                        )
+
+                        val iconScale by animateFloatAsState(
+                            if (isSwiping) 0.8f + (0.4f * progress) else 0.5f,
+                            animationSpec = SamtchAnimation.springBouncy(),
+                            label = "TrashIconScale"
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(40.dp))
+                                .background(color),
+                            contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) 
+                                Alignment.CenterStart else Alignment.CenterEnd
+                        ) {
+                            if (isSwiping) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = (0.2f + progress).coerceIn(0f, 1f)),
+                                    modifier = Modifier
+                                        .padding(horizontal = 28.dp)
+                                        .size(28.dp)
+                                        .scale(iconScale)
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    // This mimics the MiniPlayer surface
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .shadow(playerElevation, RoundedCornerShape(40.dp))
+                            .clip(RoundedCornerShape(40.dp))
+                            .clickable(onClick = onExpand),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                        tonalElevation = 8.dp
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                        ) {
+                            // Placeholder for the shared player
+                            Box(modifier = Modifier.size(width = 120.dp, height = 64.dp))
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Info
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = streamMetadata?.user?.displayName ?: channel,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = streamMetadata?.user?.stream?.title ?: "Live",
+                                    color = Color(0xFFBF94FF),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    modifier = Modifier.basicMarquee()
+                                )
+                            }
+
+                            IconButton(onClick = onClose) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. THE STABLE PLAYER (Stable during layout changes)
+            Box(
+                modifier = if (isPip) {
+                    Modifier.fillMaxSize()
+                } else if (isMinimized) {
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .navigationBarsPadding()
+                        .padding(bottom = playerPaddingBottom)
+                        .padding(start = playerPaddingStart)
+                        .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
+                        .offset { 
+                            // Follow the swipe to dismiss offset
+                            IntOffset(dismissState.requireOffset().roundToInt(), 0) 
+                        }
+                        .size(playerWidth, playerHeight)
+                        .clip(RoundedCornerShape(playerCornerRadius))
+                } else {
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .size(playerWidth, playerHeight)
+                        .clip(RectangleShape)
+                }
+            ) {
+                playerContent(Modifier.fillMaxSize()) {
+                    isChatVisible = !isChatVisible
+                }
+                if (isMinimized) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Transparent)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null, // No ripple here, the parent Surface will show it or we just want the action
+                                onClick = onExpand
+                            )
                     )
                 }
             }
