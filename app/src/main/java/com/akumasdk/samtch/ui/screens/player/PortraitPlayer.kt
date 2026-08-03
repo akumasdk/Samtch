@@ -93,12 +93,6 @@ fun PortraitPlayer(
                 webView(Modifier.fillMaxSize()) {
                     // Internal toggle ignored as per request to drop injected toggle
                 }
-
-                // Adblock status banner at the top
-                AdblockBanner(
-                    text = adblockText,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
             }
 
             // Tiny metadata space above chat

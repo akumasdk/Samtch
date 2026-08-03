@@ -13,6 +13,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -31,6 +33,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.CircularProgressIndicator
@@ -95,8 +99,10 @@ import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
+import com.akumasdk.samtch.ui.components.AdblockBanner
 import com.akumasdk.samtch.ui.components.PlayerBackground
 import com.akumasdk.samtch.ui.components.PlayerLoadingScreen
+import com.akumasdk.samtch.ui.components.TapTooltip
 import com.akumasdk.samtch.ui.components.TwitchChat
 import com.akumasdk.samtch.ui.components.WebViewContainer
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
@@ -140,6 +146,8 @@ fun TwitchPlayer(
     val defaultLoadingMessage = stringResource(R.string.loading_stream)
     var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
     var adblockText by remember { mutableStateOf("") }
+
+    var showFullscreenControls by remember { mutableStateOf(true) }
 
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -391,6 +399,14 @@ fun TwitchPlayer(
         }
     }
 
+    // Auto-hide controls in fullscreen
+    LaunchedEffect(showFullscreenControls, isFullscreen) {
+        if (isFullscreen && showFullscreenControls) {
+            delay(5.seconds)
+            showFullscreenControls = false
+        }
+    }
+
     // Stable WebView content that won't be recreated when moving in the tree
     val playerContent = remember(channel, isAudioOnly) {
         movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
@@ -592,9 +608,13 @@ fun TwitchPlayer(
                         previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         isChatVisible = isChatVisible,
                         expandTrigger = metadataExpandTrigger,
-                        onToggleChat = { isChatVisible = !isChatVisible },
-                        chatContent = { isCompact, showInput, modifier -> 
-                            chatContent(isCompact, showInput, refreshTrigger, modifier)
+                        refreshTrigger = refreshTrigger,
+                        onToggleChat = { 
+                            isChatVisible = !isChatVisible
+                            showFullscreenControls = true
+                        },
+                        chatContent = { isCompact, showInput, rTrigger, modifier -> 
+                            chatContent(isCompact, showInput, rTrigger, modifier)
                         },
                         webView = { modifier, _ -> 
                             Box(modifier = modifier)
@@ -821,10 +841,10 @@ fun TwitchPlayer(
                             while (true) {
                                 // 2. Single tap detection on Main pass (to avoid double-toggle with WebView controls)
                                 val event = awaitPointerEvent(PointerEventPass.Main)
-                                if (event.type == PointerEventType.Press && !isFullscreen && !isMinimized) {
-                                    // Actually, if we are here and it's NOT consumed by children, it's a safe single tap
-                                    val isConsumed = event.changes.any { it.isConsumed }
-                                    if (!isConsumed) {
+                                if (event.type == PointerEventType.Press && !isMinimized) {
+                                    if (isFullscreen) {
+                                        showFullscreenControls = !showFullscreenControls
+                                    } else {
                                         metadataExpandTrigger++
                                         // If we were in chat only, return to standard mode to show metadata
                                         if (portraitMode == PortraitMode.CHAT_ONLY) {
@@ -843,11 +863,55 @@ fun TwitchPlayer(
                             Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")
                             if (isFullscreen) {
                                 isChatVisible = !isChatVisible
+                                showFullscreenControls = true
                             } else {
                                 // Cycle modes in portrait
                                 portraitMode = when (portraitMode) {
                                     PortraitMode.VIDEO_AND_CHAT -> PortraitMode.CHAT_ONLY
                                     PortraitMode.CHAT_ONLY -> PortraitMode.VIDEO_AND_CHAT
+                                }
+                            }
+                        }
+                    }
+
+                    // Overlays on top of the player
+                    if (!isMinimized && !isPip) {
+                        AdblockBanner(
+                            text = adblockText,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+
+                        if (isFullscreen) {
+                            TapTooltip(
+                                visible = showFullscreenControls,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+
+                            // Toggle Chat Tab Button
+                            AnimatedVisibility(
+                                visible = showFullscreenControls,
+                                enter = fadeIn() + slideInHorizontally { it / 2 },
+                                exit = fadeOut() + slideOutHorizontally { it / 2 },
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            ) {
+                                Surface(
+                                    onClick = {
+                                        isChatVisible = !isChatVisible
+                                        showFullscreenControls = true
+                                    },
+                                    shape = RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp),
+                                    color = Color.Black.copy(alpha = 0.6f),
+                                    contentColor = Color.White,
+                                    tonalElevation = 4.dp,
+                                    modifier = Modifier.height(80.dp).width(40.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = if (isChatVisible) Icons.Default.ChevronRight else Icons.Default.ChevronLeft,
+                                            contentDescription = "Toggle Chat",
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
