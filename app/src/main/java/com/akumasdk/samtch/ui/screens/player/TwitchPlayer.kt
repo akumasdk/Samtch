@@ -99,6 +99,7 @@ import com.akumasdk.samtch.ui.components.WebViewContainer
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
@@ -701,7 +702,7 @@ fun TwitchPlayer(
                             .shadow(playerElevation, RoundedCornerShape(40.dp))
                             .clip(RoundedCornerShape(40.dp))
                             .clickable(onClick = onExpand),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                        color = SamtchTheme.colors.miniPlayerBackground.copy(alpha = 0.98f),
                         tonalElevation = 8.dp
                     ) {
                         Row(
@@ -719,11 +720,12 @@ fun TwitchPlayer(
                                     text = streamMetadata?.user?.displayName ?: channel,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    color = SamtchTheme.colors.miniPlayerTitle
                                 )
                                 Text(
                                     text = streamMetadata?.user?.stream?.title ?: "Live",
-                                    color = Color(0xFFBF94FF),
+                                    color = SamtchTheme.colors.miniPlayerSubtitle,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
@@ -735,7 +737,7 @@ fun TwitchPlayer(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    tint = SamtchTheme.colors.miniPlayerTitle.copy(alpha = 0.6f)
                                 )
                             }
                         }

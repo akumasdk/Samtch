@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.ui.components.AdblockBanner
 import com.akumasdk.samtch.ui.components.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.TwitchChat
@@ -122,7 +123,7 @@ fun PortraitPlayer(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF18181B)) // Twitch background color
+                        .background(SamtchTheme.colors.chatBackground) // Twitch background color
                 ) {
                     TwitchChat(
                         channel = channel,
@@ -130,7 +131,7 @@ fun PortraitPlayer(
                         viewModel = chatViewModel,
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color(0xFF18181B))
+                            .background(SamtchTheme.colors.chatBackground)
                     )
                 }
 
@@ -145,7 +146,7 @@ fun PortraitPlayer(
                         Surface(
                             onClick = onToggleMode,
                             shape = CircleShape,
-                            color = Color(0xFFBF94FF).copy(alpha = 0.8f),
+                            color = SamtchTheme.colors.twitchPurpleLight.copy(alpha = 0.8f),
                             contentColor = Color.White,
                             tonalElevation = 6.dp,
                             modifier = Modifier.size(48.dp)

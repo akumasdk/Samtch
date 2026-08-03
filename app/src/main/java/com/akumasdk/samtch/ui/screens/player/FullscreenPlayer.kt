@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.screens.player
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -90,7 +91,7 @@ fun FullscreenPlayer(
                 modifier = Modifier
                     .width(300.dp)
                     .fillMaxHeight()
-                    .background(Color(0xFF18181B))
+                    .background(SamtchTheme.colors.chatBackground)
             ) {
                 // Metadata space above chat (Only visible when chat is open)
                 AnimatedVisibility(
@@ -118,7 +119,7 @@ fun FullscreenPlayer(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .background(Color(0xFF18181B))
+                        .background(SamtchTheme.colors.chatBackground)
                 )
             }
         }

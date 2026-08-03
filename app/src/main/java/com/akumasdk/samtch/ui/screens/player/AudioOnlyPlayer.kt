@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.ui.components.AnimatedViewerCount
 
 @Composable
@@ -56,8 +57,8 @@ fun AudioOnlyPlayer(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF1F1F23), // Twitch dark gray
-                        Color(0xFF0E0E10)  // Almost black
+                        SamtchTheme.colors.twitchDarkGray,
+                        SamtchTheme.colors.twitchBlack
                     )
                 )
             ),
@@ -124,7 +125,7 @@ fun AudioOnlyPlayer(
                 Box(
                     modifier = Modifier
                         .size(if (availableHeight < 200.dp) 70.dp else 100.dp)
-                        .border(2.dp, Color(0xFF9146FF), CircleShape)
+                        .border(2.dp, SamtchTheme.colors.twitchPurple, CircleShape)
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -154,7 +155,7 @@ fun AudioOnlyPlayer(
                 ) {
                     Text(
                         text = displayName ?: channel,
-                        color = Color(0xFFBF94FF), // Unified purple accent
+                        color = SamtchTheme.colors.twitchPurpleLight, // Unified purple accent
                         fontSize = if (availableHeight < 200.dp) 18.sp else 22.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
@@ -205,7 +206,7 @@ fun AudioOnlyPlayer(
                                 ) {
                                     Text(
                                         text = targetGame,
-                                        color = Color(0xFFBF94FF), // Unified light purple category
+                                        color = SamtchTheme.colors.twitchPurpleLight, // Unified light purple category
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,
@@ -226,13 +227,13 @@ fun AudioOnlyPlayer(
                         }
 
                         Surface(
-                            color = Color(0xFF9146FF).copy(alpha = 0.2f),
+                            color = SamtchTheme.colors.twitchPurple.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.clickable { onCloseAudioOnly() }
                         ) {
                             Text(
                                 text = "AUDIO ONLY",
-                                color = Color(0xFFBF94FF),
+                                color = SamtchTheme.colors.twitchPurpleLight,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
