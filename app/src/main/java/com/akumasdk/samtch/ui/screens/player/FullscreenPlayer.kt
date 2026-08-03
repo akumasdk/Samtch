@@ -43,6 +43,7 @@ fun FullscreenPlayer(
     viewersCount: Int = 0,
     adblockText: String = "",
     streamStartedAt: String? = null,
+    previewImageUrl: String? = null,
     isChatVisible: Boolean = false,
     expandTrigger: Int = 0,
     onToggleChat: () -> Unit = {},
@@ -107,6 +108,7 @@ fun FullscreenPlayer(
                         gameName = gameName,
                         viewersCount = viewersCount,
                         streamStartedAt = streamStartedAt,
+                        previewImageUrl = previewImageUrl,
                         expandTrigger = expandTrigger,
                         modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
                     )

@@ -595,6 +595,7 @@ fun TwitchPlayer(
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         adblockText = adblockText,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
+                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         isChatVisible = isChatVisible,
                         expandTrigger = metadataExpandTrigger,
                         onToggleChat = { isChatVisible = !isChatVisible },
@@ -614,6 +615,7 @@ fun TwitchPlayer(
                         isAudioOnly = isAudioOnly,
                         adblockText = adblockText,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
+                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         portraitMode = portraitMode,
                         expandTrigger = metadataExpandTrigger,
                         onToggleMode = {

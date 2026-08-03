@@ -36,8 +36,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
@@ -146,6 +149,7 @@ fun StreamMetadataBar(
     gameName: String? = null,
     viewersCount: Int = 0,
     streamStartedAt: String? = null,
+    previewImageUrl: String? = null,
     expandTrigger: Int = 0,
     forceExpanded: Boolean = false,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
@@ -154,7 +158,7 @@ fun StreamMetadataBar(
     var showInfoDialog by remember { mutableStateOf(false) }
 
     val animatedHeight by animateDpAsState(
-        targetValue = if (isSlim && !forceExpanded) 38.dp else 68.dp,
+        targetValue = if (isSlim && !forceExpanded) 38.dp else 82.dp,
         animationSpec = SamtchAnimation.DpSpring,
         label = "MetadataBarHeight"
     )
@@ -185,6 +189,7 @@ fun StreamMetadataBar(
             gameName = gameName,
             viewersCount = viewersCount,
             streamStartedAt = streamStartedAt,
+            previewImageUrl = previewImageUrl,
             onDismiss = { showInfoDialog = false }
         )
     }
@@ -200,7 +205,7 @@ fun StreamMetadataBar(
                     showInfoDialog = true
                 }
             },
-        color = Color(0xFF1F1F23), // Twitch dark gray
+        color = SamtchTheme.colors.twitchDarkGray,
         tonalElevation = 2.dp
     ) {
         AnimatedContent(
@@ -208,7 +213,8 @@ fun StreamMetadataBar(
             transitionSpec = {
                 SamtchAnimation.FadeIn togetherWith SamtchAnimation.FadeOut
             },
-            label = "MetadataBarStyleTransition"
+            label = "MetadataBarStyleTransition",
+            contentAlignment = Alignment.TopStart
         ) { slimMode ->
             if (slimMode) {
                 // SLIM LAYOUT (Single line)
@@ -220,7 +226,7 @@ fun StreamMetadataBar(
                 ) {
                     Text(
                         text = displayName ?: channel,
-                        color = Color(0xFFBF94FF),
+                        color = SamtchTheme.colors.twitchPurpleLight,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1
@@ -249,15 +255,15 @@ fun StreamMetadataBar(
                     }
                 }
             } else {
-                // STANDARD LAYOUT (3 Column Design)
+                // REDESIGNED STANDARD LAYOUT (High information density)
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // COLUMN 1: Streamer Avatar (40dp)
-                    Box(modifier = Modifier.size(40.dp)) {
+                    // 1. Avatar Section
+                    Box(modifier = Modifier.size(46.dp)) { // Balanced size
                         if (!avatarUrl.isNullOrEmpty()) {
                             AsyncImage(
                                 model = avatarUrl,
@@ -270,14 +276,16 @@ fun StreamMetadataBar(
                         } else {
                             Surface(
                                 shape = CircleShape,
-                                color = Color(0xFF9146FF),
+                                color = SamtchTheme.colors.twitchPurple,
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
                                         text = (displayName ?: channel).take(1).uppercase(),
                                         color = Color.White,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 22.sp,
+                                        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
                                     )
                                 }
                             }
@@ -286,77 +294,107 @@ fun StreamMetadataBar(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // COLUMN 2: Info Column (Flexible weight)
+                    // 2. Multi-row Info Block
                     Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.Center
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
                     ) {
-                        Text(
-                            text = displayName ?: channel,
-                            color = Color(0xFFBF94FF),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        Text(
-                            text = streamTitle ?: "Stream Offline",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        if (!gameName.isNullOrEmpty()) {
+                        // ROW 1: Name & Uptime
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text(
-                                text = gameName,
-                                color = Color.LightGray,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
+                                text = displayName ?: channel,
+                                color = SamtchTheme.colors.twitchPurpleLight,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                                modifier = Modifier.weight(1f)
                             )
-                        }
-                    }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // COLUMN 3: Stats Column
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        val duration = formatStreamDuration(streamStartedAt)
-                        if (duration.isNotEmpty()) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .background(Color.Red, CircleShape)
-                                )
-                                Text(
-                                    text = duration,
-                                    color = Color.LightGray,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            val duration = formatStreamDuration(streamStartedAt)
+                            if (duration.isNotEmpty()) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.padding(start = 8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .background(Color.Red, CircleShape)
+                                    )
+                                    Text(
+                                        text = duration,
+                                        color = Color.LightGray,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                                    )
+                                }
                             }
                         }
 
-                        if (viewersCount > 0) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            AnimatedViewerCount(
-                                count = viewersCount,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
+                        // ROW 2: Stream Title (Main Focus)
+                        Text(
+                            text = streamTitle ?: "Stream Offline",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Visible,
+                            style = TextStyle(
+                                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                                lineHeight = 16.sp
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .basicMarquee(iterations = Int.MAX_VALUE)
+                        )
+
+                        // ROW 3: Game Category & Viewers
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (!gameName.isNullOrEmpty()) {
+                                Icon(
+                                    imageVector = Icons.Default.Gamepad,
+                                    contentDescription = null,
+                                    tint = SamtchTheme.colors.twitchPurpleLight.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(14.dp) // Matched size to text optics
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = gameName,
+                                    color = SamtchTheme.colors.twitchPurpleLight.copy(alpha = 0.8f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Visible,
+                                    style = TextStyle(
+                                        platformStyle = PlatformTextStyle(includeFontPadding = false)
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .basicMarquee(iterations = Int.MAX_VALUE)
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+
+                            if (viewersCount > 0) {
+                                Box(modifier = Modifier.padding(start = 8.dp)) {
+                                    AnimatedViewerCount(
+                                        count = viewersCount,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -374,79 +412,140 @@ fun StreamInfoDialog(
     gameName: String? = null,
     viewersCount: Int = 0,
     streamStartedAt: String? = null,
+    previewImageUrl: String? = null,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.close_button))
-            }
-        },
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!avatarUrl.isNullOrEmpty()) {
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight()
+                .clip(RoundedCornerShape(24.dp)),
+            color = Color(0xFF1F1F23),
+            tonalElevation = 8.dp
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                // Background Preview Image
+                if (!previewImageUrl.isNullOrEmpty()) {
                     AsyncImage(
-                        model = avatarUrl,
+                        model = previewImageUrl,
                         contentDescription = null,
                         modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                }
-                Text(text = displayName ?: channel)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Title
-                InfoItem(
-                    label = stringResource(R.string.stream_title_label),
-                    value = streamTitle ?: "Offline",
-                    icon = Icons.Default.Schedule
-                )
-
-                // Category
-                if (!gameName.isNullOrEmpty()) {
-                    InfoItem(
-                        label = stringResource(R.string.category_label),
-                        value = gameName,
-                        icon = Icons.Default.Gamepad
+                            .matchParentSize()
+                            .background(Color.Black),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.3f
                     )
                 }
 
-                // Stats
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        InfoItem(
-                            label = stringResource(R.string.viewers_label),
-                            value = formatViewerCount(viewersCount),
-                            icon = Icons.Default.Person
-                        )
-                    }
-                    val duration = formatStreamDuration(streamStartedAt)
-                    if (duration.isNotEmpty()) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            InfoItem(
-                                label = stringResource(R.string.uptime_label),
-                                value = duration,
-                                icon = Icons.Default.Schedule
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                ) {
+                    // Header
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!avatarUrl.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = avatarUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                        }
+                        Column {
+                            Text(
+                                text = displayName ?: channel,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "twitch.tv/$channel",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color(0xFFBF94FF)
                             )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Stream Info
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        // Title
+                        InfoItem(
+                            label = stringResource(R.string.stream_title_label),
+                            value = streamTitle ?: "Offline",
+                            icon = Icons.Default.SmartDisplay,
+                            color = Color.White
+                        )
+
+                        // Category
+                        if (!gameName.isNullOrEmpty()) {
+                            InfoItem(
+                                label = stringResource(R.string.category_label),
+                                value = gameName,
+                                icon = Icons.Default.Gamepad,
+                                color = Color(0xFFBF94FF)
+                            )
+                        }
+
+                        // Stats Grid
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                InfoItem(
+                                    label = stringResource(R.string.viewers_label),
+                                    value = formatViewerCount(viewersCount),
+                                    icon = Icons.Default.Person,
+                                    color = Color.White
+                                )
+                            }
+                            val duration = formatStreamDuration(streamStartedAt)
+                            if (duration.isNotEmpty()) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    InfoItem(
+                                        label = stringResource(R.string.uptime_label),
+                                        value = duration,
+                                        icon = Icons.Default.Schedule,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Close Button
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF9146FF),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(text = stringResource(R.string.close_button), fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
-    )
+    }
 }
 
 @Composable
 private fun InfoItem(
     label: String,
     value: String,
-    icon: ImageVector
+    icon: ImageVector,
+    color: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -454,20 +553,23 @@ private fun InfoItem(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = Color(0xFFBF94FF)
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = label.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.secondary
+                color = Color.White.copy(alpha = 0.6f),
+                fontWeight = FontWeight.Bold
             )
         }
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.ExtraBold,
+            color = color,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

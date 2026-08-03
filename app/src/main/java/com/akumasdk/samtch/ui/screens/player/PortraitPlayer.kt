@@ -51,6 +51,7 @@ fun PortraitPlayer(
     isAudioOnly: Boolean = false,
     adblockText: String = "",
     streamStartedAt: String? = null,
+    previewImageUrl: String? = null,
     portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
     expandTrigger: Int = 0,
     onToggleMode: () -> Unit = {},
@@ -109,6 +110,7 @@ fun PortraitPlayer(
                     gameName = gameName,
                     viewersCount = viewersCount,
                     streamStartedAt = streamStartedAt,
+                    previewImageUrl = previewImageUrl,
                     expandTrigger = expandTrigger,
                     forceExpanded = portraitMode == PortraitMode.CHAT_ONLY
                 )
