@@ -147,7 +147,7 @@ fun TwitchPlayer(
     var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
     var adblockText by remember { mutableStateOf("") }
 
-    var showFullscreenControls by remember { mutableStateOf(true) }
+    var showFullscreenControls by remember(isFullscreen) { mutableStateOf(!isFullscreen) }
 
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -170,6 +170,16 @@ fun TwitchPlayer(
     var isChatVisible by remember { mutableStateOf(true) }
     var portraitMode by remember { mutableStateOf(PortraitMode.VIDEO_AND_CHAT) }
     var metadataExpandTrigger by remember { mutableIntStateOf(0) }
+
+    // Toggle chat off by default when entering fullscreen and delay controls
+    LaunchedEffect(isFullscreen) {
+        if (isFullscreen) {
+            isChatVisible = false
+            // Wait for rotation animation to fully end before showing any tooltips/controls
+            delay(1.seconds) 
+            showFullscreenControls = true
+        }
+    }
 
     // Nudge animation for first-time users
     val nudgeOffset = remember { Animatable(0f) }
