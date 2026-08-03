@@ -13,7 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.components.chat.ChatInputBox
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
@@ -34,6 +36,7 @@ fun TwitchChat(
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
     showInput: Boolean = true,
+    refreshTrigger: Int = 0,
     viewModel: ChatViewModel
 ) {
     val context = LocalContext.current
@@ -42,6 +45,18 @@ fun TwitchChat(
 
     if (chatMode == SettingsManager.ChatMode.NATIVE) {
         val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+        
+        // Native chat refresh logic
+        val chatLoadingText = stringResource(R.string.chat_connecting)
+        val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
+        val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
+
+        LaunchedEffect(refreshTrigger) {
+            if (refreshTrigger > 0) {
+                viewModel.disconnect()
+                viewModel.connect(channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
+            }
+        }
         
         Column(modifier = modifier.fillMaxSize()) {
             NativeTwitchChat(
@@ -86,8 +101,8 @@ fun TwitchChat(
         )
     }
 
-    // Update URL when channel changes
-    LaunchedEffect(channel) {
+    // Update URL when channel changes or refresh is triggered
+    LaunchedEffect(channel, refreshTrigger) {
         isChatFullyLoaded = false
         navigator.loadUrl(chatUrl)
     }

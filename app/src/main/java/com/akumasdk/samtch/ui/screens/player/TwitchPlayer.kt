@@ -379,11 +379,12 @@ fun TwitchPlayer(
     }
 
     val chatContent = remember(channel) {
-        movableContentOf { isCompact: Boolean, showInput: Boolean, modifier: Modifier ->
+        movableContentOf { isCompact: Boolean, showInput: Boolean, refreshTrigger: Int, modifier: Modifier ->
             TwitchChat(
                 channel = channel,
                 isCompact = isCompact,
                 showInput = showInput,
+                refreshTrigger = refreshTrigger,
                 viewModel = chatViewModel,
                 modifier = modifier
             )
@@ -592,7 +593,9 @@ fun TwitchPlayer(
                         isChatVisible = isChatVisible,
                         expandTrigger = metadataExpandTrigger,
                         onToggleChat = { isChatVisible = !isChatVisible },
-                        chatContent = chatContent,
+                        chatContent = { isCompact, showInput, modifier -> 
+                            chatContent(isCompact, showInput, refreshTrigger, modifier)
+                        },
                         webView = { modifier, _ -> 
                             Box(modifier = modifier)
                         }
@@ -616,7 +619,9 @@ fun TwitchPlayer(
                                 PortraitMode.CHAT_ONLY else PortraitMode.VIDEO_AND_CHAT
                             isChatVisible = true
                         },
-                        chatContent = chatContent,
+                        chatContent = { isCompact, showInput, modifier -> 
+                            chatContent(isCompact, showInput, refreshTrigger, modifier)
+                        },
                         webView = { modifier, _ -> 
                             // Render a simple placeholder when Point 3 (the stable player) is active
                             // to avoid "tug-of-war" of the movable content.
@@ -832,7 +837,7 @@ fun TwitchPlayer(
                     }
                 ) {
                     if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
-                        chatContent(true, false, Modifier.fillMaxSize())
+                        chatContent(true, false, refreshTrigger, Modifier.fillMaxSize())
                     } else {
                         playerContent(Modifier.fillMaxSize()) {
                             Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")
