@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import kotlinx.coroutines.launch
 
 @Composable
@@ -81,7 +82,7 @@ fun NativeTwitchChat(
         }
     }
 
-    Box(modifier = modifier.background(Color(0xFF18181B))) {
+    Box(modifier = modifier.background(SamtchTheme.colors.chatBackground)) {
         val reversedMessages = remember(messages) { messages.asReversed() }
         
         LazyColumn(
@@ -124,7 +125,7 @@ fun NativeTwitchChat(
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF9146FF),
+                    containerColor = SamtchTheme.colors.twitchPurple,
                     contentColor = Color.White
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),

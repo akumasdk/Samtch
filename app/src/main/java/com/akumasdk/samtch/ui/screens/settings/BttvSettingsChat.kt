@@ -12,10 +12,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedVisibility
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
@@ -32,7 +33,7 @@ fun BttvSettingsChat(
     modifier: Modifier = Modifier
 ) {
     // Aggressive URL parameters to prevent mobile redirection
-    val targetUrl = "https://www.twitch.tv/directory?desktop-redirect=true&no-mobile-redirect=true"
+    val targetUrl = "${Constants.TWITCH_BASE_URL}/directory?desktop-redirect=true&no-mobile-redirect=true"
     
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
@@ -78,7 +79,7 @@ fun BttvSettingsChat(
                          
         if (shouldAttempt && !isReady && webViewConfigured) {
             try {
-                val bttvScript = ScriptLoader.getScript(context, "js/chat/bttv.js")
+                val bttvScript = ScriptLoader.getScript(context, Constants.Scripts.CHAT_BTTV)
                 if (bttvScript.isEmpty()) return@LaunchedEffect
 
                 val automationScript = """
@@ -153,7 +154,7 @@ fun BttvSettingsChat(
                     }
                 }
                 webView.apply {
-                    val desktopUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    val desktopUserAgent = Constants.USER_AGENT_DESKTOP
                     
                     // Native settings for desktop rendering
                     settings.userAgentString = desktopUserAgent
@@ -163,7 +164,7 @@ fun BttvSettingsChat(
                     overScrollMode = android.view.View.OVER_SCROLL_NEVER
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
-                    addJavascriptInterface(bttvBridge, "BttvSettingsBridge")
+                    addJavascriptInterface(bttvBridge, Constants.BRIDGE_BTTV_SETTINGS)
 
                     // Clear cookies to avoid being tagged as mobile from previous sessions
                     try {
@@ -178,9 +179,9 @@ fun BttvSettingsChat(
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(view: android.webkit.WebView?, request: WebResourceRequest?): Boolean {
                             val url = request?.url?.toString() ?: return false
-                            if (url.contains("m.twitch.tv")) {
+                            if (url.contains(Constants.TWITCH_MOBILE_URL.removeSuffix("/"))) {
                                 Log.d("BttvSettingsChat", "Blocking mobile redirect to: $url")
-                                val desktopUrl = url.replace("m.twitch.tv", "www.twitch.tv")
+                                val desktopUrl = url.replace(Constants.TWITCH_MOBILE_URL.removeSuffix("/"), Constants.TWITCH_BASE_URL.replace("https://", "www."))
                                     .let { if (!it.contains("desktop-redirect")) "$it${if (it.contains("?")) "&" else "?"}desktop-redirect=true" else it }
                                 view?.loadUrl(desktopUrl)
                                 return true
@@ -207,10 +208,10 @@ fun BttvSettingsChat(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF18181B)),
+                    .background(SamtchTheme.colors.chatBackground),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = SamtchTheme.colors.twitchPurple)
             }
         }
     }

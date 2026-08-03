@@ -2,6 +2,7 @@ package com.akumasdk.samtch.util
 
 import android.content.Context
 import android.util.Log
+import com.akumasdk.samtch.util.Constants.Scripts
 import java.util.concurrent.ConcurrentHashMap
 
 object ScriptLoader {
@@ -12,19 +13,19 @@ object ScriptLoader {
      */
     fun initialize(context: Context) {
         val scripts = listOf(
-            "js/common/scroll_unlocker.js",
-            "js/common/splash_controller.js",
-            "js/common/app_banners_remover.js",
-            "js/chat/bttv.js",
-            "js/chat/ui_cleaner.js",
-            "js/chat/chat_loader_observer.js",
-            "js/player/ui_cleaner.js",
-            "js/player/playback_monitor.js",
-            "js/player/video_swap.js",
-            "js/player/link_disabler.js",
-            "js/player/controls_injector.js",
-            "js/player/visibility_monitor.js",
-            "js/player/vaft.js"
+            Scripts.COMMON_SCROLL_UNLOCKER,
+            Scripts.COMMON_SPLASH_CONTROLLER,
+            Scripts.COMMON_APP_BANNERS_REMOVER,
+            Scripts.CHAT_BTTV,
+            Scripts.CHAT_UI_CLEANER,
+            Scripts.CHAT_LOADER_OBSERVER,
+            Scripts.PLAYER_UI_CLEANER,
+            Scripts.PLAYER_PLAYBACK_MONITOR,
+            Scripts.PLAYER_VIDEO_SWAP,
+            Scripts.PLAYER_LINK_DISABLER,
+            Scripts.PLAYER_CONTROLS_INJECTOR,
+            Scripts.PLAYER_VISIBILITY_MONITOR,
+            Scripts.PLAYER_VAFT
         )
 
         scripts.forEach { path ->

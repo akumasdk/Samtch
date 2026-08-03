@@ -8,7 +8,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -62,7 +61,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -105,10 +103,11 @@ import com.akumasdk.samtch.ui.components.PlayerLoadingScreen
 import com.akumasdk.samtch.ui.components.TapTooltip
 import com.akumasdk.samtch.ui.components.TwitchChat
 import com.akumasdk.samtch.ui.components.WebViewContainer
-import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
+import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.Constants
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
@@ -123,6 +122,12 @@ enum class PortraitMode {
     VIDEO_AND_CHAT,
     CHAT_ONLY
 }
+
+data class ChatContentConfig(
+    val isCompact: Boolean,
+    val showInput: Boolean,
+    val refreshTrigger: Int
+)
 
 @Composable
 fun TwitchPlayer(
@@ -354,12 +359,21 @@ fun TwitchPlayer(
     }
 
     // Handle URL loading and refresh logic
-    LaunchedEffect(channel, refreshTrigger, portraitMode) {
-        if (portraitMode == PortraitMode.CHAT_ONLY && !isMinimized && !isFullscreen) {
+    LaunchedEffect(channel, refreshTrigger, portraitMode, isMinimized, isFullscreen, isPip, isAudioOnly) {
+        // Video is required if not in audio-only mode AND (minimized OR fullscreen OR standard portrait)
+        val isVideoRequired = !isAudioOnly && (isMinimized || isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
+        
+        if (!isVideoRequired) {
+            Log.d("TwitchPlayer", "Video not required for current mode ($portraitMode, audioOnly=$isAudioOnly). Unloading player.")
+            // Invalidate current loading session and stop any active load immediately
+            currentLoadingSession = System.currentTimeMillis()
             isUiLoading = false
+            navigator.stopLoading()
+            navigator.loadUrl(Constants.ABOUT_BLANK)
             return@LaunchedEffect
         }
         
+        // If we were on about:blank and now need video, or if it's a refresh/channel change
         currentLoadingSession = System.currentTimeMillis()
         isUiLoading = true
         loadingMessage = defaultLoadingMessage
@@ -383,7 +397,7 @@ fun TwitchPlayer(
             try {
                 state.nativeWebView.apply {
                     stopLoading()
-                    loadUrl("about:blank")
+                    loadUrl(Constants.ABOUT_BLANK)
                     clearCache(true)
                     clearHistory()
                     clearFormData()
@@ -397,23 +411,15 @@ fun TwitchPlayer(
     }
 
     val chatContent = remember(channel) {
-        movableContentOf { isCompact: Boolean, showInput: Boolean, refreshTrigger: Int, modifier: Modifier ->
+        movableContentOf { config: ChatContentConfig, modifier: Modifier ->
             TwitchChat(
                 channel = channel,
-                isCompact = isCompact,
-                showInput = showInput,
-                refreshTrigger = refreshTrigger,
+                isCompact = config.isCompact,
+                showInput = config.showInput,
+                refreshTrigger = config.refreshTrigger,
                 viewModel = chatViewModel,
                 modifier = modifier
             )
-        }
-    }
-
-    // Auto-hide controls in fullscreen
-    LaunchedEffect(showFullscreenControls, isFullscreen) {
-        if (isFullscreen && showFullscreenControls) {
-            delay(5.seconds)
-            showFullscreenControls = false
         }
     }
 
@@ -532,6 +538,14 @@ fun TwitchPlayer(
         }
     }
 
+    // Auto-hide controls in fullscreen
+    LaunchedEffect(showFullscreenControls, isFullscreen) {
+        if (isFullscreen && showFullscreenControls) {
+            delay(5.seconds)
+            showFullscreenControls = false
+        }
+    }
+
     // --- STABLE ANIMATION SYSTEM ---
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
@@ -613,18 +627,17 @@ fun TwitchPlayer(
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
-                        adblockText = adblockText,
+                        refreshTrigger = refreshTrigger,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                         previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         isChatVisible = isChatVisible,
                         expandTrigger = metadataExpandTrigger,
-                        refreshTrigger = refreshTrigger,
                         onToggleChat = { 
                             isChatVisible = !isChatVisible
                             showFullscreenControls = true
                         },
                         chatContent = { isCompact, showInput, rTrigger, modifier -> 
-                            chatContent(isCompact, showInput, rTrigger, modifier)
+                            chatContent(ChatContentConfig(isCompact, showInput, rTrigger), modifier)
                         },
                         webView = { modifier, _ -> 
                             Box(modifier = modifier)
@@ -650,7 +663,7 @@ fun TwitchPlayer(
                             isChatVisible = true
                         },
                         chatContent = { isCompact, showInput, modifier -> 
-                            chatContent(isCompact, showInput, refreshTrigger, modifier)
+                            chatContent(ChatContentConfig(isCompact, showInput, refreshTrigger), modifier)
                         },
                         webView = { modifier, _ -> 
                             // Render a simple placeholder when Point 3 (the stable player) is active
@@ -692,7 +705,7 @@ fun TwitchPlayer(
                         val progress = if (isSwiping) dismissState.progress else 0f
                         
                         val color by animateColorAsState(
-                            if (isSwiping) Color.Red.copy(alpha = (0.1f + (0.3f * progress)).coerceIn(0f, 0.4f)) else Color.Transparent,
+                            if (isSwiping) SamtchTheme.colors.error.copy(alpha = (0.1f + (0.3f * progress)).coerceIn(0f, 0.4f)) else Color.Transparent,
                             label = "DismissBackground"
                         )
 
@@ -714,7 +727,7 @@ fun TwitchPlayer(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = (0.2f + progress).coerceIn(0f, 1f)),
+                                    tint = SamtchTheme.colors.primaryText.copy(alpha = (0.2f + progress).coerceIn(0f, 1f)),
                                     modifier = Modifier
                                         .padding(horizontal = 28.dp)
                                         .size(28.dp)
@@ -867,7 +880,7 @@ fun TwitchPlayer(
                     }
                 ) {
                     if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
-                        chatContent(true, false, refreshTrigger, Modifier.fillMaxSize())
+                        chatContent(ChatContentConfig(true, false, refreshTrigger), Modifier.fillMaxSize())
                     } else {
                         playerContent(Modifier.fillMaxSize()) {
                             Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")
@@ -910,8 +923,8 @@ fun TwitchPlayer(
                                         showFullscreenControls = true
                                     },
                                     shape = RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp),
-                                    color = Color.Black.copy(alpha = 0.6f),
-                                    contentColor = Color.White,
+                                    color = SamtchTheme.colors.tabButtonBackground,
+                                    contentColor = SamtchTheme.colors.primaryText,
                                     tonalElevation = 4.dp,
                                     modifier = Modifier.height(80.dp).width(40.dp)
                                 ) {

@@ -2,6 +2,7 @@ package com.akumasdk.samtch.data.auth
 
 import android.util.Log
 import android.webkit.CookieManager
+import com.akumasdk.samtch.util.Constants
 
 object TwitchAuthManager {
     private const val TAG = "TwitchAuthManager"
@@ -23,7 +24,7 @@ object TwitchAuthManager {
     fun getAuthState(): AuthState {
         return try {
             val cookieManager = CookieManager.getInstance()
-            val cookies = cookieManager.getCookie("https://www.twitch.tv") ?: return AuthState()
+            val cookies = cookieManager.getCookie(Constants.TWITCH_BASE_URL) ?: return AuthState()
 
             val cookieMap = cookies.split(";").associate {
                 val pair = it.trim().split("=")

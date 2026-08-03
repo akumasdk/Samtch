@@ -59,7 +59,7 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
 
         val httpFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(Constants.USER_AGENT)
+            .setUserAgent(Constants.USER_AGENT_DESKTOP)
             .setAllowCrossProtocolRedirects(true)
 
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
@@ -133,7 +133,7 @@ class PlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "STOP") {
+        if (intent?.action == Constants.ACTION_STOP) {
             mediaSession?.player?.stop()
             stopSelf()
         }
@@ -273,7 +273,7 @@ class PlaybackService : MediaSessionService() {
 
             val request = Request.Builder()
                 .url(masterUrl)
-                .header("User-Agent", Constants.USER_AGENT)
+                .header("User-Agent", Constants.USER_AGENT_DESKTOP)
                 .build()
 
             val response = client.newCall(request).execute()

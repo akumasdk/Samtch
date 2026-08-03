@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
@@ -58,9 +60,9 @@ fun PlayerBackground(
     content: @Composable BoxScope.() -> Unit = {}
 ) {
     Box(
-        modifier = modifier.background(Color.Black)
+        modifier = modifier.background(SamtchTheme.colors.rootBackground)
     ) {
-        val finalUrl = previewUrl ?: "https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.lowercase()}-853x480.jpg"
+        val finalUrl = previewUrl ?: Constants.TWITCH_PREVIEW_URL_TEMPLATE.format(channel.lowercase())
         AsyncImage(
             model = finalUrl,
             contentDescription = null,
@@ -82,10 +84,10 @@ fun PlayerLoadingScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(SamtchTheme.colors.rootBackground),
         contentAlignment = Alignment.Center
     ) {
-        val finalUrl = previewUrl ?: "https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.lowercase()}-853x480.jpg"
+        val finalUrl = previewUrl ?: Constants.TWITCH_PREVIEW_URL_TEMPLATE.format(channel.lowercase())
 
         AsyncImage(
             model = finalUrl,
@@ -96,19 +98,22 @@ fun PlayerLoadingScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f))
+                .background(SamtchTheme.colors.loadingOverlay)
         )
         CircularProgressIndicator(
-            color = Color(0xFF9146FF),
+            color = SamtchTheme.colors.loadingIndicator,
             strokeWidth = 3.dp
         )
         Text(
             text = loadingMessage,
-            color = Color.White,
+            color = SamtchTheme.colors.primaryText,
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                shadow = Shadow(color = Color.Black, blurRadius = 8f)
+                shadow = Shadow(
+                    color = Color.Black.copy(alpha = 0.5f),
+                    blurRadius = 8f
+                )
             ),
             modifier = Modifier
                 .padding(top = 16.dp)
@@ -129,12 +134,12 @@ fun TapTooltip(visible: Boolean, modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color.Black.copy(alpha = 0.7f))
+                .background(SamtchTheme.colors.tooltipBackground)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Text(
                 text = stringResource(R.string.fullscreen_double_tap_hint),
-                color = Color.White,
+                color = SamtchTheme.colors.primaryText,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -177,8 +182,8 @@ fun WebViewContainer(
             navigator.evaluateJavaScript("window.SamtchStrings = { $stringsJson };")
 
             val scriptPath = when (adBlockMode) {
-                SettingsManager.AdBlockMode.VAFT -> "js/player/vaft.js"
-                SettingsManager.AdBlockMode.VIDEO_SWAP -> "js/player/video_swap.js"
+                SettingsManager.AdBlockMode.VAFT -> Constants.Scripts.PLAYER_VAFT
+                SettingsManager.AdBlockMode.VIDEO_SWAP -> Constants.Scripts.PLAYER_VIDEO_SWAP
             }
             val adScript = ScriptLoader.getScript(context, scriptPath)
             if (adScript.isNotEmpty()) {
@@ -188,8 +193,8 @@ fun WebViewContainer(
 
             // Also inject playback monitor and early hider to catch fast starts
             val earlyScripts = listOf(
-                "js/player/playback_monitor.js",
-                "js/player/early_hider.js"
+                Constants.Scripts.PLAYER_PLAYBACK_MONITOR,
+                Constants.Scripts.PLAYER_EARLY_HIDER
             ).mapNotNull { path ->
                 val s = ScriptLoader.getScript(context, path)
                 if (s.isNotEmpty()) s else null
@@ -212,12 +217,12 @@ fun WebViewContainer(
     LaunchedEffect(state.lastLoadedUrl, state.loadingState, adBlockMode) {
         if (state.loadingState is LoadingState.Finished) {
             val url = state.lastLoadedUrl ?: ""
-            if (!url.contains("twitch.tv")) return@LaunchedEffect
+            if (!url.contains(Constants.TWITCH_DOMAIN)) return@LaunchedEffect
 
             val scripts = listOf(
-                "js/player/ui_cleaner.js",
-                "js/player/controls_injector.js",
-                "js/player/playback_monitor.js"
+                Constants.Scripts.PLAYER_UI_CLEANER,
+                Constants.Scripts.PLAYER_CONTROLS_INJECTOR,
+                Constants.Scripts.PLAYER_PLAYBACK_MONITOR
             ).mapNotNull { path ->
                 val script = ScriptLoader.getScript(context, path)
                 if (script.isNotEmpty()) script else null
@@ -296,7 +301,7 @@ fun WebViewContainer(
                             post { currentOnAdblocked(text) }
                         }
                     ),
-                    "TwitchPlayerBridge"
+                    Constants.BRIDGE_PLAYER
                 )
 
                 // Enable fullscreen for videos
@@ -310,7 +315,7 @@ fun WebViewContainer(
 }
 
 fun createTwitchPlayerUrl(channel: String): String {
-    return "https://player.twitch.tv/?channel=$channel&parent=twitch.tv&muted=false&autoplay=true&enableExtensions=false&player=mobile"
+    return Constants.TWITCH_PLAYER_URL_TEMPLATE.format(channel)
 }
 
 class TwitchPlayerBridge(

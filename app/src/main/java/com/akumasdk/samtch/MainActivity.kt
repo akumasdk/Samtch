@@ -67,6 +67,7 @@ import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.DeviceOrientationManager
 import com.akumasdk.samtch.util.PhysicalOrientation
 import com.akumasdk.samtch.util.ScriptLoader
@@ -97,11 +98,11 @@ class MainActivity : ComponentActivity() {
     private val pipReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                ACTION_REFRESH -> refreshTriggerState.intValue += 1
-                ACTION_STOP_PLAYER -> {
+                Constants.ACTION_REFRESH -> refreshTriggerState.intValue += 1
+                Constants.ACTION_STOP_PLAYER -> {
                     val stopIntent = Intent(this@MainActivity, MainActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        putExtra("ACTION", "STOP")
+                        putExtra(Constants.EXTRA_ACTION, Constants.ACTION_STOP)
                     }
                     startActivity(stopIntent)
                 }
@@ -110,8 +111,7 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val ACTION_REFRESH = "com.akumasdk.samtch.REFRESH"
-        private const val ACTION_STOP_PLAYER = "com.akumasdk.samtch.STOP_PLAYER"
+        // No longer needed here as they are in Constants
     }
 
     @SuppressLint("SourceLockedOrientationActivity")
@@ -144,8 +144,8 @@ class MainActivity : ComponentActivity() {
         }
 
         val filter = IntentFilter().apply {
-            addAction(ACTION_REFRESH)
-            addAction(ACTION_STOP_PLAYER)
+            addAction(Constants.ACTION_REFRESH)
+            addAction(Constants.ACTION_STOP_PLAYER)
         }
         ContextCompat.registerReceiver(this, pipReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
 
@@ -153,10 +153,11 @@ class MainActivity : ComponentActivity() {
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         setContent {
+            val darkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+            
             // Use VERSION_CODE as a key to force-reset all rememberSaveable state after an update
             key(BuildConfig.VERSION_CODE) {
-                SamtchTheme {
-                    val darkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+                SamtchTheme(darkTheme = darkTheme) {
                     var selectedChannel by rememberSaveable { mutableStateOf<String?>(null) }
                 var isInPipMode by isInPipModeState
                 var refreshTrigger by refreshTriggerState
@@ -217,13 +218,13 @@ class MainActivity : ComponentActivity() {
                     windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
                 }
 
-                val browserState = rememberSaveableWebViewState("https://m.twitch.tv/")
+                val browserState = rememberSaveableWebViewState(Constants.TWITCH_MOBILE_URL)
                 val browserNavigator = rememberWebViewNavigator()
 
                 LaunchedEffect(intent) {
-                    val action = intent.getStringExtra("ACTION")
-                    val newChannel = intent.getStringExtra("CHANNEL")
-                    if (action == "STOP") {
+                    val action = intent.getStringExtra(Constants.EXTRA_ACTION)
+                    val newChannel = intent.getStringExtra(Constants.EXTRA_CHANNEL)
+                    if (action == Constants.ACTION_STOP) {
                         selectedChannel = null
                         isMinimized = false
                     } else if (newChannel != null) {
@@ -252,7 +253,7 @@ class MainActivity : ComponentActivity() {
                     displayedChannel = selectedChannel
                 }
 
-                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background)) {
+                Box(modifier = Modifier.fillMaxSize().background(SamtchTheme.colors.rootBackground)) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -336,7 +337,7 @@ private fun updatePipParams(isPipEnabled: Boolean = true) {
                     getString(R.string.pip_action_refresh),
                     getString(R.string.pip_action_refresh_description),
                     PendingIntent.getBroadcast(
-                        this, 0, Intent(ACTION_REFRESH).setPackage(packageName), PendingIntent.FLAG_IMMUTABLE
+                        this, 0, Intent(Constants.ACTION_REFRESH).setPackage(packageName), PendingIntent.FLAG_IMMUTABLE
                     )
                 )
             )
@@ -458,7 +459,7 @@ private fun updatePipParams(isPipEnabled: Boolean = true) {
         if (channelFromUrl != null) {
             val stopIntent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra("CHANNEL", channelFromUrl)
+                putExtra(Constants.EXTRA_CHANNEL, channelFromUrl)
             }
             startActivity(stopIntent)
         }
@@ -466,7 +467,7 @@ private fun updatePipParams(isPipEnabled: Boolean = true) {
 
     private fun extractChannelFromUrl(url: String?): String? {
         if (url.isNullOrEmpty()) return null
-        val regex = """(?:www\.|m\.)?twitch\.tv/([^/?]+)""".toRegex()
+        val regex = """(?:www\.|m\.)?${Constants.TWITCH_DOMAIN}/([^/?]+)""".toRegex()
         return regex.find(url)?.groupValues?.getOrNull(1)?.trim()
     }
 }

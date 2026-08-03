@@ -11,7 +11,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -20,6 +19,8 @@ import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.components.chat.ChatInputBox
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.components.chat.NativeTwitchChat
+import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
@@ -67,7 +68,7 @@ fun TwitchChat(
             )
             
             if (showInput) {
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
+                HorizontalDivider(color = SamtchTheme.colors.divider, thickness = 1.dp)
                 ChatInputBox(
                     isLoggedIn = isLoggedIn,
                     onSendMessage = { text ->
@@ -81,12 +82,14 @@ fun TwitchChat(
         return
     }
 
-    val chatUrl = "https://www.twitch.tv/embed/$channel/chat?parent=twitch.tv&darkpopout"
+    val chatUrl = Constants.TWITCH_CHAT_URL_TEMPLATE.format(channel)
     val state = rememberSaveableWebViewState(chatUrl)
     val navigator = rememberWebViewNavigator()
 
     // Track if chat is fully loaded (chat-input element is present)
     var isChatFullyLoaded by remember { mutableStateOf(false) }
+
+    // Reload WebView chat on theme change (Reverted)
 
     val chatBridge = remember(coroutineScope) {
         TwitchChatBridge(
@@ -112,9 +115,9 @@ fun TwitchChat(
         if (state.loadingState is LoadingState.Finished) {
             try {
                 listOf(
-                    "js/chat/chat_loader_observer.js",
-                    "js/chat/ui_cleaner.js",
-                    "js/chat/bttv.js"
+                    Constants.Scripts.CHAT_LOADER_OBSERVER,
+                    Constants.Scripts.CHAT_UI_CLEANER,
+                    Constants.Scripts.CHAT_BTTV
                 ).forEach { path ->
                     val script = ScriptLoader.getScript(context, path)
                     if (script.isNotEmpty()) {
@@ -143,7 +146,7 @@ fun TwitchChat(
                     overScrollMode = View.OVER_SCROLL_NEVER
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
-                    addJavascriptInterface(chatBridge, "TwitchChatBridge")
+                    addJavascriptInterface(chatBridge, Constants.BRIDGE_CHAT)
                 }
             }
         )
@@ -152,10 +155,10 @@ fun TwitchChat(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF18181B)),
+                    .background(SamtchTheme.colors.chatBackground),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = SamtchTheme.colors.twitchPurple)
             }
         }
     }

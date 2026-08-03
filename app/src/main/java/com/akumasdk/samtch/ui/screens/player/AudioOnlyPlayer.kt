@@ -82,7 +82,7 @@ fun AudioOnlyPlayer(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.7f))
+                            .background(SamtchTheme.colors.twitchBlack.copy(alpha = 0.7f))
                     )
                 }
             }
@@ -106,7 +106,7 @@ fun AudioOnlyPlayer(
                 } else {
                     Text(
                         text = (displayName ?: channel).take(1).uppercase(),
-                        color = Color.White,
+                        color = SamtchTheme.colors.primaryText,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -141,7 +141,7 @@ fun AudioOnlyPlayer(
                     } else {
                         Text(
                             text = (displayName ?: channel).take(1).uppercase(),
-                            color = Color.White,
+                            color = SamtchTheme.colors.primaryText,
                             fontSize = if (availableHeight < 200.dp) 24.sp else 32.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -176,7 +176,7 @@ fun AudioOnlyPlayer(
                         if (targetTitle.isNotEmpty()) {
                             Text(
                                 text = targetTitle,
-                                color = Color.White.copy(alpha = 0.9f), // Unified white/alpha title
+                                color = SamtchTheme.colors.primaryText.copy(alpha = 0.9f), // Unified white/alpha title
                                 fontSize = if (availableHeight < 200.dp) 12.sp else 14.sp,
                                 maxLines = 1,
                                 modifier = Modifier.basicMarquee()
@@ -201,7 +201,7 @@ fun AudioOnlyPlayer(
                         ) { targetGame ->
                             if (targetGame.isNotEmpty()) {
                                 Surface(
-                                    color = Color.White.copy(alpha = 0.1f),
+                                    color = SamtchTheme.colors.primaryText.copy(alpha = 0.1f),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text(
@@ -255,7 +255,7 @@ fun AudioOnlyPlayer(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Return to Video",
-                            tint = Color.White.copy(alpha = 0.7f),
+                            tint = SamtchTheme.colors.primaryText.copy(alpha = 0.7f),
                             modifier = Modifier.size(if (availableHeight < 200.dp) 20.dp else 24.dp)
                         )
                     }
@@ -268,7 +268,7 @@ fun AudioOnlyPlayer(
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isPlaying) "Pause" else "Play",
-                            tint = Color.White,
+                            tint = SamtchTheme.colors.primaryText,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -281,7 +281,7 @@ fun AudioOnlyPlayer(
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",
-                            tint = Color.White.copy(alpha = 0.7f),
+                            tint = SamtchTheme.colors.primaryText.copy(alpha = 0.7f),
                             modifier = Modifier.size(if (availableHeight < 200.dp) 18.dp else 22.dp)
                         )
                     }
@@ -292,7 +292,7 @@ fun AudioOnlyPlayer(
             if (availableHeight > 250.dp) {
                 Text(
                     text = stringResource(R.string.audio_only_hint),
-                    color = Color.Gray.copy(alpha = 0.5f),
+                    color = SamtchTheme.colors.secondaryText.copy(alpha = 0.5f),
                     fontSize = 11.sp,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)

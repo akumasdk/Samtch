@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -23,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -87,7 +89,7 @@ fun formatStreamDuration(createdAt: String?): String {
 @Composable
 fun AnimatedViewerCount(
     count: Int,
-    textColor: Color = Color.LightGray,
+    textColor: Color = SamtchTheme.colors.secondaryText,
     fontSize: TextUnit = 10.sp,
     fontWeight: FontWeight = FontWeight.ExtraBold
 ) {
@@ -205,7 +207,7 @@ fun StreamMetadataBar(
                     showInfoDialog = true
                 }
             },
-        color = SamtchTheme.colors.twitchDarkGray,
+        color = SamtchTheme.colors.dialogBackground,
         tonalElevation = 2.dp
     ) {
         AnimatedContent(
@@ -232,11 +234,11 @@ fun StreamMetadataBar(
                         maxLines = 1
                     )
                     
-                    Text(text = ": ", color = Color.Gray, fontSize = 13.sp)
+                    Text(text = ": ", color = SamtchTheme.colors.secondaryText, fontSize = 13.sp)
                     
                     Text(
                         text = streamTitle ?: "Stream Offline",
-                        color = Color.White,
+                        color = SamtchTheme.colors.primaryText,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -325,11 +327,11 @@ fun StreamMetadataBar(
                                     Box(
                                         modifier = Modifier
                                             .size(6.dp)
-                                            .background(Color.Red, CircleShape)
+                                            .background(SamtchTheme.colors.liveDot, CircleShape)
                                     )
                                     Text(
                                         text = duration,
-                                        color = Color.LightGray,
+                                        color = SamtchTheme.colors.secondaryText,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
@@ -341,7 +343,7 @@ fun StreamMetadataBar(
                         // ROW 2: Stream Title (Main Focus)
                         Text(
                             text = streamTitle ?: "Stream Offline",
-                            color = Color.White,
+                            color = SamtchTheme.colors.primaryText,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black,
                             maxLines = 1,
@@ -421,24 +423,37 @@ fun StreamInfoDialog(
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(0.92f)
                 .wrapContentHeight()
-                .clip(RoundedCornerShape(24.dp)),
-            color = Color(0xFF1F1F23),
-            tonalElevation = 8.dp
+                .clip(RoundedCornerShape(28.dp)),
+            color = SamtchTheme.colors.dialogBackground,
+            tonalElevation = 12.dp
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
-                // Background Preview Image
+                // Background Preview Image with enhanced gradient overlay
                 if (!previewImageUrl.isNullOrEmpty()) {
-                    AsyncImage(
-                        model = previewImageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(Color.Black),
-                        contentScale = ContentScale.Crop,
-                        alpha = 0.3f
-                    )
+                    Box(modifier = Modifier.matchParentSize()) {
+                        AsyncImage(
+                            model = previewImageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        // Layered gradient for maximum readability across light/dark themes
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            SamtchTheme.colors.dialogBackground.copy(alpha = 0.6f),
+                                            SamtchTheme.colors.dialogBackground.copy(alpha = 0.85f),
+                                            SamtchTheme.colors.dialogBackground
+                                        )
+                                    )
+                                )
+                        )
+                    }
                 }
 
                 Column(
@@ -446,94 +461,134 @@ fun StreamInfoDialog(
                         .fillMaxWidth()
                         .padding(24.dp)
                 ) {
-                    // Header
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (!avatarUrl.isNullOrEmpty()) {
-                            AsyncImage(
-                                model = avatarUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
+                    // Header Section
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            border = BorderStroke(2.dp, SamtchTheme.colors.twitchPurple),
+                            modifier = Modifier.size(56.dp),
+                            color = Color.Transparent
+                        ) {
+                            if (!avatarUrl.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = avatarUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(SamtchTheme.colors.twitchPurple),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = (displayName ?: channel).take(1).uppercase(),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 24.sp
+                                    )
+                                }
+                            }
                         }
-                        Column {
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = displayName ?: channel,
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Black,
-                                color = Color.White
+                                color = SamtchTheme.colors.primaryText,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                            Text(
-                                text = "twitch.tv/$channel",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color(0xFFBF94FF)
-                            )
+                            Surface(
+                                color = SamtchTheme.colors.accentColor.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Text(
+                                    text = "twitch.tv/$channel",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = SamtchTheme.colors.accentColor,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(28.dp))
 
-                    // Stream Info
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Title
-                        InfoItem(
+                    // Stream Information Grid
+                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        // Detailed Info Cards
+                        InfoCard(
                             label = stringResource(R.string.stream_title_label),
                             value = streamTitle ?: "Offline",
                             icon = Icons.Default.SmartDisplay,
-                            color = Color.White,
-                            maxLines = Int.MAX_VALUE
+                            maxLines = 4
                         )
 
-                        // Category
                         if (!gameName.isNullOrEmpty()) {
-                            InfoItem(
+                            InfoCard(
                                 label = stringResource(R.string.category_label),
                                 value = gameName,
-                                icon = Icons.Default.Gamepad,
-                                color = Color(0xFFBF94FF)
+                                icon = Icons.Default.Gamepad
                             )
                         }
 
-                        // Stats Grid
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                InfoItem(
+                        // Stats Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                InfoCard(
                                     label = stringResource(R.string.viewers_label),
                                     value = formatViewerCount(viewersCount),
-                                    icon = Icons.Default.Person,
-                                    color = Color.White
+                                    icon = Icons.Default.Person
                                 )
                             }
+                            
                             val duration = formatStreamDuration(streamStartedAt)
                             if (duration.isNotEmpty()) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    InfoItem(
+                                Box(modifier = Modifier.weight(1f)) {
+                                    InfoCard(
                                         label = stringResource(R.string.uptime_label),
                                         value = duration,
-                                        icon = Icons.Default.Schedule,
-                                        color = Color.White
+                                        icon = Icons.Default.Schedule
                                     )
                                 }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
 
-                    // Close Button
+                    // Close Button - High emphasis
                     Button(
                         onClick = onDismiss,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF9146FF),
+                            containerColor = SamtchTheme.colors.twitchPurple,
                             contentColor = Color.White
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
-                        Text(text = stringResource(R.string.close_button), fontWeight = FontWeight.Bold)
+                        Text(
+                            text = stringResource(R.string.close_button),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -542,37 +597,49 @@ fun StreamInfoDialog(
 }
 
 @Composable
-private fun InfoItem(
+private fun InfoCard(
     label: String,
     value: String,
     icon: ImageVector,
-    color: Color = MaterialTheme.colorScheme.onSurface,
     maxLines: Int = 2
 ) {
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = Color(0xFFBF94FF)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
+    Surface(
+        color = SamtchTheme.colors.cardBackground,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, SamtchTheme.colors.primaryText.copy(alpha = 0.12f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = SamtchTheme.colors.accentColor
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = label.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SamtchTheme.colors.primaryText.copy(alpha = 0.5f),
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.8.sp
+                )
+            }
             Text(
-                text = label.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.6f),
-                fontWeight = FontWeight.Bold
+                text = value,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    lineHeight = 22.sp
+                ),
+                fontWeight = FontWeight.Bold,
+                color = SamtchTheme.colors.primaryText,
+                maxLines = maxLines,
+                overflow = TextOverflow.Ellipsis
             )
         }
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.ExtraBold,
-            color = color,
-            maxLines = maxLines,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 
@@ -594,7 +661,7 @@ fun AdblockBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(28.dp),
-            color = Color.Black.copy(alpha = 0.7f)
+            color = SamtchTheme.colors.adblockBackground
         ) {
             Row(
                 modifier = Modifier
@@ -605,7 +672,7 @@ fun AdblockBanner(
             ) {
                 Text(
                     text = text,
-                    color = Color.White,
+                    color = SamtchTheme.colors.primaryText,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,

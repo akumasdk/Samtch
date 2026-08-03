@@ -5,6 +5,7 @@ import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.dto.BadgeSetDto
 import com.akumasdk.samtch.data.api.thirdparty.*
+import com.akumasdk.samtch.util.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,7 +64,7 @@ object EmoteRepository {
             try {
                 BTTVApi.getGlobalEmotes().forEach {
                     bttvMap[it.code] = Emote(
-                        it.id, it.code, "https://cdn.betterttv.net/emote/${it.id}/3x", EmoteType.BTTV,
+                        it.id, it.code, Constants.BTTV_CDN_EMOTE.format(it.id), EmoteType.BTTV,
                         isZeroWidth = it.code in BTTV_ZERO_WIDTH
                     )
                 }
@@ -141,7 +142,7 @@ object EmoteRepository {
                 val bttvChannel = BTTVApi.getChannelEmotes(userId)
                 (bttvChannel.channelEmotes + bttvChannel.sharedEmotes).forEach {
                     bttvMap[it.code] = Emote(
-                        it.id, it.code, "https://cdn.betterttv.net/emote/${it.id}/3x", EmoteType.BTTV,
+                        it.id, it.code, Constants.BTTV_CDN_EMOTE.format(it.id), EmoteType.BTTV,
                         isZeroWidth = it.code in BTTV_ZERO_WIDTH
                     )
                 }

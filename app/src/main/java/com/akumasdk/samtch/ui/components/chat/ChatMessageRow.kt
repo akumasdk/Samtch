@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @Composable
 fun ChatMessageRow(
@@ -25,6 +26,8 @@ fun ChatMessageRow(
     
     when (message) {
         is ChatMessageUiState.PrivMessageUi -> {
+            val userColor = if (message.userColor == Color.Unspecified) SamtchTheme.colors.defaultUserColor else message.userColor
+            
             val combinedEmotes = remember(message.emotes, message.badgeUrls) {
                 val badgesAsEmotes = message.badgeUrls.mapIndexed { index, url ->
                     EmoteInfo(
@@ -44,7 +47,7 @@ fun ChatMessageRow(
                 }
 
                 // Name and Message content in one flow
-                withStyle(SpanStyle(color = message.userColor, fontWeight = FontWeight.Bold)) {
+                withStyle(SpanStyle(color = userColor, fontWeight = FontWeight.Bold)) {
                     append(message.displayName)
                 }
 
@@ -63,7 +66,7 @@ fun ChatMessageRow(
                 isCompact = isCompact,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                 style = TextStyle(
-                    color = if (message.isAction) message.userColor else MaterialTheme.colorScheme.onSurface,
+                    color = if (message.isAction) userColor else SamtchTheme.colors.primaryText,
                     fontSize = fontSize,
                     fontWeight = if (message.isAction) FontWeight.Bold else FontWeight.Normal
                 )
@@ -72,7 +75,7 @@ fun ChatMessageRow(
         is ChatMessageUiState.SystemMessageUi -> {
             Text(
                 text = message.message,
-                color = Color.Gray,
+                color = SamtchTheme.colors.secondaryText,
                 fontSize = if (isCompact) 12.sp else 15.sp,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                 style = MaterialTheme.typography.bodySmall

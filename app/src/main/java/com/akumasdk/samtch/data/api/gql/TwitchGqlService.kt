@@ -39,13 +39,6 @@ object TwitchGqlService {
 
     private val clientIdMutex = Mutex()
 
-    // Twitch internal endpoint for integrity tokens
-    private const val INTEGRITY_URL = "https://gql.twitch.tv/integrity"
-
-    // Add browser-ish headers (helps with Twitch tightening checks)
-    private const val ORIGIN = "https://www.twitch.tv"
-    private const val REFERER = "https://www.twitch.tv/"
-
     /**
      * Dynamically scrapes the Twitch Client ID from the homepage.
      */
@@ -58,8 +51,8 @@ object TwitchGqlService {
             withContext(Dispatchers.IO) {
                 try {
                     val request = Request.Builder()
-                        .url("https://www.twitch.tv")
-                        .header("User-Agent", Constants.USER_AGENT)
+                        .url(Constants.TWITCH_BASE_URL)
+                        .header("User-Agent", Constants.USER_AGENT_DESKTOP)
                         .build()
 
                     val response = client.newCall(request).execute()
@@ -203,9 +196,9 @@ object TwitchGqlService {
         return this
             .header("Client-Id", clientId)
             .header("X-Device-Id", deviceId)
-            .header("User-Agent", Constants.USER_AGENT)
-            .header("Origin", ORIGIN)
-            .header("Referer", REFERER)
+            .header("User-Agent", Constants.USER_AGENT_DESKTOP)
+            .header("Origin", Constants.TWITCH_BASE_URL)
+            .header("Referer", "${Constants.TWITCH_BASE_URL}/")
             .header("Accept", "application/json")
     }
 
@@ -216,7 +209,7 @@ object TwitchGqlService {
         withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
-                    .url(INTEGRITY_URL)
+                    .url(Constants.INTEGRITY_URL)
                     .post("{}".toRequestBody("application/json".toMediaType()))
                     .addCommonHeaders(clientId)
                     .build()

@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.data.api.thirdparty
 
+import com.akumasdk.samtch.util.Constants
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -36,10 +37,10 @@ object SevenTVApi {
     }
 
     suspend fun getGlobalEmotes(): SevenTVEmoteSet {
-        return client.get("https://7tv.io/v3/emote-sets/global").body()
+        return client.get(Constants.SEVENTV_API_GLOBAL).body()
     }
 
     suspend fun getChannelEmotes(userId: String): SevenTVUserResponse {
-        return client.get("https://7tv.io/v3/users/twitch/$userId").body()
+        return client.get(Constants.SEVENTV_API_USER.format(userId)).body()
     }
 }

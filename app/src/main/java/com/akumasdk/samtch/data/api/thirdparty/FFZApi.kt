@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.data.api.thirdparty
 
+import com.akumasdk.samtch.util.Constants
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -36,10 +37,10 @@ object FFZApi {
     }
 
     suspend fun getGlobalEmotes(): FFZGlobalResponse {
-        return client.get("https://api.frankerfacez.com/v1/set/global").body()
+        return client.get(Constants.FFZ_API_GLOBAL).body()
     }
 
     suspend fun getChannelEmotes(userId: String): FFZRoomResponse {
-        return client.get("https://api.frankerfacez.com/v1/room/id/$userId").body()
+        return client.get(Constants.FFZ_API_USER.format(userId)).body()
     }
 }

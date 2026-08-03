@@ -48,7 +48,7 @@
             android:screenOrientation="portrait"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode"
             android:theme="@style/Theme.Samtch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
