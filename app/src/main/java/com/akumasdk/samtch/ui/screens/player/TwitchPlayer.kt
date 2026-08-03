@@ -50,22 +50,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -100,6 +103,7 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -146,6 +150,8 @@ fun TwitchPlayer(
     val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
 
     val chatViewModel: ChatViewModel = viewModel()
+    val scope = rememberCoroutineScope()
+    var currentLoadingSession by remember { mutableLongStateOf(0L) }
 
     val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
 
@@ -326,11 +332,12 @@ fun TwitchPlayer(
 
     // Handle URL loading and refresh logic
     LaunchedEffect(channel, refreshTrigger, portraitMode) {
-        if (portraitMode == PortraitMode.CHAT_ONLY) {
+        if (portraitMode == PortraitMode.CHAT_ONLY && !isMinimized && !isFullscreen) {
             isUiLoading = false
             return@LaunchedEffect
         }
         
+        currentLoadingSession = System.currentTimeMillis()
         isUiLoading = true
         loadingMessage = defaultLoadingMessage
 
@@ -340,7 +347,7 @@ fun TwitchPlayer(
         } else {
             baseUrl
         }
-        Log.d("TwitchPlayer", "Loading URL: $finalUrl (trigger: $refreshTrigger, mode: $portraitMode)")
+        Log.d("TwitchPlayer", "Loading URL: $finalUrl (session: $currentLoadingSession, mode: $portraitMode)")
         navigator.loadUrl(finalUrl)
     }
 
@@ -433,7 +440,18 @@ fun TwitchPlayer(
                         onToggleFullscreen = onToggleFullscreen,
                         onToggleChat = onToggleChat,
                         onToggleAudioOnly = { isAudioOnly = true },
-                        onPlaybackStarted = { isUiLoading = false },
+                        onPlaybackStarted = {
+                            val session = currentLoadingSession
+                            scope.launch {
+                                // Add a small grace period (300ms) to ensure the WebView 
+                                // has actually swapped buffers and rendered the first frame.
+                                // Also verify we are still in the same loading session.
+                                delay(300.milliseconds)
+                                if (session == currentLoadingSession) {
+                                    isUiLoading = false
+                                }
+                            }
+                        },
                         onLoadingStatus = { message -> loadingMessage = message },
                         onAdblocked = { text ->
                             adblockText = text
@@ -726,31 +744,33 @@ fun TwitchPlayer(
             }
 
             // 3. THE STABLE PLAYER (Stable during layout changes)
-            if (portraitMode != PortraitMode.CHAT_ONLY) {
-                key(channel, portraitMode) { // Use key to ensure fresh WebView initialization on toggle
+            val shouldRenderPlayer = portraitMode != PortraitMode.CHAT_ONLY || isMinimized || isFullscreen
+            
+            if (shouldRenderPlayer) {
+                key(channel) { 
                     Box(
                         modifier = if (isPip) {
                             Modifier.fillMaxSize()
                         } else if (isMinimized) {
-                        Modifier
-                            .align(Alignment.BottomStart)
-                            .navigationBarsPadding()
-                            .padding(bottom = playerPaddingBottom)
-                            .padding(start = playerPaddingStart)
-                            .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
-                            .offset { 
-                                // Follow the swipe to dismiss offset
-                                IntOffset(dismissState.requireOffset().roundToInt(), 0) 
-                            }
-                            .size(playerWidth, playerHeight)
-                            .clip(RoundedCornerShape(playerCornerRadius))
-                    } else {
-                        Modifier
-                            .align(Alignment.TopStart)
-                            .size(playerWidth, playerHeight)
-                            .clip(RectangleShape)
-                    }
-                    .onSizeChanged { stablePlayerSize = it }
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .navigationBarsPadding()
+                                .padding(bottom = playerPaddingBottom)
+                                .padding(start = playerPaddingStart)
+                                .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
+                                .offset { 
+                                    // Follow the swipe to dismiss offset
+                                    IntOffset(dismissState.requireOffset().roundToInt(), 0) 
+                                }
+                                .size(playerWidth, playerHeight)
+                                .clip(RoundedCornerShape(playerCornerRadius))
+                        } else {
+                            Modifier
+                                .align(Alignment.TopStart)
+                                .size(playerWidth, playerHeight)
+                                .clip(RectangleShape)
+                        }
+                        .onSizeChanged { stablePlayerSize = it }
                     .pointerInput(isFullscreen, isMinimized, portraitMode) {
                         var lastTapTime = 0L
                         awaitPointerEventScope {

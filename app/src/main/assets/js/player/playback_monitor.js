@@ -79,8 +79,9 @@
 
         for (const video of videos) {
             // Check if video is actually playing
-            // readyState 2 (HAVE_CURRENT_DATA) is often enough to start hearing/seeing something
-            const isPlaying = !video.paused && !video.ended && video.readyState >= 2;
+            // readyState 3 (HAVE_FUTURE_DATA) ensures at least one frame is ready to render.
+            // readyState 4 (HAVE_ENOUGH_DATA) is even safer.
+            const isPlaying = !video.paused && !video.ended && video.readyState >= 3;
 
             if (isPlaying) {
                 if (!playingStartTime) playingStartTime = Date.now();

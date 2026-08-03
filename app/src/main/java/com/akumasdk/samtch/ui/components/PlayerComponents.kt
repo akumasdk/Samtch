@@ -152,6 +152,7 @@ fun WebViewContainer(
             }
 
             webView.apply {
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 setLayerType(View.LAYER_TYPE_HARDWARE, null)
                 overScrollMode = View.OVER_SCROLL_NEVER
                 isVerticalScrollBarEnabled = false
