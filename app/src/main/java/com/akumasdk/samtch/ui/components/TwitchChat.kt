@@ -82,7 +82,7 @@ fun TwitchChat(
         return
     }
 
-    val chatUrl = Constants.TWITCH_CHAT_URL_TEMPLATE.format(channel)
+    val chatUrl = Constants.Twitch.Templates.CHAT_URL.format(channel)
     val state = rememberSaveableWebViewState(chatUrl)
     val navigator = rememberWebViewNavigator()
 
@@ -146,7 +146,7 @@ fun TwitchChat(
                     overScrollMode = View.OVER_SCROLL_NEVER
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
-                    addJavascriptInterface(chatBridge, Constants.BRIDGE_CHAT)
+                    addJavascriptInterface(chatBridge, Constants.Bridges.CHAT)
                 }
             }
         )

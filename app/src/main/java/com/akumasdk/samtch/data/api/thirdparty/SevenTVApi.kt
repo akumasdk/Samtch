@@ -37,10 +37,10 @@ object SevenTVApi {
     }
 
     suspend fun getGlobalEmotes(): SevenTVEmoteSet {
-        return client.get(Constants.SEVENTV_API_GLOBAL).body()
+        return client.get(Constants.ThirdParty.SevenTV.API_GLOBAL).body()
     }
 
     suspend fun getChannelEmotes(userId: String): SevenTVUserResponse {
-        return client.get(Constants.SEVENTV_API_USER.format(userId)).body()
+        return client.get(Constants.ThirdParty.SevenTV.API_USER.format(userId)).body()
     }
 }

@@ -37,10 +37,10 @@ object FFZApi {
     }
 
     suspend fun getGlobalEmotes(): FFZGlobalResponse {
-        return client.get(Constants.FFZ_API_GLOBAL).body()
+        return client.get(Constants.ThirdParty.FFZ.API_GLOBAL).body()
     }
 
     suspend fun getChannelEmotes(userId: String): FFZRoomResponse {
-        return client.get(Constants.FFZ_API_USER.format(userId)).body()
+        return client.get(Constants.ThirdParty.FFZ.API_USER.format(userId)).body()
     }
 }

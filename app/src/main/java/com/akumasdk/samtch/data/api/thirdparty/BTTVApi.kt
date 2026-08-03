@@ -26,10 +26,10 @@ object BTTVApi {
     }
 
     suspend fun getGlobalEmotes(): List<BTTVEmote> {
-        return client.get(Constants.BTTV_API_GLOBAL).body()
+        return client.get(Constants.ThirdParty.BTTV.API_GLOBAL).body()
     }
 
     suspend fun getChannelEmotes(userId: String): BTTVChannelResponse {
-        return client.get(Constants.BTTV_API_USER.format(userId)).body()
+        return client.get(Constants.ThirdParty.BTTV.API_USER.format(userId)).body()
     }
 }

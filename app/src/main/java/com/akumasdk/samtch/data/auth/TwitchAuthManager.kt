@@ -24,7 +24,7 @@ object TwitchAuthManager {
     fun getAuthState(): AuthState {
         return try {
             val cookieManager = CookieManager.getInstance()
-            val cookies = cookieManager.getCookie(Constants.TWITCH_BASE_URL) ?: return AuthState()
+            val cookies = cookieManager.getCookie(Constants.Twitch.BASE_URL) ?: return AuthState()
 
             val cookieMap = cookies.split(";").associate {
                 val pair = it.trim().split("=")

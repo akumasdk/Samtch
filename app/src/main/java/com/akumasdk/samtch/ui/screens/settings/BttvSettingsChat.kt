@@ -33,7 +33,7 @@ fun BttvSettingsChat(
     modifier: Modifier = Modifier
 ) {
     // Aggressive URL parameters to prevent mobile redirection
-    val targetUrl = "${Constants.TWITCH_BASE_URL}/directory?desktop-redirect=true&no-mobile-redirect=true"
+    val targetUrl = "${Constants.Twitch.BASE_URL}/directory?desktop-redirect=true&no-mobile-redirect=true"
     
     val state = rememberSaveableWebViewState("")
     val navigator = rememberWebViewNavigator()
@@ -154,7 +154,7 @@ fun BttvSettingsChat(
                     }
                 }
                 webView.apply {
-                    val desktopUserAgent = Constants.USER_AGENT_DESKTOP
+                    val desktopUserAgent = Constants.UserAgents.DESKTOP
                     
                     // Native settings for desktop rendering
                     settings.userAgentString = desktopUserAgent
@@ -164,7 +164,7 @@ fun BttvSettingsChat(
                     overScrollMode = android.view.View.OVER_SCROLL_NEVER
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
-                    addJavascriptInterface(bttvBridge, Constants.BRIDGE_BTTV_SETTINGS)
+                    addJavascriptInterface(bttvBridge, Constants.Bridges.BTTV_SETTINGS)
 
                     // Clear cookies to avoid being tagged as mobile from previous sessions
                     try {
@@ -179,9 +179,9 @@ fun BttvSettingsChat(
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(view: android.webkit.WebView?, request: WebResourceRequest?): Boolean {
                             val url = request?.url?.toString() ?: return false
-                            if (url.contains(Constants.TWITCH_MOBILE_URL.removeSuffix("/"))) {
+                            if (url.contains(Constants.Twitch.MOBILE_URL.removeSuffix("/"))) {
                                 Log.d("BttvSettingsChat", "Blocking mobile redirect to: $url")
-                                val desktopUrl = url.replace(Constants.TWITCH_MOBILE_URL.removeSuffix("/"), Constants.TWITCH_BASE_URL.replace("https://", "www."))
+                                val desktopUrl = url.replace(Constants.Twitch.MOBILE_URL.removeSuffix("/"), Constants.Twitch.BASE_URL.replace("https://", "www."))
                                     .let { if (!it.contains("desktop-redirect")) "$it${if (it.contains("?")) "&" else "?"}desktop-redirect=true" else it }
                                 view?.loadUrl(desktopUrl)
                                 return true

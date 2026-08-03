@@ -67,7 +67,7 @@ object ChatMessageMapper {
                     val parts = emoteData.split(":")
                     if (parts.size == 2) {
                         val id = parts[0]
-                        val url = Constants.TWITCH_EMOTE_CDN_TEMPLATE.format(id)
+                        val url = Constants.Twitch.Templates.EMOTE_CDN.format(id)
                         parts[1].split(",").forEach { rangeStr ->
                             val rangeParts = rangeStr.split("-")
                             if (rangeParts.size == 2) {

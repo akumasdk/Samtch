@@ -75,7 +75,7 @@ object HelixApi {
     private suspend fun validateToken(token: String): String? {
         return try {
             Log.d(TAG, "Validating OAuth token...")
-            val response = client.get(Constants.HELIX_VALIDATE_URL) {
+            val response = client.get(Constants.Twitch.Api.HELIX_VALIDATE) {
                 header("Authorization", "OAuth $token")
             }
             val responseBody = response.bodyAsText()
@@ -104,7 +104,7 @@ object HelixApi {
 
     suspend fun getGlobalBadges(): HttpResponse {
         val clientId = getClientId()
-        return client.get(Constants.HELIX_GLOBAL_BADGES_URL) {
+        return client.get(Constants.Twitch.Api.HELIX_GLOBAL_BADGES) {
             header("Client-Id", clientId)
             addAuth()
         }
@@ -112,7 +112,7 @@ object HelixApi {
 
     suspend fun getChannelBadges(broadcasterId: String): HttpResponse {
         val clientId = getClientId()
-        return client.get(Constants.HELIX_CHANNEL_BADGES_URL) {
+        return client.get(Constants.Twitch.Api.HELIX_CHANNEL_BADGES) {
             header("Client-Id", clientId)
             addAuth()
             parameter("broadcaster_id", broadcasterId)

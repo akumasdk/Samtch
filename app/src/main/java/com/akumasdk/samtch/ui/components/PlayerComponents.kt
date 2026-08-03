@@ -62,7 +62,7 @@ fun PlayerBackground(
     Box(
         modifier = modifier.background(SamtchTheme.colors.rootBackground)
     ) {
-        val finalUrl = previewUrl ?: Constants.TWITCH_PREVIEW_URL_TEMPLATE.format(channel.lowercase())
+        val finalUrl = previewUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
         AsyncImage(
             model = finalUrl,
             contentDescription = null,
@@ -87,7 +87,7 @@ fun PlayerLoadingScreen(
             .background(SamtchTheme.colors.rootBackground),
         contentAlignment = Alignment.Center
     ) {
-        val finalUrl = previewUrl ?: Constants.TWITCH_PREVIEW_URL_TEMPLATE.format(channel.lowercase())
+        val finalUrl = previewUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
 
         AsyncImage(
             model = finalUrl,
@@ -217,7 +217,7 @@ fun WebViewContainer(
     LaunchedEffect(state.lastLoadedUrl, state.loadingState, adBlockMode) {
         if (state.loadingState is LoadingState.Finished) {
             val url = state.lastLoadedUrl ?: ""
-            if (!url.contains(Constants.TWITCH_DOMAIN)) return@LaunchedEffect
+            if (!url.contains(Constants.Twitch.DOMAIN)) return@LaunchedEffect
 
             val scripts = listOf(
                 Constants.Scripts.PLAYER_UI_CLEANER,
@@ -301,7 +301,7 @@ fun WebViewContainer(
                             post { currentOnAdblocked(text) }
                         }
                     ),
-                    Constants.BRIDGE_PLAYER
+                    Constants.Bridges.PLAYER
                 )
 
                 // Enable fullscreen for videos
@@ -315,7 +315,7 @@ fun WebViewContainer(
 }
 
 fun createTwitchPlayerUrl(channel: String): String {
-    return Constants.TWITCH_PLAYER_URL_TEMPLATE.format(channel)
+    return Constants.Twitch.Templates.PLAYER_URL.format(channel)
 }
 
 class TwitchPlayerBridge(

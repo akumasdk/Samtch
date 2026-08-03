@@ -64,7 +64,7 @@ object EmoteRepository {
             try {
                 BTTVApi.getGlobalEmotes().forEach {
                     bttvMap[it.code] = Emote(
-                        it.id, it.code, Constants.BTTV_CDN_EMOTE.format(it.id), EmoteType.BTTV,
+                        it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
                         isZeroWidth = it.code in BTTV_ZERO_WIDTH
                     )
                 }
@@ -142,7 +142,7 @@ object EmoteRepository {
                 val bttvChannel = BTTVApi.getChannelEmotes(userId)
                 (bttvChannel.channelEmotes + bttvChannel.sharedEmotes).forEach {
                     bttvMap[it.code] = Emote(
-                        it.id, it.code, Constants.BTTV_CDN_EMOTE.format(it.id), EmoteType.BTTV,
+                        it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
                         isZeroWidth = it.code in BTTV_ZERO_WIDTH
                     )
                 }

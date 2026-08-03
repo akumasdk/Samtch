@@ -98,11 +98,11 @@ class MainActivity : ComponentActivity() {
     private val pipReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                Constants.ACTION_REFRESH -> refreshTriggerState.intValue += 1
-                Constants.ACTION_STOP_PLAYER -> {
+                Constants.Actions.REFRESH -> refreshTriggerState.intValue += 1
+                Constants.Actions.STOP_PLAYER -> {
                     val stopIntent = Intent(this@MainActivity, MainActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        putExtra(Constants.EXTRA_ACTION, Constants.ACTION_STOP)
+                        putExtra(Constants.Extras.ACTION, Constants.Actions.STOP)
                     }
                     startActivity(stopIntent)
                 }
@@ -144,8 +144,8 @@ class MainActivity : ComponentActivity() {
         }
 
         val filter = IntentFilter().apply {
-            addAction(Constants.ACTION_REFRESH)
-            addAction(Constants.ACTION_STOP_PLAYER)
+            addAction(Constants.Actions.REFRESH)
+            addAction(Constants.Actions.STOP_PLAYER)
         }
         ContextCompat.registerReceiver(this, pipReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
 
@@ -218,13 +218,13 @@ class MainActivity : ComponentActivity() {
                     windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
                 }
 
-                val browserState = rememberSaveableWebViewState(Constants.TWITCH_MOBILE_URL)
+                val browserState = rememberSaveableWebViewState(Constants.Twitch.MOBILE_URL)
                 val browserNavigator = rememberWebViewNavigator()
 
                 LaunchedEffect(intent) {
-                    val action = intent.getStringExtra(Constants.EXTRA_ACTION)
-                    val newChannel = intent.getStringExtra(Constants.EXTRA_CHANNEL)
-                    if (action == Constants.ACTION_STOP) {
+                    val action = intent.getStringExtra(Constants.Extras.ACTION)
+                    val newChannel = intent.getStringExtra(Constants.Extras.CHANNEL)
+                    if (action == Constants.Actions.STOP) {
                         selectedChannel = null
                         isMinimized = false
                     } else if (newChannel != null) {
@@ -337,7 +337,7 @@ private fun updatePipParams(isPipEnabled: Boolean = true) {
                     getString(R.string.pip_action_refresh),
                     getString(R.string.pip_action_refresh_description),
                     PendingIntent.getBroadcast(
-                        this, 0, Intent(Constants.ACTION_REFRESH).setPackage(packageName), PendingIntent.FLAG_IMMUTABLE
+                        this, 0, Intent(Constants.Actions.REFRESH).setPackage(packageName), PendingIntent.FLAG_IMMUTABLE
                     )
                 )
             )
@@ -459,7 +459,7 @@ private fun updatePipParams(isPipEnabled: Boolean = true) {
         if (channelFromUrl != null) {
             val stopIntent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra(Constants.EXTRA_CHANNEL, channelFromUrl)
+                putExtra(Constants.Extras.CHANNEL, channelFromUrl)
             }
             startActivity(stopIntent)
         }
@@ -467,7 +467,7 @@ private fun updatePipParams(isPipEnabled: Boolean = true) {
 
     private fun extractChannelFromUrl(url: String?): String? {
         if (url.isNullOrEmpty()) return null
-        val regex = """(?:www\.|m\.)?${Constants.TWITCH_DOMAIN}/([^/?]+)""".toRegex()
+        val regex = """(?:www\.|m\.)?${Constants.Twitch.DOMAIN}/([^/?]+)""".toRegex()
         return regex.find(url)?.groupValues?.getOrNull(1)?.trim()
     }
 }
