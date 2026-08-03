@@ -483,7 +483,8 @@ fun StreamInfoDialog(
                             label = stringResource(R.string.stream_title_label),
                             value = streamTitle ?: "Offline",
                             icon = Icons.Default.SmartDisplay,
-                            color = Color.White
+                            color = Color.White,
+                            maxLines = Int.MAX_VALUE
                         )
 
                         // Category
@@ -545,7 +546,8 @@ private fun InfoItem(
     label: String,
     value: String,
     icon: ImageVector,
-    color: Color = MaterialTheme.colorScheme.onSurface
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    maxLines: Int = 2
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -568,7 +570,7 @@ private fun InfoItem(
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.ExtraBold,
             color = color,
-            maxLines = 2,
+            maxLines = maxLines,
             overflow = TextOverflow.Ellipsis
         )
     }
