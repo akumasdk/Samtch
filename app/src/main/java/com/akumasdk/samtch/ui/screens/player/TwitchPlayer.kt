@@ -358,13 +358,14 @@ fun TwitchPlayer(
         }
     }
 
+    val isVideoRequired = remember(isAudioOnly, isMinimized, isFullscreen, portraitMode) {
+        !isAudioOnly && (isMinimized || isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
+    }
+
     // Handle URL loading and refresh logic
-    LaunchedEffect(channel, refreshTrigger, portraitMode, isMinimized, isFullscreen, isPip, isAudioOnly) {
-        // Video is required if not in audio-only mode AND (minimized OR fullscreen OR standard portrait)
-        val isVideoRequired = !isAudioOnly && (isMinimized || isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
-        
+    LaunchedEffect(channel, refreshTrigger, isVideoRequired) {
         if (!isVideoRequired) {
-            Log.d("TwitchPlayer", "Video not required for current mode ($portraitMode, audioOnly=$isAudioOnly). Unloading player.")
+            Log.d("TwitchPlayer", "Video not required for current mode (isVideoRequired=false, audioOnly=$isAudioOnly). Unloading player.")
             // Invalidate current loading session and stop any active load immediately
             currentLoadingSession = System.currentTimeMillis()
             isUiLoading = false
@@ -384,7 +385,7 @@ fun TwitchPlayer(
         } else {
             baseUrl
         }
-        Log.d("TwitchPlayer", "Loading URL: $finalUrl (session: $currentLoadingSession, mode: $portraitMode)")
+        Log.d("TwitchPlayer", "Loading URL: $finalUrl (session: $currentLoadingSession)")
         navigator.loadUrl(finalUrl)
     }
 
