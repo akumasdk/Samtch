@@ -47,7 +47,7 @@ fun FullscreenPlayer(
     isChatVisible: Boolean = false,
     expandTrigger: Int = 0,
     onToggleChat: () -> Unit = {},
-    chatViewModel: ChatViewModel,
+    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -114,14 +114,12 @@ fun FullscreenPlayer(
                     )
                 }
 
-                TwitchChat(
-                    channel = channel,
-                    isCompact = true,
-                    viewModel = chatViewModel,
-                    modifier = Modifier
+                chatContent(
+                    true,
+                    true,
+                    Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .background(SamtchTheme.colors.chatBackground)
                 )
             }
         }

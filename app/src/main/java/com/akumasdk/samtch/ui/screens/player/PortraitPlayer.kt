@@ -56,7 +56,7 @@ fun PortraitPlayer(
     portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
     expandTrigger: Int = 0,
     onToggleMode: () -> Unit = {},
-    chatViewModel: ChatViewModel,
+    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -127,20 +127,11 @@ fun PortraitPlayer(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(SamtchTheme.colors.chatBackground) // Twitch background color
-                ) {
-                    TwitchChat(
-                        channel = channel,
-                        isCompact = false,
-                        viewModel = chatViewModel,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(SamtchTheme.colors.chatBackground)
-                    )
-                }
+                chatContent(
+                    false,
+                    true,
+                    Modifier.fillMaxSize()
+                )
 
                 // Floating Toggle Mode Circle
                 if (!isAudioOnly) {

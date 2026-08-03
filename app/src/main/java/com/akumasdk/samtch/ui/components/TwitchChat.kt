@@ -33,6 +33,7 @@ fun TwitchChat(
     channel: String,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
+    showInput: Boolean = true,
     viewModel: ChatViewModel
 ) {
     val context = LocalContext.current
@@ -49,15 +50,18 @@ fun TwitchChat(
                 isCompact = isCompact,
                 viewModel = viewModel
             )
-            HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
-            ChatInputBox(
-                isLoggedIn = isLoggedIn,
-                onSendMessage = { text ->
-                    coroutineScope.launch {
-                        viewModel.sendMessage(text)
+            
+            if (showInput) {
+                HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
+                ChatInputBox(
+                    isLoggedIn = isLoggedIn,
+                    onSendMessage = { text ->
+                        coroutineScope.launch {
+                            viewModel.sendMessage(text)
+                        }
                     }
-                }
-            )
+                )
+            }
         }
         return
     }

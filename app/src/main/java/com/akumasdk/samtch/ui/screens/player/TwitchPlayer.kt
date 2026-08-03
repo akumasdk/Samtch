@@ -97,6 +97,7 @@ import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.ui.components.PlayerBackground
 import com.akumasdk.samtch.ui.components.PlayerLoadingScreen
+import com.akumasdk.samtch.ui.components.TwitchChat
 import com.akumasdk.samtch.ui.components.WebViewContainer
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
@@ -188,14 +189,15 @@ fun TwitchPlayer(
     val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
     val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
 
-    LaunchedEffect(channel, isPip, lifecycleState) {
-        // Only stay connected if NOT in PiP and the app is in the foreground (at least STARTED)
-        val shouldBeConnected = !isPip && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+    LaunchedEffect(channel, isPip, lifecycleState, portraitMode) {
+        // Stay connected if in foreground, OR if in PiP specifically in Chat Only mode
+        val isForeground = lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+        val shouldBeConnected = isForeground && (!isPip || portraitMode == PortraitMode.CHAT_ONLY)
         
         if (shouldBeConnected) {
             chatViewModel.connect(channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
         } else {
-            // Disconnect when entering PiP or going to background (Background Audio)
+            // Disconnect when entering PiP (if not in chat mode) or going to background
             chatViewModel.disconnect()
         }
     }
@@ -376,6 +378,18 @@ fun TwitchPlayer(
         }
     }
 
+    val chatContent = remember(channel) {
+        movableContentOf { isCompact: Boolean, showInput: Boolean, modifier: Modifier ->
+            TwitchChat(
+                channel = channel,
+                isCompact = isCompact,
+                showInput = showInput,
+                viewModel = chatViewModel,
+                modifier = modifier
+            )
+        }
+    }
+
     // Stable WebView content that won't be recreated when moving in the tree
     val playerContent = remember(channel, isAudioOnly) {
         movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
@@ -502,7 +516,7 @@ fun TwitchPlayer(
             isMinimized -> 64.dp
             isAudioOnly -> 240.dp
             isFullscreen -> screenHeight
-            portraitMode == PortraitMode.CHAT_ONLY -> 1.dp // Hidden but kept in tree for stability
+            portraitMode == PortraitMode.CHAT_ONLY && !isPip -> 1.dp // Hidden but kept in tree for stability
             else -> (screenWidth * 9 / 16)
         },
         animationSpec = SamtchAnimation.DpSpring,
@@ -513,7 +527,7 @@ fun TwitchPlayer(
         targetValue = when {
             isMinimized -> 120.dp
             isFullscreen && isChatVisible -> (screenWidth - 300.dp)
-            portraitMode == PortraitMode.CHAT_ONLY -> 1.dp
+            portraitMode == PortraitMode.CHAT_ONLY && !isPip -> 1.dp
             else -> screenWidth
         },
         animationSpec = SamtchAnimation.DpSpring,
@@ -578,7 +592,7 @@ fun TwitchPlayer(
                         isChatVisible = isChatVisible,
                         expandTrigger = metadataExpandTrigger,
                         onToggleChat = { isChatVisible = !isChatVisible },
-                        chatViewModel = chatViewModel,
+                        chatContent = chatContent,
                         webView = { modifier, _ -> 
                             Box(modifier = modifier)
                         }
@@ -602,7 +616,7 @@ fun TwitchPlayer(
                                 PortraitMode.CHAT_ONLY else PortraitMode.VIDEO_AND_CHAT
                             isChatVisible = true
                         },
-                        chatViewModel = chatViewModel,
+                        chatContent = chatContent,
                         webView = { modifier, _ -> 
                             // Render a simple placeholder when Point 3 (the stable player) is active
                             // to avoid "tug-of-war" of the movable content.
@@ -727,7 +741,7 @@ fun TwitchPlayer(
             }
 
             // 3. THE STABLE PLAYER (Stable during layout changes)
-            val shouldRenderPlayer = portraitMode != PortraitMode.CHAT_ONLY || isMinimized || isFullscreen
+            val shouldRenderPlayer = portraitMode != PortraitMode.CHAT_ONLY || isMinimized || isFullscreen || isPip
             
             if (shouldRenderPlayer) {
                 key(channel) { 
@@ -817,15 +831,19 @@ fun TwitchPlayer(
                         }
                     }
                 ) {
-                    playerContent(Modifier.fillMaxSize()) {
-                        Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")
-                        if (isFullscreen) {
-                            isChatVisible = !isChatVisible
-                        } else {
-                            // Cycle modes in portrait
-                            portraitMode = when (portraitMode) {
-                                PortraitMode.VIDEO_AND_CHAT -> PortraitMode.CHAT_ONLY
-                                PortraitMode.CHAT_ONLY -> PortraitMode.VIDEO_AND_CHAT
+                    if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
+                        chatContent(true, false, Modifier.fillMaxSize())
+                    } else {
+                        playerContent(Modifier.fillMaxSize()) {
+                            Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")
+                            if (isFullscreen) {
+                                isChatVisible = !isChatVisible
+                            } else {
+                                // Cycle modes in portrait
+                                portraitMode = when (portraitMode) {
+                                    PortraitMode.VIDEO_AND_CHAT -> PortraitMode.CHAT_ONLY
+                                    PortraitMode.CHAT_ONLY -> PortraitMode.VIDEO_AND_CHAT
+                                }
                             }
                         }
                     }
