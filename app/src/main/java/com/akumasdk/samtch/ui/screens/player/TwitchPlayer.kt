@@ -202,15 +202,14 @@ fun TwitchPlayer(
         }
     }
 
+    // Consolidated loading and metadata logic
     LaunchedEffect(channel, refreshTrigger) {
-        isUiLoading = true
-        loadingMessage = defaultLoadingMessage
+        // Only the first metadata fetch and periodic ones
+        // We don't set isUiLoading = true here anymore; the URL loader does it
         while (true) {
-            // Fetch detailed metadata via GraphQL
             Log.d("TwitchPlayer", "Fetching periodic metadata for $channel")
             val metadata = TwitchGqlService.getStreamMetadata(channel)
             
-            // Append timestamp to preview image URL to force refresh in UI and MediaController
             val timestampedMetadata = metadata?.copy(
                 user = metadata.user?.copy(
                     stream = metadata.user.stream?.let { stream ->
@@ -225,7 +224,6 @@ fun TwitchPlayer(
             )
             streamMetadata = timestampedMetadata
             
-            // Update UI-facing metadata
             timestampedMetadata?.user?.let { user ->
                 avatarUrl = user.profileImageUrl
                 streamSubtitle = user.stream?.title
@@ -328,7 +326,10 @@ fun TwitchPlayer(
 
     // Handle URL loading and refresh logic
     LaunchedEffect(channel, refreshTrigger, portraitMode) {
-        if (portraitMode == PortraitMode.CHAT_ONLY) return@LaunchedEffect
+        if (portraitMode == PortraitMode.CHAT_ONLY) {
+            isUiLoading = false
+            return@LaunchedEffect
+        }
         
         isUiLoading = true
         loadingMessage = defaultLoadingMessage
@@ -580,9 +581,7 @@ fun TwitchPlayer(
                         onToggleChat = { isChatVisible = !isChatVisible },
                         chatViewModel = chatViewModel,
                         webView = { modifier, _ -> 
-                            playerContent(modifier) {
-                                isChatVisible = !isChatVisible
-                            }
+                            Box(modifier = modifier)
                         }
                     )
                 } else {
@@ -601,21 +600,13 @@ fun TwitchPlayer(
                         onToggleMode = {
                             portraitMode = if (portraitMode == PortraitMode.VIDEO_AND_CHAT) 
                                 PortraitMode.CHAT_ONLY else PortraitMode.VIDEO_AND_CHAT
-                            if (portraitMode == PortraitMode.VIDEO_AND_CHAT) {
-                                isUiLoading = true
-                            }
                             isChatVisible = true
                         },
                         chatViewModel = chatViewModel,
                         webView = { modifier, _ -> 
-                            playerContent(modifier) {
-                                portraitMode = if (portraitMode == PortraitMode.VIDEO_AND_CHAT) 
-                                    PortraitMode.CHAT_ONLY else PortraitMode.VIDEO_AND_CHAT
-                                if (portraitMode == PortraitMode.VIDEO_AND_CHAT) {
-                                    isUiLoading = true
-                                }
-                                isChatVisible = true
-                            }
+                            // Render a simple placeholder when Point 3 (the stable player) is active
+                            // to avoid "tug-of-war" of the movable content.
+                            Box(modifier = modifier)
                         }
                     )
                 }
