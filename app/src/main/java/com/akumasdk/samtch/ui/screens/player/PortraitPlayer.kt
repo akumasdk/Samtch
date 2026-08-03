@@ -35,6 +35,7 @@ import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.ui.components.AdblockBanner
+import com.akumasdk.samtch.ui.components.PlayerBackground
 import com.akumasdk.samtch.ui.components.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.TwitchChat
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
@@ -60,11 +61,15 @@ fun PortraitPlayer(
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    PlayerBackground(
+        channel = channel,
+        previewUrl = previewImageUrl,
+        modifier = Modifier.fillMaxSize(),
+        alpha = 0.2f
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
                 .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
             verticalArrangement = Arrangement.Top
         ) {

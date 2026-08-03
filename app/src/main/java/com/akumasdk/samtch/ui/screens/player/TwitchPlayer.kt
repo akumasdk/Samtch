@@ -95,6 +95,8 @@ import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
+import com.akumasdk.samtch.ui.components.PlayerBackground
+import com.akumasdk.samtch.ui.components.PlayerLoadingScreen
 import com.akumasdk.samtch.ui.components.WebViewContainer
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
@@ -418,7 +420,13 @@ fun TwitchPlayer(
                     modifier = modifier
                 )
             } else {
-                Box(modifier = modifier.background(Color.Black)) {
+                val previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl
+                
+                PlayerBackground(
+                    channel = channel,
+                    previewUrl = previewImageUrl,
+                    modifier = modifier
+                ) {
                     WebViewContainer(
                         modifier = Modifier
                             .fillMaxSize()
@@ -466,44 +474,11 @@ fun TwitchPlayer(
                         exit = fadeOut(animationSpec = SamtchAnimation.StandardTween),
                         modifier = Modifier.matchParentSize()
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val previewUrl = streamMetadata?.user?.stream?.previewImageUrl
-                                ?: "https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.lowercase()}-853x480.jpg"
-
-                            AsyncImage(
-                                model = previewUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.6f))
-                            )
-                            CircularProgressIndicator(
-                                color = Color(0xFF9146FF),
-                                strokeWidth = 3.dp
-                            )
-                            Text(
-                                text = loadingMessage,
-                                color = Color.White,
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    shadow = Shadow(color = Color.Black, blurRadius = 8f)
-                                ),
-                                modifier = Modifier
-                                    .padding(top = 16.dp)
-                                    .align(Alignment.Center)
-                                    .offset(y = 40.dp)
-                            )
-                        }
+                        PlayerLoadingScreen(
+                            channel = channel,
+                            previewUrl = previewImageUrl,
+                            loadingMessage = loadingMessage
+                        )
                     }
                 }
             }
@@ -576,7 +551,11 @@ fun TwitchPlayer(
         Box(modifier = Modifier.fillMaxSize()) {
             // Fullscreen Background
             if (!isMinimized) {
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+                PlayerBackground(
+                    channel = channel,
+                    previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
 
             // 1. FULL PLAYER OVERLAY (Chat, Metadata)

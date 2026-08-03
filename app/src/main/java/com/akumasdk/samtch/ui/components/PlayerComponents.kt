@@ -7,6 +7,14 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebViewClient
 import android.webkit.WebView as NativeWebView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,8 +23,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.ScriptLoader
@@ -26,6 +43,76 @@ import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
+
+@Composable
+fun PlayerBackground(
+    channel: String,
+    previewUrl: String?,
+    modifier: Modifier = Modifier,
+    alpha: Float = 0.4f,
+    content: @Composable BoxScope.() -> Unit = {}
+) {
+    Box(
+        modifier = modifier.background(Color.Black)
+    ) {
+        val finalUrl = previewUrl ?: "https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.lowercase()}-853x480.jpg"
+        AsyncImage(
+            model = finalUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alpha = alpha
+        )
+        content()
+    }
+}
+
+@Composable
+fun PlayerLoadingScreen(
+    channel: String,
+    previewUrl: String?,
+    loadingMessage: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        val finalUrl = previewUrl ?: "https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.lowercase()}-853x480.jpg"
+
+        AsyncImage(
+            model = finalUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.6f))
+        )
+        CircularProgressIndicator(
+            color = Color(0xFF9146FF),
+            strokeWidth = 3.dp
+        )
+        Text(
+            text = loadingMessage,
+            color = Color.White,
+            style = TextStyle(
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                shadow = Shadow(color = Color.Black, blurRadius = 8f)
+            ),
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .align(Alignment.Center)
+                .offset(y = 40.dp)
+        )
+    }
+}
+
 
 @Composable
 fun WebViewContainer(
