@@ -95,6 +95,9 @@ fun PortraitPlayer(
                 }
             }
 
+            // Space for Adblock Banner between player and metadata
+            AdblockBanner(text = adblockText)
+
             // Tiny metadata space above chat
             AnimatedVisibility(
                 visible = !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),

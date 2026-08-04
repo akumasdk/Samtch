@@ -919,11 +919,6 @@ fun TwitchPlayer(
 
                     // Overlays on top of the player
                     if (!isMinimized && !isPip) {
-                        AdblockBanner(
-                            text = adblockText,
-                            modifier = Modifier.align(Alignment.TopCenter)
-                        )
-
                         if (isFullscreen) {
                             TapTooltip(
                                 visible = showFullscreenControls,

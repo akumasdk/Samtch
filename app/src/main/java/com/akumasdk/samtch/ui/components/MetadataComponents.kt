@@ -10,8 +10,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Gamepad
@@ -28,6 +30,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -160,7 +163,7 @@ fun StreamMetadataBar(
     var showInfoDialog by remember { mutableStateOf(false) }
 
     val animatedHeight by animateDpAsState(
-        targetValue = if (isSlim && !forceExpanded) 38.dp else 82.dp,
+        targetValue = if (isSlim && !forceExpanded) 38.dp else 68.dp,
         animationSpec = SamtchAnimation.DpSpring,
         label = "MetadataBarHeight"
     )
@@ -261,7 +264,7 @@ fun StreamMetadataBar(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 1. Avatar Section
@@ -417,6 +420,8 @@ fun StreamInfoDialog(
     previewImageUrl: String? = null,
     onDismiss: () -> Unit
 ) {
+    val scrollState = rememberScrollState()
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -424,6 +429,7 @@ fun StreamInfoDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
+                .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.9f)
                 .wrapContentHeight()
                 .clip(RoundedCornerShape(28.dp)),
             color = SamtchTheme.colors.dialogBackground,
@@ -459,6 +465,7 @@ fun StreamInfoDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .verticalScroll(scrollState)
                         .padding(24.dp)
                 ) {
                     // Header Section
