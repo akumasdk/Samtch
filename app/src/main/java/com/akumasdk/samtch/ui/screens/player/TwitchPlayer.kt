@@ -150,6 +150,10 @@ fun TwitchPlayer(
     var isAudioOnly by playerViewModel::isAudioOnly
     var portraitMode by playerViewModel::portraitMode
     
+    val streamMetadata = playerViewModel.streamMetadata
+    val avatarUrl = playerViewModel.avatarUrl
+    val streamSubtitle = playerViewModel.streamSubtitle
+
     var isUiLoading by remember { mutableStateOf(true) }
     val defaultLoadingMessage = stringResource(R.string.loading_stream)
     var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
@@ -251,6 +255,11 @@ fun TwitchPlayer(
         val isManualRefresh = refreshTrigger > lastProcessedRefreshTrigger
         lastProcessedRefreshTrigger = refreshTrigger
         playerViewModel.updateChannel(channel, forceRefresh = isManualRefresh)
+    }
+
+    // Keep parent activity in sync for background notifications
+    LaunchedEffect(avatarUrl, streamSubtitle) {
+        onMetadataUpdated(avatarUrl, streamSubtitle)
     }
 
     LaunchedEffect(shouldUseAudioService) {
@@ -630,7 +639,7 @@ fun TwitchPlayer(
             if (!isMinimized) {
                 PlayerBackground(
                     channel = channel,
-                    previewUrl = playerViewModel.streamMetadata?.user?.stream?.previewImageUrl,
+                    previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -644,14 +653,14 @@ fun TwitchPlayer(
                 if (isFullscreen) {
                     FullscreenPlayer(
                         channel = channel,
-                        displayName = playerViewModel.streamMetadata?.user?.displayName,
-                        avatarUrl = playerViewModel.avatarUrl,
-                        streamTitle = playerViewModel.streamMetadata?.user?.stream?.title,
-                        gameName = playerViewModel.streamMetadata?.user?.stream?.game?.name,
-                        viewersCount = playerViewModel.streamMetadata?.user?.stream?.viewersCount ?: 0,
+                        displayName = streamMetadata?.user?.displayName,
+                        avatarUrl = avatarUrl,
+                        streamTitle = streamMetadata?.user?.stream?.title,
+                        gameName = streamMetadata?.user?.stream?.game?.name,
+                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         refreshTrigger = refreshTrigger,
-                        streamStartedAt = playerViewModel.streamMetadata?.user?.stream?.createdAt,
-                        previewImageUrl = playerViewModel.streamMetadata?.user?.stream?.previewImageUrl,
+                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
+                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         isChatVisible = isChatVisible,
                         expandTrigger = metadataExpandTrigger,
                         isPip = isPip,
@@ -669,15 +678,15 @@ fun TwitchPlayer(
                 } else {
                     PortraitPlayer(
                         channel = channel,
-                        displayName = playerViewModel.streamMetadata?.user?.displayName,
-                        avatarUrl = playerViewModel.avatarUrl,
-                        streamTitle = playerViewModel.streamMetadata?.user?.stream?.title,
-                        gameName = playerViewModel.streamMetadata?.user?.stream?.game?.name,
-                        viewersCount = playerViewModel.streamMetadata?.user?.stream?.viewersCount ?: 0,
+                        displayName = streamMetadata?.user?.displayName,
+                        avatarUrl = avatarUrl,
+                        streamTitle = streamMetadata?.user?.stream?.title,
+                        gameName = streamMetadata?.user?.stream?.game?.name,
+                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
                         isAudioOnly = isAudioOnly,
                         adblockText = adblockText,
-                        streamStartedAt = playerViewModel.streamMetadata?.user?.stream?.createdAt,
-                        previewImageUrl = playerViewModel.streamMetadata?.user?.stream?.previewImageUrl,
+                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
+                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         portraitMode = portraitMode,
                         expandTrigger = metadataExpandTrigger,
                         isPip = isPip,
@@ -788,14 +797,14 @@ fun TwitchPlayer(
                             // Info
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = playerViewModel.streamMetadata?.user?.displayName ?: channel,
+                                    text = streamMetadata?.user?.displayName ?: channel,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     maxLines = 1,
                                     color = SamtchTheme.colors.miniPlayerTitle
                                 )
                                 Text(
-                                    text = playerViewModel.streamMetadata?.user?.stream?.title ?: "Live",
+                                    text = streamMetadata?.user?.stream?.title ?: "Live",
                                     color = SamtchTheme.colors.miniPlayerSubtitle,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,

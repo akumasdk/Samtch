@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
@@ -95,21 +96,37 @@ fun AudioOnlyPlayer(
             // Simplified view for MiniPlayer bar
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (!avatarUrl.isNullOrEmpty()) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = avatarUrl,
                         contentDescription = null,
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp),
+                                color = SamtchTheme.colors.accentColor,
+                                strokeWidth = 2.dp
+                            )
+                        }
                     )
                 } else {
-                    Text(
-                        text = (displayName ?: channel).take(1).uppercase(),
-                        color = SamtchTheme.colors.primaryText,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(36.dp),
+                            color = SamtchTheme.colors.accentColor.copy(alpha = 0.3f),
+                            strokeWidth = 2.dp
+                        )
+                        Text(
+                            text = (displayName ?: channel).take(1).uppercase(),
+                            color = SamtchTheme.colors.primaryText,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         } else {
@@ -130,21 +147,37 @@ fun AudioOnlyPlayer(
                     contentAlignment = Alignment.Center
                 ) {
                     if (!avatarUrl.isNullOrEmpty()) {
-                        AsyncImage(
+                        SubcomposeAsyncImage(
                             model = avatarUrl,
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(CircleShape),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
+                            loading = {
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(if (availableHeight < 200.dp) 16.dp else 24.dp),
+                                    color = SamtchTheme.colors.accentColor,
+                                    strokeWidth = 2.dp
+                                )
+                            }
                         )
                     } else {
-                        Text(
-                            text = (displayName ?: channel).take(1).uppercase(),
-                            color = SamtchTheme.colors.primaryText,
-                            fontSize = if (availableHeight < 200.dp) 24.sp else 32.sp,
-                            fontWeight = FontWeight.Black
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.fillMaxSize().padding(if (availableHeight < 200.dp) 4.dp else 8.dp),
+                                color = SamtchTheme.colors.accentColor.copy(alpha = 0.5f),
+                                strokeWidth = 2.dp
+                            )
+                            Text(
+                                text = (displayName ?: channel).take(1).uppercase(),
+                                color = SamtchTheme.colors.primaryText,
+                                fontSize = if (availableHeight < 200.dp) 24.sp else 32.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
                     }
                 }
 

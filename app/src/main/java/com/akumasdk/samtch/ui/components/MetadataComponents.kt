@@ -47,6 +47,7 @@ import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 import java.time.Duration
@@ -276,15 +277,24 @@ fun StreamMetadataBar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 1. Avatar Section
-                    Box(modifier = Modifier.size(46.dp)) { // Balanced size
+                    Box(modifier = Modifier.size(46.dp)) {
                         if (!avatarUrl.isNullOrEmpty()) {
-                            AsyncImage(
+                            SubcomposeAsyncImage(
                                 model = avatarUrl,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(CircleShape),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Crop,
+                                loading = {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(10.dp),
+                                        color = SamtchTheme.colors.accentColor,
+                                        strokeWidth = 2.dp
+                                    )
+                                }
                             )
                         } else {
                             Surface(
@@ -293,11 +303,16 @@ fun StreamMetadataBar(
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(28.dp),
+                                        color = Color.White.copy(alpha = 0.7f),
+                                        strokeWidth = 2.dp
+                                    )
                                     Text(
                                         text = (displayName ?: channel).take(1).uppercase(),
                                         color = Color.White,
                                         fontWeight = FontWeight.Black,
-                                        fontSize = 22.sp,
+                                        fontSize = 18.sp,
                                         style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
                                     )
                                 }

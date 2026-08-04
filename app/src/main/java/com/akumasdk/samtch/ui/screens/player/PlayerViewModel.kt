@@ -30,24 +30,29 @@ class PlayerViewModel : ViewModel() {
     private var metadataJob: Job? = null
 
     fun updateChannel(newChannel: String?, forceRefresh: Boolean = false) {
-        if (channel == newChannel && !forceRefresh) return
+        val isNewChannel = channel != newChannel
+        if (!isNewChannel && !forceRefresh) return
         
         // Reset state for the new channel or forced refresh
         channel = newChannel
-        hasBackgroundReloaded = false
         
-        // Always reset UI mode to standard when changing channels to avoid "breaking logic"
-        if (!forceRefresh) {
+        // Only reset background reload flag if it's a COMPLETELY new channel.
+        // If it's just a refresh (even manual), we preserve the existing background reload state
+        // to comply with "do not perform any more browser reload after initial passes".
+        if (isNewChannel) {
+            hasBackgroundReloaded = false
+            
+            // Always reset UI mode to standard when changing channels to avoid "breaking logic"
             portraitMode = PortraitMode.VIDEO_AND_CHAT
             isAudioOnly = false
-        }
-        
-        if (newChannel != null) {
-            // Clear old metadata immediately so the UI doesn't show stale info
+            
+            // Clear metadata for new channel
             streamMetadata = null
             avatarUrl = null
             streamSubtitle = null
-            
+        }
+        
+        if (newChannel != null) {
             startMetadataFetch(newChannel)
         } else {
             stopMetadataFetch()
