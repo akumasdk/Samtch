@@ -87,6 +87,9 @@ fun FullscreenPlayer(
                     .fillMaxHeight()
                     .background(SamtchTheme.colors.chatBackground)
             ) {
+                // Adblock Banner in the same space as portrait (between video and metadata/chat)
+                AdblockBanner(text = adblockText)
+
                 // Metadata space above chat (Only visible when chat is open)
                 AnimatedVisibility(
                     visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),

@@ -658,6 +658,7 @@ fun TwitchPlayer(
                         streamTitle = streamMetadata?.user?.stream?.title,
                         gameName = streamMetadata?.user?.stream?.game?.name,
                         viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
+                        adblockText = adblockText,
                         refreshTrigger = refreshTrigger,
                         streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                         previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
