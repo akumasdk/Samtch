@@ -6,6 +6,12 @@
     <string name="cancel_button">Cancelar</string>
     <string name="fullscreen_double_tap_hint">Toca dos veces en el centro para alternar el chat</string>
 
+    <!-- Settings Categories -->
+    <string name="settings_category_appearance">Apariencia</string>
+    <string name="settings_category_player">Reproductor y Reproducción</string>
+    <string name="settings_category_chat">Chat y Emoticonos</string>
+    <string name="settings_category_app">Aplicación</string>
+
     <!-- Settings -->
     <string name="settings_title">Ajustes</string>
     <string name="back_content_description">Atrás</string>
@@ -53,8 +59,8 @@
     <!-- Ad Block Settings -->
     <string name="ad_block_mode_title">Método de Bloqueo de Anuncios</string>
     <string name="ad_block_mode_summary">Elige el script utilizado para bloquear anuncios de Twitch</string>
-    <string name="ad_block_mode_vaft">VAFT (Latencia Alta/Experimental)</string>
-    <string name="ad_block_mode_video_swap">Video Swap (Estable/Predeterminado)</string>
+    <string name="ad_block_mode_vaft">VAFT (Estable/lento en dispositivos de gama media-baja)</string>
+    <string name="ad_block_mode_video_swap">Video Swap (Rápido en dispositivos de gama baja)</string>
     <string name="ad_block_mode_notice">Nota: Los cambios en el método de bloqueo de anuncios surtirán efecto la próxima vez que reproduzcas un stream.</string>
 
     <!-- Chat Settings -->

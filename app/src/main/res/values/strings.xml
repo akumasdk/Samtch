@@ -6,6 +6,12 @@
     <string name="cancel_button">Cancel</string>
     <string name="fullscreen_double_tap_hint">Double tap center to toggle chat</string>
 
+    <!-- Settings Categories -->
+    <string name="settings_category_appearance">Appearance</string>
+    <string name="settings_category_player">Player &amp; Playback</string>
+    <string name="settings_category_chat">Chat &amp; Emotes</string>
+    <string name="settings_category_app">Application</string>
+
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="back_content_description">Back</string>
@@ -53,8 +59,8 @@
     <!-- Ad Block Settings -->
     <string name="ad_block_mode_title">Ad-Blocking Method</string>
     <string name="ad_block_mode_summary">Choose the script used to block Twitch ads</string>
-    <string name="ad_block_mode_vaft">VAFT (High Latency/Experimental)</string>
-    <string name="ad_block_mode_video_swap">Video Swap (Stable/Default)</string>
+    <string name="ad_block_mode_vaft">VAFT (Stable/slower in medium-lower range devices)</string>
+    <string name="ad_block_mode_video_swap">Video Swap (Faster in lower end devices)</string>
     <string name="ad_block_mode_notice">Note: Changes to the ad-blocking method will take effect when you play the next stream.</string>
 
     <!-- Chat Settings -->

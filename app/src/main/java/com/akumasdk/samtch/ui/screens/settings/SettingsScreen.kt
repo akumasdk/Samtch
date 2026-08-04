@@ -53,6 +53,12 @@ fun SettingsScreen(
     
     val context = LocalContext.current
 
+    val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+    val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+    val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
+    val isPipEnabled by SettingsManager.isPipEnabled(context).collectAsState(initial = true)
+    val isAudioBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
+
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -79,7 +85,7 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
+                title = { Text(stringResource(R.string.settings_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -87,83 +93,24 @@ fun SettingsScreen(
                             contentDescription = stringResource(R.string.back_content_description)
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(vertical = 8.dp)
         ) {
+            // --- APPEARANCE ---
+            item { SettingSectionHeader(stringResource(R.string.settings_category_appearance)) }
+            
             item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.bttv_settings_title)) },
-                    supportingContent = { Text(stringResource(R.string.bttv_settings_summary)) },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_bttv),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = Color.Unspecified // Keep original BetterTTV colors
-                        )
-                    },
-                    modifier = Modifier.clickable {
-                        isBttvSettingsOpen = true
-                    }
-                )
-            }
-
-            item {
-                val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.chat_mode_title)) },
-                    supportingContent = {
-                        Text(
-                            when (chatMode) {
-                                SettingsManager.ChatMode.NATIVE -> stringResource(R.string.chat_mode_native)
-                                SettingsManager.ChatMode.LEGACY -> stringResource(R.string.chat_mode_legacy)
-                            }
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Chat,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
-                        showChatModeDialog = true
-                    }
-                )
-            }
-
-            item {
-                val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VAFT)
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.ad_block_mode_title)) },
-                    supportingContent = {
-                        Text(
-                            when (adBlockMode) {
-                                SettingsManager.AdBlockMode.VAFT -> stringResource(R.string.ad_block_mode_vaft)
-                                SettingsManager.AdBlockMode.VIDEO_SWAP -> stringResource(R.string.ad_block_mode_video_swap)
-                            }
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_refresh),
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
-                        showAdBlockDialog = true
-                    }
-                )
-            }
-
-            item {
-                val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.theme_mode_title)) },
                     supportingContent = {
@@ -178,7 +125,8 @@ fun SettingsScreen(
                     leadingContent = {
                         Icon(
                             imageVector = Icons.Default.Palette,
-                            contentDescription = null
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     modifier = Modifier.clickable {
@@ -187,15 +135,20 @@ fun SettingsScreen(
                 )
             }
 
+            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
+
+            // --- PLAYER ---
+            item { SettingSectionHeader(stringResource(R.string.settings_category_player)) }
+
             item {
-                val isPipEnabled by SettingsManager.isPipEnabled(context).collectAsState(initial = true)
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.pip_enabled_title)) },
                     supportingContent = { Text(stringResource(R.string.pip_enabled_summary)) },
                     leadingContent = {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_pip_mode),
-                            contentDescription = null
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     trailingContent = {
@@ -217,14 +170,14 @@ fun SettingsScreen(
             }
 
             item {
-                val isAudioBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.audio_only_background_title)) },
                     supportingContent = { Text(stringResource(R.string.audio_only_background_summary)) },
                     leadingContent = {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_headset),
-                            contentDescription = null
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     trailingContent = {
@@ -245,6 +198,94 @@ fun SettingsScreen(
                 )
             }
 
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.ad_block_mode_title)) },
+                    supportingContent = {
+                        Text(
+                            when (adBlockMode) {
+                                SettingsManager.AdBlockMode.VAFT -> stringResource(R.string.ad_block_mode_vaft)
+                                SettingsManager.AdBlockMode.VIDEO_SWAP -> stringResource(R.string.ad_block_mode_video_swap)
+                            }
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_ad_block),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showAdBlockDialog = true
+                    }
+                )
+            }
+
+            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
+
+            // --- CHAT ---
+            item { SettingSectionHeader(stringResource(R.string.settings_category_chat)) }
+
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.chat_mode_title)) },
+                    supportingContent = {
+                        Text(
+                            when (chatMode) {
+                                SettingsManager.ChatMode.NATIVE -> stringResource(R.string.chat_mode_native)
+                                SettingsManager.ChatMode.LEGACY -> stringResource(R.string.chat_mode_legacy)
+                            }
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showChatModeDialog = true
+                    }
+                )
+            }
+
+            item {
+                val isNative = chatMode == SettingsManager.ChatMode.NATIVE
+                
+                ListItem(
+                    headlineContent = { 
+                        Text(
+                            text = stringResource(R.string.bttv_settings_title),
+                            color = if (isNative) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else Color.Unspecified
+                        ) 
+                    },
+                    supportingContent = { 
+                        Text(
+                            text = if (isNative) stringResource(R.string.chat_mode_notice) else stringResource(R.string.bttv_settings_summary),
+                            color = if (isNative) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f) else Color.Unspecified
+                        ) 
+                    },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_bttv),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = if (isNative) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else Color.Unspecified
+                        )
+                    },
+                    modifier = Modifier.clickable(enabled = !isNative) {
+                        isBttvSettingsOpen = true
+                    }
+                )
+            }
+
+            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
+
+            // --- APP ---
+            item { SettingSectionHeader(stringResource(R.string.settings_category_app)) }
+
             if (BuildConfig.UPDATES_ENABLED) {
                 item {
                     ListItem(
@@ -264,7 +305,8 @@ fun SettingsScreen(
                         leadingContent = {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_refresh),
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         },
                         trailingContent = {
@@ -319,7 +361,8 @@ fun SettingsScreen(
                     leadingContent = {
                         Icon(
                             imageVector = Icons.Default.Info,
-                            contentDescription = null
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     modifier = Modifier.clickable {
@@ -341,7 +384,6 @@ fun SettingsScreen(
     }
 
     if (showThemeModeDialog) {
-        val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
         AlertDialog(
             onDismissRequest = { showThemeModeDialog = false },
             title = { Text(stringResource(R.string.theme_mode_title)) },
@@ -441,7 +483,6 @@ fun SettingsScreen(
     }
 
     if (showChatModeDialog) {
-        val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
         AlertDialog(
             onDismissRequest = { showChatModeDialog = false },
             title = { Text(stringResource(R.string.chat_mode_title)) },
@@ -497,7 +538,6 @@ fun SettingsScreen(
     }
 
     if (showAdBlockDialog) {
-        val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
         AlertDialog(
             onDismissRequest = { showAdBlockDialog = false },
             title = { Text(stringResource(R.string.ad_block_mode_title)) },
@@ -551,4 +591,17 @@ fun SettingsScreen(
             }
         )
     }
+}
+
+@Composable
+fun SettingSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+            .fillMaxWidth(),
+        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+    )
 }
