@@ -65,9 +65,9 @@
 
     <!-- Chat Settings -->
     <string name="chat_mode_title">Experiencia de Chat</string>
-    <string name="chat_mode_summary">Elige entre el chat Nativo o el Heredado (WebView)</string>
-    <string name="chat_mode_native">Nativo (Experimental/Rápido)</string>
-    <string name="chat_mode_legacy">Heredado (Estable/Original)</string>
+    <string name="chat_mode_summary">Elige entre el chat Nativo o el Integrado</string>
+    <string name="chat_mode_native">Nativo (Más Rápido / Experimental)</string>
+    <string name="chat_mode_legacy">Integrado (Original)</string>
     <string name="chat_mode_notice">Nota: El chat nativo incluye soporte para emoticonos de BetterTTV y 7TV.</string>
 
     <!-- Theme Settings -->
