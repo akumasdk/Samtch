@@ -371,9 +371,27 @@ fun TwitchPlayer(
             isUiLoading = false
             navigator.stopLoading()
             navigator.loadUrl(Constants.ABOUT_BLANK)
+            
+            // Aggressively silence the WebView if it still exists in the native layer
+            try {
+                state.nativeWebView.apply {
+                    onPause() // Pause timers and JS
+                    pauseTimers()
+                    stopLoading()
+                    loadUrl(Constants.ABOUT_BLANK)
+                }
+            } catch (_: Exception) {}
             return@LaunchedEffect
         }
         
+        // Resume WebView if it was paused
+        try {
+            state.nativeWebView.apply {
+                resumeTimers()
+                onResume()
+            }
+        } catch (_: Exception) {}
+
         // If we were on about:blank and now need video, or if it's a refresh/channel change
         currentLoadingSession = System.currentTimeMillis()
         isUiLoading = true
@@ -424,8 +442,9 @@ fun TwitchPlayer(
         }
     }
 
-    // Stable WebView content that won't be recreated when moving in the tree
-    val playerContent = remember(channel, isAudioOnly) {
+    // Stable WebView content that won't be recreated when moving in the tree,
+    // but WILL be wiped out when entering Chat Only mode to save resources and ensure it stops playing.
+    val playerContent = remember(channel, isAudioOnly, portraitMode == PortraitMode.CHAT_ONLY) {
         movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
             if (isAudioOnly) {
                 AudioOnlyPlayer(
@@ -558,7 +577,7 @@ fun TwitchPlayer(
             isMinimized -> 64.dp
             isAudioOnly -> 240.dp
             isFullscreen -> screenHeight
-            portraitMode == PortraitMode.CHAT_ONLY && !isPip -> 1.dp // Hidden but kept in tree for stability
+            portraitMode == PortraitMode.CHAT_ONLY && !isPip -> 0.dp
             else -> (screenWidth * 9 / 16)
         },
         animationSpec = SamtchAnimation.DpSpring,
@@ -569,7 +588,7 @@ fun TwitchPlayer(
         targetValue = when {
             isMinimized -> 120.dp
             isFullscreen && isChatVisible -> (screenWidth - 300.dp)
-            portraitMode == PortraitMode.CHAT_ONLY && !isPip -> 1.dp
+            portraitMode == PortraitMode.CHAT_ONLY && !isPip -> 0.dp
             else -> screenWidth
         },
         animationSpec = SamtchAnimation.DpSpring,
