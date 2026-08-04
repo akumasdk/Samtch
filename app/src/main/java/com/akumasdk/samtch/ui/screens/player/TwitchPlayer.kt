@@ -364,7 +364,6 @@ fun TwitchPlayer(
         // Resume WebView if it was paused
         try {
             state.nativeWebView.apply {
-                resumeTimers()
                 onResume()
             }
         } catch (_: Exception) {}
@@ -435,46 +434,56 @@ fun TwitchPlayer(
                 val showAudioDesign = playerViewModel.isAudioOnly || (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY && isMinimized)
 
                 if (showAudioDesign) {
-                    AudioOnlyPlayer(
-                        channel = channel,
-                        avatarUrl = liveAvatarUrl,
-                        subtitle = liveSubtitle,
-                        displayName = liveMetadata?.user?.displayName,
-                        streamTitle = liveMetadata?.user?.stream?.title,
-                        gameName = liveMetadata?.user?.stream?.game?.name,
-                        viewersCount = liveMetadata?.user?.stream?.viewersCount ?: 0,
-                        isPlaying = liveIsPlaying,
-                        onTogglePlayback = {
-                            if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
-                        },
-                        onCloseAudioOnly = {
-                            isAudioOnly = false
-                            portraitMode = PortraitMode.VIDEO_AND_CHAT
-                            mediaController?.stop()
-                            // removed redundant onRefreshRequested() to prevent infinite browser reloads
-                        },
-                        onRefresh = {
-                            mediaController?.stop()
-                            val avatarUri = liveAvatarUrl?.toUri()
-                            mediaController?.setMediaItem(
-                                MediaItem.Builder()
-                                    .setMediaId(channel)
-                                    .setMediaMetadata(
-                                        MediaMetadata.Builder()
-                                            .setTitle(liveMetadata?.user?.stream?.title ?: channel)
-                                            .setArtist(liveMetadata?.user?.displayName ?: channel)
-                                            .setAlbumTitle(liveMetadata?.user?.stream?.game?.name)
-                                            .setArtworkUri(avatarUri)
-                                            .build()
-                                    )
-                                    .build()
-                            )
-                            mediaController?.prepare()
-                            mediaController?.play()
-                        },
-                        previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    val previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
+                    
+                    if (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY && isMinimized) {
+                        PlayerBackground(
+                            channel = channel,
+                            previewUrl = previewImageUrl,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        AudioOnlyPlayer(
+                            channel = channel,
+                            avatarUrl = liveAvatarUrl,
+                            subtitle = liveSubtitle,
+                            displayName = liveMetadata?.user?.displayName,
+                            streamTitle = liveMetadata?.user?.stream?.title,
+                            gameName = liveMetadata?.user?.stream?.game?.name,
+                            viewersCount = liveMetadata?.user?.stream?.viewersCount ?: 0,
+                            isPlaying = liveIsPlaying,
+                            onTogglePlayback = {
+                                if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
+                            },
+                            onCloseAudioOnly = {
+                                isAudioOnly = false
+                                portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                mediaController?.stop()
+                                // removed redundant onRefreshRequested() to prevent infinite browser reloads
+                            },
+                            onRefresh = {
+                                mediaController?.stop()
+                                val avatarUri = liveAvatarUrl?.toUri()
+                                mediaController?.setMediaItem(
+                                    MediaItem.Builder()
+                                        .setMediaId(channel)
+                                        .setMediaMetadata(
+                                            MediaMetadata.Builder()
+                                                .setTitle(liveMetadata?.user?.stream?.title ?: channel)
+                                                .setArtist(liveMetadata?.user?.displayName ?: channel)
+                                                .setAlbumTitle(liveMetadata?.user?.stream?.game?.name)
+                                                .setArtworkUri(avatarUri)
+                                                .build()
+                                        )
+                                        .build()
+                                )
+                                mediaController?.prepare()
+                                mediaController?.play()
+                            },
+                            previewImageUrl = previewImageUrl,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 } else {
                     val previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
                     
@@ -982,8 +991,7 @@ private fun unloadWebView(state: com.multiplatform.webview.web.WebViewState, nav
     navigator.loadUrl(com.akumasdk.samtch.util.Constants.ABOUT_BLANK)
     try {
         state.nativeWebView.apply {
-            onPause() // Pause timers and JS
-            pauseTimers()
+            onPause() // Pause JS and events for THIS instance only
             stopLoading()
             loadUrl(com.akumasdk.samtch.util.Constants.ABOUT_BLANK)
         }

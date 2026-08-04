@@ -300,9 +300,14 @@ class MainActivity : ComponentActivity() {
                             hasBackgroundReloaded = playerViewModel.hasBackgroundReloaded,
                             onBackgroundReloadFinished = { playerViewModel.hasBackgroundReloaded = true },
                             onChannelSelected = { channel ->
-                                if (selectedChannel != channel) {
-                                    selectedChannel = channel
+                                val isSameChannel = selectedChannel == channel
+                                selectedChannel = channel
+                                if (!isSameChannel) {
                                     playerViewModel.updateChannel(channel)
+                                } else {
+                                    // If same channel is re-selected, reset background reload flag
+                                    // to ensure the browser performs a fresh background purge.
+                                    playerViewModel.hasBackgroundReloaded = false
                                 }
                                 isMinimized = false
                             },
