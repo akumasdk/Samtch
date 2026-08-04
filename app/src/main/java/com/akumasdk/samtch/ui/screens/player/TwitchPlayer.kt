@@ -97,6 +97,7 @@ import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.ui.components.AdblockBanner
+import com.akumasdk.samtch.ui.components.MiniPlayerOverlay
 import com.akumasdk.samtch.ui.components.PlayerBackground
 import com.akumasdk.samtch.ui.components.PlayerLoadingScreen
 import com.akumasdk.samtch.ui.components.TapTooltip
@@ -437,65 +438,63 @@ fun TwitchPlayer(
                 val liveSubtitle = playerViewModel.streamSubtitle
                 val liveIsPlaying = isPlaying // Updated via mediaController listener
                 
-                // Design choice: Chat Only mode uses the "Audio Only" mini-player design when minimized
-                // to show the streamer's avatar instead of a black box.
-                // However, as per user request, it remains silent (no background audio service).
-                val showAudioDesign = playerViewModel.isAudioOnly || (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY && isMinimized)
+                // Mode logic
+                val isAudioOrChatMode = playerViewModel.isAudioOnly || playerViewModel.portraitMode == PortraitMode.CHAT_ONLY
+                val previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
 
-                if (showAudioDesign) {
-                    val previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
-                    
-                    if (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY && isMinimized) {
-                        PlayerBackground(
-                            channel = channel,
-                            previewUrl = previewImageUrl,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        AudioOnlyPlayer(
-                            channel = channel,
-                            avatarUrl = liveAvatarUrl,
-                            subtitle = liveSubtitle,
-                            displayName = liveMetadata?.user?.displayName,
-                            streamTitle = liveMetadata?.user?.stream?.title,
-                            gameName = liveMetadata?.user?.stream?.game?.name,
-                            viewersCount = liveMetadata?.user?.stream?.viewersCount ?: 0,
-                            isPlaying = liveIsPlaying,
-                            onTogglePlayback = {
-                                if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
-                            },
-                            onCloseAudioOnly = {
-                                isAudioOnly = false
-                                portraitMode = PortraitMode.VIDEO_AND_CHAT
-                                mediaController?.stop()
-                                // removed redundant onRefreshRequested() to prevent infinite browser reloads
-                            },
-                            onRefresh = {
-                                mediaController?.stop()
-                                val avatarUri = liveAvatarUrl?.toUri()
-                                mediaController?.setMediaItem(
-                                    MediaItem.Builder()
-                                        .setMediaId(channel)
-                                        .setMediaMetadata(
-                                            MediaMetadata.Builder()
-                                                .setTitle(liveMetadata?.user?.stream?.title ?: channel)
-                                                .setArtist(liveMetadata?.user?.displayName ?: channel)
-                                                .setAlbumTitle(liveMetadata?.user?.stream?.game?.name)
-                                                .setArtworkUri(avatarUri)
-                                                .build()
-                                        )
-                                        .build()
-                                )
-                                mediaController?.prepare()
-                                mediaController?.play()
-                            },
-                            previewImageUrl = previewImageUrl,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                if (isMinimized && isAudioOrChatMode) {
+                    // Use the dedicated overlay for minimized non-video modes
+                    MiniPlayerOverlay(
+                        channel = channel,
+                        avatarUrl = liveAvatarUrl,
+                        previewImageUrl = previewImageUrl,
+                        badgeText = if (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY) "CHAT ONLY" else "AUDIO ONLY",
+                        usePreview = playerViewModel.portraitMode == PortraitMode.CHAT_ONLY,
+                        showLoading = isUiLoading && !playerViewModel.isAudioOnly
+                    )
+                } else if (isAudioOrChatMode) {
+                    // Expanded non-video modes: AudioOnlyPlayer (with its own background preview)
+                    AudioOnlyPlayer(
+                        channel = channel,
+                        avatarUrl = liveAvatarUrl,
+                        subtitle = liveSubtitle,
+                        displayName = liveMetadata?.user?.displayName,
+                        streamTitle = liveMetadata?.user?.stream?.title,
+                        gameName = liveMetadata?.user?.stream?.game?.name,
+                        viewersCount = liveMetadata?.user?.stream?.viewersCount ?: 0,
+                        isPlaying = liveIsPlaying,
+                        onTogglePlayback = {
+                            if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
+                        },
+                        onCloseAudioOnly = {
+                            isAudioOnly = false
+                            portraitMode = PortraitMode.VIDEO_AND_CHAT
+                            mediaController?.stop()
+                        },
+                        onRefresh = {
+                            mediaController?.stop()
+                            val avatarUri = liveAvatarUrl?.toUri()
+                            mediaController?.setMediaItem(
+                                MediaItem.Builder()
+                                    .setMediaId(channel)
+                                    .setMediaMetadata(
+                                        MediaMetadata.Builder()
+                                            .setTitle(liveMetadata?.user?.stream?.title ?: channel)
+                                            .setArtist(liveMetadata?.user?.displayName ?: channel)
+                                            .setAlbumTitle(liveMetadata?.user?.stream?.game?.name)
+                                            .setArtworkUri(avatarUri)
+                                            .build()
+                                    )
+                                    .build()
+                            )
+                            mediaController?.prepare()
+                            mediaController?.play()
+                        },
+                        previewImageUrl = previewImageUrl,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 } else {
-                    val previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
-                    
+                    // Video mode (Minimized or Expanded): Actual WebView Player
                     PlayerBackground(
                         channel = channel,
                         previewUrl = previewImageUrl,
@@ -529,9 +528,6 @@ fun TwitchPlayer(
                             onPlaybackStarted = {
                                 val session = currentLoadingSession
                                 scope.launch {
-                                    // Add a small grace period (300ms) to ensure the WebView 
-                                    // has actually swapped buffers and rendered the first frame.
-                                    // Also verify we are still in the same loading session.
                                     delay(300.milliseconds)
                                     if (session == currentLoadingSession) {
                                         isUiLoading = false

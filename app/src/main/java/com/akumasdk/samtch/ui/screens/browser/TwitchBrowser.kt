@@ -24,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,12 +84,12 @@ fun TwitchBrowser(
     val currentOnRefreshRequested by rememberUpdatedState(onRefreshRequested)
     val currentOnLoaded by rememberUpdatedState(onLoaded)
 
+    var lastProcessedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
+    var wasPlayerActive by remember { mutableStateOf(isPlayerActive) }
+    
     // Detect theme change and trigger reload to apply new twilight.theme
     LaunchedEffect(themeMode, isSystemInDarkTheme) {
         Log.d("TwitchBrowser", "Theme change detected (mode=$themeMode, dark=$isSystemInDarkTheme). Refreshing browser.")
-        // If the player is active, the browser is managed by the isPlayerActive effect.
-        // We trigger a reload on the navigator which will either refresh the active page
-        // or the background pre-loaded page.
         navigator.reload()
     }
 
@@ -106,51 +107,72 @@ fun TwitchBrowser(
             navigator.loadUrl(previousUrl)
         }
     }
-
-    // Handle Background Reload when player launches OR Manual Hard Refresh
-    LaunchedEffect(isPlayerActive, refreshTrigger, hasBackgroundReloaded) {
-        webViewRef?.let { webView ->
-            val isManualRefresh = refreshTrigger > 0
-            val shouldDoBackgroundReload = isPlayerActive && !hasBackgroundReloaded
-            
-            if (shouldDoBackgroundReload || isManualRefresh) {
-                Log.d("TwitchBrowser", "Hard Refresh/Background Reload (Active=$isPlayerActive, Manual=$isManualRefresh, AlreadyDone=$hasBackgroundReloaded)")
+    // 1. Handle Background Purge when player launches
+    LaunchedEffect(isPlayerActive, hasBackgroundReloaded) {
+        if (isPlayerActive && !hasBackgroundReloaded) {
+            webViewRef?.let { webView ->
+                Log.d("TwitchBrowser", "Executing background purge (Player Active, Not Reloaded)")
                 isUiLoading = true
                 
-                kotlinx.coroutines.yield()
                 webView.stopLoading()
                 webView.loadUrl(Constants.ABOUT_BLANK)
                 webView.clearHistory()
                 
-                // Wait for the purge to settle
-                delay(if (isPlayerActive) 1500.milliseconds else 1000.milliseconds)
+                delay(1500.milliseconds)
                 
                 val targetUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
-                Log.d("TwitchBrowser", "Loading context: $targetUrl")
+                Log.d("TwitchBrowser", "Loading background context: $targetUrl")
+                webView.loadUrl(targetUrl)
+                
+                onBackgroundReloadFinished()
+            }
+        }
+    }
+
+    // 2. Handle Manual Hard Refresh (Incremental Trigger)
+    LaunchedEffect(refreshTrigger) {
+        if (refreshTrigger > lastProcessedRefreshTrigger) {
+            lastProcessedRefreshTrigger = refreshTrigger
+            webViewRef?.let { webView ->
+                Log.d("TwitchBrowser", "Executing Manual Hard Refresh (trigger=$refreshTrigger)")
+                isUiLoading = true
+                
+                webView.stopLoading()
+                webView.loadUrl(Constants.ABOUT_BLANK)
+                webView.clearHistory()
+                
+                delay(1000.milliseconds)
+                
+                val targetUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
                 webView.loadUrl(targetUrl)
                 
                 if (isPlayerActive && !hasBackgroundReloaded) {
                     onBackgroundReloadFinished()
                 }
-            } else if (!isPlayerActive) {
-                // Restoration logic when returning to browser
+            }
+        }
+    }
+
+    // 3. Handle Restoration when returning to Browser
+    LaunchedEffect(isPlayerActive) {
+        if (!isPlayerActive && wasPlayerActive) {
+            webViewRef?.let { webView ->
                 val restoreUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
                 val currentUrl = webView.url ?: ""
                 
-                Log.d("TwitchBrowser", "Restoring browser UI. current=$currentUrl, target=$restoreUrl")
+                Log.d("TwitchBrowser", "Restoring browser UI from background. target=$restoreUrl")
                 
                 val isAlreadyLoaded = currentUrl.trimEnd('/') == restoreUrl.trimEnd('/')
-                
                 if (!isAlreadyLoaded || currentUrl == Constants.ABOUT_BLANK) {
                     isUiLoading = true
                     webView.loadUrl(restoreUrl)
                 }
                 
-                // Safety timeout to ensure loading screen eventually goes away if cleaning script fails
-                delay(5000.milliseconds)
+                delay(3000.milliseconds)
                 if (isUiLoading) isUiLoading = false
             }
         }
+        wasPlayerActive = isPlayerActive
     }
 
     // Inject scripts when page is loaded (ONLY dialog closer)
