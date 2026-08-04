@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -151,10 +150,6 @@ fun TwitchPlayer(
     var isAudioOnly by playerViewModel::isAudioOnly
     var portraitMode by playerViewModel::portraitMode
     
-    val avatarUrl = playerViewModel.avatarUrl
-    val streamSubtitle = playerViewModel.streamSubtitle
-    val streamMetadata = playerViewModel.streamMetadata
-
     var isUiLoading by remember { mutableStateOf(true) }
     val defaultLoadingMessage = stringResource(R.string.loading_stream)
     var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
@@ -177,6 +172,10 @@ fun TwitchPlayer(
 
     var isChatVisible by remember { mutableStateOf(true) }
     var metadataExpandTrigger by remember { mutableIntStateOf(0) }
+
+    // Logic for using the background audio service
+    // Strictly tied to explicit Audio Only mode. Chat Only mode remains silent when minimized.
+    val shouldUseAudioService = isAudioOnly
 
     // Purge adblock banner if entering chat only or audio and chat mode
     LaunchedEffect(portraitMode) {
@@ -221,6 +220,8 @@ fun TwitchPlayer(
     val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
     val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
 
+    var lastProcessedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
+
     LaunchedEffect(channel, isPip, lifecycleState, portraitMode) {
         // Stay connected if in foreground, OR if in PiP specifically in Chat Only mode
         val isForeground = lifecycleState.isAtLeast(Lifecycle.State.STARTED)
@@ -247,16 +248,18 @@ fun TwitchPlayer(
 
     // Consolidated loading and metadata logic
     LaunchedEffect(channel, refreshTrigger) {
-        playerViewModel.updateChannel(channel)
+        val isManualRefresh = refreshTrigger > lastProcessedRefreshTrigger
+        lastProcessedRefreshTrigger = refreshTrigger
+        playerViewModel.updateChannel(channel, forceRefresh = isManualRefresh)
     }
 
-    LaunchedEffect(isAudioOnly) {
-        onAudioOnlyModeChanged(isAudioOnly)
+    LaunchedEffect(shouldUseAudioService) {
+        onAudioOnlyModeChanged(shouldUseAudioService)
     }
 
     // Connect to service only when Audio Only mode is manually enabled
-    LaunchedEffect(isAudioOnly) {
-        if (!isAudioOnly) {
+    LaunchedEffect(shouldUseAudioService) {
+        if (!shouldUseAudioService) {
             mediaController?.release()
             mediaController = null
             // If the background setting is also off, ensure the service is killed
@@ -283,13 +286,13 @@ fun TwitchPlayer(
     }
 
     // Handle initial playback when switching to Audio Only mode
-    LaunchedEffect(mediaController, isAudioOnly) {
-        if (isAudioOnly && mediaController != null && !isPlaying) {
-            val previewUri = streamMetadata?.user?.stream?.previewImageUrl?.toUri()
+    LaunchedEffect(mediaController, shouldUseAudioService) {
+        if (shouldUseAudioService && mediaController != null && !isPlaying) {
+            val previewUri = playerViewModel.streamMetadata?.user?.stream?.previewImageUrl?.toUri()
             val metadata = MediaMetadata.Builder()
-                .setTitle(streamMetadata?.user?.stream?.title ?: channel)
-                .setArtist(streamMetadata?.user?.displayName ?: channel)
-                .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
+                .setTitle(playerViewModel.streamMetadata?.user?.stream?.title ?: channel)
+                .setArtist(playerViewModel.streamMetadata?.user?.displayName ?: channel)
+                .setAlbumTitle(playerViewModel.streamMetadata?.user?.stream?.game?.name)
                 .setArtworkUri(previewUri)
                 .build()
             
@@ -305,14 +308,14 @@ fun TwitchPlayer(
     }
 
     // Periodically update controller metadata if it's connected
-    LaunchedEffect(streamMetadata, mediaController) {
+    LaunchedEffect(playerViewModel.streamMetadata, mediaController) {
         val controller = mediaController ?: return@LaunchedEffect
-        val stream = streamMetadata?.user?.stream ?: return@LaunchedEffect
+        val stream = playerViewModel.streamMetadata?.user?.stream ?: return@LaunchedEffect
         
         Log.d("TwitchPlayer", "Updating controller metadata for $channel")
         val metadata = MediaMetadata.Builder()
             .setTitle(stream.title)
-            .setArtist(streamMetadata?.user?.displayName ?: channel)
+            .setArtist(playerViewModel.streamMetadata?.user?.displayName ?: channel)
             .setAlbumTitle(stream.game?.name)
             .setArtworkUri(stream.previewImageUrl?.toUri())
             .build()
@@ -340,29 +343,21 @@ fun TwitchPlayer(
         }
     }
 
-    val isVideoRequired = remember(isAudioOnly, isMinimized, isFullscreen, portraitMode) {
-        !isAudioOnly && (isMinimized || isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
+    val isVideoRequired = remember(isAudioOnly, portraitMode, isFullscreen, isMinimized) {
+        // Video is NOT required if:
+        // 1. Explicitly in Audio Only mode
+        // 2. In Chat Only mode (always unload video)
+        !isAudioOnly && portraitMode != PortraitMode.CHAT_ONLY && (isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
     }
 
     // Handle URL loading and refresh logic
     LaunchedEffect(channel, refreshTrigger, isVideoRequired) {
         if (!isVideoRequired) {
-            Log.d("TwitchPlayer", "Video not required for current mode (isVideoRequired=false, audioOnly=$isAudioOnly). Unloading player.")
+            Log.d("TwitchPlayer", "Video not required (audio=$isAudioOnly, mode=$portraitMode). Unloading.")
             // Invalidate current loading session and stop any active load immediately
             currentLoadingSession = System.currentTimeMillis()
             isUiLoading = false
-            navigator.stopLoading()
-            navigator.loadUrl(Constants.ABOUT_BLANK)
-            
-            // Aggressively silence the WebView if it still exists in the native layer
-            try {
-                state.nativeWebView.apply {
-                    onPause() // Pause timers and JS
-                    pauseTimers()
-                    stopLoading()
-                    loadUrl(Constants.ABOUT_BLANK)
-                }
-            } catch (_: Exception) {}
+            unloadWebView(state, navigator)
             return@LaunchedEffect
         }
         
@@ -397,8 +392,7 @@ fun TwitchPlayer(
             // Clean up WebView resources aggressively
             try {
                 state.nativeWebView.apply {
-                    stopLoading()
-                    loadUrl(Constants.ABOUT_BLANK)
+                    unloadWebView(state, navigator)
                     clearCache(true)
                     clearHistory()
                     clearFormData()
@@ -426,112 +420,125 @@ fun TwitchPlayer(
 
     // Stable WebView content that won't be recreated when moving in the tree,
     // but WILL be wiped out when entering Chat Only mode to save resources and ensure it stops playing.
-    val playerContent = remember(channel, isAudioOnly, portraitMode == PortraitMode.CHAT_ONLY) {
+    val playerContent = remember(channel) {
         movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
-            if (isAudioOnly) {
-                AudioOnlyPlayer(
-                    channel = channel,
-                    avatarUrl = avatarUrl,
-                    subtitle = streamSubtitle,
-                    displayName = streamMetadata?.user?.displayName,
-                    streamTitle = streamMetadata?.user?.stream?.title,
-                    gameName = streamMetadata?.user?.stream?.game?.name,
-                    viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
-                    isPlaying = isPlaying,
-                    onTogglePlayback = {
-                        if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
-                    },
-                    onCloseAudioOnly = {
-                        isAudioOnly = false
-                        portraitMode = PortraitMode.VIDEO_AND_CHAT
-                        mediaController?.stop()
-                        onRefreshRequested()
-                    },
-                    onRefresh = {
-                        mediaController?.stop()
-                        val avatarUri = avatarUrl?.toUri()
-                        mediaController?.setMediaItem(
-                            MediaItem.Builder()
-                                .setMediaId(channel)
-                                .setMediaMetadata(
-                                    MediaMetadata.Builder()
-                                        .setTitle(streamMetadata?.user?.stream?.title ?: channel)
-                                        .setArtist(streamMetadata?.user?.displayName ?: channel)
-                                        .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
-                                        .setArtworkUri(avatarUri)
-                                        .build()
-                                )
-                                .build()
-                        )
-                        mediaController?.prepare()
-                        mediaController?.play()
-                    },
-                    previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                    modifier = modifier
-                )
-            } else {
-                val previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl
+            Box(modifier = modifier) {
+                // Read metadata inside the lambda to ensure reactivity even if the lambda is remembered
+                val liveMetadata = playerViewModel.streamMetadata
+                val liveAvatarUrl = playerViewModel.avatarUrl
+                val liveSubtitle = playerViewModel.streamSubtitle
+                val liveIsPlaying = isPlaying // Updated via mediaController listener
                 
-                PlayerBackground(
-                    channel = channel,
-                    previewUrl = previewImageUrl,
-                    modifier = modifier
-                ) {
-                    WebViewContainer(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .onGloballyPositioned { layoutCoordinates ->
-                                if (!isMinimized) {
-                                    val rect = layoutCoordinates.boundsInWindow()
-                                    onVideoBoundsChanged(
-                                        android.graphics.Rect(
-                                            rect.left.toInt(),
-                                            rect.top.toInt(),
-                                            rect.right.toInt(),
-                                            rect.bottom.toInt()
-                                        )
+                // Design choice: Chat Only mode uses the "Audio Only" mini-player design when minimized
+                // to show the streamer's avatar instead of a black box.
+                // However, as per user request, it remains silent (no background audio service).
+                val showAudioDesign = playerViewModel.isAudioOnly || (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY && isMinimized)
+
+                if (showAudioDesign) {
+                    AudioOnlyPlayer(
+                        channel = channel,
+                        avatarUrl = liveAvatarUrl,
+                        subtitle = liveSubtitle,
+                        displayName = liveMetadata?.user?.displayName,
+                        streamTitle = liveMetadata?.user?.stream?.title,
+                        gameName = liveMetadata?.user?.stream?.game?.name,
+                        viewersCount = liveMetadata?.user?.stream?.viewersCount ?: 0,
+                        isPlaying = liveIsPlaying,
+                        onTogglePlayback = {
+                            if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
+                        },
+                        onCloseAudioOnly = {
+                            isAudioOnly = false
+                            portraitMode = PortraitMode.VIDEO_AND_CHAT
+                            mediaController?.stop()
+                            // removed redundant onRefreshRequested() to prevent infinite browser reloads
+                        },
+                        onRefresh = {
+                            mediaController?.stop()
+                            val avatarUri = liveAvatarUrl?.toUri()
+                            mediaController?.setMediaItem(
+                                MediaItem.Builder()
+                                    .setMediaId(channel)
+                                    .setMediaMetadata(
+                                        MediaMetadata.Builder()
+                                            .setTitle(liveMetadata?.user?.stream?.title ?: channel)
+                                            .setArtist(liveMetadata?.user?.displayName ?: channel)
+                                            .setAlbumTitle(liveMetadata?.user?.stream?.game?.name)
+                                            .setArtworkUri(avatarUri)
+                                            .build()
                                     )
+                                    .build()
+                            )
+                            mediaController?.prepare()
+                            mediaController?.play()
+                        },
+                        previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    val previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
+                    
+                    PlayerBackground(
+                        channel = channel,
+                        previewUrl = previewImageUrl,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        WebViewContainer(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .onGloballyPositioned { layoutCoordinates ->
+                                    if (!isMinimized) {
+                                        val rect = layoutCoordinates.boundsInWindow()
+                                        onVideoBoundsChanged(
+                                            android.graphics.Rect(
+                                                rect.left.toInt(),
+                                                rect.top.toInt(),
+                                                rect.right.toInt(),
+                                                rect.bottom.toInt()
+                                            )
+                                        )
+                                    }
+                                },
+                            state = state,
+                            navigator = navigator,
+                            channel = channel,
+                            onToggleFullscreen = onToggleFullscreen,
+                            onToggleChat = onToggleChat,
+                            onToggleAudioOnly = { 
+                                isAudioOnly = true 
+                                portraitMode = PortraitMode.AUDIO_AND_CHAT
+                            },
+                            onPlaybackStarted = {
+                                val session = currentLoadingSession
+                                scope.launch {
+                                    // Add a small grace period (300ms) to ensure the WebView 
+                                    // has actually swapped buffers and rendered the first frame.
+                                    // Also verify we are still in the same loading session.
+                                    delay(300.milliseconds)
+                                    if (session == currentLoadingSession) {
+                                        isUiLoading = false
+                                    }
                                 }
                             },
-                        state = state,
-                        navigator = navigator,
-                        channel = channel,
-                        onToggleFullscreen = onToggleFullscreen,
-                        onToggleChat = onToggleChat,
-                        onToggleAudioOnly = { 
-                            isAudioOnly = true 
-                            portraitMode = PortraitMode.AUDIO_AND_CHAT
-                        },
-                        onPlaybackStarted = {
-                            val session = currentLoadingSession
-                            scope.launch {
-                                // Add a small grace period (300ms) to ensure the WebView 
-                                // has actually swapped buffers and rendered the first frame.
-                                // Also verify we are still in the same loading session.
-                                delay(300.milliseconds)
-                                if (session == currentLoadingSession) {
-                                    isUiLoading = false
-                                }
+                            onLoadingStatus = { message -> loadingMessage = message },
+                            onAdblocked = { text ->
+                                adblockText = text
+                                if (text.isNotEmpty() && isUiLoading) isUiLoading = false
                             }
-                        },
-                        onLoadingStatus = { message -> loadingMessage = message },
-                        onAdblocked = { text ->
-                            adblockText = text
-                            if (text.isNotEmpty() && isUiLoading) isUiLoading = false
-                        }
-                    )
-                    
-                    AnimatedVisibility(
-                        visible = isUiLoading,
-                        enter = fadeIn(animationSpec = SamtchAnimation.StandardTween),
-                        exit = fadeOut(animationSpec = SamtchAnimation.StandardTween),
-                        modifier = Modifier.matchParentSize()
-                    ) {
-                        PlayerLoadingScreen(
-                            channel = channel,
-                            previewUrl = previewImageUrl,
-                            loadingMessage = loadingMessage
                         )
+                        
+                        AnimatedVisibility(
+                            visible = isUiLoading,
+                            enter = fadeIn(animationSpec = SamtchAnimation.StandardTween),
+                            exit = fadeOut(animationSpec = SamtchAnimation.StandardTween),
+                            modifier = Modifier.matchParentSize()
+                        ) {
+                            PlayerLoadingScreen(
+                                channel = channel,
+                                previewUrl = previewImageUrl,
+                                loadingMessage = loadingMessage
+                            )
+                        }
                     }
                 }
             }
@@ -614,13 +621,13 @@ fun TwitchPlayer(
             if (!isMinimized) {
                 PlayerBackground(
                     channel = channel,
-                    previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                    previewUrl = playerViewModel.streamMetadata?.user?.stream?.previewImageUrl,
                     modifier = Modifier.fillMaxSize()
                 )
             }
 
             // 1. FULL PLAYER OVERLAY (Chat, Metadata)
-            androidx.compose.animation.AnimatedVisibility(
+            AnimatedVisibility(
                 visible = !isMinimized,
                 enter = fadeIn(animationSpec = SamtchAnimation.EmphasizedTween),
                 exit = fadeOut(animationSpec = SamtchAnimation.FastTween)
@@ -628,14 +635,14 @@ fun TwitchPlayer(
                 if (isFullscreen) {
                     FullscreenPlayer(
                         channel = channel,
-                        displayName = streamMetadata?.user?.displayName,
-                        avatarUrl = avatarUrl,
-                        streamTitle = streamMetadata?.user?.stream?.title,
-                        gameName = streamMetadata?.user?.stream?.game?.name,
-                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
+                        displayName = playerViewModel.streamMetadata?.user?.displayName,
+                        avatarUrl = playerViewModel.avatarUrl,
+                        streamTitle = playerViewModel.streamMetadata?.user?.stream?.title,
+                        gameName = playerViewModel.streamMetadata?.user?.stream?.game?.name,
+                        viewersCount = playerViewModel.streamMetadata?.user?.stream?.viewersCount ?: 0,
                         refreshTrigger = refreshTrigger,
-                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                        streamStartedAt = playerViewModel.streamMetadata?.user?.stream?.createdAt,
+                        previewImageUrl = playerViewModel.streamMetadata?.user?.stream?.previewImageUrl,
                         isChatVisible = isChatVisible,
                         expandTrigger = metadataExpandTrigger,
                         isPip = isPip,
@@ -653,15 +660,15 @@ fun TwitchPlayer(
                 } else {
                     PortraitPlayer(
                         channel = channel,
-                        displayName = streamMetadata?.user?.displayName,
-                        avatarUrl = avatarUrl,
-                        streamTitle = streamMetadata?.user?.stream?.title,
-                        gameName = streamMetadata?.user?.stream?.game?.name,
-                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
+                        displayName = playerViewModel.streamMetadata?.user?.displayName,
+                        avatarUrl = playerViewModel.avatarUrl,
+                        streamTitle = playerViewModel.streamMetadata?.user?.stream?.title,
+                        gameName = playerViewModel.streamMetadata?.user?.stream?.game?.name,
+                        viewersCount = playerViewModel.streamMetadata?.user?.stream?.viewersCount ?: 0,
                         isAudioOnly = isAudioOnly,
                         adblockText = adblockText,
-                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                        streamStartedAt = playerViewModel.streamMetadata?.user?.stream?.createdAt,
+                        previewImageUrl = playerViewModel.streamMetadata?.user?.stream?.previewImageUrl,
                         portraitMode = portraitMode,
                         expandTrigger = metadataExpandTrigger,
                         isPip = isPip,
@@ -772,14 +779,14 @@ fun TwitchPlayer(
                             // Info
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = streamMetadata?.user?.displayName ?: channel,
+                                    text = playerViewModel.streamMetadata?.user?.displayName ?: channel,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     maxLines = 1,
                                     color = SamtchTheme.colors.miniPlayerTitle
                                 )
                                 Text(
-                                    text = streamMetadata?.user?.stream?.title ?: "Live",
+                                    text = playerViewModel.streamMetadata?.user?.stream?.title ?: "Live",
                                     color = SamtchTheme.colors.miniPlayerSubtitle,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
@@ -801,7 +808,9 @@ fun TwitchPlayer(
             }
 
             // 3. THE STABLE PLAYER (Stable during layout changes)
-            val shouldRenderPlayer = portraitMode != PortraitMode.CHAT_ONLY || isMinimized || isFullscreen || isPip
+            // We always render the player if a channel is selected to preserve the WebView 
+            // instance and allow fast switching between modes.
+            val shouldRenderPlayer = true
             
             if (shouldRenderPlayer) {
                 key(channel) { 
@@ -965,5 +974,18 @@ fun TwitchPlayer(
             }
         }
     }
+    }
 }
+
+private fun unloadWebView(state: com.multiplatform.webview.web.WebViewState, navigator: com.multiplatform.webview.web.WebViewNavigator) {
+    navigator.stopLoading()
+    navigator.loadUrl(com.akumasdk.samtch.util.Constants.ABOUT_BLANK)
+    try {
+        state.nativeWebView.apply {
+            onPause() // Pause timers and JS
+            pauseTimers()
+            stopLoading()
+            loadUrl(com.akumasdk.samtch.util.Constants.ABOUT_BLANK)
+        }
+    } catch (_: Exception) {}
 }

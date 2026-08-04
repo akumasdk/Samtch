@@ -108,7 +108,7 @@ fun TwitchBrowser(
     }
 
     // Handle Background Reload when player launches OR Manual Hard Refresh
-    LaunchedEffect(isPlayerActive, refreshTrigger) {
+    LaunchedEffect(isPlayerActive, refreshTrigger, hasBackgroundReloaded) {
         webViewRef?.let { webView ->
             val isManualRefresh = refreshTrigger > 0
             val shouldDoBackgroundReload = isPlayerActive && !hasBackgroundReloaded
@@ -129,7 +129,7 @@ fun TwitchBrowser(
                 Log.d("TwitchBrowser", "Loading context: $targetUrl")
                 webView.loadUrl(targetUrl)
                 
-                if (isPlayerActive) {
+                if (isPlayerActive && !hasBackgroundReloaded) {
                     onBackgroundReloadFinished()
                 }
             } else if (!isPlayerActive) {
