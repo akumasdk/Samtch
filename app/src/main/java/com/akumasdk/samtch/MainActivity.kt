@@ -70,6 +70,9 @@ import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.login.LoginActivity
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.akumasdk.samtch.ui.screens.player.PlayerViewModel
+import com.akumasdk.samtch.ui.screens.player.PortraitMode
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
@@ -181,6 +184,8 @@ class MainActivity : ComponentActivity() {
                 val isAutoRotateEnabled by SystemSettingsUtil.observeAutoRotate(this@MainActivity).collectAsState(initial = false)
                 
                 // Animated browser padding for smooth layout transitions
+                val playerViewModel: PlayerViewModel = viewModel()
+
                 val browserBottomPadding by animateDpAsState(
                     targetValue = if (isMinimized && selectedChannel != null) 104.dp else 0.dp,
                     animationSpec = SamtchAnimation.DpSpring,
@@ -248,9 +253,11 @@ class MainActivity : ComponentActivity() {
                     if (action == Constants.Actions.STOP) {
                         selectedChannel = null
                         isMinimized = false
+                        playerViewModel.updateChannel(null)
                     } else if (newChannel != null) {
                         selectedChannel = newChannel
                         isMinimized = false
+                        playerViewModel.updateChannel(newChannel)
                     }
                 }
 
@@ -274,6 +281,16 @@ class MainActivity : ComponentActivity() {
                     displayedChannel = selectedChannel
                 }
 
+                val isPlayerActive = remember(selectedChannel, isMinimized, playerViewModel.isAudioOnly, playerViewModel.portraitMode, isFullscreen) {
+                    val hasChannel = selectedChannel != null
+                    val isVideoVisible = !playerViewModel.isAudioOnly && 
+                        (isFullscreen || playerViewModel.portraitMode == PortraitMode.VIDEO_AND_CHAT)
+                    
+                    // The browser should be unloaded ONLY when the player is full-screen (portrait or landscape)
+                    // and actually rendering video content.
+                    hasChannel && !isMinimized && isVideoVisible
+                }
+
                 Box(modifier = Modifier.fillMaxSize().background(SamtchTheme.colors.rootBackground)) {
                     Box(
                         modifier = Modifier
@@ -284,7 +301,7 @@ class MainActivity : ComponentActivity() {
                         TwitchBrowser(
                             state = browserState,
                             navigator = browserNavigator,
-                            isPlayerActive = selectedChannel != null && !isMinimized,
+                            isPlayerActive = isPlayerActive,
                             refreshTrigger = refreshTrigger,
                             onChannelSelected = { channel ->
                                 if (selectedChannel != channel) {
@@ -318,6 +335,7 @@ class MainActivity : ComponentActivity() {
                                     isPip = isInPipMode,
                                     isMinimized = isMinimized,
                                     refreshTrigger = refreshTrigger,
+                                    playerViewModel = playerViewModel,
                                     onToggleFullscreen = { isFullscreen = !isFullscreen },
                                     onBack = {
                                         isMinimized = true
@@ -327,6 +345,7 @@ class MainActivity : ComponentActivity() {
                                     onRefreshRequested = { refreshTriggerState.intValue += 1 },
                                     onClose = {
                                         selectedChannel = null
+                                        playerViewModel.updateChannel(null)
                                         val stopIntent = Intent(this@MainActivity, PlaybackService::class.java)
                                         stopService(stopIntent)
                                     },

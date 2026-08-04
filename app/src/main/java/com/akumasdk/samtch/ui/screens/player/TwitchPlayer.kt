@@ -137,6 +137,7 @@ fun TwitchPlayer(
     isPip: Boolean = false,
     isMinimized: Boolean = false,
     refreshTrigger: Int = 0,
+    playerViewModel: PlayerViewModel = viewModel(),
     onToggleFullscreen: () -> Unit = {},
     onBack: (() -> Unit)? = null,
     onClose: () -> Unit = {},
@@ -147,7 +148,13 @@ fun TwitchPlayer(
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
     val context = LocalContext.current
-    var isAudioOnly by remember { mutableStateOf(false) }
+    var isAudioOnly by playerViewModel::isAudioOnly
+    var portraitMode by playerViewModel::portraitMode
+    
+    val avatarUrl = playerViewModel.avatarUrl
+    val streamSubtitle = playerViewModel.streamSubtitle
+    val streamMetadata = playerViewModel.streamMetadata
+
     var isUiLoading by remember { mutableStateOf(true) }
     val defaultLoadingMessage = stringResource(R.string.loading_stream)
     var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
@@ -157,13 +164,8 @@ fun TwitchPlayer(
 
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
-    
-    var avatarUrl by remember { mutableStateOf<String?>(null) }
-    var streamSubtitle by remember { mutableStateOf<String?>(null) }
-    var streamMetadata by remember { mutableStateOf<TwitchStreamMetadata?>(null) }
 
     val currentIsPlaying by rememberUpdatedState(isPlaying)
-    val currentAvatarUrl by rememberUpdatedState(avatarUrl)
 
     val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
 
@@ -174,7 +176,6 @@ fun TwitchPlayer(
     val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
 
     var isChatVisible by remember { mutableStateOf(true) }
-    var portraitMode by remember { mutableStateOf(PortraitMode.VIDEO_AND_CHAT) }
     var metadataExpandTrigger by remember { mutableIntStateOf(0) }
 
     // Purge adblock banner if entering chat only or audio and chat mode
@@ -246,34 +247,7 @@ fun TwitchPlayer(
 
     // Consolidated loading and metadata logic
     LaunchedEffect(channel, refreshTrigger) {
-        // Only the first metadata fetch and periodic ones
-        // We don't set isUiLoading = true here anymore; the URL loader does it
-        while (true) {
-            Log.d("TwitchPlayer", "Fetching periodic metadata for $channel")
-            val metadata = TwitchGqlService.getStreamMetadata(channel)
-            
-            val timestampedMetadata = metadata?.copy(
-                user = metadata.user?.copy(
-                    stream = metadata.user.stream?.let { stream ->
-                        stream.copy(
-                            previewImageUrl = stream.previewImageUrl?.let { url ->
-                                val separator = if (url.contains("?")) "&" else "?"
-                                "$url${separator}t=${System.currentTimeMillis()}"
-                            }
-                        )
-                    }
-                )
-            )
-            streamMetadata = timestampedMetadata
-            
-            timestampedMetadata?.user?.let { user ->
-                avatarUrl = user.profileImageUrl
-                streamSubtitle = user.stream?.title
-                onMetadataUpdated(user.profileImageUrl, user.stream?.title)
-            }
-            
-            delay(1.minutes)
-        }
+        playerViewModel.updateChannel(channel)
     }
 
     LaunchedEffect(isAudioOnly) {
@@ -475,7 +449,7 @@ fun TwitchPlayer(
                     },
                     onRefresh = {
                         mediaController?.stop()
-                        val avatarUri = currentAvatarUrl?.toUri()
+                        val avatarUri = avatarUrl?.toUri()
                         mediaController?.setMediaItem(
                             MediaItem.Builder()
                                 .setMediaId(channel)
