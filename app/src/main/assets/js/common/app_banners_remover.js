@@ -12,7 +12,8 @@
             '.stream-info-social-panel'
         ],
         navSelector: 'body > div > div:nth-child(1) > div:nth-child(1) > nav',
-        samtchBtnId: 'samtch-settings-btn'
+        samtchBtnId: 'samtch-settings-btn',
+        samtchLoginBtnId: 'samtch-login-btn'
     };
 
     function injectPersistentStyles() {
@@ -27,7 +28,7 @@
 
         // Add Top Nav Purge Logic
         css += `
-            ${CONFIG.navSelector} > *:not(#${CONFIG.samtchBtnId}):not([interactioncontent="logo"]) {
+            ${CONFIG.navSelector} > *:not(#${CONFIG.samtchBtnId}):not(#${CONFIG.samtchLoginBtnId}):not([interactioncontent="logo"]) {
                 display: none !important;
             }
             ${CONFIG.navSelector} {

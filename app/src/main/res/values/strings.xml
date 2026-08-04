@@ -10,6 +10,7 @@
     <string name="settings_category_appearance">Appearance</string>
     <string name="settings_category_player">Player &amp; Playback</string>
     <string name="settings_category_chat">Chat &amp; Emotes</string>
+    <string name="settings_category_account">Account</string>
     <string name="settings_category_app">Application</string>
 
     <!-- Settings -->
@@ -25,6 +26,12 @@
     <string name="bttv_settings_title">BetterTTV Settings</string>
     <string name="bttv_settings_summary">Configure BetterTTV emotes and features</string>
     <string name="bttv_settings_success_overlay">Go back and try again</string>
+
+    <string name="logout_title">Close Twitch Session</string>
+    <string name="logout_summary">Log out from your Twitch account</string>
+    <string name="logout_dialog_title">Log Out</string>
+    <string name="logout_dialog_message">Are you sure you want to close your Twitch session? This will reload the browser.</string>
+    <string name="logout_button">Log Out</string>
 
     <!-- About Dialog -->
     <string name="about_dialog_title">About Samtch</string>

@@ -63,6 +63,13 @@
                 <data android:scheme="https" android:host="www.twitch.tv" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.screens.login.LoginActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Samtch"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" />
     </application>
 
 </manifest>

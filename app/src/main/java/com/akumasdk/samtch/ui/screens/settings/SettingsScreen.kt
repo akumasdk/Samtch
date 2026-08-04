@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.*
@@ -40,12 +41,14 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onLogout: () -> Unit = {}
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
     var showAdBlockDialog by remember { mutableStateOf(false) }
     var showChatModeDialog by remember { mutableStateOf(false) }
     var showThemeModeDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
@@ -283,6 +286,28 @@ fun SettingsScreen(
 
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
 
+            // --- ACCOUNT ---
+            item { SettingSectionHeader(stringResource(R.string.settings_category_account)) }
+            
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.logout_title)) },
+                    supportingContent = { Text(stringResource(R.string.logout_summary)) },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showLogoutDialog = true
+                    }
+                )
+            }
+
+            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
+
             // --- APP ---
             item { SettingSectionHeader(stringResource(R.string.settings_category_app)) }
 
@@ -425,6 +450,30 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showThemeModeDialog = false }) {
+                    Text(stringResource(R.string.cancel_button))
+                }
+            }
+        )
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text(stringResource(R.string.logout_dialog_title)) },
+            text = { Text(stringResource(R.string.logout_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.logout_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
                     Text(stringResource(R.string.cancel_button))
                 }
             }

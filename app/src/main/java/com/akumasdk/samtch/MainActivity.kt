@@ -1,6 +1,7 @@
 package com.akumasdk.samtch
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -15,9 +16,12 @@ import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.util.Rational
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
@@ -63,6 +67,7 @@ import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
+import com.akumasdk.samtch.ui.screens.login.LoginActivity
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
@@ -228,6 +233,15 @@ class MainActivity : ComponentActivity() {
                 val browserState = rememberSaveableWebViewState(Constants.Twitch.MOBILE_URL)
                 val browserNavigator = rememberWebViewNavigator()
 
+                val loginLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.StartActivityForResult()
+                ) { result ->
+                    if (result.resultCode == RESULT_OK) {
+                        Log.d("MainActivity", "Login successful, reloading browser.")
+                        browserNavigator.reload()
+                    }
+                }
+
                 LaunchedEffect(intent) {
                     val action = intent.getStringExtra(Constants.Extras.ACTION)
                     val newChannel = intent.getStringExtra(Constants.Extras.CHANNEL)
@@ -278,6 +292,10 @@ class MainActivity : ComponentActivity() {
                                 isMinimized = false
                             },
                             onSettingsClick = { isSettingsOpen = true },
+                            onLoginRequested = {
+                                val intent = Intent(this@MainActivity, LoginActivity::class.java)
+                                loginLauncher.launch(intent)
+                            },
                             onLoaded = { isAppLoadedState.value = true }
                         )
                     }
@@ -327,7 +345,19 @@ class MainActivity : ComponentActivity() {
                         enter = SamtchAnimation.ScreenEnterTransition,
                         exit = SamtchAnimation.ScreenExitTransition
                     ) {
-                        SettingsScreen(onBack = { isSettingsOpen = false })
+                        SettingsScreen(
+                            onBack = { isSettingsOpen = false },
+                            onLogout = {
+                                // Clear all cookies and reload browser
+                                android.webkit.CookieManager.getInstance().removeAllCookies { 
+                                    lifecycleScope.launch(Dispatchers.Main) {
+                                        Log.d("MainActivity", "Logout: cookies cleared, reloading browser.")
+                                        browserNavigator.reload()
+                                        isSettingsOpen = false
+                                    }
+                                }
+                            }
+                        )
                     }
                 }
             }

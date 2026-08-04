@@ -58,6 +58,7 @@ fun TwitchBrowser(
     onChannelSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     onSettingsClick: () -> Unit = {},
+    onLoginRequested: () -> Unit = {},
     onLoaded: () -> Unit = {}
 ) {
     val activity = LocalActivity.current
@@ -74,6 +75,7 @@ fun TwitchBrowser(
     // Safety: ensure callbacks are always fresh without bridge recreation
     val currentOnChannelSelected by rememberUpdatedState(onChannelSelected)
     val currentOnSettingsClick by rememberUpdatedState(onSettingsClick)
+    val currentOnLoginRequested by rememberUpdatedState(onLoginRequested)
     val currentOnLoaded by rememberUpdatedState(onLoaded)
 
     // Detect theme change and trigger reload to apply new twilight.theme
@@ -195,6 +197,7 @@ fun TwitchBrowser(
         TwitchBrowserBridge(
             activity = activity,
             onSettingsClicked = { currentOnSettingsClick() },
+            onLoginRequested = { currentOnLoginRequested() },
             onLoadedCallback = { currentOnLoaded() },
             onUiCleanFinished = { isUiLoading = false },
             onRefreshRequested = { navigator.reload() },
@@ -531,6 +534,7 @@ private fun isBrowserRoot(url: String?): Boolean {
 class TwitchBrowserBridge(
     private val activity: android.app.Activity?,
     private val onSettingsClicked: () -> Unit,
+    private val onLoginRequested: () -> Unit = {},
     private val onLoadedCallback: () -> Unit,
     private val onUiCleanFinished: () -> Unit = {},
     private val onRefreshRequested: () -> Unit,
@@ -570,6 +574,14 @@ class TwitchBrowserBridge(
         activity?.runOnUiThread {
             Log.d("TwitchBrowser", "Settings button clicked in JS")
             onSettingsClicked()
+        }
+    }
+
+    @JavascriptInterface
+    fun openLogin() {
+        activity?.runOnUiThread {
+            Log.d("TwitchBrowser", "Login button clicked in JS")
+            onLoginRequested()
         }
     }
 
