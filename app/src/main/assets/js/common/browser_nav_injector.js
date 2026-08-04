@@ -2,23 +2,24 @@
     'use strict';
     console.log('[Samtch] browser_nav_injector.js active');
 
+    const NAV_SELECTOR = 'body > div > div:nth-child(1) > div:nth-child(1) > nav';
+    const BTN_ID = 'samtch-settings-btn';
+
     function injectSettingsButton() {
-        // Use the precise path provided: /html/body/div/div[1]/div[1]/nav
-        const topNav = document.querySelector('body > div > div:nth-child(1) > div:nth-child(1) > nav');
+        const topNav = document.querySelector(NAV_SELECTOR);
         if (!topNav) return;
 
         // Detect dark mode from Twitch's root element
         const isDarkMode = document.documentElement.classList.contains('tw-root--theme-dark');
 
-        if (document.getElementById('samtch-settings-btn')) {
-            // Update color if already injected but theme changed
-            const existingBtn = document.getElementById('samtch-settings-btn');
-            existingBtn.style.color = isDarkMode ? 'white' : 'black';
+        let btn = document.getElementById(BTN_ID);
+        if (btn) {
+            btn.style.color = isDarkMode ? 'white' : 'black';
             return;
         }
 
-        const btn = document.createElement('button');
-        btn.id = 'samtch-settings-btn';
+        btn = document.createElement('button');
+        btn.id = BTN_ID;
         btn.setAttribute('aria-label', 'Samtch Settings');
 
         // Styles matching Twitch's mobile UI
@@ -36,8 +37,6 @@
         btn.style.height = '34px';
         btn.style.borderRadius = '4px';
         btn.style.flexShrink = '0';
-        // Ensure it stays at the end if the nav is a flex container
-        btn.style.order = '999';
 
         // Hover effect adjusted for theme
         btn.onmouseenter = () => {
@@ -62,14 +61,10 @@
             }
         };
 
-        // Insert at the absolute end of the nav element
         topNav.appendChild(btn);
-        console.log('[Samtch] Settings button injected at the absolute end of topNav');
     }
 
-    // Use an interval to ensure it stays there during SPA transitions
-    //setInterval(injectSettingsButton, 2000);
-
+    // Use MutationObserver for reliability (Twitch re-renders nav often)
     const observer = new MutationObserver(injectSettingsButton);
     observer.observe(document.documentElement, { childList: true, subtree: true });
 

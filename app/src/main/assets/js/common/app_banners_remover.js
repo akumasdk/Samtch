@@ -10,7 +10,9 @@
             '.tw-upsell-banner',
             '.disclosure-card',
             '.stream-info-social-panel'
-        ]
+        ],
+        navSelector: 'body > div > div:nth-child(1) > div:nth-child(1) > nav',
+        samtchBtnId: 'samtch-settings-btn'
     };
 
     function injectPersistentStyles() {
@@ -21,7 +23,20 @@
         const style = document.createElement('style');
         style.id = styleId;
 
-        const css = CONFIG.selectorsToHide.map(s => `${s} { display: none !important; }`).join('\n');
+        let css = CONFIG.selectorsToHide.map(s => `${s} { display: none !important; }`).join('\n');
+
+        // Add Top Nav Purge Logic
+        css += `
+            ${CONFIG.navSelector} > *:not(#${CONFIG.samtchBtnId}):not([interactioncontent="logo"]) {
+                display: none !important;
+            }
+            ${CONFIG.navSelector} {
+                justify-content: space-between !important;
+                padding-right: 8px !important;
+                padding-left: 12px !important;
+            }
+        `;
+
         style.textContent = css;
 
         document.documentElement.appendChild(style);
