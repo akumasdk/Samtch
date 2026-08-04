@@ -120,6 +120,7 @@ import kotlin.time.Duration.Companion.seconds
 
 enum class PortraitMode {
     VIDEO_AND_CHAT,
+    AUDIO_AND_CHAT,
     CHAT_ONLY
 }
 
@@ -175,6 +176,13 @@ fun TwitchPlayer(
     var isChatVisible by remember { mutableStateOf(true) }
     var portraitMode by remember { mutableStateOf(PortraitMode.VIDEO_AND_CHAT) }
     var metadataExpandTrigger by remember { mutableIntStateOf(0) }
+
+    // Purge adblock banner if entering chat only or audio and chat mode
+    LaunchedEffect(portraitMode) {
+        if (portraitMode == PortraitMode.CHAT_ONLY || portraitMode == PortraitMode.AUDIO_AND_CHAT) {
+            adblockText = ""
+        }
+    }
 
     // Toggle chat off by default when entering fullscreen and delay controls
     LaunchedEffect(isFullscreen) {
@@ -461,6 +469,7 @@ fun TwitchPlayer(
                     },
                     onCloseAudioOnly = {
                         isAudioOnly = false
+                        portraitMode = PortraitMode.VIDEO_AND_CHAT
                         mediaController?.stop()
                         onRefreshRequested()
                     },
@@ -515,7 +524,10 @@ fun TwitchPlayer(
                         channel = channel,
                         onToggleFullscreen = onToggleFullscreen,
                         onToggleChat = onToggleChat,
-                        onToggleAudioOnly = { isAudioOnly = true },
+                        onToggleAudioOnly = { 
+                            isAudioOnly = true 
+                            portraitMode = PortraitMode.AUDIO_AND_CHAT
+                        },
                         onPlaybackStarted = {
                             val session = currentLoadingSession
                             scope.launch {
@@ -680,8 +692,12 @@ fun TwitchPlayer(
                         expandTrigger = metadataExpandTrigger,
                         isPip = isPip,
                         onToggleMode = {
-                            portraitMode = if (portraitMode == PortraitMode.VIDEO_AND_CHAT) 
-                                PortraitMode.CHAT_ONLY else PortraitMode.VIDEO_AND_CHAT
+                            if (portraitMode == PortraitMode.CHAT_ONLY) {
+                                portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                isAudioOnly = false
+                            } else {
+                                portraitMode = PortraitMode.CHAT_ONLY
+                            }
                             isChatVisible = true
                         },
                         chatContent = { isCompact, showInput, modifier -> 
@@ -911,10 +927,13 @@ fun TwitchPlayer(
                                 showFullscreenControls = true
                             } else {
                                 // Cycle modes in portrait
-                                portraitMode = when (portraitMode) {
-                                    PortraitMode.VIDEO_AND_CHAT -> PortraitMode.CHAT_ONLY
-                                    PortraitMode.CHAT_ONLY -> PortraitMode.VIDEO_AND_CHAT
+                                if (portraitMode == PortraitMode.CHAT_ONLY) {
+                                    portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                    isAudioOnly = false
+                                } else {
+                                    portraitMode = PortraitMode.CHAT_ONLY
                                 }
+                                isChatVisible = true
                             }
                         }
                     }

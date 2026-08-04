@@ -57,8 +57,8 @@ fun AudioOnlyPlayer(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        SamtchTheme.colors.twitchDarkGray,
-                        SamtchTheme.colors.twitchBlack
+                        SamtchTheme.colors.audioPlayerBackgroundStart,
+                        SamtchTheme.colors.audioPlayerBackgroundEnd
                     )
                 )
             ),
@@ -78,11 +78,11 @@ fun AudioOnlyPlayer(
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
-                    // Add a dark overlay to ensure readability
+                    // Add a theme-aware overlay to ensure readability
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(SamtchTheme.colors.twitchBlack.copy(alpha = 0.7f))
+                            .background(SamtchTheme.colors.rootBackground.copy(alpha = 0.7f))
                     )
                 }
             }
@@ -125,7 +125,7 @@ fun AudioOnlyPlayer(
                 Box(
                     modifier = Modifier
                         .size(if (availableHeight < 200.dp) 70.dp else 100.dp)
-                        .border(2.dp, SamtchTheme.colors.twitchPurple, CircleShape)
+                        .border(2.dp, SamtchTheme.colors.accentColor, CircleShape)
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -155,7 +155,7 @@ fun AudioOnlyPlayer(
                 ) {
                     Text(
                         text = displayName ?: channel,
-                        color = SamtchTheme.colors.twitchPurpleLight, // Unified purple accent
+                        color = SamtchTheme.colors.accentColor, // Unified purple accent
                         fontSize = if (availableHeight < 200.dp) 18.sp else 22.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
@@ -201,12 +201,12 @@ fun AudioOnlyPlayer(
                         ) { targetGame ->
                             if (targetGame.isNotEmpty()) {
                                 Surface(
-                                    color = SamtchTheme.colors.primaryText.copy(alpha = 0.1f),
+                                    color = SamtchTheme.colors.accentColor.copy(alpha = 0.1f),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text(
                                         text = targetGame,
-                                        color = SamtchTheme.colors.twitchPurpleLight, // Unified light purple category
+                                        color = SamtchTheme.colors.accentColor, // Unified light purple category
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,
@@ -227,13 +227,13 @@ fun AudioOnlyPlayer(
                         }
 
                         Surface(
-                            color = SamtchTheme.colors.twitchPurple.copy(alpha = 0.2f),
+                            color = SamtchTheme.colors.accentColor.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.clickable { onCloseAudioOnly() }
                         ) {
                             Text(
                                 text = "AUDIO ONLY",
-                                color = SamtchTheme.colors.twitchPurpleLight,
+                                color = SamtchTheme.colors.accentColor,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
