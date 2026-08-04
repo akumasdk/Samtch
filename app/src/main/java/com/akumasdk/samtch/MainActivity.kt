@@ -237,8 +237,8 @@ class MainActivity : ComponentActivity() {
                     contract = ActivityResultContracts.StartActivityForResult()
                 ) { result ->
                     if (result.resultCode == RESULT_OK) {
-                        Log.d("MainActivity", "Login successful, reloading browser.")
-                        browserNavigator.reload()
+                        Log.d("MainActivity", "Login successful, triggering hard refresh for browser and player.")
+                        refreshTriggerState.intValue += 1
                     }
                 }
 
@@ -285,6 +285,7 @@ class MainActivity : ComponentActivity() {
                             state = browserState,
                             navigator = browserNavigator,
                             isPlayerActive = selectedChannel != null && !isMinimized,
+                            refreshTrigger = refreshTrigger,
                             onChannelSelected = { channel ->
                                 if (selectedChannel != channel) {
                                     selectedChannel = channel
@@ -295,6 +296,9 @@ class MainActivity : ComponentActivity() {
                             onLoginRequested = {
                                 val intent = Intent(this@MainActivity, LoginActivity::class.java)
                                 loginLauncher.launch(intent)
+                            },
+                            onRefreshRequested = {
+                                refreshTriggerState.intValue += 1
                             },
                             onLoaded = { isAppLoadedState.value = true }
                         )
@@ -348,11 +352,11 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             onBack = { isSettingsOpen = false },
                             onLogout = {
-                                // Clear all cookies and reload browser
+                                // Clear all cookies and trigger hard refresh
                                 android.webkit.CookieManager.getInstance().removeAllCookies { 
                                     lifecycleScope.launch(Dispatchers.Main) {
-                                        Log.d("MainActivity", "Logout: cookies cleared, reloading browser.")
-                                        browserNavigator.reload()
+                                        Log.d("MainActivity", "Logout: cookies cleared, triggering hard refresh for browser and player.")
+                                        refreshTriggerState.intValue += 1
                                         isSettingsOpen = false
                                     }
                                 }

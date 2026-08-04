@@ -57,8 +57,10 @@ fun TwitchBrowser(
     isPlayerActive: Boolean,
     onChannelSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
+    refreshTrigger: Int = 0,
     onSettingsClick: () -> Unit = {},
     onLoginRequested: () -> Unit = {},
+    onRefreshRequested: () -> Unit = {},
     onLoaded: () -> Unit = {}
 ) {
     val activity = LocalActivity.current
@@ -76,6 +78,7 @@ fun TwitchBrowser(
     val currentOnChannelSelected by rememberUpdatedState(onChannelSelected)
     val currentOnSettingsClick by rememberUpdatedState(onSettingsClick)
     val currentOnLoginRequested by rememberUpdatedState(onLoginRequested)
+    val currentOnRefreshRequested by rememberUpdatedState(onRefreshRequested)
     val currentOnLoaded by rememberUpdatedState(onLoaded)
 
     // Detect theme change and trigger reload to apply new twilight.theme
@@ -102,44 +105,41 @@ fun TwitchBrowser(
         }
     }
 
-    // Hard Unload / Background Pre-load logic based on player state
-    LaunchedEffect(isPlayerActive) {
+    // Handle Background Reload when player launches OR Manual Hard Refresh
+    LaunchedEffect(isPlayerActive, refreshTrigger) {
         webViewRef?.let { webView ->
-            if (isPlayerActive) {
-                Log.d("TwitchBrowser", "Player active: Purging browser to about:blank")
+            if (isPlayerActive || (refreshTrigger > 0)) {
+                Log.d("TwitchBrowser", "Hard Refresh/Background Reload (Active=$isPlayerActive, Trigger=$refreshTrigger)")
                 isUiLoading = true
+                
+                kotlinx.coroutines.yield()
                 webView.stopLoading()
                 webView.loadUrl(Constants.ABOUT_BLANK)
                 webView.clearHistory()
                 
-                // Wait a bit then pre-load the restoration context in the background
-                delay(1500.milliseconds)
-                val preLoadUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
-                Log.d("TwitchBrowser", "Pre-loading restoration context: $preLoadUrl")
-                webView.loadUrl(preLoadUrl)
+                // Wait for the purge to settle
+                delay(if (isPlayerActive) 1500.milliseconds else 1000.milliseconds)
+                
+                val targetUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
+                Log.d("TwitchBrowser", "Loading context: $targetUrl")
+                webView.loadUrl(targetUrl)
             } else {
+                // Restoration logic when returning to browser
                 val restoreUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
                 val currentUrl = webView.url ?: ""
                 
-                Log.d("TwitchBrowser", "Player inactive: Checking restoration. current=$currentUrl, target=$restoreUrl")
+                Log.d("TwitchBrowser", "Restoring browser UI. current=$currentUrl, target=$restoreUrl")
                 
-                // Use normalized comparison to avoid redundant loads (ignore trailing slash)
                 val isAlreadyLoaded = currentUrl.trimEnd('/') == restoreUrl.trimEnd('/')
                 
                 if (!isAlreadyLoaded || currentUrl == Constants.ABOUT_BLANK) {
-                    Log.d("TwitchBrowser", "Context not ready or mismatch, forcing reload")
                     isUiLoading = true
                     webView.loadUrl(restoreUrl)
-                } else {
-                    Log.d("TwitchBrowser", "Context already pre-loaded, skipping reload")
                 }
                 
-                // Safety Timeout: If JS bridge doesn't clear the loading state, we do it eventually
+                // Safety timeout to ensure loading screen eventually goes away if cleaning script fails
                 delay(5000.milliseconds)
-                if (isUiLoading) {
-                    Log.d("TwitchBrowser", "Restoration timeout: Force clearing loading state")
-                    isUiLoading = false
-                }
+                if (isUiLoading) isUiLoading = false
             }
         }
     }
@@ -200,7 +200,10 @@ fun TwitchBrowser(
             onLoginRequested = { currentOnLoginRequested() },
             onLoadedCallback = { currentOnLoaded() },
             onUiCleanFinished = { isUiLoading = false },
-            onRefreshRequested = { navigator.reload() },
+            onRefreshRequested = { 
+                // Rely on the parent incrementing refreshTrigger to perform a Hard Refresh
+                currentOnRefreshRequested()
+            },
             onUrlChanged = { url, blocked, requestBack ->
                 try {
                     val mobileUrl = ensureMobileUrl(url)
@@ -286,6 +289,9 @@ fun TwitchBrowser(
                     overScrollMode = android.view.View.OVER_SCROLL_NEVER
                     isVerticalScrollBarEnabled = true
                     isHorizontalScrollBarEnabled = false
+                    
+                    // Prevent onViewTypeAvailable crash by disabling Autofill
+                    importantForAutofill = android.view.View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
 
                     // Enable fullscreen for videos
                     webChromeClient = WebChromeClient()

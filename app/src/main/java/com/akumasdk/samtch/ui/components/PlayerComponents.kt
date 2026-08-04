@@ -278,6 +278,9 @@ fun WebViewContainer(
                 overScrollMode = View.OVER_SCROLL_NEVER
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false
+                
+                // Prevent onViewTypeAvailable crash by disabling Autofill
+                importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
 
                 // Add bridge for fullscreen and chat using the dedicated class
                 addJavascriptInterface(

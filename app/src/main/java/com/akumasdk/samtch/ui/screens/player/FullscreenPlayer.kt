@@ -56,6 +56,7 @@ fun FullscreenPlayer(
     isChatVisible: Boolean = false,
     expandTrigger: Int = 0,
     refreshTrigger: Int = 0,
+    isPip: Boolean = false,
     onToggleChat: () -> Unit = {},
     chatContent: @Composable (isCompact: Boolean, showInput: Boolean, refreshTrigger: Int, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
@@ -102,6 +103,7 @@ fun FullscreenPlayer(
                         streamStartedAt = streamStartedAt,
                         previewImageUrl = previewImageUrl,
                         expandTrigger = expandTrigger,
+                        isPip = isPip,
                         modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
                     )
                 }

@@ -113,6 +113,9 @@ class LoginActivity : ComponentActivity() {
                                 webView.apply {
                                     webChromeClient = WebChromeClient()
                                     
+                                    // Prevent onViewTypeAvailable crash by disabling Autofill
+                                    importantForAutofill = android.view.View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+
                                     // Set a robust WebViewClient for error logging
                                     webViewClient = object : WebViewClient() {
                                         override fun onReceivedError(view: android.webkit.WebView?, request: WebResourceRequest?, error: WebResourceError?) {

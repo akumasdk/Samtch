@@ -652,6 +652,7 @@ fun TwitchPlayer(
                         previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         isChatVisible = isChatVisible,
                         expandTrigger = metadataExpandTrigger,
+                        isPip = isPip,
                         onToggleChat = { 
                             isChatVisible = !isChatVisible
                             showFullscreenControls = true
@@ -677,6 +678,7 @@ fun TwitchPlayer(
                         previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         portraitMode = portraitMode,
                         expandTrigger = metadataExpandTrigger,
+                        isPip = isPip,
                         onToggleMode = {
                             portraitMode = if (portraitMode == PortraitMode.VIDEO_AND_CHAT) 
                                 PortraitMode.CHAT_ONLY else PortraitMode.VIDEO_AND_CHAT

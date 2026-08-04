@@ -157,10 +157,18 @@ fun StreamMetadataBar(
     previewImageUrl: String? = null,
     expandTrigger: Int = 0,
     forceExpanded: Boolean = false,
+    isPip: Boolean = false,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     var isSlim by rememberSaveable { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+
+    // Close dialog when entering PiP
+    LaunchedEffect(isPip) {
+        if (isPip) {
+            showInfoDialog = false
+        }
+    }
 
     val animatedHeight by animateDpAsState(
         targetValue = if (isSlim && !forceExpanded) 38.dp else 68.dp,

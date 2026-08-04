@@ -55,6 +55,7 @@ fun PortraitPlayer(
     previewImageUrl: String? = null,
     portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
     expandTrigger: Int = 0,
+    isPip: Boolean = false,
     onToggleMode: () -> Unit = {},
     chatContent: @Composable (isCompact: Boolean, showInput: Boolean, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
@@ -114,7 +115,8 @@ fun PortraitPlayer(
                     streamStartedAt = streamStartedAt,
                     previewImageUrl = previewImageUrl,
                     expandTrigger = expandTrigger,
-                    forceExpanded = portraitMode == PortraitMode.CHAT_ONLY
+                    forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
+                    isPip = isPip
                 )
             }
 
