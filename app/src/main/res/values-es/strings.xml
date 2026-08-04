@@ -64,6 +64,13 @@
     <string name="chat_mode_legacy">Heredado (Estable/Original)</string>
     <string name="chat_mode_notice">Nota: El chat nativo incluye soporte para emoticonos de BetterTTV y 7TV.</string>
 
+    <!-- Theme Settings -->
+    <string name="theme_mode_title">Modo de Tema</string>
+    <string name="theme_mode_summary">Elige el tema preferido para la aplicación y el reproductor de Twitch</string>
+    <string name="theme_mode_dark">Oscuro</string>
+    <string name="theme_mode_light">Claro</string>
+    <string name="theme_mode_system">Sistema</string>
+
     <!-- Player Loading Status -->
     <string name="loading_stream">Cargando stream…</string>
     <string name="searching_video">Buscando stream de video…</string>

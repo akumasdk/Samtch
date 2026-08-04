@@ -18,6 +18,7 @@ object SettingsManager {
     private val AD_BLOCK_MODE = booleanPreferencesKey("ad_block_mode_is_vaft") // true = VAFT, false = VideoSwap
     private val CHAT_MODE = booleanPreferencesKey("chat_mode_is_native") // true = NATIVE, false = LEGACY
     private val MINI_PLAYER_HINT_SHOWN = booleanPreferencesKey("mini_player_hint_shown")
+    private val THEME_MODE = intPreferencesKey("theme_mode") // 0 = DARK, 1 = LIGHT, 2 = SYSTEM
     private val LAST_VERSION_CODE = intPreferencesKey("last_version_code")
 
     enum class AdBlockMode {
@@ -26,6 +27,10 @@ object SettingsManager {
 
     enum class ChatMode {
         NATIVE, LEGACY
+    }
+
+    enum class ThemeMode {
+        DARK, LIGHT, SYSTEM
     }
 
     fun isPipEnabled(context: Context): Flow<Boolean> {
@@ -85,6 +90,18 @@ object SettingsManager {
     suspend fun setMiniPlayerHintShown(context: Context, shown: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[MINI_PLAYER_HINT_SHOWN] = shown
+        }
+    }
+
+    fun getThemeMode(context: Context): Flow<ThemeMode> {
+        return context.dataStore.data.map { preferences ->
+            ThemeMode.entries[preferences[THEME_MODE] ?: ThemeMode.SYSTEM.ordinal]
+        }
+    }
+
+    suspend fun setThemeMode(context: Context, mode: ThemeMode) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_MODE] = mode.ordinal
         }
     }
 

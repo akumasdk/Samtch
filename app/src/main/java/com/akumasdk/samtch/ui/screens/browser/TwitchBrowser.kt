@@ -35,7 +35,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.multiplatform.webview.web.LoadingState
@@ -60,6 +62,8 @@ fun TwitchBrowser(
 ) {
     val activity = LocalActivity.current
     val context = LocalContext.current
+    val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+    val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
     var webViewRef by remember { mutableStateOf<NativeWebView?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
     var isUiLoading by remember { mutableStateOf(true) }
@@ -72,7 +76,14 @@ fun TwitchBrowser(
     val currentOnSettingsClick by rememberUpdatedState(onSettingsClick)
     val currentOnLoaded by rememberUpdatedState(onLoaded)
 
-    // Detect theme change and trigger reload (Reverted: logic removed)
+    // Detect theme change and trigger reload to apply new twilight.theme
+    LaunchedEffect(themeMode, isSystemInDarkTheme) {
+        Log.d("TwitchBrowser", "Theme change detected (mode=$themeMode, dark=$isSystemInDarkTheme). Refreshing browser.")
+        // If the player is active, the browser is managed by the isPlayerActive effect.
+        // We trigger a reload on the navigator which will either refresh the active page
+        // or the background pre-loaded page.
+        navigator.reload()
+    }
 
     // Handle back button
     BackHandler(enabled = !isPlayerActive) {
@@ -132,7 +143,7 @@ fun TwitchBrowser(
     }
 
     // Inject scripts when page is loaded (ONLY dialog closer)
-    LaunchedEffect(state.loadingState) {
+    LaunchedEffect(state.loadingState, themeMode, isSystemInDarkTheme) {
         if (state.loadingState is LoadingState.Finished) {
             // Ensure splash screen is dismissed when loading completes
             currentOnLoaded()
@@ -147,6 +158,14 @@ fun TwitchBrowser(
                 navigator.stopLoading()
                 return@LaunchedEffect
             }
+
+            // Inject theme
+            val twitchTheme = when (themeMode) {
+                SettingsManager.ThemeMode.DARK -> 1
+                SettingsManager.ThemeMode.LIGHT -> 0
+                SettingsManager.ThemeMode.SYSTEM -> if (isSystemInDarkTheme) 1 else 0
+            }
+            navigator.evaluateJavaScript("localStorage.setItem('twilight.theme', '$twitchTheme');")
 
             try {
                 // Inject granular scripts for browser mode

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -44,6 +45,7 @@ fun SettingsScreen(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showAdBlockDialog by remember { mutableStateOf(false) }
     var showChatModeDialog by remember { mutableStateOf(false) }
+    var showThemeModeDialog by remember { mutableStateOf(false) }
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
@@ -156,6 +158,31 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.clickable {
                         showAdBlockDialog = true
+                    }
+                )
+            }
+
+            item {
+                val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.theme_mode_title)) },
+                    supportingContent = {
+                        Text(
+                            when (themeMode) {
+                                SettingsManager.ThemeMode.DARK -> stringResource(R.string.theme_mode_dark)
+                                SettingsManager.ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
+                                SettingsManager.ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
+                            }
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showThemeModeDialog = true
                     }
                 )
             }
@@ -310,6 +337,55 @@ fun SettingsScreen(
     ) {
         BttvSettingsScreen(
             onBack = { isBttvSettingsOpen = false }
+        )
+    }
+
+    if (showThemeModeDialog) {
+        val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+        AlertDialog(
+            onDismissRequest = { showThemeModeDialog = false },
+            title = { Text(stringResource(R.string.theme_mode_title)) },
+            text = {
+                Column {
+                    SettingsManager.ThemeMode.entries.forEach { mode ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch {
+                                        SettingsManager.setThemeMode(context, mode)
+                                        showThemeModeDialog = false
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = themeMode == mode,
+                                onClick = {
+                                    scope.launch {
+                                        SettingsManager.setThemeMode(context, mode)
+                                        showThemeModeDialog = false
+                                    }
+                                }
+                            )
+                            Text(
+                                text = when (mode) {
+                                    SettingsManager.ThemeMode.DARK -> stringResource(R.string.theme_mode_dark)
+                                    SettingsManager.ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
+                                    SettingsManager.ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
+                                },
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeModeDialog = false }) {
+                    Text(stringResource(R.string.cancel_button))
+                }
+            }
         )
     }
 

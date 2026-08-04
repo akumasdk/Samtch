@@ -153,7 +153,14 @@ class MainActivity : ComponentActivity() {
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         setContent {
-            val darkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+            val themeMode by SettingsManager.getThemeMode(this@MainActivity).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+            val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+            
+            val darkTheme = when (themeMode) {
+                SettingsManager.ThemeMode.DARK -> true
+                SettingsManager.ThemeMode.LIGHT -> false
+                SettingsManager.ThemeMode.SYSTEM -> isSystemInDarkTheme
+            }
             
             // Use VERSION_CODE as a key to force-reset all rememberSaveable state after an update
             key(BuildConfig.VERSION_CODE) {
