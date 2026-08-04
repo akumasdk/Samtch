@@ -281,14 +281,8 @@ class MainActivity : ComponentActivity() {
                     displayedChannel = selectedChannel
                 }
 
-                val isPlayerActive = remember(selectedChannel, isMinimized, playerViewModel.isAudioOnly, playerViewModel.portraitMode, isFullscreen) {
-                    val hasChannel = selectedChannel != null
-                    val isVideoVisible = !playerViewModel.isAudioOnly && 
-                        (isFullscreen || playerViewModel.portraitMode == PortraitMode.VIDEO_AND_CHAT)
-                    
-                    // The browser should be unloaded ONLY when the player is full-screen (portrait or landscape)
-                    // and actually rendering video content.
-                    hasChannel && !isMinimized && isVideoVisible
+                val isPlayerActive = remember(selectedChannel, isMinimized) {
+                    selectedChannel != null && !isMinimized
                 }
 
                 Box(modifier = Modifier.fillMaxSize().background(SamtchTheme.colors.rootBackground)) {
@@ -303,9 +297,12 @@ class MainActivity : ComponentActivity() {
                             navigator = browserNavigator,
                             isPlayerActive = isPlayerActive,
                             refreshTrigger = refreshTrigger,
+                            hasBackgroundReloaded = playerViewModel.hasBackgroundReloaded,
+                            onBackgroundReloadFinished = { playerViewModel.hasBackgroundReloaded = true },
                             onChannelSelected = { channel ->
                                 if (selectedChannel != channel) {
                                     selectedChannel = channel
+                                    playerViewModel.updateChannel(channel)
                                 }
                                 isMinimized = false
                             },

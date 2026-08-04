@@ -24,11 +24,14 @@ class PlayerViewModel : ViewModel() {
     var avatarUrl by mutableStateOf<String?>(null)
     var streamSubtitle by mutableStateOf<String?>(null)
     
+    var hasBackgroundReloaded by mutableStateOf(false)
+    
     private var metadataJob: Job? = null
 
     fun updateChannel(newChannel: String?) {
         if (channel == newChannel) return
         channel = newChannel
+        hasBackgroundReloaded = false
         if (newChannel != null) {
             startMetadataFetch(newChannel)
         } else {

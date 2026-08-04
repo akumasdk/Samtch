@@ -58,6 +58,8 @@ fun TwitchBrowser(
     onChannelSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     refreshTrigger: Int = 0,
+    hasBackgroundReloaded: Boolean = false,
+    onBackgroundReloadFinished: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onLoginRequested: () -> Unit = {},
     onRefreshRequested: () -> Unit = {},
@@ -108,8 +110,11 @@ fun TwitchBrowser(
     // Handle Background Reload when player launches OR Manual Hard Refresh
     LaunchedEffect(isPlayerActive, refreshTrigger) {
         webViewRef?.let { webView ->
-            if (isPlayerActive || (refreshTrigger > 0)) {
-                Log.d("TwitchBrowser", "Hard Refresh/Background Reload (Active=$isPlayerActive, Trigger=$refreshTrigger)")
+            val isManualRefresh = refreshTrigger > 0
+            val shouldDoBackgroundReload = isPlayerActive && !hasBackgroundReloaded
+            
+            if (shouldDoBackgroundReload || isManualRefresh) {
+                Log.d("TwitchBrowser", "Hard Refresh/Background Reload (Active=$isPlayerActive, Manual=$isManualRefresh, AlreadyDone=$hasBackgroundReloaded)")
                 isUiLoading = true
                 
                 kotlinx.coroutines.yield()
@@ -123,7 +128,11 @@ fun TwitchBrowser(
                 val targetUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
                 Log.d("TwitchBrowser", "Loading context: $targetUrl")
                 webView.loadUrl(targetUrl)
-            } else {
+                
+                if (isPlayerActive) {
+                    onBackgroundReloadFinished()
+                }
+            } else if (!isPlayerActive) {
                 // Restoration logic when returning to browser
                 val restoreUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
                 val currentUrl = webView.url ?: ""
