@@ -7,7 +7,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
 import com.akumasdk.samtch.util.Constants

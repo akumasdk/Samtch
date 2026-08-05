@@ -1,11 +1,6 @@
 package com.akumasdk.samtch.data.api.helix
 
-import android.util.Log
-import com.akumasdk.samtch.data.api.helix.dto.*
-import com.akumasdk.samtch.data.auth.TwitchAuthManager
-import io.ktor.client.call.body
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.isSuccess
+import com.akumasdk.samtch.data.api.helix.dto.BadgeSetDto
 
 object HelixApiClient {
     private const val TAG = "HelixApiClient"

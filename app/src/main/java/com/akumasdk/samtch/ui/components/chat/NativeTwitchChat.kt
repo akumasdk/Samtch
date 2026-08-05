@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.components.chat
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -24,6 +25,7 @@ import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import kotlinx.coroutines.launch
 
+@SuppressLint("FrequentlyChangingValue")
 @Composable
 fun NativeTwitchChat(
     channel: String,

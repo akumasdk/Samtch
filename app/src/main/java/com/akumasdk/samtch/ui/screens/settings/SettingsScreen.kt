@@ -1,34 +1,52 @@
 package com.akumasdk.samtch.ui.screens.settings
 
-import android.content.Intent
-import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.BuildConfig
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.model.GitHubRelease
 import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.util.UpdateManager
 import kotlinx.coroutines.launch
 
@@ -47,6 +65,7 @@ fun SettingsScreen(
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
+    var isLoggedIn by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
 
@@ -75,6 +94,7 @@ fun SettingsScreen(
             latestRelease = UpdateManager.checkForUpdate()
             isCheckingUpdate = false
         }
+        isLoggedIn = TwitchAuthManager.getAuthState().isLoggedIn
     }
 
     Scaffold(
@@ -118,9 +138,11 @@ fun SettingsScreen(
             item { BttvSettingsItem(chatMode == SettingsManager.ChatMode.NATIVE, onClick = { isBttvSettingsOpen = true }) }
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
 
-            item { SettingSectionHeader(stringResource(R.string.settings_category_account)) }
-            item { LogoutItem(onClick = { showLogoutDialog = true }) }
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
+            if (isLoggedIn) {
+                item { SettingSectionHeader(stringResource(R.string.settings_category_account)) }
+                item { LogoutItem(onClick = { showLogoutDialog = true }) }
+                item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
+            }
 
             item { SettingSectionHeader(stringResource(R.string.settings_category_app)) }
             if (BuildConfig.UPDATES_ENABLED) {
@@ -154,6 +176,7 @@ fun SettingsScreen(
                 }
                 label to { scope.launch { SettingsManager.setThemeMode(context, mode) } }
             },
+            selectedIndex = SettingsManager.ThemeMode.entries.indexOf(themeMode),
             onDismiss = { showThemeModeDialog = false }
         )
     }
@@ -168,6 +191,7 @@ fun SettingsScreen(
                 }
                 label to { scope.launch { SettingsManager.setAdBlockMode(context, mode) } }
             },
+            selectedIndex = SettingsManager.AdBlockMode.entries.indexOf(adBlockMode),
             onDismiss = { showAdBlockDialog = false }
         )
     }
@@ -182,6 +206,7 @@ fun SettingsScreen(
                 }
                 label to { scope.launch { SettingsManager.setChatMode(context, mode) } }
             },
+            selectedIndex = SettingsManager.ChatMode.entries.indexOf(chatMode),
             onDismiss = { showChatModeDialog = false }
         )
     }
@@ -319,35 +344,5 @@ private fun AboutItem(onClick: () -> Unit) {
         supportingContent = { Text(stringResource(R.string.about_summary)) },
         leadingContent = { Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         modifier = Modifier.clickable { onClick() }
-    )
-}
-
-@Composable
-private fun AboutDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.about_dialog_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(text = stringResource(R.string.about_dialog_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE))
-                Text(text = stringResource(R.string.about_dialog_description))
-                HorizontalDivider(thickness = 0.5.dp)
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.github_repo)) },
-                    supportingContent = { Text(stringResource(R.string.github_repo_summary)) },
-                    leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_github), contentDescription = null, modifier = Modifier.size(24.dp)) },
-                    modifier = Modifier.clickable { uriHandler.openUri("https://github.com/akumasdk/samtch") }
-                )
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.support_project)) },
-                    supportingContent = { Text(stringResource(R.string.support_project_summary)) },
-                    leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_donation), contentDescription = null, modifier = Modifier.size(24.dp)) },
-                    modifier = Modifier.clickable { uriHandler.openUri("https://ko-fi.com/akumasdk") }
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close_button)) } }
     )
 }

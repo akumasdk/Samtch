@@ -16,6 +16,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 class ChatViewModel : ViewModel() {
     private val TAG = "ChatViewModel"
@@ -110,7 +111,7 @@ class ChatViewModel : ViewModel() {
                     global.isLoaded || channelState.isLoaded
                 }.collectLatest { anyLoaded ->
                     if (anyLoaded) {
-                        delay(1000) // Debounce re-mapping
+                        delay(1000.milliseconds) // Debounce re-mapping
                         remapMessages(channel)
                     }
                 }

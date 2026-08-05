@@ -1,12 +1,10 @@
 package com.akumasdk.samtch.ui.components
 
+import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebViewClient
-import android.webkit.WebView as NativeWebView
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -24,10 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +48,7 @@ import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
+import android.webkit.WebView as NativeWebView
 
 /**
  * A dedicated overlay for the mini-player window that can show custom visual indicators.
@@ -239,6 +235,7 @@ fun TapTooltip(visible: Boolean, modifier: Modifier = Modifier) {
 }
 
 
+@SuppressLint("LocalContextResourcesRead")
 @Composable
 fun WebViewContainer(
     modifier: Modifier,

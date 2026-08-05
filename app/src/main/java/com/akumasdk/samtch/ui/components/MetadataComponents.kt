@@ -335,6 +335,7 @@ fun StreamMetadataBar(
     }
 }
 
+@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun StreamInfoDialog(
     channel: String,

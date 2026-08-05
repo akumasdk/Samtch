@@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import androidx.core.net.toUri
 
 class PlayerViewModel : ViewModel() {
     var channel by mutableStateOf<String?>(null)
@@ -107,7 +108,7 @@ class PlayerViewModel : ViewModel() {
             .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
             .setArtist(streamMetadata?.user?.displayName ?: channelName)
             .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
-            .setArtworkUri(avatarUrl?.let { android.net.Uri.parse(it) })
+            .setArtworkUri(avatarUrl?.toUri())
             .build()
             
         controller.setMediaItem(

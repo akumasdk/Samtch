@@ -1,10 +1,9 @@
 package com.akumasdk.samtch.ui.screens.player
 
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
-import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 
@@ -43,7 +42,7 @@ fun AudioServiceEffects(
             .setTitle(stream.title)
             .setArtist(playerViewModel.streamMetadata?.user?.displayName ?: channel)
             .setAlbumTitle(stream.game?.name)
-            .setArtworkUri(stream.previewImageUrl?.let { android.net.Uri.parse(it) })
+            .setArtworkUri(stream.previewImageUrl?.toUri())
             .build()
             
         controller.replaceMediaItem(
@@ -85,9 +84,7 @@ fun PlayerLifecycleEffects(
     LaunchedEffect(isUiLoading, channel) {
         if (isUiLoading) {
             delay(12.seconds)
-            if (isUiLoading) {
-                onLoadingTimeout()
-            }
+            onLoadingTimeout()
         }
     }
 }
