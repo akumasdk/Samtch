@@ -1,5 +1,19 @@
 # Changelog
 
+## Samtch v0.3.2
+
+### What's New
+- **Advanced Project Modularization**: Performed a deep reorganization of the UI package, grouping components, models, and viewmodels into dedicated feature-based subfolders for better maintainability.
+- **Metadata Logic Decomposition**: Broke down the monolithic metadata components into focused, reusable files for the info bar styles, dialogs, and individual info cards.
+- **Enhanced Sizing Accuracy**: Integrated `BoxWithConstraints` into the player logic to ensure perfect edge-to-edge layout across all device form factors, including foldables, tablets, and large-cutout phones.
+- **Settings UI Redesign**: Modernized selection and logout dialogs with `RadioButton` controls, improved action hierarchies, and consistent Material 3 styling.
+- **Contextual UI Controls**: The "Log Out" option now intelligently only appears when a user is actively authenticated with Twitch.
+- **JavaScript Bridge Extraction**: Isolated all `@JavascriptInterface` definitions into standalone bridge classes to decouple web-logic from native UI components.
+- **Localization Stability**: Enforced a consistent locale for all numeric and duration formatting to prevent regional-dependent string bugs.
+- **Refined Insets Handling**: Improved system bar padding logic to provide a seamless "behind-the-bars" immersive background while ensuring all interactive content remains in the safe area.
+
+---
+
 ## Samtch v0.3.1
 
 ### What's New
