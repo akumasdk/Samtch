@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.data.api.thirdparty
 
+import com.akumasdk.samtch.util.Constants
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -25,10 +26,10 @@ object BTTVApi {
     }
 
     suspend fun getGlobalEmotes(): List<BTTVEmote> {
-        return client.get("https://api.betterttv.net/3/cached/emotes/global").body()
+        return client.get(Constants.ThirdParty.BTTV.API_GLOBAL).body()
     }
 
     suspend fun getChannelEmotes(userId: String): BTTVChannelResponse {
-        return client.get("https://api.betterttv.net/3/cached/users/twitch/$userId").body()
+        return client.get(Constants.ThirdParty.BTTV.API_USER.format(userId)).body()
     }
 }

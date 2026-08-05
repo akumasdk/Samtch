@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -61,12 +63,12 @@ fun MiniPlayer(
             // Nudge right
             nudgeOffset.animateTo(
                 targetValue = 40f,
-                animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy)
+                animationSpec = SamtchAnimation.springBouncy()
             )
             // Back to center
             nudgeOffset.animateTo(
                 targetValue = 0f,
-                animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                animationSpec = SamtchAnimation.springInteractive()
             )
         }
     }
@@ -80,13 +82,14 @@ fun MiniPlayer(
             val progress = if (isSwiping) dismissState.progress else 0f
             
             val color by animateColorAsState(
-                if (isSwiping) Color.Red.copy(alpha = (0.1f + (0.3f * progress)).coerceIn(0f, 0.4f)) else Color.Transparent,
+                if (isSwiping) SamtchTheme.colors.error.copy(alpha = (0.1f + (0.3f * progress)).coerceIn(0f, 0.4f)) else Color.Transparent,
+                animationSpec = SamtchAnimation.ColorTween,
                 label = "DismissBackground"
             )
 
             val iconScale by animateFloatAsState(
                 if (isSwiping) 0.8f + (0.4f * progress) else 0.5f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                animationSpec = SamtchAnimation.springBouncy(),
                 label = "TrashIconScale"
             )
 
@@ -103,7 +106,7 @@ fun MiniPlayer(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = (0.2f + progress).coerceIn(0f, 1f)),
+                        tint = SamtchTheme.colors.primaryText.copy(alpha = (0.2f + progress).coerceIn(0f, 1f)),
                         modifier = Modifier
                             .padding(horizontal = 28.dp)
                             .size(28.dp)
@@ -128,7 +131,7 @@ fun MiniPlayer(
                     RoundedCornerShape(40.dp)
                 )
                 .clickable(onClick = onClick),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+            color = SamtchTheme.colors.miniPlayerBackground.copy(alpha = 0.98f),
             tonalElevation = 8.dp
         ) {
             Row(
@@ -162,7 +165,7 @@ fun MiniPlayer(
                 ) {
                     Text(
                         text = displayName ?: channel,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = SamtchTheme.colors.miniPlayerTitle,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
@@ -171,18 +174,18 @@ fun MiniPlayer(
                     AnimatedContent(
                         targetState = streamTitle ?: "Live",
                         transitionSpec = {
-                            (slideInVertically { height -> height / 2 } + fadeIn())
-                                .togetherWith(slideOutVertically { height -> -height / 2 } + fadeOut())
+                            (slideInVertically(animationSpec = SamtchAnimation.springInteractive()) { height -> height / 2 } + fadeIn())
+                                .togetherWith(slideOutVertically(animationSpec = SamtchAnimation.springInteractive()) { height -> -height / 2 } + fadeOut())
                         },
                         label = "MiniTitleAnimation"
                     ) { targetTitle ->
                         Text(
                             text = targetTitle,
-                            color = Color(0xFFBF94FF), // Twitch light purple
+                            color = SamtchTheme.colors.miniPlayerSubtitle,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
-                            modifier = Modifier.basicMarquee()
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -195,7 +198,7 @@ fun MiniPlayer(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close Player",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        tint = SamtchTheme.colors.miniPlayerTitle.copy(alpha = 0.6f),
                         modifier = Modifier.size(24.dp)
                     )
                 }

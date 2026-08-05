@@ -3,6 +3,7 @@ package com.akumasdk.samtch.data.api.helix
 import android.util.Log
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
+import com.akumasdk.samtch.util.Constants
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
@@ -74,7 +75,7 @@ object HelixApi {
     private suspend fun validateToken(token: String): String? {
         return try {
             Log.d(TAG, "Validating OAuth token...")
-            val response = client.get("https://id.twitch.tv/oauth2/validate") {
+            val response = client.get(Constants.Twitch.Api.HELIX_VALIDATE) {
                 header("Authorization", "OAuth $token")
             }
             val responseBody = response.bodyAsText()
@@ -103,7 +104,7 @@ object HelixApi {
 
     suspend fun getGlobalBadges(): HttpResponse {
         val clientId = getClientId()
-        return client.get("https://api.twitch.tv/helix/chat/badges/global") {
+        return client.get(Constants.Twitch.Api.HELIX_GLOBAL_BADGES) {
             header("Client-Id", clientId)
             addAuth()
         }
@@ -111,7 +112,7 @@ object HelixApi {
 
     suspend fun getChannelBadges(broadcasterId: String): HttpResponse {
         val clientId = getClientId()
-        return client.get("https://api.twitch.tv/helix/chat/badges") {
+        return client.get(Constants.Twitch.Api.HELIX_CHANNEL_BADGES) {
             header("Client-Id", clientId)
             addAuth()
             parameter("broadcaster_id", broadcasterId)

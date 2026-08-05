@@ -11,13 +11,16 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.components.chat.ChatInputBox
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.components.chat.NativeTwitchChat
+import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
@@ -33,6 +36,8 @@ fun TwitchChat(
     channel: String,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
+    showInput: Boolean = true,
+    refreshTrigger: Int = 0,
     viewModel: ChatViewModel
 ) {
     val context = LocalContext.current
@@ -42,6 +47,18 @@ fun TwitchChat(
     if (chatMode == SettingsManager.ChatMode.NATIVE) {
         val isLoggedIn by viewModel.isLoggedIn.collectAsState()
         
+        // Native chat refresh logic
+        val chatLoadingText = stringResource(R.string.chat_connecting)
+        val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
+        val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
+
+        LaunchedEffect(refreshTrigger) {
+            if (refreshTrigger > 0) {
+                viewModel.disconnect()
+                viewModel.connect(channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
+            }
+        }
+        
         Column(modifier = modifier.fillMaxSize()) {
             NativeTwitchChat(
                 channel = channel,
@@ -49,25 +66,30 @@ fun TwitchChat(
                 isCompact = isCompact,
                 viewModel = viewModel
             )
-            HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
-            ChatInputBox(
-                isLoggedIn = isLoggedIn,
-                onSendMessage = { text ->
-                    coroutineScope.launch {
-                        viewModel.sendMessage(text)
+            
+            if (showInput) {
+                HorizontalDivider(color = SamtchTheme.colors.divider, thickness = 1.dp)
+                ChatInputBox(
+                    isLoggedIn = isLoggedIn,
+                    onSendMessage = { text ->
+                        coroutineScope.launch {
+                            viewModel.sendMessage(text)
+                        }
                     }
-                }
-            )
+                )
+            }
         }
         return
     }
 
-    val chatUrl = "https://www.twitch.tv/embed/$channel/chat?parent=twitch.tv&darkpopout"
+    val chatUrl = Constants.Twitch.Templates.CHAT_URL.format(channel)
     val state = rememberSaveableWebViewState(chatUrl)
     val navigator = rememberWebViewNavigator()
 
     // Track if chat is fully loaded (chat-input element is present)
     var isChatFullyLoaded by remember { mutableStateOf(false) }
+
+    // Reload WebView chat on theme change (Reverted)
 
     val chatBridge = remember(coroutineScope) {
         TwitchChatBridge(
@@ -82,8 +104,8 @@ fun TwitchChat(
         )
     }
 
-    // Update URL when channel changes
-    LaunchedEffect(channel) {
+    // Update URL when channel changes or refresh is triggered
+    LaunchedEffect(channel, refreshTrigger) {
         isChatFullyLoaded = false
         navigator.loadUrl(chatUrl)
     }
@@ -93,9 +115,9 @@ fun TwitchChat(
         if (state.loadingState is LoadingState.Finished) {
             try {
                 listOf(
-                    "js/chat/chat_loader_observer.js",
-                    "js/chat/ui_cleaner.js",
-                    "js/chat/bttv.js"
+                    Constants.Scripts.CHAT_LOADER_OBSERVER,
+                    Constants.Scripts.CHAT_UI_CLEANER,
+                    Constants.Scripts.CHAT_BTTV
                 ).forEach { path ->
                     val script = ScriptLoader.getScript(context, path)
                     if (script.isNotEmpty()) {
@@ -124,7 +146,7 @@ fun TwitchChat(
                     overScrollMode = View.OVER_SCROLL_NEVER
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
-                    addJavascriptInterface(chatBridge, "TwitchChatBridge")
+                    addJavascriptInterface(chatBridge, Constants.Bridges.CHAT)
                 }
             }
         )
@@ -133,10 +155,10 @@ fun TwitchChat(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF18181B)),
+                    .background(SamtchTheme.colors.chatBackground),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = SamtchTheme.colors.twitchPurple)
             }
         }
     }

@@ -9,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -17,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @Composable
 fun ChatInputBox(
@@ -28,7 +28,7 @@ fun ChatInputBox(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = Color(0xFF1F1F23), // Twitch standard input background
+        color = SamtchTheme.colors.dialogBackground, // Theme-aware background
         tonalElevation = 8.dp,
         shadowElevation = 8.dp
     ) {
@@ -53,13 +53,13 @@ fun ChatInputBox(
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color.Black.copy(alpha = 0.3f),
-                            unfocusedContainerColor = Color.Black.copy(alpha = 0.3f),
-                            cursorColor = Color(0xFFBF94FF),
-                            focusedPlaceholderColor = Color.Gray,
-                            unfocusedPlaceholderColor = Color.Gray
+                            focusedTextColor = SamtchTheme.colors.primaryText,
+                            unfocusedTextColor = SamtchTheme.colors.primaryText,
+                            focusedContainerColor = SamtchTheme.colors.textFieldBackground,
+                            unfocusedContainerColor = SamtchTheme.colors.textFieldBackground,
+                            cursorColor = SamtchTheme.colors.twitchPurpleLight,
+                            focusedPlaceholderColor = SamtchTheme.colors.secondaryText,
+                            unfocusedPlaceholderColor = SamtchTheme.colors.secondaryText
                         ),
                         maxLines = 3,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -84,14 +84,14 @@ fun ChatInputBox(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send",
-                            tint = if (inputText.isNotBlank()) Color(0xFFBF94FF) else Color.Gray
+                            tint = if (inputText.isNotBlank()) SamtchTheme.colors.twitchPurpleLight else SamtchTheme.colors.secondaryText
                         )
                     }
                 }
             } else {
                 Text(
                     text = stringResource(R.string.chat_login_prompt),
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = SamtchTheme.colors.primaryText.copy(alpha = 0.6f),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,

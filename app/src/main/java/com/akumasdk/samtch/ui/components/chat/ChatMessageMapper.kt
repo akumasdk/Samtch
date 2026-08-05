@@ -10,6 +10,7 @@ import androidx.compose.ui.text.withStyle
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
+import com.akumasdk.samtch.util.Constants
 
 object ChatMessageMapper {
 
@@ -43,10 +44,10 @@ object ChatMessageMapper {
             val displayName = message.tags["display-name"] ?: message.prefix.substringBefore("!")
             val colorHex = message.tags["color"]
             val userColor = try {
-                if (colorHex.isNullOrEmpty()) Color(0xFFBF94FF)
+                if (colorHex.isNullOrEmpty()) Color.Unspecified
                 else Color(android.graphics.Color.parseColor(colorHex))
             } catch (e: Exception) {
-                Color(0xFFBF94FF)
+                Color.Unspecified
             }
 
             val messageText = message.params.getOrNull(1) ?: ""
@@ -66,7 +67,7 @@ object ChatMessageMapper {
                     val parts = emoteData.split(":")
                     if (parts.size == 2) {
                         val id = parts[0]
-                        val url = "https://static-cdn.jtvnw.net/emoticons/v2/$id/default/dark/3.0"
+                        val url = Constants.Twitch.Templates.EMOTE_CDN.format(id)
                         parts[1].split(",").forEach { rangeStr ->
                             val rangeParts = rangeStr.split("-")
                             if (rangeParts.size == 2) {
@@ -109,7 +110,7 @@ object ChatMessageMapper {
                     
                     if (occurrence.range.first > lastPos) {
                         val text = cleanText.substring(lastPos, occurrence.range.first)
-                        val style = if (isAction) SpanStyle(color = userColor, fontWeight = FontWeight.Bold) else SpanStyle(color = Color.White)
+                        val style = if (isAction) SpanStyle(color = userColor, fontWeight = FontWeight.Bold) else SpanStyle()
                         withStyle(style) {
                             append(text)
                         }
@@ -139,7 +140,7 @@ object ChatMessageMapper {
                 }
                 if (lastPos < cleanText.length) {
                     val text = cleanText.substring(lastPos)
-                    val style = if (isAction) SpanStyle(color = userColor, fontWeight = FontWeight.Bold) else SpanStyle(color = Color.White)
+                    val style = if (isAction) SpanStyle(color = userColor, fontWeight = FontWeight.Bold) else SpanStyle()
                     withStyle(style) {
                         append(text)
                     }

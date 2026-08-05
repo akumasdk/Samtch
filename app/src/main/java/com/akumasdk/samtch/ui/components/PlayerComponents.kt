@@ -7,6 +7,19 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebViewClient
 import android.webkit.WebView as NativeWebView
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,10 +28,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
@@ -26,6 +53,191 @@ import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
+
+/**
+ * A dedicated overlay for the mini-player window that can show custom visual indicators.
+ */
+@Composable
+fun MiniPlayerOverlay(
+    channel: String,
+    modifier: Modifier = Modifier,
+    avatarUrl: String? = null,
+    previewImageUrl: String? = null,
+    badgeText: String? = null,
+    usePreview: Boolean = false,
+    showLoading: Boolean = false
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        val displayUrl = if (usePreview && !previewImageUrl.isNullOrEmpty()) previewImageUrl else avatarUrl
+        
+        if (!displayUrl.isNullOrEmpty()) {
+            SubcomposeAsyncImage(
+                model = displayUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(if (usePreview) RoundedCornerShape(8.dp) else CircleShape),
+                contentScale = ContentScale.Crop,
+                loading = {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(if (usePreview) 12.dp else 16.dp),
+                        color = SamtchTheme.colors.accentColor,
+                        strokeWidth = 2.dp
+                    )
+                }
+            )
+        } else {
+            // Initial placeholder
+            androidx.compose.material3.Surface(
+                shape = if (usePreview) RoundedCornerShape(8.dp) else CircleShape,
+                color = SamtchTheme.colors.twitchPurple,
+                modifier = Modifier.size(if (usePreview) 56.dp else 40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = channel.take(1).uppercase(),
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp
+                    )
+                }
+            }
+        }
+
+        if (showLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                color = SamtchTheme.colors.accentColor.copy(alpha = 0.5f),
+                strokeWidth = 2.dp
+            )
+        }
+
+        if (!badgeText.isNullOrEmpty()) {
+            androidx.compose.material3.Surface(
+                color = SamtchTheme.colors.accentColor,
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 2.dp, end = 2.dp)
+            ) {
+                Text(
+                    text = badgeText,
+                    color = Color.White,
+                    fontSize = 7.sp,
+                    fontWeight = FontWeight.Black,
+                    softWrap = false,
+                    modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PlayerBackground(
+    channel: String,
+    previewUrl: String?,
+    modifier: Modifier = Modifier,
+    alpha: Float = 0.4f,
+    content: @Composable BoxScope.() -> Unit = {}
+) {
+    Box(
+        modifier = modifier.background(SamtchTheme.colors.rootBackground)
+    ) {
+        val finalUrl = previewUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
+        AsyncImage(
+            model = finalUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alpha = alpha
+        )
+        content()
+    }
+}
+
+@Composable
+fun PlayerLoadingScreen(
+    channel: String,
+    previewUrl: String?,
+    loadingMessage: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SamtchTheme.colors.rootBackground),
+        contentAlignment = Alignment.Center
+    ) {
+        val finalUrl = previewUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
+
+        AsyncImage(
+            model = finalUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SamtchTheme.colors.loadingOverlay)
+        )
+        CircularProgressIndicator(
+            color = SamtchTheme.colors.loadingIndicator,
+            strokeWidth = 3.dp
+        )
+        Text(
+            text = loadingMessage,
+            color = SamtchTheme.colors.primaryText,
+            style = TextStyle(
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                shadow = Shadow(
+                    color = Color.Black.copy(alpha = 0.5f),
+                    blurRadius = 8f
+                )
+            ),
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .align(Alignment.Center)
+                .offset(y = 40.dp)
+        )
+    }
+}
+
+@Composable
+fun TapTooltip(visible: Boolean, modifier: Modifier = Modifier) {
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(SamtchTheme.colors.tooltipBackground)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.fullscreen_double_tap_hint),
+                color = SamtchTheme.colors.primaryText,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
 
 @Composable
 fun WebViewContainer(
@@ -61,8 +273,8 @@ fun WebViewContainer(
             navigator.evaluateJavaScript("window.SamtchStrings = { $stringsJson };")
 
             val scriptPath = when (adBlockMode) {
-                SettingsManager.AdBlockMode.VAFT -> "js/player/vaft.js"
-                SettingsManager.AdBlockMode.VIDEO_SWAP -> "js/player/video_swap.js"
+                SettingsManager.AdBlockMode.VAFT -> Constants.Scripts.PLAYER_VAFT
+                SettingsManager.AdBlockMode.VIDEO_SWAP -> Constants.Scripts.PLAYER_VIDEO_SWAP
             }
             val adScript = ScriptLoader.getScript(context, scriptPath)
             if (adScript.isNotEmpty()) {
@@ -72,8 +284,8 @@ fun WebViewContainer(
 
             // Also inject playback monitor and early hider to catch fast starts
             val earlyScripts = listOf(
-                "js/player/playback_monitor.js",
-                "js/player/early_hider.js"
+                Constants.Scripts.PLAYER_PLAYBACK_MONITOR,
+                Constants.Scripts.PLAYER_EARLY_HIDER
             ).mapNotNull { path ->
                 val s = ScriptLoader.getScript(context, path)
                 if (s.isNotEmpty()) s else null
@@ -96,12 +308,12 @@ fun WebViewContainer(
     LaunchedEffect(state.lastLoadedUrl, state.loadingState, adBlockMode) {
         if (state.loadingState is LoadingState.Finished) {
             val url = state.lastLoadedUrl ?: ""
-            if (!url.contains("twitch.tv")) return@LaunchedEffect
+            if (!url.contains(Constants.Twitch.DOMAIN)) return@LaunchedEffect
 
             val scripts = listOf(
-                "js/player/ui_cleaner.js",
-                "js/player/controls_injector.js",
-                "js/player/playback_monitor.js"
+                Constants.Scripts.PLAYER_UI_CLEANER,
+                Constants.Scripts.PLAYER_CONTROLS_INJECTOR,
+                Constants.Scripts.PLAYER_PLAYBACK_MONITOR
             ).mapNotNull { path ->
                 val script = ScriptLoader.getScript(context, path)
                 if (script.isNotEmpty()) script else null
@@ -152,10 +364,14 @@ fun WebViewContainer(
             }
 
             webView.apply {
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 setLayerType(View.LAYER_TYPE_HARDWARE, null)
                 overScrollMode = View.OVER_SCROLL_NEVER
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false
+                
+                // Prevent onViewTypeAvailable crash by disabling Autofill
+                importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
 
                 // Add bridge for fullscreen and chat using the dedicated class
                 addJavascriptInterface(
@@ -179,7 +395,7 @@ fun WebViewContainer(
                             post { currentOnAdblocked(text) }
                         }
                     ),
-                    "TwitchPlayerBridge"
+                    Constants.Bridges.PLAYER
                 )
 
                 // Enable fullscreen for videos
@@ -193,7 +409,7 @@ fun WebViewContainer(
 }
 
 fun createTwitchPlayerUrl(channel: String): String {
-    return "https://player.twitch.tv/?channel=$channel&parent=twitch.tv&muted=false&autoplay=true&enableExtensions=false&player=mobile"
+    return Constants.Twitch.Templates.PLAYER_URL.format(channel)
 }
 
 class TwitchPlayerBridge(

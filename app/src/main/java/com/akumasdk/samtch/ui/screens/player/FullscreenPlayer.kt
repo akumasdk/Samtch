@@ -1,14 +1,26 @@
 package com.akumasdk.samtch.ui.screens.player
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.spring
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -28,6 +40,7 @@ import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun FullscreenPlayer(
@@ -39,17 +52,16 @@ fun FullscreenPlayer(
     viewersCount: Int = 0,
     adblockText: String = "",
     streamStartedAt: String? = null,
-    chatViewModel: ChatViewModel,
+    previewImageUrl: String? = null,
+    isChatVisible: Boolean = false,
+    expandTrigger: Int = 0,
+    refreshTrigger: Int = 0,
+    isPip: Boolean = false,
+    onToggleChat: () -> Unit = {},
+    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, refreshTrigger: Int, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
-    var isChatVisible by remember { mutableStateOf(false) }
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
-    var showTooltip by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        delay(3000.milliseconds)
-        showTooltip = false
-    }
 
     Row(modifier = Modifier.fillMaxSize()) {
         // Video Player
@@ -59,71 +71,32 @@ fun FullscreenPlayer(
                 .onSizeChanged { size ->
                     playerSize = size
                 }
-                .pointerInput(Unit) {
-                    var lastTapTime = 0L
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type == PointerEventType.Press) {
-                                val currentTime = event.changes.first().uptimeMillis
-                                val isDoubleTap =
-                                    (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
-
-                                if (isDoubleTap) {
-                                    val position = event.changes.first().position
-                                    val centerX = playerSize.width / 2f
-                                    val centerY = playerSize.height / 2f
-
-                                    // Define central region (30% width and height from center)
-                                    val radiusX = playerSize.width * 0.15f
-                                    val radiusY = playerSize.height * 0.15f
-
-                                    val isInCenterZone =
-                                        abs(position.x - centerX) <= radiusX &&
-                                                abs(position.y - centerY) <= radiusY
-
-                                    if (isInCenterZone) {
-                                        isChatVisible = !isChatVisible
-                                        // Consume the second tap to prevent WebView from seeing it
-                                        event.changes.forEach { it.consume() }
-                                    }
-                                }
-                                lastTapTime = currentTime
-                            }
-                        }
-                    }
-                }
         ) {
-            webView(Modifier.fillMaxSize()) {
-                isChatVisible = !isChatVisible
-            }
-
-            // Adblock status banner at the top
-            AdblockBanner(
-                text = adblockText,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-
-            // Double tap hint tooltip
-            TapTooltip(
-                visible = showTooltip,
-                modifier = Modifier.align(Alignment.Center)
-            )
+            webView(Modifier.fillMaxSize(), onToggleChat)
         }
 
         // Optional Side Chat with Metadata Bar
-        if (isChatVisible) {
+        AnimatedVisibility(
+            visible = isChatVisible,
+            enter = slideInHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeIn(),
+            exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
+        ) {
             Column(
                 modifier = Modifier
                     .width(300.dp)
                     .fillMaxHeight()
-                    .background(Color(0xFF18181B))
+                    .background(SamtchTheme.colors.chatBackground)
+                    .systemBarsPadding()
+                    .displayCutoutPadding()
             ) {
+                // Adblock Banner in the same space as portrait (between video and metadata/chat)
+                AdblockBanner(text = adblockText)
+
                 // Metadata space above chat (Only visible when chat is open)
                 AnimatedVisibility(
                     visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
-                    enter = fadeIn(),
-                    exit = fadeOut()
+                    enter = SamtchAnimation.FadeIn,
+                    exit = SamtchAnimation.FadeOut
                 ) {
                     StreamMetadataBar(
                         channel = channel,
@@ -133,44 +106,24 @@ fun FullscreenPlayer(
                         gameName = gameName,
                         viewersCount = viewersCount,
                         streamStartedAt = streamStartedAt,
+                        previewImageUrl = previewImageUrl,
+                        expandTrigger = expandTrigger,
+                        isPip = isPip,
                         modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
                     )
                 }
 
-                TwitchChat(
-                    channel = channel,
-                    isCompact = true,
-                    viewModel = chatViewModel,
-                    modifier = Modifier
+                chatContent(
+                    true,
+                    true,
+                    refreshTrigger,
+                    Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .background(Color(0xFF18181B))
                 )
             }
         }
     }
 }
 
-@Composable
-private fun TapTooltip(visible: Boolean, modifier: Modifier = Modifier) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(),
-        exit = fadeOut(),
-        modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.Black.copy(alpha = 0.7f))
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.fullscreen_double_tap_hint),
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
+

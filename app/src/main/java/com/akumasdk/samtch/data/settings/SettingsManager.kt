@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -17,6 +18,8 @@ object SettingsManager {
     private val AD_BLOCK_MODE = booleanPreferencesKey("ad_block_mode_is_vaft") // true = VAFT, false = VideoSwap
     private val CHAT_MODE = booleanPreferencesKey("chat_mode_is_native") // true = NATIVE, false = LEGACY
     private val MINI_PLAYER_HINT_SHOWN = booleanPreferencesKey("mini_player_hint_shown")
+    private val THEME_MODE = intPreferencesKey("theme_mode") // 0 = DARK, 1 = LIGHT, 2 = SYSTEM
+    private val LAST_VERSION_CODE = intPreferencesKey("last_version_code")
 
     enum class AdBlockMode {
         VAFT, VIDEO_SWAP
@@ -24,6 +27,10 @@ object SettingsManager {
 
     enum class ChatMode {
         NATIVE, LEGACY
+    }
+
+    enum class ThemeMode {
+        DARK, LIGHT, SYSTEM
     }
 
     fun isPipEnabled(context: Context): Flow<Boolean> {
@@ -83,6 +90,36 @@ object SettingsManager {
     suspend fun setMiniPlayerHintShown(context: Context, shown: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[MINI_PLAYER_HINT_SHOWN] = shown
+        }
+    }
+
+    fun getThemeMode(context: Context): Flow<ThemeMode> {
+        return context.dataStore.data.map { preferences ->
+            ThemeMode.entries[preferences[THEME_MODE] ?: ThemeMode.SYSTEM.ordinal]
+        }
+    }
+
+    suspend fun setThemeMode(context: Context, mode: ThemeMode) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_MODE] = mode.ordinal
+        }
+    }
+
+    fun getLastVersionCode(context: Context): Flow<Int> {
+        return context.dataStore.data.map { preferences ->
+            preferences[LAST_VERSION_CODE] ?: -1
+        }
+    }
+
+    suspend fun setLastVersionCode(context: Context, versionCode: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[LAST_VERSION_CODE] = versionCode
+        }
+    }
+
+    suspend fun clear(context: Context) {
+        context.dataStore.edit { preferences ->
+            preferences.clear()
         }
     }
 }

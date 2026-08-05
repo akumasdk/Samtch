@@ -4,34 +4,41 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.SmartDisplay
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.components.AdblockBanner
+import com.akumasdk.samtch.ui.components.PlayerBackground
 import com.akumasdk.samtch.ui.components.StreamMetadataBar
-import com.akumasdk.samtch.ui.components.TwitchChat
-import com.akumasdk.samtch.ui.components.chat.ChatViewModel
-import kotlin.math.abs
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @Composable
 fun PortraitPlayer(
@@ -44,112 +51,94 @@ fun PortraitPlayer(
     isAudioOnly: Boolean = false,
     adblockText: String = "",
     streamStartedAt: String? = null,
-    onToggleFullscreen: () -> Unit,
-    chatViewModel: ChatViewModel,
+    previewImageUrl: String? = null,
+    portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
+    expandTrigger: Int = 0,
+    isPip: Boolean = false,
+    onToggleMode: () -> Unit = {},
+    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
-    var isChatVisible by remember { mutableStateOf(true) }
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .animateContentSize(),
-        verticalArrangement = if (isChatVisible) Arrangement.Top else Arrangement.Center
+    PlayerBackground(
+        channel = channel,
+        previewUrl = previewImageUrl,
+        modifier = Modifier.fillMaxSize(),
+        alpha = 0.2f
     ) {
-        // Dynamic height container
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (isAudioOnly) {
-                        Modifier.height(240.dp) // Reclaimed space for Audio Only table design
-                    } else {
-                        Modifier.aspectRatio(16f / 9f)
-                    }
-                )
-                .onSizeChanged { size ->
-                    playerSize = size
-                }
-                .pointerInput(Unit) {
-                    var lastTapTime = 0L
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type == PointerEventType.Press) {
-                                val currentTime = event.changes.first().uptimeMillis
-                                val isDoubleTap =
-                                    (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
-
-                                if (isDoubleTap) {
-                                    val position = event.changes.first().position
-                                    val centerX = playerSize.width / 2f
-                                    val centerY = playerSize.height / 2f
-
-                                    // Define central region (30% width and height from center)
-                                    val radiusX = playerSize.width * 0.15f
-                                    val radiusY = playerSize.height * 0.15f
-
-                                    val isInCenterZone =
-                                        abs(position.x - centerX) <= radiusX &&
-                                                abs(position.y - centerY) <= radiusY
-
-                                    if (isInCenterZone) {
-                                        onToggleFullscreen()
-                                        // Consume the second tap to prevent WebView from seeing it
-                                        event.changes.forEach { it.consume() }
-                                    }
-                                }
-                                lastTapTime = currentTime
-                            }
-                        }
-                    }
-                }
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
+            verticalArrangement = Arrangement.Top
         ) {
-            webView(Modifier.fillMaxSize()) {
-                isChatVisible = !isChatVisible
+            // Dynamic height container (Placeholder for the stable WebView)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (isAudioOnly) {
+                            Modifier.height(240.dp)
+                        } else if (portraitMode == PortraitMode.CHAT_ONLY) {
+                            Modifier.height(0.dp)
+                        } else {
+                            Modifier.aspectRatio(16f / 9f)
+                        }
+                    )
+                    .onSizeChanged { size ->
+                        playerSize = size
+                    }
+            ) {
+                webView(Modifier.fillMaxSize()) {
+                    // Internal toggle ignored as per request to drop injected toggle
+                }
             }
 
-            // Adblock status banner at the top
-            AdblockBanner(
-                text = adblockText,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-        }
+            // Space for Adblock Banner between player and metadata
+            AdblockBanner(text = adblockText)
 
-        // Tiny metadata space above chat
-        AnimatedVisibility(
-            visible = isChatVisible && !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            StreamMetadataBar(
-                channel = channel,
-                displayName = displayName,
-                avatarUrl = avatarUrl,
-                streamTitle = streamTitle,
-                gameName = gameName,
-                viewersCount = viewersCount,
-                streamStartedAt = streamStartedAt
-            )
-        }
+            // Tiny metadata space above chat
+            AnimatedVisibility(
+                visible = !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
+                enter = SamtchAnimation.FadeIn,
+                exit = SamtchAnimation.FadeOut
+            ) {
+                StreamMetadataBar(
+                    channel = channel,
+                    displayName = displayName,
+                    avatarUrl = avatarUrl,
+                    streamTitle = streamTitle,
+                    gameName = gameName,
+                    viewersCount = viewersCount,
+                    streamStartedAt = streamStartedAt,
+                    previewImageUrl = previewImageUrl,
+                    expandTrigger = expandTrigger,
+                    forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
+                    isPip = isPip
+                )
+            }
 
-        // Twitch Chat
-        if (isChatVisible) {
+            // Twitch Chat & Mode Toggle Container
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .background(Color(0xFF18181B)) // Twitch background color
             ) {
-                TwitchChat(
-                    channel = channel,
-                    isCompact = false,
-                    viewModel = chatViewModel,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFF18181B))
+                chatContent(
+                    false,
+                    true,
+                    Modifier.fillMaxSize()
+                )
+
+                // Floating Toggle Mode Circle
+                ModeToggleButton(
+                    visible = !isAudioOnly,
+                    portraitMode = portraitMode,
+                    onClick = onToggleMode,
+                    modifier = Modifier.align(Alignment.BottomEnd)
                 )
             }
         }

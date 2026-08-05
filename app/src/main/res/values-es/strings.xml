@@ -6,6 +6,13 @@
     <string name="cancel_button">Cancelar</string>
     <string name="fullscreen_double_tap_hint">Toca dos veces en el centro para alternar el chat</string>
 
+    <!-- Settings Categories -->
+    <string name="settings_category_appearance">Apariencia</string>
+    <string name="settings_category_player">Reproductor y Reproducción</string>
+    <string name="settings_category_chat">Chat y Emoticonos</string>
+    <string name="settings_category_account">Cuenta</string>
+    <string name="settings_category_app">Aplicación</string>
+
     <!-- Settings -->
     <string name="settings_title">Ajustes</string>
     <string name="back_content_description">Atrás</string>
@@ -19,6 +26,12 @@
     <string name="bttv_settings_title">Ajustes de BetterTTV</string>
     <string name="bttv_settings_summary">Configurar emoticonos y funciones de BetterTTV</string>
     <string name="bttv_settings_success_overlay">Regresa e intenta de nuevo</string>
+
+    <string name="logout_title">Cerrar sesión de Twitch</string>
+    <string name="logout_summary">Cierra la sesión de tu cuenta de Twitch</string>
+    <string name="logout_dialog_title">Cerrar sesión</string>
+    <string name="logout_dialog_message">¿Estás seguro de que quieres cerrar tu sesión de Twitch? Esto recargará el navegador.</string>
+    <string name="logout_button">Cerrar sesión</string>
 
     <!-- About Dialog -->
     <string name="about_dialog_title">Acerca de Samtch</string>
@@ -53,16 +66,23 @@
     <!-- Ad Block Settings -->
     <string name="ad_block_mode_title">Método de Bloqueo de Anuncios</string>
     <string name="ad_block_mode_summary">Elige el script utilizado para bloquear anuncios de Twitch</string>
-    <string name="ad_block_mode_vaft">VAFT (Latencia Alta/Experimental)</string>
-    <string name="ad_block_mode_video_swap">Video Swap (Estable/Predeterminado)</string>
+    <string name="ad_block_mode_vaft">VAFT (Estable/lento en dispositivos de gama media-baja)</string>
+    <string name="ad_block_mode_video_swap">Video Swap (Rápido en dispositivos de gama baja)</string>
     <string name="ad_block_mode_notice">Nota: Los cambios en el método de bloqueo de anuncios surtirán efecto la próxima vez que reproduzcas un stream.</string>
 
     <!-- Chat Settings -->
     <string name="chat_mode_title">Experiencia de Chat</string>
-    <string name="chat_mode_summary">Elige entre el chat Nativo o el Heredado (WebView)</string>
-    <string name="chat_mode_native">Nativo (Experimental/Rápido)</string>
-    <string name="chat_mode_legacy">Heredado (Estable/Original)</string>
+    <string name="chat_mode_summary">Elige entre el chat Nativo o el Integrado</string>
+    <string name="chat_mode_native">Nativo (Más Rápido / Experimental)</string>
+    <string name="chat_mode_legacy">Integrado (Original)</string>
     <string name="chat_mode_notice">Nota: El chat nativo incluye soporte para emoticonos de BetterTTV y 7TV.</string>
+
+    <!-- Theme Settings -->
+    <string name="theme_mode_title">Modo de Tema</string>
+    <string name="theme_mode_summary">Elige el tema preferido para la aplicación y el reproductor de Twitch</string>
+    <string name="theme_mode_dark">Oscuro</string>
+    <string name="theme_mode_light">Claro</string>
+    <string name="theme_mode_system">Sistema</string>
 
     <!-- Player Loading Status -->
     <string name="loading_stream">Cargando stream…</string>
@@ -78,4 +98,10 @@
     <string name="chat_login_required">Inicia sesión para chatear</string>
     <string name="chat_login_prompt">Debes iniciar sesión para participar en el chat.</string>
     <string name="chat_logged_in_as">Sesión iniciada como %s</string>
+
+    <!-- Stream Info Dialog -->
+    <string name="stream_title_label">Título</string>
+    <string name="category_label">Categoría</string>
+    <string name="viewers_label">Espectadores</string>
+    <string name="uptime_label">Tiempo en vivo</string>
 </resources>
