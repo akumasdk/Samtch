@@ -1,3 +1,24 @@
+# Changelog
+
+## Samtch v0.3.1
+
+### What's New
+- **Comprehensive Player Refactoring**: Modularized the player architecture by extracting core logic into dedicated handlers for effects, input, layout, and WebView management.
+- **Enhanced Stream Metadata**:
+    - **Tag Support**: Stream tags are now parsed and displayed within the stream information dialog.
+    - **Visual Sync**: Improved avatar and preview image loading with synchronized, non-cached refreshes and dedicated loading indicators.
+- **Optimized Mini-Player**:
+    - **Smart Overlays**: Created a dedicated mini-player overlay that dynamically adapts its visual density based on the current player mode.
+    - **Improved Transitions**: Refined the maximization animations for a glitch-free experience, especially in Chat Only mode.
+- **Polished UI & Behavior**:
+    - **Consistent Immersive Mode**: System bars are now strictly managed, remaining visible in portrait/audio/chat modes and only hiding for true landscape fullscreen.
+    - **Slimmer Adblock Banner**: Refined the adblock status indicator for a more non-intrusive look while ensuring it correctly consumes touch input.
+- **Stability Fixes**: 
+    - Resolved state synchronization issues between the audio player screen and system media notifications.
+    - Fixed a bug causing redundant browser reloads during certain UI transitions.
+
+---
+
 ## Samtch v0.3.0
 
 ### What's New

@@ -22,13 +22,14 @@ Samtch is a lightweight Twitch client for Android designed for a clean, ad-free 
 
 ## ✨ Features
 
-- **Native Twitch Chat**: A full native chat experience featuring support for **BetterTTV** and **7TV** emotes, and smooth auto-scrolling.
-- **Ad-Free Viewing**: Integrated scripts to bypass common video ads and tracking.
-- **Premium Audio-Only Mode**: A dedicated "music player" aesthetic for background listening, featuring high-resolution stream artwork, dark gradients, and streamer avatar rings.
-- **Rich Stream Metadata**: Real-time titles, game categories, viewer counts, and high-fidelity thumbnails fetched via GraphQL. Features a dynamic metadata bar that automatically shrinks to a slim mode to maximize chat space.
-- **Clean UI**: Custom JavaScript injection removes "Open in App" prompts and clutters from the player interface.
-- **Seamless Discovery**: Use the full Twitch mobile site for browsing, search, and following, while switching automatically to a native-feeling player when a stream is selected.
-- **Fullscreen & PiP**: Immersive landscape mode and Picture-in-Picture support for multitasking.
+- **Native Twitch Chat**: A full native chat experience featuring support for **BetterTTV** and **7TV** emotes, smooth auto-scrolling, and a high-performance compact mode.
+- **Just Chatting (Chat-Only) Mode**: A dedicated silent mode designed for community interaction without video or audio playback, saving battery and data.
+- **Premium Audio-Only Mode**: A dedicated "music player" aesthetic for background listening, featuring high-resolution stream artwork, dark gradients, and synchronized media notifications.
+- **Rich Stream Metadata**: Real-time titles, game categories, **stream tags**, and viewer counts fetched via GraphQL. Features a dynamic metadata bar that automatically shrinks to maximize chat space.
+- **Smart Mini-Player**: A context-aware minimized window that dynamically displays live video, stream thumbnails, or channel avatars with state badges depending on your active mode.
+- **Ad-Free Viewing**: Integrated scripts and a native status banner to bypass common video ads and tracking with real-time feedback.
+- **Seamless Discovery**: Navigate the full Twitch mobile site for browsing and following, while switching automatically to a native-feeling modular player when a stream is selected.
+- **Fullscreen & PiP**: Immersive landscape mode with side-tab chat and Picture-in-Picture support for multitasking.
 ## 📝 Changelog
 
 See the **[CHANGELOG.md](CHANGELOG.md)** for a full history of changes.
