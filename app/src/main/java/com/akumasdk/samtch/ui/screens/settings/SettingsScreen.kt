@@ -43,6 +43,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.BuildConfig
+import com.akumasdk.samtch.ui.screens.settings.components.AboutDialog
+import com.akumasdk.samtch.ui.screens.settings.components.BttvSettingsChat
+import com.akumasdk.samtch.ui.screens.settings.components.LogoutDialog
+import com.akumasdk.samtch.ui.screens.settings.components.SelectionDialog
+import com.akumasdk.samtch.ui.screens.settings.components.SettingSectionHeader
+import com.akumasdk.samtch.ui.screens.settings.components.UpdateItem
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.model.GitHubRelease

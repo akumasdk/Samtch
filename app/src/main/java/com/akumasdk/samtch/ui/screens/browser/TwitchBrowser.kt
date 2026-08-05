@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.akumasdk.samtch.ui.screens.browser.components.TwitchBrowserBridge
+import com.akumasdk.samtch.ui.screens.browser.components.TwitchBrowserClient
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.theme.SamtchAnimation

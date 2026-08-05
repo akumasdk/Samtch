@@ -49,14 +49,26 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.ui.components.MiniPlayerContainer
-import com.akumasdk.samtch.ui.components.MiniPlayerOverlay
-import com.akumasdk.samtch.ui.components.PlayerBackground
-import com.akumasdk.samtch.ui.components.PlayerLoadingScreen
-import com.akumasdk.samtch.ui.components.TapTooltip
-import com.akumasdk.samtch.ui.components.TwitchChat
+import com.akumasdk.samtch.ui.components.chat.TwitchChat
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
-import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
+import com.akumasdk.samtch.ui.components.playerComponents.MiniPlayerContainer
+import com.akumasdk.samtch.ui.components.playerComponents.MiniPlayerOverlay
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerLoadingScreen
+import com.akumasdk.samtch.ui.components.playerComponents.TapTooltip
+import com.akumasdk.samtch.ui.components.playerComponents.createTwitchPlayerUrl
+import com.akumasdk.samtch.ui.screens.player.components.AudioOnlyPlayer
+import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
+import com.akumasdk.samtch.ui.screens.player.components.AudioServiceEffects
+import com.akumasdk.samtch.ui.screens.player.components.FullscreenChatToggle
+import com.akumasdk.samtch.ui.screens.player.components.PlayerLifecycleEffects
+import com.akumasdk.samtch.ui.screens.player.components.PlayerOverlay
+import com.akumasdk.samtch.ui.screens.player.components.PlayerWebView
+import com.akumasdk.samtch.ui.screens.player.components.rememberPlayerLayoutDimensions
+import com.akumasdk.samtch.ui.screens.player.components.playerInputHandler
+import com.akumasdk.samtch.ui.screens.player.models.ChatContentConfig
+import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
+import com.akumasdk.samtch.ui.screens.player.util.unloadWebView
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
@@ -65,18 +77,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-
-enum class PortraitMode {
-    VIDEO_AND_CHAT,
-    AUDIO_AND_CHAT,
-    CHAT_ONLY
-}
-
-data class ChatContentConfig(
-    val isCompact: Boolean,
-    val showInput: Boolean,
-    val refreshTrigger: Int
-)
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
@@ -606,16 +606,4 @@ fun TwitchPlayer(
         }
     }
     }
-}
-
-private fun unloadWebView(state: com.multiplatform.webview.web.WebViewState, navigator: com.multiplatform.webview.web.WebViewNavigator) {
-    navigator.stopLoading()
-    navigator.loadUrl(com.akumasdk.samtch.util.Constants.ABOUT_BLANK)
-    try {
-        state.nativeWebView.apply {
-            onPause() // Pause JS and events for THIS instance only
-            stopLoading()
-            loadUrl(com.akumasdk.samtch.util.Constants.ABOUT_BLANK)
-        }
-    } catch (_: Exception) {}
 }
