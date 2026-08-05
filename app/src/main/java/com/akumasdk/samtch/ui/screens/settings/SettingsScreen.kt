@@ -344,7 +344,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                     headlineContent = { Text(stringResource(R.string.support_project)) },
                     supportingContent = { Text(stringResource(R.string.support_project_summary)) },
                     leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_donation), contentDescription = null, modifier = Modifier.size(24.dp)) },
-                    modifier = Modifier.clickable { uriHandler.openUri("https://ko-fi.com/akuma") }
+                    modifier = Modifier.clickable { uriHandler.openUri("https://ko-fi.com/akumasdk") }
                 )
             }
         },
