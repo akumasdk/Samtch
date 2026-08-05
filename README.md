@@ -5,8 +5,12 @@
 <h1 align="center">Samtch</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/akumasdk/Samtch?label=Latest%20Release&style=for-the-badge&color=9146FF" alt="Latest Release">
-  <img src="https://img.shields.io/github/downloads/akumasdk/samtch/total?style=for-the-badge&color=9146FF" alt="GitHub downloads all releases">
+  <a href="https://github.com/akumasdk/Samtch/releases/latest">
+    <img src="https://img.shields.io/github/v/release/akumasdk/Samtch?label=Latest%20Release&style=for-the-badge&color=9146FF" alt="Latest Release">
+  </a>
+  <a href="https://github.com/akumasdk/Samtch/releases/latest">
+    <img src="https://img.shields.io/github/downloads/akumasdk/samtch/total?style=for-the-badge&color=9146FF" alt="GitHub downloads all releases">
+  </a>
   <img src="https://img.shields.io/github/stars/akumasdk/Samtch?style=for-the-badge&color=9146FF" alt="GitHub stars">
 </p>
 <p align="center">
