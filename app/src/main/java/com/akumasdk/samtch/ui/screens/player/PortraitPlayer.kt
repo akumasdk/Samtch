@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -69,6 +70,8 @@ fun PortraitPlayer(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
             verticalArrangement = Arrangement.Top
         ) {
@@ -131,35 +134,12 @@ fun PortraitPlayer(
                 )
 
                 // Floating Toggle Mode Circle
-                androidx.compose.animation.AnimatedVisibility(
+                ModeToggleButton(
                     visible = !isAudioOnly,
-                    enter = fadeIn() + scaleIn(initialScale = 0.8f),
-                    exit = fadeOut() + scaleOut(targetScale = 0.8f),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 100.dp, end = 16.dp) // Elevated further to avoid overlapping with message input
-                        .navigationBarsPadding()
-                ) {
-                    Surface(
-                        onClick = onToggleMode,
-                        shape = CircleShape,
-                        color = SamtchTheme.colors.accentColor.copy(alpha = 0.8f),
-                        contentColor = Color.White,
-                        tonalElevation = 6.dp,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = when (portraitMode) {
-                                    PortraitMode.VIDEO_AND_CHAT, PortraitMode.AUDIO_AND_CHAT -> Icons.AutoMirrored.Filled.Chat
-                                    PortraitMode.CHAT_ONLY -> Icons.Default.SmartDisplay
-                                },
-                                contentDescription = "Toggle Mode",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
+                    portraitMode = portraitMode,
+                    onClick = onToggleMode,
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                )
             }
         }
     }

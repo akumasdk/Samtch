@@ -7,6 +7,7 @@ import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
 import com.akumasdk.samtch.service.TwitchChatClient
+import com.akumasdk.samtch.util.adaptiveChunked
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -213,29 +214,5 @@ class ChatViewModel : ViewModel() {
     override fun onCleared() {
         disconnect()
         super.onCleared()
-    }
-}
-
-/**
- * Custom flow operator to chunk elements by time with adaptive interval for high traffic
- */
-fun <T> Flow<T>.adaptiveChunked(
-    minInterval: Long,
-    maxInterval: Long,
-    floodThreshold: Int
-): Flow<List<T>> = flow {
-    val buffer = mutableListOf<T>()
-    var lastEmitTime = System.currentTimeMillis()
-    
-    collect { value ->
-        buffer.add(value)
-        val currentTime = System.currentTimeMillis()
-        val currentInterval = if (buffer.size > floodThreshold) maxInterval else minInterval
-        
-        if (currentTime - lastEmitTime >= currentInterval || buffer.size >= 80) {
-            emit(buffer.toList())
-            buffer.clear()
-            lastEmitTime = currentTime
-        }
     }
 }

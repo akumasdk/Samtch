@@ -86,6 +86,8 @@ fun FullscreenPlayer(
                     .width(300.dp)
                     .fillMaxHeight()
                     .background(SamtchTheme.colors.chatBackground)
+                    .systemBarsPadding()
+                    .displayCutoutPadding()
             ) {
                 // Adblock Banner in the same space as portrait (between video and metadata/chat)
                 AdblockBanner(text = adblockText)

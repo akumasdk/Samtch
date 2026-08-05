@@ -134,6 +134,7 @@ fun MiniPlayerOverlay(
                     color = Color.White,
                     fontSize = 7.sp,
                     fontWeight = FontWeight.Black,
+                    softWrap = false,
                     modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp)
                 )
             }

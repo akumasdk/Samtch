@@ -1,13 +1,22 @@
 package com.akumasdk.samtch.ui.screens.player
 
+import android.content.ComponentName
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
+import com.akumasdk.samtch.service.PlaybackService
+import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -27,6 +36,10 @@ class PlayerViewModel : ViewModel() {
     
     var hasBackgroundReloaded by mutableStateOf(false)
     
+    var mediaController by mutableStateOf<MediaController?>(null)
+        private set
+    var isPlaying by mutableStateOf(false)
+        
     private var metadataJob: Job? = null
 
     fun updateChannel(newChannel: String?, forceRefresh: Boolean = false) {
@@ -37,8 +50,6 @@ class PlayerViewModel : ViewModel() {
         channel = newChannel
         
         // Only reset background reload flag if it's a COMPLETELY new channel.
-        // If it's just a refresh (even manual), we preserve the existing background reload state
-        // to comply with "do not perform any more browser reload after initial passes".
         if (isNewChannel) {
             hasBackgroundReloaded = false
             
@@ -57,6 +68,56 @@ class PlayerViewModel : ViewModel() {
         } else {
             stopMetadataFetch()
         }
+    }
+
+    fun connectMediaController(context: Context) {
+        if (mediaController != null) return
+        
+        val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+        controllerFuture.addListener({
+            val controller = controllerFuture.get()
+            mediaController = controller
+            isPlaying = controller.isPlaying
+            controller.addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(playing: Boolean) {
+                    isPlaying = playing
+                }
+            })
+            
+            // Sync current channel if already playing
+            channel?.let { updateMediaItem(it) }
+        }, MoreExecutors.directExecutor())
+    }
+
+    fun disconnectMediaController() {
+        mediaController?.release()
+        mediaController = null
+        isPlaying = false
+    }
+
+    fun togglePlayback() {
+        val controller = mediaController ?: return
+        if (controller.isPlaying) controller.pause() else controller.play()
+    }
+
+    fun updateMediaItem(channelName: String) {
+        val controller = mediaController ?: return
+        val metadata = MediaMetadata.Builder()
+            .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
+            .setArtist(streamMetadata?.user?.displayName ?: channelName)
+            .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
+            .setArtworkUri(avatarUrl?.let { android.net.Uri.parse(it) })
+            .build()
+            
+        controller.setMediaItem(
+            MediaItem.Builder()
+                .setMediaId(channelName)
+                .setMediaMetadata(metadata)
+                .build()
+        )
+        controller.prepare()
+        controller.play()
     }
 
     private fun startMetadataFetch(channel: String) {
@@ -89,13 +150,18 @@ class PlayerViewModel : ViewModel() {
     }
 
     private fun updateMetadataState(metadata: TwitchStreamMetadata) {
+        val now = System.currentTimeMillis()
         val timestampedMetadata = metadata.copy(
             user = metadata.user?.copy(
+                profileImageUrl = metadata.user.profileImageUrl?.let { url ->
+                    val separator = if (url.contains("?")) "&" else "?"
+                    "$url${separator}t=$now"
+                },
                 stream = metadata.user.stream?.let { stream ->
                     stream.copy(
                         previewImageUrl = stream.previewImageUrl?.let { url ->
                             val separator = if (url.contains("?")) "&" else "?"
-                            "$url${separator}t=${System.currentTimeMillis()}"
+                            "$url${separator}t=$now"
                         }
                     )
                 }

@@ -80,6 +80,7 @@ import com.akumasdk.samtch.util.DeviceOrientationManager
 import com.akumasdk.samtch.util.PhysicalOrientation
 import com.akumasdk.samtch.util.ScriptLoader
 import com.akumasdk.samtch.util.SystemSettingsUtil
+import com.akumasdk.samtch.util.PipManager
 import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
@@ -209,28 +210,26 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // 2. ORIENTATION & UI MODE ENFORCEMENT
-                LaunchedEffect(selectedChannel, isMinimized, isAudioOnlyModeState.value, isFullscreen, isInPipMode) {
+                LaunchedEffect(selectedChannel, isMinimized, isAudioOnlyModeState.value, isFullscreen, isInPipMode, playerViewModel.portraitMode) {
                     if (isInPipMode) return@LaunchedEffect
 
-                    val isPlayerActive = selectedChannel != null && !isMinimized && !isAudioOnlyModeState.value
+                    // Immersive "Fullscreen" mode (hiding status/nav bars) is now EXCLUSIVELY for the landscape video player.
+                    // Portrait video, Audio Only, and Chat Only modes will always show the status bar.
+                    val useImmersiveMode = isFullscreen && 
+                                           selectedChannel != null && 
+                                           !isMinimized && 
+                                           !isAudioOnlyModeState.value && 
+                                           playerViewModel.portraitMode != PortraitMode.CHAT_ONLY
 
-                    if (isPlayerActive) {
-                        // Hide system bars for an immersive player experience (Portrait and Fullscreen)
+                    if (useImmersiveMode) {
                         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-                        
-                        if (isFullscreen) {
-                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                        } else {
-                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                        }
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                     } else {
-                        // BROWSER LOCK: Always Portrait
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                         windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-                        isFullscreen = false
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                     }
 
-                    // Theme consistency
+                    // Theme consistency for system bars (applied when they are visible)
                     windowInsetsController.isAppearanceLightStatusBars = !darkTheme
                     windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
                 }
@@ -344,7 +343,6 @@ class MainActivity : ComponentActivity() {
                                         isFullscreen = false
                                     },
                                     onExpand = { isMinimized = false },
-                                    onRefreshRequested = { refreshTriggerState.intValue += 1 },
                                     onClose = {
                                         selectedChannel = null
                                         playerViewModel.updateChannel(null)
@@ -390,31 +388,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.S)
-private fun updatePipParams(isPipEnabled: Boolean = true) {
-        val actions = if (currentChannel != null && isInPipModeState.value) {
-            listOf(
-                RemoteAction(
-                    Icon.createWithResource(this, R.drawable.ic_refresh),
-                    getString(R.string.pip_action_refresh),
-                    getString(R.string.pip_action_refresh_description),
-                    PendingIntent.getBroadcast(
-                        this, 0, Intent(Constants.Actions.REFRESH).setPackage(packageName), PendingIntent.FLAG_IMMUTABLE
-                    )
-                )
-            )
-        } else {
-            emptyList()
-        }
-
-        val builder = PictureInPictureParams.Builder()
-            .setAspectRatio(Rational(16, 9))
-            .setActions(actions)
-
-        builder.setAutoEnterEnabled(currentChannel != null && isPipEnabled && !isAudioOnlyModeState.value)
-
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun updatePipParams(isPipEnabled: Boolean = true) {
+        val params = PipManager.getPipParams(
+            context = this,
+            isPipEnabled = isPipEnabled,
+            currentChannel = currentChannel,
+            isAudioOnly = isAudioOnlyModeState.value,
+            isInPipMode = isInPipModeState.value
+        )
         try {
-            setPictureInPictureParams(builder.build())
+            setPictureInPictureParams(params)
         } catch (_: Exception) {}
     }
 

@@ -3,8 +3,6 @@ package com.akumasdk.samtch.ui.components
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -15,7 +13,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
@@ -35,10 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -50,98 +44,8 @@ import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
-import java.time.Duration
-import java.time.Instant
-
-/**
- * Formats large viewer counts into human-readable strings (e.g., 1.2k, 1.5M).
- */
-fun formatViewerCount(count: Int): String {
-    return when {
-        count >= 1_000_000 -> "%.1fM".format(count / 1_000_000f)
-        count >= 1_000 -> "%.1fk".format(count / 1_000f)
-        else -> count.toString()
-    }
-}
-
-/**
- * Formats ISO 8601 timestamp into a human-readable duration string (e.g., 2h 15m).
- */
-fun formatStreamDuration(createdAt: String?): String {
-    if (createdAt.isNullOrBlank()) return ""
-    return try {
-        val start = Instant.parse(createdAt)
-        val now = Instant.now()
-        val duration = Duration.between(start, now)
-        
-        val hours = duration.toHours()
-        val minutes = duration.toMinutes() % 60
-        
-        when {
-            hours > 0 -> "${hours}h ${minutes}m"
-            minutes > 0 -> "${minutes}m"
-            else -> "Just started"
-        }
-    } catch (e: Exception) {
-        ""
-    }
-}
-
-/**
- * A viewer count component with a red dot and a vertical scroll animation when the value updates.
- */
-@Composable
-fun AnimatedViewerCount(
-    count: Int,
-    textColor: Color = SamtchTheme.colors.secondaryText,
-    fontSize: TextUnit = 10.sp,
-    fontWeight: FontWeight = FontWeight.ExtraBold
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        // Person Icon for Viewers
-        Icon(
-            imageVector = Icons.Default.Person,
-            contentDescription = null,
-            tint = textColor,
-            modifier = Modifier.size(12.dp)
-        )
-        
-        // Animated text content
-        AnimatedContent(
-            targetState = count,
-            transitionSpec = {
-                if (targetState > initialState) {
-                    (slideInVertically { height -> height } + fadeIn(animationSpec = SamtchAnimation.FastTween))
-                        .togetherWith(slideOutVertically { height -> -height } + fadeOut(animationSpec = SamtchAnimation.FastTween))
-                } else {
-                    (slideInVertically { height -> -height } + fadeIn(animationSpec = SamtchAnimation.FastTween))
-                        .togetherWith(slideOutVertically { height -> height } + fadeOut(animationSpec = SamtchAnimation.FastTween))
-                }.using(
-                    SizeTransform(clip = false)
-                )
-            },
-            label = "ViewerCountAnimation",
-            contentAlignment = Alignment.CenterStart
-        ) { targetCount ->
-            Text(
-                text = formatViewerCount(targetCount),
-                color = textColor,
-                fontSize = fontSize,
-                fontWeight = fontWeight,
-                maxLines = 1,
-                softWrap = false,
-                textAlign = TextAlign.Start,
-                style = TextStyle(
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    lineHeight = 10.sp
-                )
-            )
-        }
-    }
-}
+import com.akumasdk.samtch.util.formatStreamDuration
+import com.akumasdk.samtch.util.formatViewerCount
 
 /**
  * A unified metadata bar for displaying streamer name, title, category and viewers.
@@ -669,46 +573,6 @@ private fun InfoCard(
                 maxLines = maxLines,
                 overflow = TextOverflow.Ellipsis
             )
-        }
-    }
-}
-
-/**
- * A banner that shows adblock status, styled similarly to the metadata bar.
- */
-@Composable
-fun AdblockBanner(
-    text: String,
-    modifier: Modifier = Modifier
-) {
-    AnimatedVisibility(
-        visible = text.isNotEmpty(),
-        enter = expandVertically(animationSpec = SamtchAnimation.springInteractive()) + fadeIn(),
-        exit = shrinkVertically(animationSpec = SamtchAnimation.springInteractive()) + fadeOut(),
-        modifier = modifier
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(28.dp),
-            color = SamtchTheme.colors.adblockBackground
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = text,
-                    color = SamtchTheme.colors.primaryText,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
         }
     }
 }

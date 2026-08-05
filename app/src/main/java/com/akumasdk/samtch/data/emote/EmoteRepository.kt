@@ -15,23 +15,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 object EmoteRepository {
     private const val TAG = "EmoteRepository"
-    
-    data class GlobalEmoteState(
-        val bttvEmotes: Map<String, Emote> = emptyMap(),
-        val seventvEmotes: Map<String, Emote> = emptyMap(),
-        val ffzEmotes: Map<String, Emote> = emptyMap(),
-        val badges: Map<String, Map<String, TwitchBadgeDto>> = emptyMap(),
-        val isLoaded: Boolean = false
-    )
-
-    data class ChannelEmoteState(
-        val bttvEmotes: Map<String, Emote> = emptyMap(),
-        val seventvEmotes: Map<String, Emote> = emptyMap(),
-        val ffzEmotes: Map<String, Emote> = emptyMap(),
-        val badges: Map<String, Map<String, TwitchBadgeDto>> = emptyMap(),
-        val displayBadges: Map<String, TwitchBadgeDto> = emptyMap(),
-        val isLoaded: Boolean = false
-    )
 
     private val _globalState = MutableStateFlow(GlobalEmoteState())
     val globalState = _globalState.asStateFlow()

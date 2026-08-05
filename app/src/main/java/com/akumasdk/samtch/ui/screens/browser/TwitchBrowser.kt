@@ -47,6 +47,7 @@ import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ScriptLoader
+import com.akumasdk.samtch.util.TwitchUrlUtil
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -183,10 +184,10 @@ fun TwitchBrowser(
 
             // Check if this is a channel URL - if so, don't inject scripts
             val currentUrl = state.lastLoadedUrl ?: ""
-            val channelMatch = extractChannelFromUrl(currentUrl)
-            val currentUser = getCurrentUserFromCookies()
+            val channelMatch = TwitchUrlUtil.extractChannelFromUrl(currentUrl)
+            val currentUser = TwitchUrlUtil.getCurrentUserFromCookies()
 
-            if (isPlayableChannel(channelMatch, currentUser)) {
+            if (TwitchUrlUtil.isPlayableChannel(channelMatch, currentUser)) {
                 Log.d("TwitchBrowser", "Channel page detected, skipping script injection and stopping load")
                 navigator.stopLoading()
                 return@LaunchedEffect
@@ -237,15 +238,15 @@ fun TwitchBrowser(
             },
             onUrlChanged = { url, blocked, requestBack ->
                 try {
-                    val mobileUrl = ensureMobileUrl(url)
-                    val channelMatch = extractChannelFromUrl(mobileUrl)
-                    val isSafe = isSafeExplorationUrl(mobileUrl)
+                    val mobileUrl = TwitchUrlUtil.ensureMobileUrl(url)
+                    val channelMatch = TwitchUrlUtil.extractChannelFromUrl(mobileUrl)
+                    val isSafe = TwitchUrlUtil.isSafeExplorationUrl(mobileUrl)
 
                     if (!isSafe || requestBack) {
                         Log.d("TwitchBrowser", "Sentinel: Unsafe or Escape detected. blocked=$blocked, url=$mobileUrl")
                         
                         // 1. Trigger the player (if it's a channel)
-                        if (isPlayableChannel(channelMatch, getCurrentUserFromCookies())) {
+                        if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUserFromCookies())) {
                             currentOnChannelSelected(channelMatch!!)
                         }
                         
@@ -286,10 +287,10 @@ fun TwitchBrowser(
                 // Perform initial load or restore previous URL when returning from player.
                 // "At All Costs" Guard: If the restored URL is a channel, force Home instead.
                 val restoredUrl = state.lastLoadedUrl
-                val channelMatch = restoredUrl?.let { extractChannelFromUrl(it) }
-                val currentUser = getCurrentUserFromCookies()
+                val channelMatch = restoredUrl?.let { TwitchUrlUtil.extractChannelFromUrl(it) }
+                val currentUser = TwitchUrlUtil.getCurrentUserFromCookies()
 
-                val urlToLoad = if (isPlayableChannel(channelMatch, currentUser)) {
+                val urlToLoad = if (TwitchUrlUtil.isPlayableChannel(channelMatch, currentUser)) {
                     Log.d("TwitchBrowser", "onCreated: Restored URL is a channel ($channelMatch). Forcing Home instead.")
                     Constants.Twitch.MOBILE_URL
                 } else if (!restoredUrl.isNullOrEmpty()) {
@@ -328,89 +329,13 @@ fun TwitchBrowser(
                     webChromeClient = WebChromeClient()
 
                     // Custom WebViewClient to intercept URL changes
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(
-                            view: NativeWebView?,
-                            request: WebResourceRequest?
-                        ): Boolean {
-                            val url = request?.url?.toString() ?: return false
-                            Log.d("TwitchBrowser", "shouldOverrideUrlLoading: $url")
-
-                            // Force mobile domain
-                            val mobileUrl = ensureMobileUrl(url)
-                            if (mobileUrl != url) {
-                                Log.d("TwitchBrowser", "Desktop URL detected, forcing mobile: $mobileUrl")
-                                view?.loadUrl(mobileUrl)
-                                return true
-                            }
-
-                            // Force full reload for the global home to avoid SPA issues
-                            if (isGlobalHome(url)) {
-                                Log.d("TwitchBrowser", "Global home path detected in shouldOverride, forcing full load")
-                                view?.loadUrl(url)
-                                return true
-                            }
-
-                            // Detect if user navigated to an unsafe page
-                            val channelMatch = extractChannelFromUrl(url)
-                            val isSafe = isSafeExplorationUrl(url)
-
-                            if (!isSafe) {
-                                val lastSafeUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
-                                Log.d("TwitchBrowser", "Intercepted unsafe URL: $url. Redirecting to $lastSafeUrl")
-                                if (isPlayableChannel(channelMatch, getCurrentUserFromCookies())) {
-                                    currentOnChannelSelected(channelMatch!!)
-                                }
-                                view?.loadUrl(lastSafeUrl)
-                                return true
-                            }
-
-                            return false // Allow normal navigation
-                        }
-
-                        override fun onPageStarted(view: NativeWebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                            super.onPageStarted(view, url, favicon)
-                            Log.d("TwitchBrowser", "Page started: $url")
-                            isUiLoading = true
-
-                            // Inject splash controller early
-                            val splashScript = ScriptLoader.getScript(context, Constants.Scripts.COMMON_SPLASH_CONTROLLER)
-                            if (splashScript.isNotEmpty()) {
-                                view?.evaluateJavascript(splashScript, null)
-                            }
-
-                            // Detect if a desktop URL leaked through and force mobile
-                            url?.let {
-                                val mobileUrl = ensureMobileUrl(it)
-                                if (mobileUrl != it) {
-                                    Log.d("TwitchBrowser", "onPageStarted: Desktop URL detected, forcing mobile: $mobileUrl")
-                                    view?.loadUrl(mobileUrl)
-                                    return
-                                }
-                            }
-
-                            url?.let {
-                                val channelMatch = extractChannelFromUrl(it)
-                                val isSafe = isSafeExplorationUrl(it)
-
-                                if (!isSafe) {
-                                    val lastSafeUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
-                                    Log.d("TwitchBrowser", "Page started on unsafe URL: $it. Redirecting to $lastSafeUrl")
-                                    if (isPlayableChannel(channelMatch, getCurrentUserFromCookies())) {
-                                        currentOnChannelSelected(channelMatch!!)
-                                    }
-                                    view?.loadUrl(lastSafeUrl)
-                                }
-                            }
-                        }
-
-                        override fun onPageFinished(view: NativeWebView?, url: String?) {
-                            super.onPageFinished(view, url)
-                            Log.d("TwitchBrowser", "Page finished: $url")
-                            // Ensure splash screen dismisses even on restoration
-                            currentOnLoaded()
-                        }
-                    }
+                    webViewClient = TwitchBrowserClient(
+                        context = context,
+                        safeHistory = safeHistory,
+                        onChannelSelected = { currentOnChannelSelected(it) },
+                        onUiLoadingChanged = { isUiLoading = it },
+                        onLoaded = { currentOnLoaded() }
+                    )
 
                     // Enable mixed content for Twitch
                     settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
@@ -456,177 +381,5 @@ fun TwitchBrowser(
                 }
             }
         )
-    }
-}
-
-private fun ensureMobileUrl(url: String): String {
-    val uri = try { java.net.URI(url) } catch (_: Exception) { return url }
-    if (uri.host == "www.twitch.tv" || uri.host == Constants.Twitch.DOMAIN) {
-        return url.replaceFirst(uri.host ?: "", "m.twitch.tv")
-    }
-    return url
-}
-
-private fun isSafeExplorationUrl(url: String?): Boolean {
-    if (url.isNullOrEmpty() || url.contains(Constants.ABOUT_BLANK)) return true
-    
-    val uri = try { java.net.URI(url) } catch (_: Exception) { return false }
-    if (uri.host != null && !uri.host.contains(Constants.Twitch.DOMAIN)) return true
-
-    val path = uri.path ?: "/"
-    val segments = path.split("/").filter { it.isNotEmpty() }
-
-    // Root/Home cases
-    if (segments.isEmpty() || path == "/" || path == "/home" || path == "/home/") return true
-    
-    // Exploration zones
-    val safeRoots = setOf(
-        "directory", "search", "following", "browse", "p", 
-        "settings", "inventory", "wallet", "drops", "turbo", 
-        "friends", "activity", "bits", "about", "jobs", "security"
-    )
-    
-    if (safeRoots.contains(segments[0].lowercase())) return true
-    
-    // Everything else (single segment usernames or /username/home) is "Unsafe"
-    return false
-}
-
-private fun isPlayableChannel(channelMatch: String?, currentUser: String?): Boolean {
-    if (channelMatch == null) return false
-    if (currentUser == null) return true // If not logged in, all channels are playable
-    
-    // The current user should never trigger the player
-    return !channelMatch.equals(currentUser, ignoreCase = true)
-}
-
-private fun extractChannelFromUrl(url: String?): String? {
-    val uri = try {
-        if (url == null) return null
-        val cleanUrl = if (!url.startsWith("http")) "https://$url" else url
-        java.net.URI(cleanUrl)
-    } catch (_: Exception) {
-        return null
-    }
-
-    if (uri.host != null && !uri.host.contains(Constants.Twitch.DOMAIN)) return null
-
-    val path = uri.path ?: return null
-    val segments = path.split("/").filter { it.isNotEmpty() }
-
-    if (segments.isEmpty()) return null
-
-    val channelCandidate = segments[0].trim()
-
-    val excludedNames = setOf(
-        "directory", "search", "videos", "clips", "events",
-        "esports", "music", "about", "jobs", "security",
-        "p", "settings", "subscriptions", "inventory", "wallet",
-        "drops", "turbo", "friends", "popout", "embed", "home",
-        "activity", "bits", "browse", "following"
-    )
-
-    if (excludedNames.any { it.equals(channelCandidate, ignoreCase = true) }) {
-        return null
-    }
-
-    return channelCandidate
-}
-
-private fun getCurrentUserFromCookies(): String? {
-    return try {
-        val cookieManager = android.webkit.CookieManager.getInstance()
-        val cookies = cookieManager.getCookie(Constants.Twitch.BASE_URL) ?: return null
-
-        // The login cookie contains the username: login=username;
-        val loginCookie = cookies.split(";").find { it.trim().startsWith("login=") }
-        val username = loginCookie?.split("=")?.getOrNull(1)?.trim()?.lowercase()
-        
-        if (!username.isNullOrEmpty()) {
-            Log.d("TwitchBrowser", "Detected logged-in user: $username")
-            username
-        } else null
-    } catch (e: Exception) {
-        Log.e("TwitchBrowser", "Error getting user from cookies", e)
-        null
-    }
-}
-
-private fun isGlobalHome(url: String?): Boolean {
-    if (url.isNullOrEmpty()) return false
-    val uri = try { java.net.URI(url) } catch (_: Exception) { return false }
-    val path = uri.path ?: "/"
-    // Only /home and /home/ are considered "Exploration zones"
-    // Root / is NOT home, so navigating from / to a user WILL trigger the player
-    return path == "/home" || path == "/home/"
-}
-
-private fun isBrowserRoot(url: String?): Boolean {
-    if (url.isNullOrEmpty()) return true
-    val uri = try { java.net.URI(url) } catch (_: Exception) { return false }
-    val path = uri.path ?: ""
-    return path == "/" || path == "" || path == "/home" || path == "/home/"
-}
-
-class TwitchBrowserBridge(
-    private val activity: android.app.Activity?,
-    private val onSettingsClicked: () -> Unit,
-    private val onLoginRequested: () -> Unit = {},
-    private val onLoadedCallback: () -> Unit,
-    private val onUiCleanFinished: () -> Unit = {},
-    private val onRefreshRequested: () -> Unit,
-    private val onUrlChanged: (String, Boolean, Boolean) -> Unit
-) {
-    @JavascriptInterface
-    fun onUrlChange(url: String, blocked: Boolean) {
-        onUrlChange(url, blocked, false)
-    }
-
-    @JavascriptInterface
-    fun onUrlChange(url: String, blocked: Boolean, requestBack: Boolean) {
-        activity?.runOnUiThread {
-            Log.d("TwitchBrowser", "URL change via JS Bridge: $url (blocked=$blocked, requestBack=$requestBack)")
-            onUrlChanged(url, blocked, requestBack)
-        }
-    }
-
-    @JavascriptInterface
-    fun onDomLoaded() {
-        activity?.runOnUiThread {
-            Log.d("TwitchBrowser", "DOM Loaded via JS Bridge class")
-            onLoadedCallback()
-        }
-    }
-
-    @JavascriptInterface
-    fun uiCleanFinish() {
-        activity?.runOnUiThread {
-            Log.d("TwitchBrowser", "UI cleaning finished via JS Bridge")
-            onUiCleanFinished()
-        }
-    }
-
-    @JavascriptInterface
-    fun openSettings() {
-        activity?.runOnUiThread {
-            Log.d("TwitchBrowser", "Settings button clicked in JS")
-            onSettingsClicked()
-        }
-    }
-
-    @JavascriptInterface
-    fun openLogin() {
-        activity?.runOnUiThread {
-            Log.d("TwitchBrowser", "Login button clicked in JS")
-            onLoginRequested()
-        }
-    }
-
-    @JavascriptInterface
-    fun onRefresh() {
-        activity?.runOnUiThread {
-            Log.d("TwitchBrowser", "Refresh triggered via JS Bridge")
-            onRefreshRequested()
-        }
     }
 }

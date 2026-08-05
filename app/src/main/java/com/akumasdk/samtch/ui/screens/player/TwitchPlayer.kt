@@ -1,13 +1,10 @@
 package com.akumasdk.samtch.ui.screens.player
 
-import android.content.ComponentName
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -18,104 +15,44 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.movableContentOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
-import coil.compose.AsyncImage
 import com.akumasdk.samtch.R
-import com.akumasdk.samtch.data.api.gql.TwitchGqlService
-import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.service.PlaybackService
-import com.akumasdk.samtch.ui.components.AdblockBanner
-import com.akumasdk.samtch.ui.components.MiniPlayerOverlay
-import com.akumasdk.samtch.ui.components.PlayerBackground
-import com.akumasdk.samtch.ui.components.PlayerLoadingScreen
-import com.akumasdk.samtch.ui.components.TapTooltip
-import com.akumasdk.samtch.ui.components.TwitchChat
-import com.akumasdk.samtch.ui.components.WebViewContainer
-import com.akumasdk.samtch.ui.components.createTwitchPlayerUrl
+import com.akumasdk.samtch.ui.components.*
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
-import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 enum class PortraitMode {
@@ -142,7 +79,6 @@ fun TwitchPlayer(
     onBack: (() -> Unit)? = null,
     onClose: () -> Unit = {},
     onExpand: () -> Unit = {},
-    onRefreshRequested: () -> Unit = {},
     onMetadataUpdated: (String?, String?) -> Unit = { _, _ -> },
     onAudioOnlyModeChanged: (Boolean) -> Unit = {},
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
@@ -162,11 +98,6 @@ fun TwitchPlayer(
 
     var showFullscreenControls by remember(isFullscreen) { mutableStateOf(!isFullscreen) }
 
-    var mediaController by remember { mutableStateOf<MediaController?>(null) }
-    var isPlaying by remember { mutableStateOf(false) }
-
-    val currentIsPlaying by rememberUpdatedState(isPlaying)
-
     val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
 
     val chatViewModel: ChatViewModel = viewModel()
@@ -178,14 +109,20 @@ fun TwitchPlayer(
     var isChatVisible by remember { mutableStateOf(true) }
     var metadataExpandTrigger by remember { mutableIntStateOf(0) }
 
-    // Logic for using the background audio service
-    // Strictly tied to explicit Audio Only mode. Chat Only mode remains silent when minimized.
-    val shouldUseAudioService = isAudioOnly
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val chatLoadingText = stringResource(R.string.chat_connecting)
+    val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
+    val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
 
-    // Purge adblock banner if entering chat only or audio and chat mode
-    LaunchedEffect(portraitMode) {
-        if (portraitMode == PortraitMode.CHAT_ONLY || portraitMode == PortraitMode.AUDIO_AND_CHAT) {
-            adblockText = ""
+    // Nudge animation for first-time users
+    val nudgeOffset = remember { Animatable(0f) }
+    LaunchedEffect(isMinimized, hintShown) {
+        if (isMinimized && !hintShown) {
+            delay(1000.milliseconds)
+            nudgeOffset.animateTo(targetValue = 40f, animationSpec = SamtchAnimation.springBouncy())
+            nudgeOffset.animateTo(targetValue = 0f, animationSpec = SamtchAnimation.springInteractive())
+            SettingsManager.setMiniPlayerHintShown(context, true)
         }
     }
 
@@ -193,63 +130,38 @@ fun TwitchPlayer(
     LaunchedEffect(isFullscreen) {
         if (isFullscreen) {
             isChatVisible = false
-            // Wait for rotation animation to fully end before showing any tooltips/controls
             delay(1.seconds) 
             showFullscreenControls = true
         }
     }
 
-    // Nudge animation for first-time users
-    val nudgeOffset = remember { Animatable(0f) }
-    LaunchedEffect(isMinimized, hintShown) {
-        if (isMinimized && !hintShown) {
-            delay(1000.milliseconds)
-            // Nudge right
-            nudgeOffset.animateTo(
-                targetValue = 40f,
-                animationSpec = SamtchAnimation.springBouncy()
-            )
-            // Back to center
-            nudgeOffset.animateTo(
-                targetValue = 0f,
-                animationSpec = SamtchAnimation.springInteractive()
-            )
-            SettingsManager.setMiniPlayerHintShown(context, true)
-        }
-    }
-
-    // Manage chat connection lifecycle based on player state and app background status
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
-    val chatLoadingText = stringResource(R.string.chat_connecting)
-    val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
-    val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
-
     var lastProcessedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
 
-    LaunchedEffect(channel, isPip, lifecycleState, portraitMode) {
-        // Stay connected if in foreground, OR if in PiP specifically in Chat Only mode
-        val isForeground = lifecycleState.isAtLeast(Lifecycle.State.STARTED)
-        val shouldBeConnected = isForeground && (!isPip || portraitMode == PortraitMode.CHAT_ONLY)
-        
-        if (shouldBeConnected) {
-            chatViewModel.connect(channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
-        } else {
-            // Disconnect when entering PiP (if not in chat mode) or going to background
-            chatViewModel.disconnect()
-        }
-    }
+    // Logic for using the background audio service
+    // Strictly tied to explicit Audio Only mode. Chat Only mode remains silent when minimized.
+    val shouldUseAudioService = isAudioOnly
 
-    // Safety timeout for loading screen
-    LaunchedEffect(isUiLoading) {
-        if (isUiLoading) {
-            delay(12.seconds) // 12 second absolute maximum for loading screen
-            if (isUiLoading) {
-                Log.w("TwitchPlayer", "Loading timeout reached for $channel - forcing removal")
-                isUiLoading = false
-            }
-        }
-    }
+    // Extracted Effects
+    PlayerLifecycleEffects(
+        channel = channel,
+        isPip = isPip,
+        lifecycleState = lifecycleState,
+        portraitMode = portraitMode,
+        chatViewModel = chatViewModel,
+        chatLoadingText = chatLoadingText,
+        chatWelcomeTemplate = chatWelcomeTemplate,
+        chatLoginTemplate = chatLoginTemplate,
+        isUiLoading = isUiLoading,
+        onLoadingTimeout = { isUiLoading = false }
+    )
+
+    AudioServiceEffects(
+        channel = channel,
+        shouldUseAudioService = shouldUseAudioService,
+        isAudioOnlyBackgroundEnabled = isAudioOnlyBackgroundEnabled,
+        playerViewModel = playerViewModel,
+        context = context
+    )
 
     // Consolidated loading and metadata logic
     LaunchedEffect(channel, refreshTrigger) {
@@ -258,86 +170,20 @@ fun TwitchPlayer(
         playerViewModel.updateChannel(channel, forceRefresh = isManualRefresh)
     }
 
-    // Keep parent activity in sync for background notifications
+    // Keep parent activity in sync
     LaunchedEffect(avatarUrl, streamSubtitle) {
         onMetadataUpdated(avatarUrl, streamSubtitle)
     }
 
+    // Purge adblock banner if entering chat only or audio modes
+    LaunchedEffect(isAudioOnly, portraitMode) {
+        if (isAudioOnly || (portraitMode == PortraitMode.CHAT_ONLY || portraitMode == PortraitMode.AUDIO_AND_CHAT)) {
+            adblockText = ""
+        }
+    }
+
     LaunchedEffect(shouldUseAudioService) {
         onAudioOnlyModeChanged(shouldUseAudioService)
-    }
-
-    // Connect to service only when Audio Only mode is manually enabled
-    LaunchedEffect(shouldUseAudioService) {
-        if (!shouldUseAudioService) {
-            mediaController?.release()
-            mediaController = null
-            // If the background setting is also off, ensure the service is killed
-            if (!isAudioOnlyBackgroundEnabled) {
-                context.stopService(android.content.Intent(context, PlaybackService::class.java))
-            }
-            return@LaunchedEffect
-        }
-
-        if (mediaController == null) {
-            val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-            val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
-            controllerFuture.addListener({
-                val controller = controllerFuture.get()
-                mediaController = controller
-                isPlaying = controller.isPlaying
-                controller.addListener(object : Player.Listener {
-                    override fun onIsPlayingChanged(playing: Boolean) {
-                        isPlaying = playing
-                    }
-                })
-            }, MoreExecutors.directExecutor())
-        }
-    }
-
-    // Handle initial playback when switching to Audio Only mode
-    LaunchedEffect(mediaController, shouldUseAudioService) {
-        if (shouldUseAudioService && mediaController != null && !isPlaying) {
-            val previewUri = playerViewModel.streamMetadata?.user?.stream?.previewImageUrl?.toUri()
-            val metadata = MediaMetadata.Builder()
-                .setTitle(playerViewModel.streamMetadata?.user?.stream?.title ?: channel)
-                .setArtist(playerViewModel.streamMetadata?.user?.displayName ?: channel)
-                .setAlbumTitle(playerViewModel.streamMetadata?.user?.stream?.game?.name)
-                .setArtworkUri(previewUri)
-                .build()
-            
-            mediaController?.setMediaItem(
-                MediaItem.Builder()
-                    .setMediaId(channel)
-                    .setMediaMetadata(metadata)
-                    .build()
-            )
-            mediaController?.prepare()
-            mediaController?.play()
-        }
-    }
-
-    // Periodically update controller metadata if it's connected
-    LaunchedEffect(playerViewModel.streamMetadata, mediaController) {
-        val controller = mediaController ?: return@LaunchedEffect
-        val stream = playerViewModel.streamMetadata?.user?.stream ?: return@LaunchedEffect
-        
-        Log.d("TwitchPlayer", "Updating controller metadata for $channel")
-        val metadata = MediaMetadata.Builder()
-            .setTitle(stream.title)
-            .setArtist(playerViewModel.streamMetadata?.user?.displayName ?: channel)
-            .setAlbumTitle(stream.game?.name)
-            .setArtworkUri(stream.previewImageUrl?.toUri())
-            .build()
-            
-        // Use replaceMediaItem to update metadata without disrupting the stream
-        controller.replaceMediaItem(
-            0,
-            MediaItem.Builder()
-                .setMediaId(channel)
-                .setMediaMetadata(metadata)
-                .build()
-        )
     }
 
     val state = rememberSaveableWebViewState("")
@@ -347,7 +193,7 @@ fun TwitchPlayer(
 
     // Handle back button to return to browser (minimize)
     if (!isPip && !isMinimized) {
-        androidx.activity.compose.BackHandler {
+        BackHandler {
             Log.d("TwitchPlayer", "BackHandler triggered for $channel")
             onBack?.invoke()
         }
@@ -396,7 +242,7 @@ fun TwitchPlayer(
     DisposableEffect(channel) {
         onDispose {
             Log.d("TwitchPlayer", "Disposing player for channel: $channel")
-            mediaController?.release()
+            playerViewModel.disconnectMediaController()
             chatViewModel.disconnect()
             // Clean up WebView resources aggressively
             try {
@@ -432,11 +278,12 @@ fun TwitchPlayer(
     val playerContent = remember(channel) {
         movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
             Box(modifier = modifier) {
-                // Read metadata inside the lambda to ensure reactivity even if the lambda is remembered
+                // Read metadata and state inside the lambda to ensure reactivity 
+                // even if the lambda is remembered and moved in the tree.
                 val liveMetadata = playerViewModel.streamMetadata
                 val liveAvatarUrl = playerViewModel.avatarUrl
                 val liveSubtitle = playerViewModel.streamSubtitle
-                val liveIsPlaying = isPlaying // Updated via mediaController listener
+                val liveIsPlaying = playerViewModel.isPlaying
                 
                 // Mode logic
                 val isAudioOrChatMode = playerViewModel.isAudioOnly || playerViewModel.portraitMode == PortraitMode.CHAT_ONLY
@@ -464,31 +311,15 @@ fun TwitchPlayer(
                         viewersCount = liveMetadata?.user?.stream?.viewersCount ?: 0,
                         isPlaying = liveIsPlaying,
                         onTogglePlayback = {
-                            if (currentIsPlaying) mediaController?.pause() else mediaController?.play()
+                            playerViewModel.togglePlayback()
                         },
                         onCloseAudioOnly = {
                             isAudioOnly = false
                             portraitMode = PortraitMode.VIDEO_AND_CHAT
-                            mediaController?.stop()
+                            playerViewModel.disconnectMediaController()
                         },
                         onRefresh = {
-                            mediaController?.stop()
-                            val avatarUri = liveAvatarUrl?.toUri()
-                            mediaController?.setMediaItem(
-                                MediaItem.Builder()
-                                    .setMediaId(channel)
-                                    .setMediaMetadata(
-                                        MediaMetadata.Builder()
-                                            .setTitle(liveMetadata?.user?.stream?.title ?: channel)
-                                            .setArtist(liveMetadata?.user?.displayName ?: channel)
-                                            .setAlbumTitle(liveMetadata?.user?.stream?.game?.name)
-                                            .setArtworkUri(avatarUri)
-                                            .build()
-                                    )
-                                    .build()
-                            )
-                            mediaController?.prepare()
-                            mediaController?.play()
+                            playerViewModel.updateMediaItem(channel)
                         },
                         previewImageUrl = previewImageUrl,
                         modifier = Modifier.fillMaxSize()
@@ -500,29 +331,15 @@ fun TwitchPlayer(
                         previewUrl = previewImageUrl,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        WebViewContainer(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .onGloballyPositioned { layoutCoordinates ->
-                                    if (!isMinimized) {
-                                        val rect = layoutCoordinates.boundsInWindow()
-                                        onVideoBoundsChanged(
-                                            android.graphics.Rect(
-                                                rect.left.toInt(),
-                                                rect.top.toInt(),
-                                                rect.right.toInt(),
-                                                rect.bottom.toInt()
-                                            )
-                                        )
-                                    }
-                                },
+                        PlayerWebView(
                             state = state,
                             navigator = navigator,
                             channel = channel,
+                            isMinimized = isMinimized,
                             onToggleFullscreen = onToggleFullscreen,
                             onToggleChat = onToggleChat,
-                            onToggleAudioOnly = { 
-                                isAudioOnly = true 
+                            onToggleAudioOnly = {
+                                isAudioOnly = true
                                 portraitMode = PortraitMode.AUDIO_AND_CHAT
                             },
                             onPlaybackStarted = {
@@ -534,11 +351,12 @@ fun TwitchPlayer(
                                     }
                                 }
                             },
-                            onLoadingStatus = { message -> loadingMessage = message },
+                            onLoadingStatus = { loadingMessage = it },
                             onAdblocked = { text ->
                                 adblockText = text
                                 if (text.isNotEmpty() && isUiLoading) isUiLoading = false
-                            }
+                            },
+                            onVideoBoundsChanged = onVideoBoundsChanged
                         )
                         
                         AnimatedVisibility(
@@ -575,55 +393,19 @@ fun TwitchPlayer(
 
     // --- STABLE ANIMATION SYSTEM ---
     val configuration = LocalConfiguration.current
+    val viewConfiguration = androidx.compose.ui.platform.LocalViewConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     val screenHeight = configuration.screenHeightDp.dp
 
-    // Size & Position animations
-    val playerHeight by animateDpAsState(
-        targetValue = when {
-            isMinimized -> 64.dp
-            isAudioOnly -> 240.dp
-            isFullscreen -> screenHeight
-            portraitMode == PortraitMode.CHAT_ONLY && !isPip -> 0.dp
-            else -> (screenWidth * 9 / 16)
-        },
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "StablePlayerHeight"
-    )
-
-    val playerWidth by animateDpAsState(
-        targetValue = when {
-            isMinimized -> 120.dp
-            isFullscreen && isChatVisible -> (screenWidth - 300.dp)
-            portraitMode == PortraitMode.CHAT_ONLY && !isPip -> 0.dp
-            else -> screenWidth
-        },
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "StablePlayerWidth"
-    )
-
-    val playerPaddingStart by animateDpAsState(
-        targetValue = if (isMinimized) (8.dp + 16.dp) else 0.dp,
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "StablePlayerPaddingStart"
-    )
-
-    val playerPaddingBottom by animateDpAsState(
-        targetValue = if (isMinimized) (12.dp + 8.dp) else 0.dp,
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "StablePlayerPaddingBottom"
-    )
-
-    val playerCornerRadius by animateDpAsState(
-        targetValue = if (isMinimized) 20.dp else 0.dp,
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "StablePlayerCornerRadius"
-    )
-
-    val playerElevation by animateDpAsState(
-        targetValue = if (isMinimized) 12.dp else 0.dp,
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "StablePlayerElevation"
+    val layout = rememberPlayerLayoutDimensions(
+        isMinimized = isMinimized,
+        isAudioOnly = isAudioOnly,
+        isFullscreen = isFullscreen,
+        portraitMode = portraitMode,
+        isPip = isPip,
+        screenWidth = screenWidth,
+        screenHeight = screenHeight,
+        isChatVisible = isChatVisible
     )
 
     // Root Container
@@ -641,72 +423,36 @@ fun TwitchPlayer(
             }
 
             // 1. FULL PLAYER OVERLAY (Chat, Metadata)
-            AnimatedVisibility(
-                visible = !isMinimized,
-                enter = fadeIn(animationSpec = SamtchAnimation.EmphasizedTween),
-                exit = fadeOut(animationSpec = SamtchAnimation.FastTween)
-            ) {
-                if (isFullscreen) {
-                    FullscreenPlayer(
-                        channel = channel,
-                        displayName = streamMetadata?.user?.displayName,
-                        avatarUrl = avatarUrl,
-                        streamTitle = streamMetadata?.user?.stream?.title,
-                        gameName = streamMetadata?.user?.stream?.game?.name,
-                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
-                        adblockText = adblockText,
-                        refreshTrigger = refreshTrigger,
-                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                        isChatVisible = isChatVisible,
-                        expandTrigger = metadataExpandTrigger,
-                        isPip = isPip,
-                        onToggleChat = { 
-                            isChatVisible = !isChatVisible
-                            showFullscreenControls = true
-                        },
-                        chatContent = { isCompact, showInput, rTrigger, modifier -> 
-                            chatContent(ChatContentConfig(isCompact, showInput, rTrigger), modifier)
-                        },
-                        webView = { modifier, _ -> 
-                            Box(modifier = modifier)
-                        }
-                    )
-                } else {
-                    PortraitPlayer(
-                        channel = channel,
-                        displayName = streamMetadata?.user?.displayName,
-                        avatarUrl = avatarUrl,
-                        streamTitle = streamMetadata?.user?.stream?.title,
-                        gameName = streamMetadata?.user?.stream?.game?.name,
-                        viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
-                        isAudioOnly = isAudioOnly,
-                        adblockText = adblockText,
-                        streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                        previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                        portraitMode = portraitMode,
-                        expandTrigger = metadataExpandTrigger,
-                        isPip = isPip,
-                        onToggleMode = {
-                            if (portraitMode == PortraitMode.CHAT_ONLY) {
-                                portraitMode = PortraitMode.VIDEO_AND_CHAT
-                                isAudioOnly = false
-                            } else {
-                                portraitMode = PortraitMode.CHAT_ONLY
-                            }
-                            isChatVisible = true
-                        },
-                        chatContent = { isCompact, showInput, modifier -> 
-                            chatContent(ChatContentConfig(isCompact, showInput, refreshTrigger), modifier)
-                        },
-                        webView = { modifier, _ -> 
-                            // Render a simple placeholder when Point 3 (the stable player) is active
-                            // to avoid "tug-of-war" of the movable content.
-                            Box(modifier = modifier)
-                        }
-                    )
+            PlayerOverlay(
+                isMinimized = isMinimized,
+                isFullscreen = isFullscreen,
+                channel = channel,
+                streamMetadata = streamMetadata,
+                avatarUrl = avatarUrl,
+                isAudioOnly = isAudioOnly,
+                adblockText = adblockText,
+                portraitMode = portraitMode,
+                metadataExpandTrigger = metadataExpandTrigger,
+                isPip = isPip,
+                isChatVisible = isChatVisible,
+                refreshTrigger = refreshTrigger,
+                onToggleChat = { 
+                    isChatVisible = !isChatVisible
+                    if (isFullscreen) showFullscreenControls = true
+                },
+                onToggleMode = {
+                    if (portraitMode == PortraitMode.CHAT_ONLY) {
+                        portraitMode = PortraitMode.VIDEO_AND_CHAT
+                        isAudioOnly = false
+                    } else {
+                        portraitMode = PortraitMode.CHAT_ONLY
+                    }
+                    isChatVisible = true
+                },
+                chatContent = { config, modifier ->
+                    chatContent(config, modifier)
                 }
-            }
+            )
 
             // 2. MINI PLAYER SHELL & DISMISS LOGIC
             val dismissState = rememberSwipeToDismissBoxState(
@@ -720,107 +466,20 @@ fun TwitchPlayer(
                 }
             )
 
-            androidx.compose.animation.AnimatedVisibility(
+            MiniPlayerContainer(
                 visible = isMinimized,
-                enter = fadeIn(animationSpec = SamtchAnimation.StandardTween) + scaleIn(initialScale = 0.92f, animationSpec = SamtchAnimation.StandardTween),
-                exit = fadeOut(animationSpec = SamtchAnimation.FastTween) + scaleOut(targetScale = 0.92f, animationSpec = SamtchAnimation.FastTween),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 12.dp)
-                    .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) }
-            ) {
-                SwipeToDismissBox(
-                    state = dismissState,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    backgroundContent = {
-                        val direction = dismissState.dismissDirection
-                        val isSwiping = direction != SwipeToDismissBoxValue.Settled
-                        val progress = if (isSwiping) dismissState.progress else 0f
-                        
-                        val color by animateColorAsState(
-                            if (isSwiping) SamtchTheme.colors.error.copy(alpha = (0.1f + (0.3f * progress)).coerceIn(0f, 0.4f)) else Color.Transparent,
-                            label = "DismissBackground"
-                        )
-
-                        val iconScale by animateFloatAsState(
-                            if (isSwiping) 0.8f + (0.4f * progress) else 0.5f,
-                            animationSpec = SamtchAnimation.springBouncy(),
-                            label = "TrashIconScale"
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(40.dp))
-                                .background(color),
-                            contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) 
-                                Alignment.CenterStart else Alignment.CenterEnd
-                        ) {
-                            if (isSwiping) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = null,
-                                    tint = SamtchTheme.colors.primaryText.copy(alpha = (0.2f + progress).coerceIn(0f, 1f)),
-                                    modifier = Modifier
-                                        .padding(horizontal = 28.dp)
-                                        .size(28.dp)
-                                        .scale(iconScale)
-                                )
-                            }
-                        }
-                    }
-                ) {
-                    // This mimics the MiniPlayer surface
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp)
-                            .shadow(playerElevation, RoundedCornerShape(40.dp))
-                            .clip(RoundedCornerShape(40.dp))
-                            .clickable(onClick = onExpand),
-                        color = SamtchTheme.colors.miniPlayerBackground.copy(alpha = 0.98f),
-                        tonalElevation = 8.dp
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
-                        ) {
-                            // Placeholder for the shared player
-                            Box(modifier = Modifier.size(width = 120.dp, height = 64.dp))
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            // Info
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = streamMetadata?.user?.displayName ?: channel,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    maxLines = 1,
-                                    color = SamtchTheme.colors.miniPlayerTitle
-                                )
-                                Text(
-                                    text = streamMetadata?.user?.stream?.title ?: "Live",
-                                    color = SamtchTheme.colors.miniPlayerSubtitle,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    modifier = Modifier.basicMarquee()
-                                )
-                            }
-
-                            IconButton(onClick = onClose) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = null,
-                                    tint = SamtchTheme.colors.miniPlayerTitle.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
-                    }
+                channel = channel,
+                displayName = streamMetadata?.user?.displayName,
+                streamTitle = streamMetadata?.user?.stream?.title,
+                elevation = layout.elevation.value,
+                nudgeOffset = nudgeOffset.value,
+                dismissState = dismissState,
+                onExpand = onExpand,
+                onClose = onClose,
+                content = {
+                    // This placeholder box will be filled by Point 3 (the shared player)
                 }
-            }
+            )
 
             // 3. THE STABLE PLAYER (Stable during layout changes)
             // We always render the player if a channel is selected to preserve the WebView 
@@ -836,84 +495,46 @@ fun TwitchPlayer(
                             Modifier
                                 .align(Alignment.BottomStart)
                                 .navigationBarsPadding()
-                                .padding(bottom = playerPaddingBottom)
-                                .padding(start = playerPaddingStart)
+                                .padding(bottom = layout.paddingBottom.value)
+                                .padding(start = layout.paddingStart.value)
                                 .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
                                 .offset { 
                                     // Follow the swipe to dismiss offset
                                     IntOffset(dismissState.requireOffset().roundToInt(), 0) 
                                 }
-                                .size(playerWidth, playerHeight)
-                                .clip(RoundedCornerShape(playerCornerRadius))
+                                .size(layout.width.value, layout.height.value)
+                                .clip(RoundedCornerShape(layout.cornerRadius.value))
                         } else {
                             Modifier
                                 .align(Alignment.TopStart)
-                                .size(playerWidth, playerHeight)
+                                .then(if (!isFullscreen) Modifier.statusBarsPadding() else Modifier)
+                                .size(layout.width.value, layout.height.value)
                                 .clip(RectangleShape)
                         }
                         .onSizeChanged { stablePlayerSize = it }
-                    .pointerInput(isFullscreen, isMinimized, portraitMode) {
-                        var lastTapTime = 0L
-                        awaitPointerEventScope {
-                            while (true) {
-                                // 1. Double tap detection on Initial pass (priority)
-                                val event = awaitPointerEvent(PointerEventPass.Initial)
-                                val isPress = event.type == PointerEventType.Press
-                                
-                                if (isPress) {
-                                    val currentTime = event.changes.first().uptimeMillis
-                                    val isDoubleTap = (currentTime - lastTapTime) < viewConfiguration.doubleTapTimeoutMillis
-
-                                    if (isDoubleTap) {
-                                        val position = event.changes.first().position
-                                        val centerX = stablePlayerSize.width / 2f
-                                        val centerY = stablePlayerSize.height / 2f
-
-                                        // Define central region (40% width and height from center)
-                                        val radiusX = stablePlayerSize.width * 0.2f
-                                        val radiusY = stablePlayerSize.height * 0.2f
-
-                                        val isInCenterZone = kotlin.math.abs(position.x - centerX) <= radiusX &&
-                                                kotlin.math.abs(position.y - centerY) <= radiusY
-
-                                        if (isInCenterZone) {
-                                            if (isFullscreen) {
-                                                Log.d("TwitchPlayer", "Double tap: toggling chat")
-                                                isChatVisible = !isChatVisible
-                                            } else if (!isMinimized) {
-                                                Log.d("TwitchPlayer", "Double tap: toggling fullscreen")
-                                                onToggleFullscreen()
-                                            }
-                                            // Consume the second tap to prevent WebView from seeing it
-                                            event.changes.forEach { it.consume() }
-                                        }
-                                    } else {
-                                        // Potential single tap - wait for Main pass to see if WebView consumes it
-                                    }
-                                    lastTapTime = currentTime
+                        .playerInputHandler(
+                            size = stablePlayerSize,
+                            isFullscreen = isFullscreen,
+                            isMinimized = isMinimized,
+                            doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
+                            onDoubleTapCenter = {
+                                if (isFullscreen) {
+                                    isChatVisible = !isChatVisible
+                                } else {
+                                    onToggleFullscreen()
                                 }
-                            }
-                        }
-                    }
-                    .pointerInput(isFullscreen, isMinimized) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                // 2. Single tap detection on Main pass (to avoid double-toggle with WebView controls)
-                                val event = awaitPointerEvent(PointerEventPass.Main)
-                                if (event.type == PointerEventType.Press && !isMinimized) {
-                                    if (isFullscreen) {
-                                        showFullscreenControls = !showFullscreenControls
-                                    } else {
-                                        metadataExpandTrigger++
-                                        // If we were in chat only, return to standard mode to show metadata
-                                        if (portraitMode == PortraitMode.CHAT_ONLY) {
-                                            portraitMode = PortraitMode.VIDEO_AND_CHAT
-                                        }
+                            },
+                            onSingleTap = {
+                                if (isFullscreen) {
+                                    showFullscreenControls = !showFullscreenControls
+                                } else {
+                                    metadataExpandTrigger++
+                                    if (portraitMode == PortraitMode.CHAT_ONLY) {
+                                        portraitMode = PortraitMode.VIDEO_AND_CHAT
                                     }
                                 }
                             }
-                        }
-                    }
+                        )
                 ) {
                     if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
                         chatContent(ChatContentConfig(true, false, refreshTrigger), Modifier.fillMaxSize())
@@ -945,32 +566,15 @@ fun TwitchPlayer(
                             )
 
                             // Toggle Chat Tab Button
-                            AnimatedVisibility(
+                            FullscreenChatToggle(
                                 visible = showFullscreenControls,
-                                enter = fadeIn() + slideInHorizontally { it / 2 },
-                                exit = fadeOut() + slideOutHorizontally { it / 2 },
+                                isChatVisible = isChatVisible,
+                                onClick = {
+                                    isChatVisible = !isChatVisible
+                                    showFullscreenControls = true
+                                },
                                 modifier = Modifier.align(Alignment.CenterEnd)
-                            ) {
-                                Surface(
-                                    onClick = {
-                                        isChatVisible = !isChatVisible
-                                        showFullscreenControls = true
-                                    },
-                                    shape = RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp),
-                                    color = SamtchTheme.colors.tabButtonBackground,
-                                    contentColor = SamtchTheme.colors.primaryText,
-                                    tonalElevation = 4.dp,
-                                    modifier = Modifier.height(80.dp).width(40.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = if (isChatVisible) Icons.Default.ChevronRight else Icons.Default.ChevronLeft,
-                                            contentDescription = "Toggle Chat",
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                    }
-                                }
-                            }
+                            )
                         }
                     }
                     if (isMinimized) {
