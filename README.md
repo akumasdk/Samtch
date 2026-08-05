@@ -4,6 +4,17 @@
 
 <h1 align="center">Samtch</h1>
 
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/akumasdk/Samtch?label=Latest%20Release&style=for-the-badge&color=9146FF" alt="Latest Release">
+  <img src="https://img.shields.io/github/downloads/akumasdk/samtch/total?style=for-the-badge&color=9146FF" alt="GitHub downloads all releases">
+  <img src="https://img.shields.io/github/stars/akumasdk/Samtch?style=for-the-badge&color=9146FF" alt="GitHub stars">
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/kotlin-%237F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin">
+  <img src="https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android">
+  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" alt="License">
+</p>
+
 Samtch is a lightweight Twitch client for Android designed for a clean, ad-free viewing experience. It combines the power of the native Twitch web interface for discovery with a highly optimized custom player for watching, featuring a premium background audio mode.
 
 ## 🖼️ Gallery
