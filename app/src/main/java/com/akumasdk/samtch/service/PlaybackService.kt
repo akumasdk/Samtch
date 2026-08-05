@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
 import androidx.annotation.OptIn
+import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
@@ -25,9 +26,8 @@ import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
-import com.akumasdk.samtch.data.api.gql.TwitchGqlService
-import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ExtM3UParser
 import com.google.common.collect.ImmutableList
@@ -42,7 +42,6 @@ import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
-import androidx.core.net.toUri
 
 class PlaybackService : MediaSessionService() {
 

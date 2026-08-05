@@ -2,17 +2,10 @@ package com.akumasdk.samtch.ui.screens.browser
 
 import android.annotation.SuppressLint
 import android.util.Log
-import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebView as NativeWebView
-import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -32,24 +26,25 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.collectAsState
+import com.akumasdk.samtch.ui.screens.browser.components.TwitchBrowserBridge
+import com.akumasdk.samtch.ui.screens.browser.components.TwitchBrowserClient
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.util.Constants
+import com.akumasdk.samtch.util.ScriptLoader
+import com.akumasdk.samtch.util.TwitchUrlUtil
 import com.multiplatform.webview.web.LoadingState
 import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.WebViewNavigator
 import com.multiplatform.webview.web.WebViewState
-import com.akumasdk.samtch.util.Constants
-import com.akumasdk.samtch.util.ScriptLoader
-import com.akumasdk.samtch.util.TwitchUrlUtil
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
+import android.webkit.WebView as NativeWebView
 
 @SuppressLint("JavascriptInterface")
 @Composable

@@ -16,7 +16,11 @@ object SystemSettingsUtil {
 
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
-                val isEnabled = Settings.System.getInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
+                val isEnabled = Settings.System.getInt(
+                    contentResolver,
+                    Settings.System.ACCELEROMETER_ROTATION,
+                    0
+                ) == 1
                 trySend(isEnabled)
             }
         }
@@ -24,7 +28,8 @@ object SystemSettingsUtil {
         contentResolver.registerContentObserver(settingUri, false, observer)
 
         // Send initial value
-        val initialValue = Settings.System.getInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
+        val initialValue =
+            Settings.System.getInt(contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
         trySend(initialValue)
 
         awaitClose {

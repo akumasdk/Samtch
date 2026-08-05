@@ -1,8 +1,5 @@
 package com.akumasdk.samtch.data.emote
 
-import com.akumasdk.samtch.data.emote.Emote
-import com.akumasdk.samtch.data.emote.TwitchBadgeDto
-
 data class GlobalEmoteState(
     val bttvEmotes: Map<String, Emote> = emptyMap(),
     val seventvEmotes: Map<String, Emote> = emptyMap(),

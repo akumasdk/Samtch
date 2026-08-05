@@ -1,10 +1,7 @@
 package com.akumasdk.samtch
 
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.PendingIntent
 import android.app.PictureInPictureParams
-import android.app.RemoteAction
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -13,11 +10,9 @@ import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Rect
-import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -26,18 +21,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +35,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -71,8 +56,8 @@ import com.akumasdk.samtch.ui.screens.login.LoginActivity
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.akumasdk.samtch.ui.screens.player.PlayerViewModel
-import com.akumasdk.samtch.ui.screens.player.PortraitMode
+import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
+import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
