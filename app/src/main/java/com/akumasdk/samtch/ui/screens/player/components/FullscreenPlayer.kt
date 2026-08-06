@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.akumasdk.samtch.ui.components.metadata.AdblockBanner
+import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
@@ -46,6 +46,7 @@ fun FullscreenPlayer(
     expandTrigger: Int = 0,
     refreshTrigger: Int = 0,
     isPip: Boolean = false,
+    forceSlimMetadata: Boolean = false,
     onToggleChat: () -> Unit = {},
     chatContent: @Composable (isCompact: Boolean, showInput: Boolean, refreshTrigger: Int, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
@@ -93,8 +94,8 @@ fun FullscreenPlayer(
                     .systemBarsPadding()
                     .displayCutoutPadding()
             ) {
-                // Adblock Banner in the same space as portrait (between video and metadata/chat)
-                AdblockBanner(text = adblockText)
+                // Status Banner in the same space as portrait (between video and metadata/chat)
+                StatusBanner(text = adblockText)
 
                 // Metadata space above chat (Only visible when chat is open)
                 AnimatedVisibility(
@@ -111,6 +112,7 @@ fun FullscreenPlayer(
                         viewersCount = viewersCount,
                         streamStartedAt = streamStartedAt,
                         expandTrigger = expandTrigger,
+                        forceSlim = forceSlimMetadata,
                         onClick = { showInfoDialog = true },
                         modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
                     )

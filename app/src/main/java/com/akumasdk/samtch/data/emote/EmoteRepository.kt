@@ -57,16 +57,7 @@ object EmoteRepository {
             // Load 7TV Global
             try {
                 SevenTVApi.getGlobalEmotes().emotes.forEach { emote ->
-                    val hostUrl = emote.data.host.url
-                    val bestFile = emote.data.host.files.find { it.name == "4x.webp" }
-                                  ?: emote.data.host.files.find { it.format == "WEBP" }
-                                  ?: emote.data.host.files.firstOrNull()
-                    
-                    val path = bestFile?.name ?: "4x.webp"
-                    val baseUrl = if (hostUrl.startsWith("//")) "https:$hostUrl" else if (hostUrl.startsWith("http")) hostUrl else "https://$hostUrl"
-                    val url = "$baseUrl/$path"
-                    
-                    seventvMap[emote.name] = Emote(emote.id, emote.name, url, EmoteType.SEVENTV, isZeroWidth = emote.isZeroWidth)
+                    parseSevenTVEmote(emote)?.let { seventvMap[it.code] = it }
                 }
             } catch (e: Exception) { Log.e(TAG, "7TV Global load failed", e) }
             
@@ -136,16 +127,7 @@ object EmoteRepository {
             try {
                 val seventvUser = SevenTVApi.getChannelEmotes(userId)
                 seventvUser.emote_set?.emotes?.forEach { emote ->
-                    val hostUrl = emote.data.host.url
-                    val bestFile = emote.data.host.files.find { it.name == "4x.webp" }
-                                  ?: emote.data.host.files.find { it.format == "WEBP" }
-                                  ?: emote.data.host.files.firstOrNull()
-                    
-                    val path = bestFile?.name ?: "4x.webp"
-                    val baseUrl = if (hostUrl.startsWith("//")) "https:$hostUrl" else if (hostUrl.startsWith("http")) hostUrl else "https://$hostUrl"
-                    val url = "$baseUrl/$path"
-                    
-                    seventvMap[emote.name] = Emote(emote.id, emote.name, url, EmoteType.SEVENTV, isZeroWidth = emote.isZeroWidth)
+                    parseSevenTVEmote(emote)?.let { seventvMap[it.code] = it }
                 }
             } catch (e: Exception) { Log.e(TAG, "7TV Channel load failed for $channelName", e) }
 
@@ -218,6 +200,22 @@ object EmoteRepository {
             ?: globalState.ffzEmotes[code]
     }
 
+    fun getAllEmotes(channelName: String): List<Emote> {
+        val channelState = _channelStates[channelName]?.value
+        val globalState = _globalState.value
+        
+        return buildList {
+            channelState?.let {
+                addAll(it.seventvEmotes.values)
+                addAll(it.bttvEmotes.values)
+                addAll(it.ffzEmotes.values)
+            }
+            addAll(globalState.seventvEmotes.values)
+            addAll(globalState.bttvEmotes.values)
+            addAll(globalState.ffzEmotes.values)
+        }.distinctBy { it.id }
+    }
+
     fun getBadgeUrl(channelName: String, setId: String, version: String): String? {
         return null // Badges disabled for now
         /*
@@ -239,5 +237,31 @@ object EmoteRepository {
             else -> "https://$url"
         }
         */
+    }
+
+    private fun parseSevenTVEmote(emote: SevenTVEmote): Emote? {
+        val data = emote.data ?: return null
+        val hostUrl = data.host.url
+        
+        // Find best quality (webp preferably)
+        val bestFile = data.host.files.find { it.name == "4x.webp" }
+                      ?: data.host.files.find { it.format == "WEBP" }
+                      ?: data.host.files.firstOrNull()
+        
+        val path = bestFile?.name ?: "4x.webp"
+        val baseUrl = when {
+            hostUrl.startsWith("//") -> "https:$hostUrl"
+            hostUrl.startsWith("http") -> hostUrl
+            else -> "https://$hostUrl"
+        }
+        val url = "$baseUrl/$path"
+        
+        return Emote(
+            id = emote.id,
+            code = emote.name,
+            url = url,
+            type = EmoteType.SEVENTV,
+            isZeroWidth = emote.isZeroWidth
+        )
     }
 }

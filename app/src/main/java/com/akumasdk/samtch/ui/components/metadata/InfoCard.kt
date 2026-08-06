@@ -2,7 +2,9 @@ package com.akumasdk.samtch.ui.components.metadata
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,7 +24,8 @@ fun InfoCard(
     label: String,
     value: String,
     icon: ImageVector,
-    maxLines: Int = 2
+    maxLines: Int = 2,
+    isScrollable: Boolean = false
 ) {
     Surface(
         color = SamtchTheme.colors.cardBackground,
@@ -50,6 +53,15 @@ fun InfoCard(
                     letterSpacing = 0.8.sp
                 )
             }
+            
+            val textModifier = if (isScrollable) {
+                Modifier
+                    .heightIn(max = 120.dp)
+                    .verticalScroll(rememberScrollState())
+            } else {
+                Modifier
+            }
+
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyLarge.copy(
@@ -57,8 +69,9 @@ fun InfoCard(
                 ),
                 fontWeight = FontWeight.Bold,
                 color = SamtchTheme.colors.primaryText,
-                maxLines = maxLines,
-                overflow = TextOverflow.Ellipsis
+                maxLines = if (isScrollable) Int.MAX_VALUE else maxLines,
+                overflow = if (isScrollable) TextOverflow.Clip else TextOverflow.Ellipsis,
+                modifier = textModifier
             )
         }
     }

@@ -43,6 +43,7 @@
     <string name="support_project_summary">Donaciones a través de Ko-fi</string>
     <string name="close_button">Cerrar</string>
     <string name="ok_button">Aceptar</string>
+    <string name="reset_default">Restablecer valores predeterminados</string>
 
     <!-- PiP -->
     <string name="pip_action_refresh">Actualizar</string>
@@ -76,6 +77,8 @@
     <string name="chat_mode_native">Nativo (Más Rápido / Experimental)</string>
     <string name="chat_mode_legacy">Integrado (Original)</string>
     <string name="chat_mode_notice">Nota: El chat nativo incluye soporte para emoticonos de BetterTTV y 7TV.</string>
+    <string name="chat_settings_font_size">Tamaño de fuente</string>
+    <string name="chat_settings_emote_size">Tamaño de emoticono</string>
 
     <!-- Theme Settings -->
     <string name="theme_mode_title">Modo de Tema</string>
@@ -98,10 +101,29 @@
     <string name="chat_login_required">Inicia sesión para chatear</string>
     <string name="chat_login_prompt">Debes iniciar sesión para participar en el chat.</string>
     <string name="chat_logged_in_as">Sesión iniciada como %s</string>
+    <string name="chat_input_placeholder">Enviar un mensaje…</string>
+    <string name="content_desc_emotes">Emoticonos</string>
+    <string name="content_desc_keyboard">Teclado</string>
+    <string name="content_desc_toggle_mode">Alternar modo</string>
+    <string name="content_desc_send">Enviar</string>
+    <string name="status_chat_only">MODO SOLO CHAT</string>
+    <string name="status_audio_only">MODO SOLO AUDIO</string>
+    <string name="emote_menu_recent">Recientes</string>
+    <string name="emote_menu_channel">Canal</string>
+    <string name="emote_menu_global">Global</string>
+    <string name="emote_menu_empty">No hay emoticonos disponibles</string>
 
     <!-- Stream Info Dialog -->
     <string name="stream_title_label">Título</string>
     <string name="category_label">Categoría</string>
     <string name="viewers_label">Espectadores</string>
     <string name="uptime_label">Tiempo en vivo</string>
+
+    <!-- Emote Info Dialog -->
+    <string name="emote_info_source">Fuente</string>
+    <string name="emote_info_id">ID</string>
+    <string name="emote_info_type">Tipo</string>
+    <string name="emote_info_zero_width">Superposición de ancho cero</string>
+    <string name="emote_info_use">Usar</string>
+    <string name="emote_info_copy">Copiar</string>
 </resources>

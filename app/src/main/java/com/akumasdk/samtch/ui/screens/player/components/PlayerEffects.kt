@@ -70,13 +70,14 @@ fun PlayerLifecycleEffects(
     isUiLoading: Boolean,
     onLoadingTimeout: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     // Manage chat connection lifecycle
     LaunchedEffect(channel, isPip, lifecycleState, portraitMode) {
         val isForeground = lifecycleState.isAtLeast(Lifecycle.State.STARTED)
         val shouldBeConnected = isForeground && (!isPip || portraitMode == PortraitMode.CHAT_ONLY)
         
         if (shouldBeConnected) {
-            chatViewModel.connect(channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
+            chatViewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
         } else {
             chatViewModel.disconnect()
         }

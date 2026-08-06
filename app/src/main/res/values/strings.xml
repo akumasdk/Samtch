@@ -43,6 +43,7 @@
     <string name="support_project_summary">Donations via Ko-fi</string>
     <string name="close_button">Close</string>
     <string name="ok_button">OK</string>
+    <string name="reset_default">Reset to default</string>
 
     <!-- PiP -->
     <string name="pip_action_refresh">Refresh</string>
@@ -76,6 +77,8 @@
     <string name="chat_mode_native">Native (Faster / Experimental)</string>
     <string name="chat_mode_legacy">Embedded (Original)</string>
     <string name="chat_mode_notice">Note: Native chat includes BetterTTV and 7TV emote support.</string>
+    <string name="chat_settings_font_size">Font Size</string>
+    <string name="chat_settings_emote_size">Emote Size</string>
 
     <!-- Theme Settings -->
     <string name="theme_mode_title">Theme Mode</string>
@@ -98,10 +101,29 @@
     <string name="chat_login_required">Log in to chat</string>
     <string name="chat_login_prompt">You must be logged in to participate in chat.</string>
     <string name="chat_logged_in_as">Logged in as %s</string>
+    <string name="chat_input_placeholder">Send a message…</string>
+    <string name="content_desc_emotes">Emotes</string>
+    <string name="content_desc_keyboard">Keyboard</string>
+    <string name="content_desc_toggle_mode">Toggle Mode</string>
+    <string name="content_desc_send">Send</string>
+    <string name="status_chat_only">CHAT ONLY MODE</string>
+    <string name="status_audio_only">AUDIO ONLY MODE</string>
+    <string name="emote_menu_recent">Recent</string>
+    <string name="emote_menu_channel">Channel</string>
+    <string name="emote_menu_global">Global</string>
+    <string name="emote_menu_empty">No emotes available</string>
 
     <!-- Stream Info Dialog -->
     <string name="stream_title_label">Title</string>
     <string name="category_label">Category</string>
     <string name="viewers_label">Viewers</string>
     <string name="uptime_label">Uptime</string>
+
+    <!-- Emote Info Dialog -->
+    <string name="emote_info_source">Source</string>
+    <string name="emote_info_id">ID</string>
+    <string name="emote_info_type">Type</string>
+    <string name="emote_info_zero_width">Zero-width overlay</string>
+    <string name="emote_info_use">Use</string>
+    <string name="emote_info_copy">Copy</string>
 </resources>

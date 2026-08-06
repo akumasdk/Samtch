@@ -21,8 +21,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
+/**
+ * A versatile banner used to display status messages (like Adblock status or specialized viewing modes).
+ */
 @Composable
-fun AdblockBanner(
+fun StatusBanner(
     text: String,
     modifier: Modifier = Modifier
 ) {

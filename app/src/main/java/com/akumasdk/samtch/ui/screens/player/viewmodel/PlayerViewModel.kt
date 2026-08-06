@@ -155,10 +155,6 @@ class PlayerViewModel : ViewModel() {
         val now = System.currentTimeMillis()
         val timestampedMetadata = metadata.copy(
             user = metadata.user?.copy(
-                profileImageUrl = metadata.user.profileImageUrl?.let { url ->
-                    val separator = if (url.contains("?")) "&" else "?"
-                    "$url${separator}t=$now"
-                },
                 stream = metadata.user.stream?.let { stream ->
                     stream.copy(
                         previewImageUrl = stream.previewImageUrl?.let { url ->
@@ -172,7 +168,10 @@ class PlayerViewModel : ViewModel() {
         streamMetadata = timestampedMetadata
         
         timestampedMetadata.user?.let { user ->
-            avatarUrl = user.profileImageUrl
+            // Optimization: Only update avatarUrl once per channel session to prevent flicker
+            if (avatarUrl == null) {
+                avatarUrl = user.profileImageUrl
+            }
             streamSubtitle = user.stream?.title
         }
     }

@@ -24,9 +24,10 @@ fun PlayerOverlay(
     isPip: Boolean,
     isChatVisible: Boolean,
     refreshTrigger: Int,
+    forceSlimMetadata: Boolean = false,
     onToggleChat: () -> Unit,
     onToggleMode: () -> Unit,
-    chatContent: @Composable (ChatContentConfig, Modifier) -> Unit
+    chatContent: @Composable (ChatContentConfig, PortraitMode?, (() -> Unit)?, Modifier) -> Unit
 ) {
     AnimatedVisibility(
         visible = !isMinimized,
@@ -48,9 +49,10 @@ fun PlayerOverlay(
                 isChatVisible = isChatVisible,
                 expandTrigger = metadataExpandTrigger,
                 isPip = isPip,
+                forceSlimMetadata = forceSlimMetadata,
                 onToggleChat = onToggleChat,
                 chatContent = { isCompact, showInput, rTrigger, modifier ->
-                    chatContent(ChatContentConfig(isCompact, showInput, rTrigger), modifier)
+                    chatContent(ChatContentConfig(isCompact, showInput, rTrigger), null, null, modifier)
                 },
                 webView = { modifier, _ ->
                     Box(modifier = modifier)
@@ -71,9 +73,10 @@ fun PlayerOverlay(
                 portraitMode = portraitMode,
                 expandTrigger = metadataExpandTrigger,
                 isPip = isPip,
+                forceSlimMetadata = forceSlimMetadata,
                 onToggleMode = onToggleMode,
-                chatContent = { isCompact, showInput, modifier ->
-                    chatContent(ChatContentConfig(isCompact, showInput, refreshTrigger), modifier)
+                chatContent = { isCompact, showInput, pMode, onToggle, modifier ->
+                    chatContent(ChatContentConfig(isCompact, showInput, refreshTrigger), pMode, onToggle, modifier)
                 },
                 webView = { modifier, _ ->
                     Box(modifier = modifier)

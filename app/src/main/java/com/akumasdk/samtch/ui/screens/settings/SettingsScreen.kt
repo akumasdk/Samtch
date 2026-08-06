@@ -1,7 +1,9 @@
 package com.akumasdk.samtch.ui.screens.settings
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -11,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,7 +59,7 @@ import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.UpdateManager
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
@@ -65,6 +68,8 @@ fun SettingsScreen(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showAdBlockDialog by remember { mutableStateOf(false) }
     var showChatModeDialog by remember { mutableStateOf(false) }
+    var showChatFontSizeDialog by remember { mutableStateOf(false) }
+    var showChatEmoteSizeDialog by remember { mutableStateOf(false) }
     var showThemeModeDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
@@ -76,6 +81,8 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+    val chatFontSize by SettingsManager.getChatFontSize(context).collectAsState(initial = 14)
+    val chatEmoteSize by SettingsManager.getChatEmoteSize(context).collectAsState(initial = 28)
     val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
     val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
     val isPipEnabled by SettingsManager.isPipEnabled(context).collectAsState(initial = true)
@@ -130,18 +137,66 @@ fun SettingsScreen(
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             item { SettingSectionHeader(stringResource(R.string.settings_category_appearance)) }
-            item { ThemeModeItem(themeMode, onClick = { showThemeModeDialog = true }) }
+            item { 
+                ThemeModeItem(
+                    themeMode, 
+                    onClick = { showThemeModeDialog = true },
+                    onReset = { scope.launch { SettingsManager.setThemeMode(context, SettingsManager.ThemeMode.SYSTEM) } }
+                ) 
+            }
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
 
             item { SettingSectionHeader(stringResource(R.string.settings_category_player)) }
-            item { PipToggleItem(isPipEnabled, onToggle = { scope.launch { SettingsManager.setPipEnabled(context, it) } }) }
-            item { AudioBackgroundToggleItem(isAudioBackgroundEnabled, onToggle = { scope.launch { SettingsManager.setAudioOnlyBackgroundEnabled(context, it) } }) }
-            item { AdBlockModeItem(adBlockMode, onClick = { showAdBlockDialog = true }) }
+            item { 
+                PipToggleItem(
+                    isPipEnabled, 
+                    onToggle = { scope.launch { SettingsManager.setPipEnabled(context, it) } },
+                    onReset = { scope.launch { SettingsManager.setPipEnabled(context, true) } }
+                ) 
+            }
+            item { 
+                AudioBackgroundToggleItem(
+                    isAudioBackgroundEnabled, 
+                    onToggle = { scope.launch { SettingsManager.setAudioOnlyBackgroundEnabled(context, it) } },
+                    onReset = { scope.launch { SettingsManager.setAudioOnlyBackgroundEnabled(context, false) } }
+                ) 
+            }
+            item { 
+                AdBlockModeItem(
+                    adBlockMode, 
+                    onClick = { showAdBlockDialog = true },
+                    onReset = { scope.launch { SettingsManager.setAdBlockMode(context, SettingsManager.AdBlockMode.VAFT) } }
+                ) 
+            }
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
 
             item { SettingSectionHeader(stringResource(R.string.settings_category_chat)) }
-            item { ChatModeItem(chatMode, onClick = { showChatModeDialog = true }) }
-            item { BttvSettingsItem(chatMode == SettingsManager.ChatMode.NATIVE, onClick = { isBttvSettingsOpen = true }) }
+            item { 
+                ChatModeItem(
+                    chatMode, 
+                    onClick = { showChatModeDialog = true },
+                    onReset = { scope.launch { SettingsManager.setChatMode(context, SettingsManager.ChatMode.NATIVE) } }
+                ) 
+            }
+            
+            if (chatMode == SettingsManager.ChatMode.NATIVE) {
+                item { 
+                    ChatFontSizeItem(
+                        chatFontSize, 
+                        onClick = { showChatFontSizeDialog = true },
+                        onReset = { scope.launch { SettingsManager.setChatFontSize(context, 14) } }
+                    ) 
+                }
+                item { 
+                    ChatEmoteSizeItem(
+                        chatEmoteSize, 
+                        onClick = { showChatEmoteSizeDialog = true },
+                        onReset = { scope.launch { SettingsManager.setChatEmoteSize(context, 28) } }
+                    ) 
+                }
+            } else {
+                item { BttvSettingsItem(onClick = { isBttvSettingsOpen = true }) }
+            }
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
 
             if (isLoggedIn) {
@@ -183,6 +238,7 @@ fun SettingsScreen(
                 label to { scope.launch { SettingsManager.setThemeMode(context, mode) } }
             },
             selectedIndex = SettingsManager.ThemeMode.entries.indexOf(themeMode),
+            onReset = { scope.launch { SettingsManager.setThemeMode(context, SettingsManager.ThemeMode.SYSTEM) } },
             onDismiss = { showThemeModeDialog = false }
         )
     }
@@ -198,6 +254,7 @@ fun SettingsScreen(
                 label to { scope.launch { SettingsManager.setAdBlockMode(context, mode) } }
             },
             selectedIndex = SettingsManager.AdBlockMode.entries.indexOf(adBlockMode),
+            onReset = { scope.launch { SettingsManager.setAdBlockMode(context, SettingsManager.AdBlockMode.VAFT) } },
             onDismiss = { showAdBlockDialog = false }
         )
     }
@@ -213,7 +270,34 @@ fun SettingsScreen(
                 label to { scope.launch { SettingsManager.setChatMode(context, mode) } }
             },
             selectedIndex = SettingsManager.ChatMode.entries.indexOf(chatMode),
+            onReset = { scope.launch { SettingsManager.setChatMode(context, SettingsManager.ChatMode.NATIVE) } },
             onDismiss = { showChatModeDialog = false }
+        )
+    }
+
+    if (showChatFontSizeDialog) {
+        val fontSizeOptions = listOf(12, 13, 14, 15, 16, 17, 18, 20, 22)
+        SelectionDialog(
+            title = stringResource(R.string.chat_settings_font_size),
+            options = fontSizeOptions.map { size ->
+                "${size}sp" to { scope.launch { SettingsManager.setChatFontSize(context, size) } }
+            },
+            selectedIndex = fontSizeOptions.indexOf(chatFontSize),
+            onReset = { scope.launch { SettingsManager.setChatFontSize(context, 14) } },
+            onDismiss = { showChatFontSizeDialog = false }
+        )
+    }
+
+    if (showChatEmoteSizeDialog) {
+        val emoteSizeOptions = listOf(20, 24, 28, 32, 36, 40, 44, 48)
+        SelectionDialog(
+            title = stringResource(R.string.chat_settings_emote_size),
+            options = emoteSizeOptions.map { size ->
+                "${size}dp" to { scope.launch { SettingsManager.setChatEmoteSize(context, size) } }
+            },
+            selectedIndex = emoteSizeOptions.indexOf(chatEmoteSize),
+            onReset = { scope.launch { SettingsManager.setChatEmoteSize(context, 28) } },
+            onDismiss = { showChatEmoteSizeDialog = false }
         )
     }
 
@@ -233,7 +317,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun ThemeModeItem(themeMode: SettingsManager.ThemeMode, onClick: () -> Unit) {
+private fun ThemeModeItem(themeMode: SettingsManager.ThemeMode, onClick: () -> Unit, onReset: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.theme_mode_title)) },
         supportingContent = {
@@ -246,34 +330,43 @@ private fun ThemeModeItem(themeMode: SettingsManager.ThemeMode, onClick: () -> U
             )
         },
         leadingContent = { Icon(imageVector = Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        modifier = Modifier.clickable { onClick() }
+        modifier = Modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onReset
+        )
     )
 }
 
 @Composable
-private fun PipToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit) {
+private fun PipToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.pip_enabled_title)) },
         supportingContent = { Text(stringResource(R.string.pip_enabled_summary)) },
         leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_pip_mode), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
-        modifier = Modifier.clickable { onToggle(!enabled) }
+        modifier = Modifier.combinedClickable(
+            onClick = { onToggle(!enabled) },
+            onLongClick = onReset
+        )
     )
 }
 
 @Composable
-private fun AudioBackgroundToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit) {
+private fun AudioBackgroundToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.audio_only_background_title)) },
         supportingContent = { Text(stringResource(R.string.audio_only_background_summary)) },
         leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_headset), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
-        modifier = Modifier.clickable { onToggle(!enabled) }
+        modifier = Modifier.combinedClickable(
+            onClick = { onToggle(!enabled) },
+            onLongClick = onReset
+        )
     )
 }
 
 @Composable
-private fun AdBlockModeItem(mode: SettingsManager.AdBlockMode, onClick: () -> Unit) {
+private fun AdBlockModeItem(mode: SettingsManager.AdBlockMode, onClick: () -> Unit, onReset: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.ad_block_mode_title)) },
         supportingContent = {
@@ -285,12 +378,15 @@ private fun AdBlockModeItem(mode: SettingsManager.AdBlockMode, onClick: () -> Un
             )
         },
         leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_ad_block), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        modifier = Modifier.clickable { onClick() }
+        modifier = Modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onReset
+        )
     )
 }
 
 @Composable
-private fun ChatModeItem(mode: SettingsManager.ChatMode, onClick: () -> Unit) {
+private fun ChatModeItem(mode: SettingsManager.ChatMode, onClick: () -> Unit, onReset: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.chat_mode_title)) },
         supportingContent = {
@@ -302,34 +398,53 @@ private fun ChatModeItem(mode: SettingsManager.ChatMode, onClick: () -> Unit) {
             )
         },
         leadingContent = { Icon(imageVector = Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        modifier = Modifier.clickable { onClick() }
+        modifier = Modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onReset
+        )
     )
 }
 
 @Composable
-private fun BttvSettingsItem(isNativeChat: Boolean, onClick: () -> Unit) {
+private fun ChatFontSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Unit) {
     ListItem(
-        headlineContent = { 
-            Text(
-                text = stringResource(R.string.bttv_settings_title),
-                color = if (isNativeChat) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else Color.Unspecified
-            ) 
-        },
-        supportingContent = { 
-            Text(
-                text = if (isNativeChat) stringResource(R.string.chat_mode_notice) else stringResource(R.string.bttv_settings_summary),
-                color = if (isNativeChat) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f) else Color.Unspecified
-            ) 
-        },
+        headlineContent = { Text(stringResource(R.string.chat_settings_font_size)) },
+        supportingContent = { Text("${size}sp") },
+        leadingContent = { Icon(imageVector = Icons.Default.FormatSize, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onReset
+        )
+    )
+}
+
+@Composable
+private fun ChatEmoteSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.chat_settings_emote_size)) },
+        supportingContent = { Text("${size}dp") },
+        leadingContent = { Icon(imageVector = Icons.Default.EmojiEmotions, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onReset
+        )
+    )
+}
+
+@Composable
+private fun BttvSettingsItem(onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(text = stringResource(R.string.bttv_settings_title)) },
+        supportingContent = { Text(text = stringResource(R.string.bttv_settings_summary)) },
         leadingContent = {
             Icon(
                 painter = painterResource(id = R.drawable.ic_bttv),
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = if (isNativeChat) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else Color.Unspecified
+                tint = MaterialTheme.colorScheme.primary
             )
         },
-        modifier = Modifier.clickable(enabled = !isNativeChat) { onClick() }
+        modifier = Modifier.clickable { onClick() }
     )
 }
 

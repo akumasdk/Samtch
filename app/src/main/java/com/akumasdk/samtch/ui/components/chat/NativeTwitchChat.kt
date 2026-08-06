@@ -31,9 +31,13 @@ fun NativeTwitchChat(
     channel: String,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
-    viewModel: ChatViewModel = viewModel()
+    viewModel: ChatViewModel = viewModel(),
+    onEmoteClick: ((EmoteInfo) -> Unit)? = null,
+    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
 ) {
     val messages by viewModel.messages.collectAsState()
+    val chatFontSize by viewModel.chatFontSize.collectAsState()
+    val chatEmoteSize by viewModel.chatEmoteSize.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     
@@ -104,7 +108,14 @@ fun NativeTwitchChat(
                 contentType = { _, it -> it.contentType }
             ) { _, msg ->
                 key(msg.id, isCompact) {
-                    ChatMessageRow(message = msg, isCompact = isCompact)
+                    ChatMessageRow(
+                        message = msg,
+                        isCompact = isCompact,
+                        onEmoteClick = onEmoteClick,
+                        onEmoteLongClick = onEmoteLongClick,
+                        fontSize = chatFontSize,
+                        emoteSize = chatEmoteSize
+                    )
                 }
             }
         }

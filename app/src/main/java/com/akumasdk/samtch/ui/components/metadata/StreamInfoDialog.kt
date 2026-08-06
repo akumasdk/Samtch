@@ -164,7 +164,7 @@ fun StreamInfoDialog(
                             label = stringResource(R.string.stream_title_label),
                             value = streamTitle ?: "Offline",
                             icon = Icons.Default.SmartDisplay,
-                            maxLines = 4
+                            isScrollable = true
                         )
 
                         if (!gameName.isNullOrEmpty()) {

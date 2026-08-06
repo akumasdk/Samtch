@@ -13,6 +13,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -82,6 +85,7 @@ import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
+@OptIn(ExperimentalLayoutApi::class)
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun TwitchPlayer(
@@ -96,6 +100,7 @@ fun TwitchPlayer(
     onClose: () -> Unit = {},
     onExpand: () -> Unit = {},
     onMetadataUpdated: (String?, String?) -> Unit = { _, _ -> },
+    onLoginRequested: () -> Unit = {},
     onAudioOnlyModeChanged: (Boolean) -> Unit = {},
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
@@ -121,10 +126,15 @@ fun TwitchPlayer(
         val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
 
         val chatViewModel: ChatViewModel = viewModel()
+        val isEmoteMenuVisible by chatViewModel.isEmoteMenuVisible.collectAsState()
+        val isImeVisible = WindowInsets.isImeVisible
+        val forceSlimMetadata = isEmoteMenuVisible || isImeVisible
+
         val scope = rememberCoroutineScope()
         var currentLoadingSession by remember { mutableLongStateOf(0L) }
 
         val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
+        val tooltipShowCount by SettingsManager.getPlayerTooltipShowCount(context).collectAsState(initial = 0)
 
         var isChatVisible by remember { mutableStateOf(true) }
         var metadataExpandTrigger by remember { mutableIntStateOf(0) }
@@ -152,6 +162,9 @@ fun TwitchPlayer(
                 isChatVisible = false
                 delay(1.seconds) 
                 showFullscreenControls = true
+                if (tooltipShowCount < 3) {
+                    SettingsManager.incrementPlayerTooltipShowCount(context)
+                }
             }
         }
 
@@ -193,13 +206,6 @@ fun TwitchPlayer(
         // Keep parent activity in sync
         LaunchedEffect(avatarUrl, streamSubtitle) {
             onMetadataUpdated(avatarUrl, streamSubtitle)
-        }
-
-        // Purge adblock banner if entering chat only or audio modes
-        LaunchedEffect(isAudioOnly, portraitMode) {
-            if (isAudioOnly || (portraitMode == PortraitMode.CHAT_ONLY || portraitMode == PortraitMode.AUDIO_AND_CHAT)) {
-                adblockText = ""
-            }
         }
 
         LaunchedEffect(shouldUseAudioService) {
@@ -281,13 +287,16 @@ fun TwitchPlayer(
         }
 
         val chatContent = remember(channel) {
-            movableContentOf { config: ChatContentConfig, modifier: Modifier ->
+            movableContentOf { config: ChatContentConfig, pMode: PortraitMode?, onToggle: (() -> Unit)?, modifier: Modifier ->
                 TwitchChat(
                     channel = channel,
                     isCompact = config.isCompact,
                     showInput = config.showInput,
                     refreshTrigger = config.refreshTrigger,
                     viewModel = chatViewModel,
+                    portraitMode = pMode,
+                    onToggleMode = onToggle,
+                    onLoginRequested = onLoginRequested,
                     modifier = modifier
                 )
             }
@@ -411,6 +420,12 @@ fun TwitchPlayer(
             }
         }
 
+        val bannerText = when {
+            isAudioOnly -> stringResource(R.string.status_audio_only)
+            portraitMode == PortraitMode.CHAT_ONLY -> stringResource(R.string.status_chat_only)
+            else -> adblockText
+        }
+
         // --- STABLE ANIMATION SYSTEM ---
         val viewConfiguration = androidx.compose.ui.platform.LocalViewConfiguration.current
 
@@ -447,12 +462,13 @@ fun TwitchPlayer(
                     streamMetadata = streamMetadata,
                     avatarUrl = avatarUrl,
                     isAudioOnly = isAudioOnly,
-                    adblockText = adblockText,
+                    adblockText = bannerText,
                     portraitMode = portraitMode,
                     metadataExpandTrigger = metadataExpandTrigger,
                     isPip = isPip,
                     isChatVisible = isChatVisible,
                     refreshTrigger = refreshTrigger,
+                    forceSlimMetadata = forceSlimMetadata,
                     onToggleChat = { 
                         isChatVisible = !isChatVisible
                         if (isFullscreen) showFullscreenControls = true
@@ -466,8 +482,8 @@ fun TwitchPlayer(
                         }
                         isChatVisible = true
                     },
-                    chatContent = { config, modifier ->
-                        chatContent(config, modifier)
+                    chatContent = { config, pMode, onToggle, modifier ->
+                        chatContent(config, pMode, onToggle, modifier)
                     }
                 )
 
@@ -561,7 +577,7 @@ fun TwitchPlayer(
                             )
                     ) {
                         if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
-                            chatContent(ChatContentConfig(true, false, refreshTrigger), Modifier.fillMaxSize())
+                            chatContent(ChatContentConfig(true, false, refreshTrigger), null, null, Modifier.fillMaxSize())
                         } else {
                             playerContent(Modifier.fillMaxSize()) {
                                 Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")
@@ -585,7 +601,7 @@ fun TwitchPlayer(
                         if (!isMinimized && !isPip) {
                             if (isFullscreen) {
                                 TapTooltip(
-                                    visible = showFullscreenControls,
+                                    visible = showFullscreenControls && tooltipShowCount < 3,
                                     modifier = Modifier.align(Alignment.Center)
                                 )
 

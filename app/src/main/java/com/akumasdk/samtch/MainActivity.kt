@@ -213,8 +213,11 @@ class MainActivity : ComponentActivity() {
                         windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                     }
+                }
 
-                    // Theme consistency for system bars (applied when they are visible)
+                // 3. SYSTEM BAR THEME CONSISTENCY
+                // This ensures icons follow theme even when bars are re-shown after fullscreen
+                LaunchedEffect(darkTheme, isFullscreen, isMinimized) {
                     windowInsetsController.isAppearanceLightStatusBars = !darkTheme
                     windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
                 }
@@ -337,6 +340,10 @@ class MainActivity : ComponentActivity() {
                                     onMetadataUpdated = { avatar, subtitle ->
                                         lastAvatarUrl = avatar
                                         lastSubtitle = subtitle
+                                    },
+                                    onLoginRequested = {
+                                        val intent = Intent(this@MainActivity, LoginActivity::class.java)
+                                        loginLauncher.launch(intent)
                                     },
                                     onAudioOnlyModeChanged = { isAudioOnly ->
                                         isAudioOnlyModeState.value = isAudioOnly

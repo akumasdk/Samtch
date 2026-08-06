@@ -147,7 +147,7 @@ fun SamtchTheme(
             tooltipBackground = Color.White.copy(alpha = 0.9f),
             tabButtonBackground = Color.White.copy(alpha = 0.8f),
             divider = Color.Black.copy(alpha = 0.1f),
-            textFieldBackground = Color.Black.copy(alpha = 0.05f),
+            textFieldBackground = Color(0xFFEFEFF1),
             defaultUserColor = Color(0xFF6441A5), // Darker Twitch-like purple for light mode
             cardBackground = Color(0xFFEFEEF1), // Twitch light mode UI background
             accentColor = TwitchPurple, // Standard Twitch Purple for brand consistency

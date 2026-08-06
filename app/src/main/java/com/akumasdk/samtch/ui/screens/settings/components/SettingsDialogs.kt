@@ -21,7 +21,8 @@ fun SelectionDialog(
     title: String,
     options: List<Pair<String, () -> Unit>>,
     onDismiss: () -> Unit,
-    selectedIndex: Int = -1
+    selectedIndex: Int = -1,
+    onReset: (() -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -64,6 +65,28 @@ fun SelectionDialog(
                             text = label,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                if (onReset != null) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                    TextButton(
+                        onClick = {
+                            onReset()
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = stringResource(R.string.reset_default),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }

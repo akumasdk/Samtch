@@ -1,5 +1,24 @@
 # Changelog
 
+## Samtch v0.4.0
+
+### What's New
+- **Tabbed Emote Browser**: Added a full-featured emote menu with dedicated tabs for **Recent**, **Channel**, and **Global** emotes for a superior chat interaction experience.
+- **Intelligent Emote Suggestions**: Implemented a smart completion system that scores emotes based on match quality and case sensitivity, triggered by `:` or general text entry.
+- **Modern Pill-Shaped Input**: Redesigned the chat input area with a sleek, modular pill layout featuring smooth **morphing icon animations** for a premium feel.
+- **Emote Info Bottom Sheet**: Added a detailed information dialog for every emote in the menu and chat stream, featuring quick "Use" and "Copy" actions.
+- **Versatile Status Banner**: Repurposed the ad-blocking indicator into a unified **StatusBanner** that announces specialized viewing modes like "Chat Only" and "Audio Only".
+- **Enhanced Chat Customization**: Added granular user preferences for **Chat Font Size** and **Emote Size** with "Reset to Default" support across all application settings.
+- **IRC System Notifications**: Introduced a sticky, dismissible banner above the chat input to catch and display critical Twitch server status updates (NOTICE).
+- **Interactive Guest Prompts**: Integrated a "one-tap" login prompt directly into the chat input bar to help new users quickly authenticate.
+- **SevenTV v3 Compatibility**: Completely overhauled SevenTV parsing to support the latest v3 API, including zero-width overlay emotes and improved CDN reliability.
+- **Resource Optimization**: Improved performance by automatically culling (unmounting) the emote menu when it is hidden behind the software keyboard.
+- **Refined Stability**: 
+    - Fixed a bug where system bar themes wouldn't synchronize correctly when exiting fullscreen mode.
+    - Optimized periodic metadata updates to prevent stream avatars from flickering or reloading.
+
+---
+
 ## Samtch v0.3.2
 
 ### What's New

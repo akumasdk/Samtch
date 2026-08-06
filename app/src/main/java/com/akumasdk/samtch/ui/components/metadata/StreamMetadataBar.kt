@@ -30,27 +30,30 @@ fun StreamMetadataBar(
     streamStartedAt: String? = null,
     expandTrigger: Int = 0,
     forceExpanded: Boolean = false,
+    forceSlim: Boolean = false,
     onClick: () -> Unit = {},
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
-    var isSlim by rememberSaveable { mutableStateOf(false) }
+    var isSlimManual by rememberSaveable { mutableStateOf(false) }
+    // forceSlim (keyboard/emotes) takes absolute precedence over forceExpanded (Chat Only mode)
+    val isSlim = forceSlim || (isSlimManual && !forceExpanded)
 
     val animatedHeight by animateDpAsState(
-        targetValue = if (isSlim && !forceExpanded) 38.dp else 68.dp,
+        targetValue = if (isSlim) 38.dp else 68.dp,
         animationSpec = SamtchAnimation.DpSpring,
         label = "MetadataBarHeight"
     )
 
     // Manual expansion / Title change / Force expansion
     LaunchedEffect(expandTrigger, streamTitle, forceExpanded) {
-        isSlim = false
+        isSlimManual = false
     }
 
     // Auto-shrink timer (Resets on expansion/trigger/title)
-    LaunchedEffect(isSlim, expandTrigger, streamTitle, forceExpanded) {
-        if (!isSlim && !forceExpanded) {
+    LaunchedEffect(isSlimManual, expandTrigger, streamTitle, forceExpanded, forceSlim) {
+        if (!isSlimManual && !forceExpanded && !forceSlim) {
             delay(15.seconds)
-            isSlim = true
+            isSlimManual = true
         }
     }
 
@@ -60,7 +63,7 @@ fun StreamMetadataBar(
             .height(animatedHeight)
             .clickable { 
                 if (isSlim) {
-                    isSlim = false
+                    isSlimManual = false
                 } else {
                     onClick()
                 }

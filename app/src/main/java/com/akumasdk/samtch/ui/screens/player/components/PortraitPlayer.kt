@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.akumasdk.samtch.ui.components.metadata.AdblockBanner
+import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
@@ -43,8 +43,9 @@ fun PortraitPlayer(
     portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
     expandTrigger: Int = 0,
     isPip: Boolean = false,
+    forceSlimMetadata: Boolean = false,
     onToggleMode: () -> Unit = {},
-    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, Modifier) -> Unit,
+    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, PortraitMode, () -> Unit, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -74,7 +75,6 @@ fun PortraitPlayer(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding()
                 .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
             verticalArrangement = Arrangement.Top
         ) {
@@ -100,8 +100,8 @@ fun PortraitPlayer(
                 }
             }
 
-            // Space for Adblock Banner between player and metadata
-            AdblockBanner(text = adblockText)
+            // Space for Status Banner between player and metadata
+            StatusBanner(text = adblockText)
 
             // Tiny metadata space above chat
             AnimatedVisibility(
@@ -119,6 +119,7 @@ fun PortraitPlayer(
                     streamStartedAt = streamStartedAt,
                     expandTrigger = expandTrigger,
                     forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
+                    forceSlim = forceSlimMetadata,
                     onClick = { showInfoDialog = true }
                 )
             }
@@ -132,15 +133,9 @@ fun PortraitPlayer(
                 chatContent(
                     false,
                     true,
+                    portraitMode,
+                    onToggleMode,
                     Modifier.fillMaxSize()
-                )
-
-                // Floating Toggle Mode Circle
-                ModeToggleButton(
-                    visible = !isAudioOnly,
-                    portraitMode = portraitMode,
-                    onClick = onToggleMode,
-                    modifier = Modifier.align(Alignment.BottomEnd)
                 )
             }
         }
