@@ -98,6 +98,8 @@
     <string name="chat_login_required">Inicia sesión para chatear</string>
     <string name="chat_login_prompt">Debes iniciar sesión para participar en el chat.</string>
     <string name="chat_logged_in_as">Sesión iniciada como %s</string>
+    <string name="status_chat_only">MODO SOLO CHAT</string>
+    <string name="status_audio_only">MODO SOLO AUDIO</string>
 
     <!-- Stream Info Dialog -->
     <string name="stream_title_label">Título</string>

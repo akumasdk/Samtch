@@ -207,13 +207,6 @@ fun TwitchPlayer(
             onMetadataUpdated(avatarUrl, streamSubtitle)
         }
 
-        // Purge adblock banner if entering chat only or audio modes
-        LaunchedEffect(isAudioOnly, portraitMode) {
-            if (isAudioOnly || (portraitMode == PortraitMode.CHAT_ONLY || portraitMode == PortraitMode.AUDIO_AND_CHAT)) {
-                adblockText = ""
-            }
-        }
-
         LaunchedEffect(shouldUseAudioService) {
             onAudioOnlyModeChanged(shouldUseAudioService)
         }
@@ -425,6 +418,12 @@ fun TwitchPlayer(
             }
         }
 
+        val bannerText = when {
+            isAudioOnly -> stringResource(R.string.status_audio_only)
+            portraitMode == PortraitMode.CHAT_ONLY -> stringResource(R.string.status_chat_only)
+            else -> adblockText
+        }
+
         // --- STABLE ANIMATION SYSTEM ---
         val viewConfiguration = androidx.compose.ui.platform.LocalViewConfiguration.current
 
@@ -461,7 +460,7 @@ fun TwitchPlayer(
                     streamMetadata = streamMetadata,
                     avatarUrl = avatarUrl,
                     isAudioOnly = isAudioOnly,
-                    adblockText = adblockText,
+                    adblockText = bannerText,
                     portraitMode = portraitMode,
                     metadataExpandTrigger = metadataExpandTrigger,
                     isPip = isPip,

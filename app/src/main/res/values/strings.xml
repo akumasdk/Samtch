@@ -98,6 +98,8 @@
     <string name="chat_login_required">Log in to chat</string>
     <string name="chat_login_prompt">You must be logged in to participate in chat.</string>
     <string name="chat_logged_in_as">Logged in as %s</string>
+    <string name="status_chat_only">CHAT ONLY MODE</string>
+    <string name="status_audio_only">AUDIO ONLY MODE</string>
 
     <!-- Stream Info Dialog -->
     <string name="stream_title_label">Title</string>

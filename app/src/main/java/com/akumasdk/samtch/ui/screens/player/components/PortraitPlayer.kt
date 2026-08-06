@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.akumasdk.samtch.ui.components.metadata.AdblockBanner
+import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
@@ -100,8 +100,8 @@ fun PortraitPlayer(
                 }
             }
 
-            // Space for Adblock Banner between player and metadata
-            AdblockBanner(text = adblockText)
+            // Space for Status Banner between player and metadata
+            StatusBanner(text = adblockText)
 
             // Tiny metadata space above chat
             AnimatedVisibility(

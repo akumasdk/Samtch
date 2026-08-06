@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.components.chat
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -166,12 +167,23 @@ fun ChatInputBox(
                         },
                         modifier = Modifier.size(40.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isEmoteMenuVisible && !isImeVisible) Icons.Default.Keyboard else Icons.Default.EmojiEmotions,
-                            contentDescription = if (isEmoteMenuVisible && !isImeVisible) "Keyboard" else "Emotes",
-                            tint = SamtchTheme.colors.secondaryText,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        val isEmoteIcon = !(isEmoteMenuVisible && !isImeVisible)
+                        
+                        AnimatedContent(
+                            targetState = isEmoteIcon,
+                            transitionSpec = {
+                                (fadeIn() + scaleIn(initialScale = 0.7f))
+                                    .togetherWith(fadeOut() + scaleOut(targetScale = 0.7f))
+                            },
+                            label = "EmoteIconMorph"
+                        ) { showEmote ->
+                            Icon(
+                                imageVector = if (showEmote) Icons.Default.EmojiEmotions else Icons.Default.Keyboard,
+                                contentDescription = if (showEmote) "Emotes" else "Keyboard",
+                                tint = SamtchTheme.colors.secondaryText,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
 
                     if (onToggleMode != null && portraitMode != null) {
@@ -179,15 +191,24 @@ fun ChatInputBox(
                             onClick = onToggleMode,
                             modifier = Modifier.size(40.dp)
                         ) {
-                            Icon(
-                                imageVector = when (portraitMode) {
-                                    PortraitMode.VIDEO_AND_CHAT, PortraitMode.AUDIO_AND_CHAT -> Icons.AutoMirrored.Filled.Chat
-                                    PortraitMode.CHAT_ONLY -> Icons.Default.SmartDisplay
+                            AnimatedContent(
+                                targetState = portraitMode,
+                                transitionSpec = {
+                                    (fadeIn() + scaleIn(initialScale = 0.8f))
+                                        .togetherWith(fadeOut() + scaleOut(targetScale = 0.8f))
                                 },
-                                contentDescription = "Toggle Mode",
-                                tint = SamtchTheme.colors.secondaryText,
-                                modifier = Modifier.size(22.dp)
-                            )
+                                label = "ModeIconMorph"
+                            ) { mode ->
+                                Icon(
+                                    imageVector = when (mode) {
+                                        PortraitMode.VIDEO_AND_CHAT, PortraitMode.AUDIO_AND_CHAT -> Icons.AutoMirrored.Filled.Chat
+                                        PortraitMode.CHAT_ONLY -> Icons.Default.SmartDisplay
+                                    },
+                                    contentDescription = "Toggle Mode",
+                                    tint = SamtchTheme.colors.secondaryText,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
                         }
                     }
 

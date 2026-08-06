@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.akumasdk.samtch.ui.components.metadata.AdblockBanner
+import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
@@ -94,8 +94,8 @@ fun FullscreenPlayer(
                     .systemBarsPadding()
                     .displayCutoutPadding()
             ) {
-                // Adblock Banner in the same space as portrait (between video and metadata/chat)
-                AdblockBanner(text = adblockText)
+                // Status Banner in the same space as portrait (between video and metadata/chat)
+                StatusBanner(text = adblockText)
 
                 // Metadata space above chat (Only visible when chat is open)
                 AnimatedVisibility(
