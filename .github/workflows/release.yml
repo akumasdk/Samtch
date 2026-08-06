@@ -95,7 +95,7 @@ jobs:
         files: |
           ${{ steps.apks.outputs.foss_path }}
           ${{ steps.apks.outputs.full_path }}
-        name: Release ${{ steps.get_version.outputs.VERSION }}
+        name: Samtch ${{ steps.get_version.outputs.VERSION }}
         body_path: RELEASE_NOTES.md
         draft: false
         prerelease: false
