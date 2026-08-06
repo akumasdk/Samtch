@@ -47,7 +47,8 @@ fun TwitchChat(
     refreshTrigger: Int = 0,
     viewModel: ChatViewModel,
     portraitMode: PortraitMode? = null,
-    onToggleMode: (() -> Unit)? = null
+    onToggleMode: (() -> Unit)? = null,
+    onLoginRequested: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -144,7 +145,8 @@ fun TwitchChat(
                                 onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
                                 emoteInsertFlow = viewModel.emoteInsertFlow,
                                 portraitMode = portraitMode,
-                                onToggleMode = onToggleMode
+                                onToggleMode = onToggleMode,
+                                onLoginRequested = onLoginRequested
                             )
 
                             // Unified area structure that prevents "double padding" and flicker

@@ -100,6 +100,7 @@ fun TwitchPlayer(
     onClose: () -> Unit = {},
     onExpand: () -> Unit = {},
     onMetadataUpdated: (String?, String?) -> Unit = { _, _ -> },
+    onLoginRequested: () -> Unit = {},
     onAudioOnlyModeChanged: (Boolean) -> Unit = {},
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
@@ -295,6 +296,7 @@ fun TwitchPlayer(
                     viewModel = chatViewModel,
                     portraitMode = pMode,
                     onToggleMode = onToggle,
+                    onLoginRequested = onLoginRequested,
                     modifier = modifier
                 )
             }

@@ -341,6 +341,10 @@ class MainActivity : ComponentActivity() {
                                         lastAvatarUrl = avatar
                                         lastSubtitle = subtitle
                                     },
+                                    onLoginRequested = {
+                                        val intent = Intent(this@MainActivity, LoginActivity::class.java)
+                                        loginLauncher.launch(intent)
+                                    },
                                     onAudioOnlyModeChanged = { isAudioOnly ->
                                         isAudioOnlyModeState.value = isAudioOnly
                                         updatePipParams(isPipEnabled)

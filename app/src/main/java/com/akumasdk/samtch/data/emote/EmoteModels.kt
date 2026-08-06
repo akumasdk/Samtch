@@ -37,15 +37,18 @@ data class SevenTVEmote(
     val id: String,
     val name: String,
     val flags: Int = 0,
-    val data: SevenTVEmoteData
+    val data: SevenTVEmoteData? = null
 ) {
     val isZeroWidth: Boolean get() = (flags and (1 shl 8)) != 0
 }
 
 @Serializable
 data class SevenTVEmoteData(
-    val host: SevenTVHost,
-    val animated: Boolean = false
+    val id: String = "",
+    val name: String = "",
+    val flags: Int = 0,
+    val animated: Boolean = false,
+    val host: SevenTVHost
 )
 
 @Serializable

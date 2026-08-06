@@ -6,6 +6,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -59,7 +61,8 @@ fun ChatInputBox(
     emoteInsertFlow: SharedFlow<Emote>,
     modifier: Modifier = Modifier,
     portraitMode: PortraitMode? = null,
-    onToggleMode: (() -> Unit)? = null
+    onToggleMode: (() -> Unit)? = null,
+    onLoginRequested: () -> Unit = {}
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -126,142 +129,150 @@ fun ChatInputBox(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .background(
-                            color = SamtchTheme.colors.textFieldBackground,
-                            shape = RoundedCornerShape(24.dp)
-                        )
-                        .border(
-                            border = BorderStroke(
-                                width = 1.dp,
-                                color = if (isFocused) SamtchTheme.colors.accentColor.copy(alpha = 0.5f) 
-                                        else SamtchTheme.colors.divider
-                            ),
-                            shape = RoundedCornerShape(24.dp)
-                        )
-                        .padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .heightIn(min = 48.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Left Buttons: Emote & Toggle Mode
-                    IconButton(
-                        onClick = {
-                            if (isEmoteMenuVisible) {
-                                if (isImeVisible) {
-                                    // Keyboard is open over emotes, hide it to reveal menu
-                                    keyboardController?.hide()
-                                    // We don't clearFocus() here to prevent focus-migration flicker
-                                } else {
-                                    // Menu is open, show keyboard to cover it
-                                    // Only requestFocus if we don't have it to prevent flicker
-                                    if (!isFocused) {
-                                        focusRequester.requestFocus()
-                                    }
-                                    keyboardController?.show()
-                                }
-                            } else {
-                                // Transition to emotes
-                                onEmoteToggle()
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                            }
-                        },
-                        modifier = Modifier.size(40.dp)
+                    // Left Action Pill: Emote & Toggle Mode
+                    Surface(
+                        color = SamtchTheme.colors.textFieldBackground,
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, SamtchTheme.colors.divider)
                     ) {
-                        val isEmoteIcon = !(isEmoteMenuVisible && !isImeVisible)
-                        
-                        AnimatedContent(
-                            targetState = isEmoteIcon,
-                            transitionSpec = {
-                                (fadeIn() + scaleIn(initialScale = 0.7f))
-                                    .togetherWith(fadeOut() + scaleOut(targetScale = 0.7f))
-                            },
-                            label = "EmoteIconMorph"
-                        ) { showEmote ->
-                            Icon(
-                                imageVector = if (showEmote) Icons.Default.EmojiEmotions else Icons.Default.Keyboard,
-                                contentDescription = if (showEmote) stringResource(R.string.content_desc_emotes) else stringResource(R.string.content_desc_keyboard),
-                                tint = SamtchTheme.colors.secondaryText,
-                                modifier = Modifier.size(22.dp)
-                            )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    if (isEmoteMenuVisible) {
+                                        if (isImeVisible) {
+                                            keyboardController?.hide()
+                                        } else {
+                                            if (!isFocused) {
+                                                focusRequester.requestFocus()
+                                            }
+                                            keyboardController?.show()
+                                        }
+                                    } else {
+                                        onEmoteToggle()
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                    }
+                                },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                val isEmoteIcon = !(isEmoteMenuVisible && !isImeVisible)
+                                
+                                AnimatedContent(
+                                    targetState = isEmoteIcon,
+                                    transitionSpec = {
+                                        (fadeIn() + scaleIn(initialScale = 0.7f))
+                                            .togetherWith(fadeOut() + scaleOut(targetScale = 0.7f))
+                                    },
+                                    label = "EmoteIconMorph"
+                                ) { showEmote ->
+                                    Icon(
+                                        imageVector = if (showEmote) Icons.Default.EmojiEmotions else Icons.Default.Keyboard,
+                                        contentDescription = if (showEmote) stringResource(R.string.content_desc_emotes) else stringResource(R.string.content_desc_keyboard),
+                                        tint = SamtchTheme.colors.secondaryText,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+
+                            if (onToggleMode != null && portraitMode != null) {
+                                IconButton(
+                                    onClick = onToggleMode,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    AnimatedContent(
+                                        targetState = portraitMode,
+                                        transitionSpec = {
+                                            (fadeIn() + scaleIn(initialScale = 0.8f))
+                                                .togetherWith(fadeOut() + scaleOut(targetScale = 0.8f))
+                                        },
+                                        label = "ModeIconMorph"
+                                    ) { mode ->
+                                        Icon(
+                                            imageVector = when (mode) {
+                                                PortraitMode.VIDEO_AND_CHAT, PortraitMode.AUDIO_AND_CHAT -> Icons.AutoMirrored.Filled.Chat
+                                                PortraitMode.CHAT_ONLY -> Icons.Default.SmartDisplay
+                                            },
+                                            contentDescription = stringResource(R.string.content_desc_toggle_mode),
+                                            tint = SamtchTheme.colors.secondaryText,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    if (onToggleMode != null && portraitMode != null) {
-                        IconButton(
-                            onClick = onToggleMode,
-                            modifier = Modifier.size(40.dp)
+                    // Center Pill: Text Field
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        color = SamtchTheme.colors.textFieldBackground,
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = if (isFocused) SamtchTheme.colors.accentColor.copy(alpha = 0.5f) 
+                                    else SamtchTheme.colors.divider
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            contentAlignment = Alignment.CenterStart
                         ) {
-                            AnimatedContent(
-                                targetState = portraitMode,
-                                transitionSpec = {
-                                    (fadeIn() + scaleIn(initialScale = 0.8f))
-                                        .togetherWith(fadeOut() + scaleOut(targetScale = 0.8f))
-                                },
-                                label = "ModeIconMorph"
-                            ) { mode ->
-                                Icon(
-                                    imageVector = when (mode) {
-                                        PortraitMode.VIDEO_AND_CHAT, PortraitMode.AUDIO_AND_CHAT -> Icons.AutoMirrored.Filled.Chat
-                                        PortraitMode.CHAT_ONLY -> Icons.Default.SmartDisplay
-                                    },
-                                    contentDescription = stringResource(R.string.content_desc_toggle_mode),
-                                    tint = SamtchTheme.colors.secondaryText,
-                                    modifier = Modifier.size(22.dp)
+                            if (textFieldValue.text.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.chat_input_placeholder),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
+                                    fontSize = 15.sp
                                 )
                             }
-                        }
-                    }
-
-                    // Text Field
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp, vertical = 10.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        if (textFieldValue.text.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.chat_input_placeholder),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
-                                fontSize = 15.sp
+                            BasicTextField(
+                                value = textFieldValue,
+                                onValueChange = {
+                                    textFieldValue = it
+                                    onTextChange(it.text, it.selection.start)
+                                },
+                                textStyle = TextStyle(
+                                    color = SamtchTheme.colors.primaryText,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                cursorBrush = SolidColor(SamtchTheme.colors.twitchPurpleLight),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                keyboardActions = KeyboardActions(onSend = {
+                                    if (textFieldValue.text.isNotBlank()) {
+                                        onSendMessage(textFieldValue.text)
+                                        textFieldValue = TextFieldValue("")
+                                        onTextChange("", 0)
+                                    }
+                                }),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequester)
+                                    .onFocusChanged { isFocused = it.isFocused }
                             )
                         }
-                        BasicTextField(
-                            value = textFieldValue,
-                            onValueChange = {
-                                textFieldValue = it
-                                onTextChange(it.text, it.selection.start)
-                            },
-                            textStyle = TextStyle(
-                                color = SamtchTheme.colors.primaryText,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Normal
-                            ),
-                            cursorBrush = SolidColor(SamtchTheme.colors.twitchPurpleLight),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                            keyboardActions = KeyboardActions(onSend = {
-                                if (textFieldValue.text.isNotBlank()) {
-                                    onSendMessage(textFieldValue.text)
-                                    textFieldValue = TextFieldValue("")
-                                    onTextChange("", 0)
-                                }
-                            }),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester)
-                                .onFocusChanged { isFocused = it.isFocused }
-                        )
                     }
 
-                    // Send Button
+                    // Right Pill: Send Button
                     val sendEnabled = textFieldValue.text.isNotBlank()
                     val sendIconColor by animateColorAsState(
-                        if (sendEnabled) SamtchTheme.colors.twitchPurpleLight else SamtchTheme.colors.secondaryText.copy(alpha = 0.4f),
+                        if (sendEnabled) Color.White else SamtchTheme.colors.secondaryText.copy(alpha = 0.4f),
                         label = "SendButtonColor"
                     )
+                    val sendBgColor by animateColorAsState(
+                        if (sendEnabled) SamtchTheme.colors.twitchPurple else SamtchTheme.colors.textFieldBackground,
+                        label = "SendBgColor"
+                    )
 
-                    IconButton(
+                    Surface(
                         onClick = {
                             if (sendEnabled) {
                                 onSendMessage(textFieldValue.text)
@@ -270,32 +281,76 @@ fun ChatInputBox(
                             }
                         },
                         enabled = sendEnabled,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .padding(end = 4.dp)
+                        color = sendBgColor,
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, if (sendEnabled) Color.Transparent else SamtchTheme.colors.divider),
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = stringResource(R.string.content_desc_send),
-                            tint = sendIconColor,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = stringResource(R.string.content_desc_send),
+                                tint = sendIconColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             } else {
-                Surface(
-                    color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(24.dp),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = stringResource(R.string.chat_login_prompt),
-                        color = SamtchTheme.colors.primaryText.copy(alpha = 0.6f),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    if (onToggleMode != null && portraitMode != null) {
+                        Surface(
+                            color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, SamtchTheme.colors.divider)
+                        ) {
+                            IconButton(
+                                onClick = onToggleMode,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                AnimatedContent(
+                                    targetState = portraitMode,
+                                    transitionSpec = {
+                                        (fadeIn() + scaleIn(initialScale = 0.8f))
+                                            .togetherWith(fadeOut() + scaleOut(targetScale = 0.8f))
+                                    },
+                                    label = "ModeIconMorphNotLoggedIn"
+                                ) { mode ->
+                                    Icon(
+                                        imageVector = when (mode) {
+                                            PortraitMode.VIDEO_AND_CHAT, PortraitMode.AUDIO_AND_CHAT -> Icons.AutoMirrored.Filled.Chat
+                                            PortraitMode.CHAT_ONLY -> Icons.Default.SmartDisplay
+                                        },
+                                        contentDescription = stringResource(R.string.content_desc_toggle_mode),
+                                        tint = SamtchTheme.colors.secondaryText,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Surface(
+                        color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, SamtchTheme.colors.divider),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onLoginRequested() }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.chat_login_prompt),
+                            color = SamtchTheme.colors.primaryText.copy(alpha = 0.6f),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
                 }
             }
         }
