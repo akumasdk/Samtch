@@ -128,11 +128,17 @@ fun ChatInputBox(
                     IconButton(
                         onClick = {
                             if (isEmoteMenuVisible) {
-                                // If emotes are open, switch to keyboard
-                                focusRequester.requestFocus()
-                                keyboardController?.show()
+                                if (isImeVisible) {
+                                    // Keyboard is open over emotes, hide it to reveal menu
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                } else {
+                                    // Menu is open, show keyboard to cover it
+                                    focusRequester.requestFocus()
+                                    keyboardController?.show()
+                                }
                             } else {
-                                // If emotes are closed (or keyboard is up), switch to emotes
+                                // Transition to emotes
                                 onEmoteToggle()
                                 keyboardController?.hide()
                                 focusManager.clearFocus()
