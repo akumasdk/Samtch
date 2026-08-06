@@ -139,38 +139,47 @@ fun TwitchChat(
                                 onToggleMode = onToggleMode
                             )
 
-                            // Unified area: sizes itself to the taller of keyboard OR emote menu
+                            // Unified area structure that prevents "double padding" and flicker
                             val menuHeight = if (keyboardHeightPx > 0) {
                                 with(density) { keyboardHeightPx.toDp() }
                             } else {
                                 if (isLandscape) 200.dp else 350.dp
                             }
 
+                            // Calculate target height for the interaction area
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = if (isEmoteMenuVisible) menuHeight else 0.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
-                                // 1. This spacer natively synchronizes with keyboard animation frames
-                                Spacer(modifier = Modifier.imePadding())
+                                // 1. Use the system's native IME + Navigation Bar padding.
+                                // This ensures the container height is ALWAYS correct, even on first launch.
+                                Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.ime.union(WindowInsets.navigationBars)))
                                 
-                                // 2. Overlay the emote menu in the same space
+                                // 2. The Interaction space: Holds the emote menu at a stable height
                                 if (isEmoteMenuVisible) {
-                                    // Optimization: Hide menu if keyboard is fully covering it
-                                    val currentImeHeightPxValue = (WindowInsets.ime.getBottom(density) - WindowInsets.navigationBars.getBottom(density)).coerceAtLeast(0)
+                                    val currentImeBottom = WindowInsets.ime.getBottom(density)
+                                    val navBarBottom = WindowInsets.navigationBars.getBottom(density)
+                                    val currentKeyboardHeightPx = (currentImeBottom - navBarBottom).coerceAtLeast(0)
                                     val menuHeightPx = with(density) { menuHeight.toPx() }
-                                    val isKeyboardFullyVisible = currentImeHeightPxValue >= (menuHeightPx * 0.98f).toInt()
                                     
-                                    if (!isKeyboardFullyVisible) {
-                                        EmoteMenu(
-                                            tabs = emoteMenuTabs,
-                                            onEmoteClick = { emote ->
-                                                viewModel.insertEmote(emote)
-                                            },
-                                            onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                                            height = menuHeight
-                                        )
+                                    // Optimization: Hide menu rendering if keyboard completely covers it
+                                    val isKeyboardCoveringMenu = currentKeyboardHeightPx >= (menuHeightPx * 0.98f).toInt()
+                                    
+                                    Column {
+                                        Box(modifier = Modifier.height(menuHeight)) {
+                                            if (!isKeyboardCoveringMenu) {
+                                                EmoteMenu(
+                                                    tabs = emoteMenuTabs,
+                                                    onEmoteClick = { emote ->
+                                                        viewModel.insertEmote(emote)
+                                                    },
+                                                    onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                                                    height = menuHeight
+                                                )
+                                            }
+                                        }
+                                        // Ensure emotes sit above the navigation bar
+                                        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                                     }
                                 }
                             }

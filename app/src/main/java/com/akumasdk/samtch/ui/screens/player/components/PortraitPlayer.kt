@@ -74,7 +74,6 @@ fun PortraitPlayer(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding()
                 .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
             verticalArrangement = Arrangement.Top
         ) {

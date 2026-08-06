@@ -62,6 +62,7 @@ fun ChatInputBox(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    var isFocused by remember { mutableStateOf(false) }
     val isImeVisible = WindowInsets.isImeVisible
     
     val handleEmoteSelected: (Emote) -> Unit = { emote ->
@@ -131,10 +132,13 @@ fun ChatInputBox(
                                 if (isImeVisible) {
                                     // Keyboard is open over emotes, hide it to reveal menu
                                     keyboardController?.hide()
-                                    focusManager.clearFocus()
+                                    // We don't clearFocus() here to prevent focus-migration flicker
                                 } else {
                                     // Menu is open, show keyboard to cover it
-                                    focusRequester.requestFocus()
+                                    // Only requestFocus if we don't have it to prevent flicker
+                                    if (!isFocused) {
+                                        focusRequester.requestFocus()
+                                    }
                                     keyboardController?.show()
                                 }
                             } else {
@@ -209,6 +213,7 @@ fun ChatInputBox(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester)
+                                .onFocusChanged { isFocused = it.isFocused }
                         )
                     }
 
