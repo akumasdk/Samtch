@@ -18,6 +18,7 @@ object SettingsManager {
     private val AD_BLOCK_MODE = booleanPreferencesKey("ad_block_mode_is_vaft") // true = VAFT, false = VideoSwap
     private val CHAT_MODE = booleanPreferencesKey("chat_mode_is_native") // true = NATIVE, false = LEGACY
     private val MINI_PLAYER_HINT_SHOWN = booleanPreferencesKey("mini_player_hint_shown")
+    private val PLAYER_TOOLTIP_SHOW_COUNT = intPreferencesKey("player_tooltip_show_count")
     private val THEME_MODE = intPreferencesKey("theme_mode") // 0 = DARK, 1 = LIGHT, 2 = SYSTEM
     private val LAST_VERSION_CODE = intPreferencesKey("last_version_code")
 
@@ -90,6 +91,19 @@ object SettingsManager {
     suspend fun setMiniPlayerHintShown(context: Context, shown: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[MINI_PLAYER_HINT_SHOWN] = shown
+        }
+    }
+
+    fun getPlayerTooltipShowCount(context: Context): Flow<Int> {
+        return context.dataStore.data.map { preferences ->
+            preferences[PLAYER_TOOLTIP_SHOW_COUNT] ?: 0
+        }
+    }
+
+    suspend fun incrementPlayerTooltipShowCount(context: Context) {
+        context.dataStore.edit { preferences ->
+            val current = preferences[PLAYER_TOOLTIP_SHOW_COUNT] ?: 0
+            preferences[PLAYER_TOOLTIP_SHOW_COUNT] = current + 1
         }
     }
 

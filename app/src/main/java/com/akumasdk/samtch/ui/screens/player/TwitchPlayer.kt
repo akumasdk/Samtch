@@ -125,6 +125,7 @@ fun TwitchPlayer(
         var currentLoadingSession by remember { mutableLongStateOf(0L) }
 
         val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
+        val tooltipShowCount by SettingsManager.getPlayerTooltipShowCount(context).collectAsState(initial = 0)
 
         var isChatVisible by remember { mutableStateOf(true) }
         var metadataExpandTrigger by remember { mutableIntStateOf(0) }
@@ -152,6 +153,9 @@ fun TwitchPlayer(
                 isChatVisible = false
                 delay(1.seconds) 
                 showFullscreenControls = true
+                if (tooltipShowCount < 3) {
+                    SettingsManager.incrementPlayerTooltipShowCount(context)
+                }
             }
         }
 
@@ -585,7 +589,7 @@ fun TwitchPlayer(
                         if (!isMinimized && !isPip) {
                             if (isFullscreen) {
                                 TapTooltip(
-                                    visible = showFullscreenControls,
+                                    visible = showFullscreenControls && tooltipShowCount < 3,
                                     modifier = Modifier.align(Alignment.Center)
                                 )
 
