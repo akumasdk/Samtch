@@ -13,6 +13,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -82,6 +85,7 @@ import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
+@OptIn(ExperimentalLayoutApi::class)
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun TwitchPlayer(
@@ -121,6 +125,10 @@ fun TwitchPlayer(
         val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
 
         val chatViewModel: ChatViewModel = viewModel()
+        val isEmoteMenuVisible by chatViewModel.isEmoteMenuVisible.collectAsState()
+        val isImeVisible = WindowInsets.isImeVisible
+        val forceSlimMetadata = isEmoteMenuVisible || isImeVisible
+
         val scope = rememberCoroutineScope()
         var currentLoadingSession by remember { mutableLongStateOf(0L) }
 
@@ -459,6 +467,7 @@ fun TwitchPlayer(
                     isPip = isPip,
                     isChatVisible = isChatVisible,
                     refreshTrigger = refreshTrigger,
+                    forceSlimMetadata = forceSlimMetadata,
                     onToggleChat = { 
                         isChatVisible = !isChatVisible
                         if (isFullscreen) showFullscreenControls = true

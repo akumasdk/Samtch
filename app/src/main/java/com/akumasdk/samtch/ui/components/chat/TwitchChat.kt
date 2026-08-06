@@ -192,7 +192,8 @@ fun TwitchChat(
             selectedEmoteForInfo?.let { emote ->
                 EmoteInfoDialog(
                     emote = emote,
-                    onDismiss = { viewModel.dismissEmoteInfo() }
+                    onDismiss = { viewModel.dismissEmoteInfo() },
+                    onUseEmote = { viewModel.insertEmote(it) }
                 )
             }
         }

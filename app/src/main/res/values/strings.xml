@@ -104,4 +104,12 @@
     <string name="category_label">Category</string>
     <string name="viewers_label">Viewers</string>
     <string name="uptime_label">Uptime</string>
+
+    <!-- Emote Info Dialog -->
+    <string name="emote_info_source">Source</string>
+    <string name="emote_info_id">ID</string>
+    <string name="emote_info_type">Type</string>
+    <string name="emote_info_zero_width">Zero-width overlay</string>
+    <string name="emote_info_use">Use</string>
+    <string name="emote_info_copy">Copy</string>
 </resources>

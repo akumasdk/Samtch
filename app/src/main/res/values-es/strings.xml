@@ -104,4 +104,12 @@
     <string name="category_label">Categoría</string>
     <string name="viewers_label">Espectadores</string>
     <string name="uptime_label">Tiempo en vivo</string>
+
+    <!-- Emote Info Dialog -->
+    <string name="emote_info_source">Fuente</string>
+    <string name="emote_info_id">ID</string>
+    <string name="emote_info_type">Tipo</string>
+    <string name="emote_info_zero_width">Superposición de ancho cero</string>
+    <string name="emote_info_use">Usar</string>
+    <string name="emote_info_copy">Copiar</string>
 </resources>

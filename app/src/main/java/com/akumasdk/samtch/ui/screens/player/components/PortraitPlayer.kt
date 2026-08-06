@@ -43,6 +43,7 @@ fun PortraitPlayer(
     portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
     expandTrigger: Int = 0,
     isPip: Boolean = false,
+    forceSlimMetadata: Boolean = false,
     onToggleMode: () -> Unit = {},
     chatContent: @Composable (isCompact: Boolean, showInput: Boolean, PortraitMode, () -> Unit, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
@@ -118,6 +119,7 @@ fun PortraitPlayer(
                     streamStartedAt = streamStartedAt,
                     expandTrigger = expandTrigger,
                     forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
+                    forceSlim = forceSlimMetadata,
                     onClick = { showInfoDialog = true }
                 )
             }
