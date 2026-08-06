@@ -21,6 +21,7 @@ import com.akumasdk.samtch.ui.theme.SamtchTheme
 fun ChatMessageRow(
     message: ChatMessageUiState,
     isCompact: Boolean = false,
+    onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
 ) {
     val fontSize = if (isCompact) 14.sp else 18.sp
@@ -66,6 +67,7 @@ fun ChatMessageRow(
                 emotes = combinedEmotes,
                 isCompact = isCompact,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                onEmoteClick = onEmoteClick,
                 onEmoteLongClick = onEmoteLongClick,
                 style = TextStyle(
                     color = if (message.isAction) userColor else SamtchTheme.colors.primaryText,

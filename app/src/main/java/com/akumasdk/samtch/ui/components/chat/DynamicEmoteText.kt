@@ -27,6 +27,7 @@ fun DynamicEmoteText(
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
     style: TextStyle = TextStyle.Default,
+    onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -34,7 +35,7 @@ fun DynamicEmoteText(
     
     val measuredWidths = remember { mutableStateMapOf<String, Float>() }
 
-    val inlineContent = remember(emotes, measuredWidths.toMap(), baseHeight, onEmoteLongClick) {
+    val inlineContent = remember(emotes, measuredWidths.toMap(), baseHeight, onEmoteClick, onEmoteLongClick) {
         emotes.associate { emote ->
             val urls = emote.url.split("|")
             val baseEmoteUrl = urls.first()
@@ -48,8 +49,9 @@ fun DynamicEmoteText(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(emote, onEmoteLongClick) {
+                        .pointerInput(emote, onEmoteClick, onEmoteLongClick) {
                             detectTapGestures(
+                                onTap = { onEmoteClick?.invoke(emote) },
                                 onLongPress = { onEmoteLongClick?.invoke(emote) }
                             )
                         }

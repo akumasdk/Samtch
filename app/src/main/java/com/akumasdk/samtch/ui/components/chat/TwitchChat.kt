@@ -110,6 +110,7 @@ fun TwitchChat(
                     modifier = Modifier.weight(1f),
                     isCompact = isCompact,
                     viewModel = viewModel,
+                    onEmoteClick = { viewModel.showEmoteInfo(it) },
                     onEmoteLongClick = { viewModel.showEmoteInfo(it) }
                 )
                 
