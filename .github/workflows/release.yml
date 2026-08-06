@@ -31,18 +31,23 @@ jobs:
         echo "VERSION=v$VERSION_NAME" >> $GITHUB_OUTPUT
         echo "Detected version: v$VERSION_NAME"
 
-    - name: Create and Push Tag
+    - name: Check if Tag Exists
       run: |
         VERSION="${{ steps.get_version.outputs.VERSION }}"
         if git rev-parse "$VERSION" >/dev/null 2>&1; then
-          echo "Tag $VERSION already exists. Skipping tag creation."
-        else
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "$VERSION"
-          git push origin "$VERSION"
-          echo "Created and pushed tag $VERSION"
+          echo "Error: Tag $VERSION already exists. This version has already been released."
+          echo "Please bump the version in app/build.gradle.kts before pushing to main."
+          exit 1
         fi
+
+    - name: Create and Push Tag
+      run: |
+        VERSION="${{ steps.get_version.outputs.VERSION }}"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git tag "$VERSION"
+        git push origin "$VERSION"
+        echo "Created and pushed tag $VERSION"
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
