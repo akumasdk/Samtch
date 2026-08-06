@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
@@ -140,31 +139,28 @@ fun TwitchChat(
                                 onToggleMode = onToggleMode
                             )
 
-                            // Unified keyboard/emote area
-                            val navBarHeightPx = remember(density) { navBars.getBottom(density) }
-                            
-                            // Keyboard height relative to navigation bar
-                            val currentImeBottom = WindowInsets.ime.getBottom(density)
-                            val currentKeyboardHeightPx = (currentImeBottom - navBarHeightPx).coerceAtLeast(0)
-                            
-                            val menuHeightPx = if (keyboardHeightPx > 0) keyboardHeightPx else with(density) { (if (isLandscape) 200.dp else 350.dp).roundToPx() }
-
-                            // Area height: max of keyboard and emote menu
-                            val currentAreaHeightPx = if (isEmoteMenuVisible) {
-                                maxOf(currentKeyboardHeightPx, menuHeightPx)
+                            // Unified area: sizes itself to the taller of keyboard OR emote menu
+                            val menuHeight = if (keyboardHeightPx > 0) {
+                                with(density) { keyboardHeightPx.toDp() }
                             } else {
-                                currentKeyboardHeightPx
+                                if (isLandscape) 200.dp else 350.dp
                             }
 
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(with(density) { currentAreaHeightPx.toDp() }),
+                                    .heightIn(min = if (isEmoteMenuVisible) menuHeight else 0.dp),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
-                                // Emote menu rendered conditionally
+                                // 1. This spacer natively synchronizes with keyboard animation frames
+                                Spacer(modifier = Modifier.imePadding())
+                                
+                                // 2. Overlay the emote menu in the same space
                                 if (isEmoteMenuVisible) {
-                                    val isKeyboardFullyVisible = currentKeyboardHeightPx >= (menuHeightPx * 0.98f).toInt()
+                                    // Optimization: Hide menu if keyboard is fully covering it
+                                    val currentImeHeightPxValue = (WindowInsets.ime.getBottom(density) - WindowInsets.navigationBars.getBottom(density)).coerceAtLeast(0)
+                                    val menuHeightPx = with(density) { menuHeight.toPx() }
+                                    val isKeyboardFullyVisible = currentImeHeightPxValue >= (menuHeightPx * 0.98f).toInt()
                                     
                                     if (!isKeyboardFullyVisible) {
                                         EmoteMenu(
@@ -173,7 +169,7 @@ fun TwitchChat(
                                                 viewModel.insertEmote(emote)
                                             },
                                             onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                                            height = with(density) { menuHeightPx.toDp() }
+                                            height = menuHeight
                                         )
                                     }
                                 }
