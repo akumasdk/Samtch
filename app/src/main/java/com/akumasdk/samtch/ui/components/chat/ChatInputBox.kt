@@ -181,13 +181,20 @@ fun ChatInputBox(
                                 }
                             }
 
-                            if (onToggleMode != null && portraitMode != null) {
+                            AnimatedVisibility(
+                                visible = onToggleMode != null && portraitMode != null && portraitMode != PortraitMode.AUDIO_AND_CHAT,
+                                enter = fadeIn() + expandHorizontally(),
+                                exit = fadeOut() + shrinkHorizontally()
+                            ) {
+                                val currentMode = portraitMode ?: return@AnimatedVisibility
+                                val currentToggle = onToggleMode ?: return@AnimatedVisibility
+
                                 IconButton(
-                                    onClick = onToggleMode,
+                                    onClick = currentToggle,
                                     modifier = Modifier.size(40.dp)
                                 ) {
                                     AnimatedContent(
-                                        targetState = portraitMode,
+                                        targetState = currentMode,
                                         transitionSpec = {
                                             (fadeIn() + scaleIn(initialScale = 0.8f))
                                                 .togetherWith(fadeOut() + scaleOut(targetScale = 0.8f))
@@ -302,18 +309,25 @@ fun ChatInputBox(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (onToggleMode != null && portraitMode != null) {
+                    AnimatedVisibility(
+                        visible = onToggleMode != null && portraitMode != null && portraitMode != PortraitMode.AUDIO_AND_CHAT,
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkHorizontally()
+                    ) {
+                        val currentMode = portraitMode ?: return@AnimatedVisibility
+                        val currentToggle = onToggleMode ?: return@AnimatedVisibility
+
                         Surface(
                             color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.3f),
                             shape = RoundedCornerShape(24.dp),
                             border = BorderStroke(1.dp, SamtchTheme.colors.divider)
                         ) {
                             IconButton(
-                                onClick = onToggleMode,
+                                onClick = currentToggle,
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 AnimatedContent(
-                                    targetState = portraitMode,
+                                    targetState = currentMode,
                                     transitionSpec = {
                                         (fadeIn() + scaleIn(initialScale = 0.8f))
                                             .togetherWith(fadeOut() + scaleOut(targetScale = 0.8f))
