@@ -179,7 +179,7 @@ fun ChatInputBox(
                         ) { showEmote ->
                             Icon(
                                 imageVector = if (showEmote) Icons.Default.EmojiEmotions else Icons.Default.Keyboard,
-                                contentDescription = if (showEmote) "Emotes" else "Keyboard",
+                                contentDescription = if (showEmote) stringResource(R.string.content_desc_emotes) else stringResource(R.string.content_desc_keyboard),
                                 tint = SamtchTheme.colors.secondaryText,
                                 modifier = Modifier.size(22.dp)
                             )
@@ -204,7 +204,7 @@ fun ChatInputBox(
                                         PortraitMode.VIDEO_AND_CHAT, PortraitMode.AUDIO_AND_CHAT -> Icons.AutoMirrored.Filled.Chat
                                         PortraitMode.CHAT_ONLY -> Icons.Default.SmartDisplay
                                     },
-                                    contentDescription = "Toggle Mode",
+                                    contentDescription = stringResource(R.string.content_desc_toggle_mode),
                                     tint = SamtchTheme.colors.secondaryText,
                                     modifier = Modifier.size(22.dp)
                                 )
@@ -221,7 +221,7 @@ fun ChatInputBox(
                     ) {
                         if (textFieldValue.text.isEmpty()) {
                             Text(
-                                text = "Send a message…",
+                                text = stringResource(R.string.chat_input_placeholder),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
                                 fontSize = 15.sp
@@ -276,7 +276,7 @@ fun ChatInputBox(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
+                            contentDescription = stringResource(R.string.content_desc_send),
                             tint = sendIconColor,
                             modifier = Modifier.size(22.dp)
                         )

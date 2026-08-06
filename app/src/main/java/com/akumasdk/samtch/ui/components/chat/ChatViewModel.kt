@@ -43,8 +43,11 @@ class ChatViewModel : ViewModel() {
     private val _selectedEmoteForInfo = MutableStateFlow<Emote?>(null)
     val selectedEmoteForInfo = _selectedEmoteForInfo.asStateFlow()
 
-    private val _emoteMenuTabs = MutableStateFlow<Map<String, List<Emote>>>(emptyMap())
+    private val _emoteMenuTabs = MutableStateFlow<Map<Int, List<Emote>>>(emptyMap())
     val emoteMenuTabs = _emoteMenuTabs.asStateFlow()
+
+    private val _recentEmotes = MutableStateFlow<List<Emote>>(emptyList())
+    val recentEmotes = _recentEmotes.asStateFlow()
 
     private val _emoteInsertFlow = MutableSharedFlow<Emote>()
     val emoteInsertFlow = _emoteInsertFlow.asSharedFlow()
@@ -59,6 +62,7 @@ class ChatViewModel : ViewModel() {
     private val messageBuffer = MutableSharedFlow<ChatMessageUiState>(extraBufferCapacity = 200)
 
     fun connect(
+        context: android.content.Context,
         channel: String, 
         loadingMessage: String, 
         welcomeMessageTemplate: String = "Welcome to %s's chat!",
@@ -100,6 +104,14 @@ class ChatViewModel : ViewModel() {
             messageHistory.add(initialMsg)
             _messages.value = messageHistory.toImmutableList()
             
+            // Collect recent emotes
+            launch {
+                SettingsManager.getRecentEmotes(context).collect { recent ->
+                    _recentEmotes.value = recent
+                    currentChannel?.let { updateEmoteMenuTabs(it) }
+                }
+            }
+
             // Collect messages in batches to prevent UI lag in high-traffic channels
             launch {
                 messageBuffer
@@ -187,16 +199,21 @@ class ChatViewModel : ViewModel() {
         val channelState = EmoteRepository.getChannelState(channel).value
         val globalState = EmoteRepository.globalState.value
 
-        val tabs = mutableMapOf<String, List<Emote>>()
+        val tabs = mutableMapOf<Int, List<Emote>>()
         
+        val recent = _recentEmotes.value
+        if (recent.isNotEmpty()) {
+            tabs[com.akumasdk.samtch.R.string.emote_menu_recent] = recent
+        }
+
         val channelEmotes = (channelState.seventvEmotes.values + channelState.bttvEmotes.values + channelState.ffzEmotes.values).toList()
         if (channelEmotes.isNotEmpty()) {
-            tabs["Channel"] = channelEmotes
+            tabs[com.akumasdk.samtch.R.string.emote_menu_channel] = channelEmotes
         }
 
         val globalEmotes = (globalState.seventvEmotes.values + globalState.bttvEmotes.values + globalState.ffzEmotes.values).toList()
         if (globalEmotes.isNotEmpty()) {
-            tabs["Global"] = globalEmotes
+            tabs[com.akumasdk.samtch.R.string.emote_menu_global] = globalEmotes
         }
 
         _emoteMenuTabs.value = tabs
@@ -314,6 +331,12 @@ class ChatViewModel : ViewModel() {
     fun insertEmote(emote: Emote) {
         viewModelScope.launch {
             _emoteInsertFlow.emit(emote)
+        }
+    }
+
+    fun recordEmoteUsage(context: android.content.Context, emote: Emote) {
+        viewModelScope.launch {
+            SettingsManager.addRecentEmote(context, emote)
         }
     }
 

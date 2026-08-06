@@ -2,6 +2,7 @@ package com.akumasdk.samtch.data.emote
 
 import kotlinx.serialization.Serializable
 
+@Serializable
 data class Emote(
     val id: String,
     val code: String,
@@ -10,6 +11,7 @@ data class Emote(
     val isZeroWidth: Boolean = false
 )
 
+@Serializable
 enum class EmoteType {
     TWITCH, BTTV, SEVENTV, FFZ
 }

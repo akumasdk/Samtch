@@ -6,9 +6,14 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.akumasdk.samtch.data.emote.Emote
+import com.akumasdk.samtch.data.emote.EmoteType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -23,6 +28,7 @@ object SettingsManager {
     private val LAST_VERSION_CODE = intPreferencesKey("last_version_code")
     private val KEYBOARD_HEIGHT_PORTRAIT = intPreferencesKey("keyboard_height_portrait")
     private val KEYBOARD_HEIGHT_LANDSCAPE = intPreferencesKey("keyboard_height_landscape")
+    private val RECENT_EMOTES = stringPreferencesKey("recent_emotes")
 
     enum class AdBlockMode {
         VAFT, VIDEO_SWAP
@@ -156,6 +162,40 @@ object SettingsManager {
     suspend fun clear(context: Context) {
         context.dataStore.edit { preferences ->
             preferences.clear()
+        }
+    }
+
+    fun getRecentEmotes(context: Context): Flow<List<Emote>> {
+        return context.dataStore.data.map { preferences ->
+            val json = preferences[RECENT_EMOTES] ?: return@map emptyList<Emote>()
+            try {
+                Json.decodeFromString<List<Emote>>(json)
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    suspend fun addRecentEmote(context: Context, emote: Emote) {
+        context.dataStore.edit { preferences ->
+            val currentJson = preferences[RECENT_EMOTES]
+            val currentList = if (currentJson != null) {
+                try {
+                    Json.decodeFromString<List<Emote>>(currentJson).toMutableList()
+                } catch (e: Exception) {
+                    mutableListOf()
+                }
+            } else {
+                mutableListOf()
+            }
+
+            // Remove if already exists (to move to front)
+            currentList.removeAll { it.id == emote.id }
+            currentList.add(0, emote)
+
+            // Keep only top 40
+            val limitedList = currentList.take(40)
+            preferences[RECENT_EMOTES] = Json.encodeToString(limitedList)
         }
     }
 }

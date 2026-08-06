@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -24,14 +25,14 @@ import com.akumasdk.samtch.ui.theme.SamtchTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmoteMenu(
-    tabs: Map<String, List<Emote>>,
+    tabs: Map<Int, List<Emote>>,
     onEmoteClick: (Emote) -> Unit,
     onEmoteLongClick: (Emote) -> Unit,
     modifier: Modifier = Modifier,
     height: Dp = 300.dp
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabTitles = tabs.keys.toList()
+    val tabResIds = tabs.keys.toList()
 
     Column(
         modifier = modifier
@@ -39,7 +40,7 @@ fun EmoteMenu(
             .height(height)
             .background(SamtchTheme.colors.dialogBackground)
     ) {
-        if (tabTitles.isNotEmpty()) {
+        if (tabResIds.isNotEmpty()) {
             SecondaryScrollableTabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = SamtchTheme.colors.dialogBackground,
@@ -47,13 +48,13 @@ fun EmoteMenu(
                 edgePadding = 0.dp,
                 divider = {}
             ) {
-                tabTitles.forEachIndexed { index, title ->
+                tabResIds.forEachIndexed { index, resId ->
                     Tab(
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
                         text = {
                             Text(
-                                text = title,
+                                text = stringResource(resId),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = if (selectedTabIndex == index) SamtchTheme.colors.twitchPurpleLight else SamtchTheme.colors.secondaryText
                             )
@@ -62,7 +63,7 @@ fun EmoteMenu(
                 }
             }
 
-            val currentEmotes = tabs[tabTitles[selectedTabIndex]] ?: emptyList()
+            val currentEmotes = tabs[tabResIds[selectedTabIndex]] ?: emptyList()
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 48.dp),
                 modifier = Modifier.fillMaxSize(),
@@ -84,7 +85,7 @@ fun EmoteMenu(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No emotes available",
+                    text = stringResource(com.akumasdk.samtch.R.string.emote_menu_empty),
                     color = SamtchTheme.colors.secondaryText
                 )
             }

@@ -98,8 +98,17 @@
     <string name="chat_login_required">Log in to chat</string>
     <string name="chat_login_prompt">You must be logged in to participate in chat.</string>
     <string name="chat_logged_in_as">Logged in as %s</string>
+    <string name="chat_input_placeholder">Send a message…</string>
+    <string name="content_desc_emotes">Emotes</string>
+    <string name="content_desc_keyboard">Keyboard</string>
+    <string name="content_desc_toggle_mode">Toggle Mode</string>
+    <string name="content_desc_send">Send</string>
     <string name="status_chat_only">CHAT ONLY MODE</string>
     <string name="status_audio_only">AUDIO ONLY MODE</string>
+    <string name="emote_menu_recent">Recent</string>
+    <string name="emote_menu_channel">Channel</string>
+    <string name="emote_menu_global">Global</string>
+    <string name="emote_menu_empty">No emotes available</string>
 
     <!-- Stream Info Dialog -->
     <string name="stream_title_label">Title</string>

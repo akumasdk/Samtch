@@ -99,7 +99,7 @@ fun TwitchChat(
         LaunchedEffect(refreshTrigger) {
             if (refreshTrigger > 0) {
                 viewModel.disconnect()
-                viewModel.connect(channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
+                viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
             }
         }
         
@@ -132,7 +132,9 @@ fun TwitchChat(
                                 onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
                                 isEmoteMenuVisible = isEmoteMenuVisible,
                                 suggestions = emoteSuggestions,
-                                onEmoteSelected = { /* Logic handled in ChatInputBox for now */ },
+                                onEmoteSelected = { emote ->
+                                    viewModel.recordEmoteUsage(context, emote)
+                                },
                                 onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                                 onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
                                 emoteInsertFlow = viewModel.emoteInsertFlow,
@@ -173,6 +175,7 @@ fun TwitchChat(
                                                     tabs = emoteMenuTabs,
                                                     onEmoteClick = { emote ->
                                                         viewModel.insertEmote(emote)
+                                                        viewModel.recordEmoteUsage(context, emote)
                                                     },
                                                     onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                                                     height = menuHeight
@@ -193,7 +196,10 @@ fun TwitchChat(
                 EmoteInfoDialog(
                     emote = emote,
                     onDismiss = { viewModel.dismissEmoteInfo() },
-                    onUseEmote = { viewModel.insertEmote(it) }
+                    onUseEmote = { 
+                        viewModel.insertEmote(it)
+                        viewModel.recordEmoteUsage(context, it)
+                    }
                 )
             }
         }
