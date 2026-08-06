@@ -13,10 +13,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.components.chat.emote.EmoteInfoDialog
@@ -114,6 +116,7 @@ fun TwitchChat(
                 
                 if (showInput) {
                     Surface(
+                        modifier = Modifier.zIndex(1f),
                         color = SamtchTheme.colors.dialogBackground,
                         tonalElevation = 2.dp
                     ) {
@@ -137,37 +140,41 @@ fun TwitchChat(
                                 onToggleMode = onToggleMode
                             )
 
-                            // Unified keyboard/emote area using WindowInsets union logic
-                            val navBarHeightPx = navBars.getBottom(density)
-                            val menuHeightPx = if (keyboardHeightPx > 0) keyboardHeightPx else with(density) { (if (isLandscape) 200.dp else 350.dp).roundToPx() }
-                            val totalMenuHeightPx = menuHeightPx + navBarHeightPx
-
-                            val emoteMenuInsets = WindowInsets(bottom = if (isEmoteMenuVisible) totalMenuHeightPx else 0)
-                            val combinedInsets = WindowInsets.ime.exclude(navBars).union(emoteMenuInsets)
+                            // Unified keyboard/emote area
+                            val navBarHeightPx = remember(density) { navBars.getBottom(density) }
                             
+                            // Keyboard height relative to navigation bar
+                            val currentImeBottom = WindowInsets.ime.getBottom(density)
+                            val currentKeyboardHeightPx = (currentImeBottom - navBarHeightPx).coerceAtLeast(0)
+                            
+                            val menuHeightPx = if (keyboardHeightPx > 0) keyboardHeightPx else with(density) { (if (isLandscape) 200.dp else 350.dp).roundToPx() }
+
+                            // Area height: max of keyboard and emote menu
+                            val currentAreaHeightPx = if (isEmoteMenuVisible) {
+                                maxOf(currentKeyboardHeightPx, menuHeightPx)
+                            } else {
+                                currentKeyboardHeightPx
+                            }
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .windowInsetsBottomHeight(combinedInsets),
+                                    .height(with(density) { currentAreaHeightPx.toDp() }),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
                                 // Emote menu rendered conditionally
                                 if (isEmoteMenuVisible) {
-                                    val currentImeHeightPxValue = (WindowInsets.ime.getBottom(density) - navBarHeightPx).coerceAtLeast(0)
-                                    val isKeyboardFullyVisible = currentImeHeightPxValue >= (menuHeightPx * 0.95f).toInt()
+                                    val isKeyboardFullyVisible = currentKeyboardHeightPx >= (menuHeightPx * 0.98f).toInt()
                                     
                                     if (!isKeyboardFullyVisible) {
-                                        Column {
-                                            EmoteMenu(
-                                                tabs = emoteMenuTabs,
-                                                onEmoteClick = { emote ->
-                                                    viewModel.insertEmote(emote)
-                                                },
-                                                onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                                                height = with(density) { menuHeightPx.toDp() }
-                                            )
-                                            Spacer(modifier = Modifier.height(with(density) { navBarHeightPx.toDp() }))
-                                        }
+                                        EmoteMenu(
+                                            tabs = emoteMenuTabs,
+                                            onEmoteClick = { emote ->
+                                                viewModel.insertEmote(emote)
+                                            },
+                                            onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                                            height = with(density) { menuHeightPx.toDp() }
+                                        )
                                     }
                                 }
                             }
