@@ -7,6 +7,7 @@ import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.emote.Emote
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
+import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.TwitchChatClient
 import com.akumasdk.samtch.util.adaptiveChunked
 import kotlinx.collections.immutable.ImmutableList
@@ -47,6 +48,9 @@ class ChatViewModel : ViewModel() {
 
     private val _emoteInsertFlow = MutableSharedFlow<Emote>()
     val emoteInsertFlow = _emoteInsertFlow.asSharedFlow()
+
+    private val _keyboardHeightPx = MutableStateFlow(0)
+    val keyboardHeightPx = _keyboardHeightPx.asStateFlow()
 
     private var currentChannel: String? = null
     private var connectionJob: Job? = null
@@ -280,6 +284,26 @@ class ChatViewModel : ViewModel() {
                 url = emoteInfo.url.split("|").first(),
                 type = com.akumasdk.samtch.data.emote.EmoteType.TWITCH // Default
             )
+        }
+    }
+
+    fun setEmoteMenuVisible(visible: Boolean) {
+        _isEmoteMenuVisible.value = visible
+    }
+
+    fun updateKeyboardHeight(context: android.content.Context, heightPx: Int, isLandscape: Boolean) {
+        if (heightPx > 0 && _keyboardHeightPx.value != heightPx) {
+            _keyboardHeightPx.value = heightPx
+            viewModelScope.launch {
+                SettingsManager.setKeyboardHeight(context, isLandscape, heightPx)
+            }
+        }
+    }
+
+    fun initKeyboardHeight(context: android.content.Context, isLandscape: Boolean) {
+        viewModelScope.launch {
+            val height = SettingsManager.getKeyboardHeight(context, isLandscape).first()
+            _keyboardHeightPx.value = height
         }
     }
 

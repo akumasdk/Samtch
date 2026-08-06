@@ -28,9 +28,12 @@ import com.multiplatform.webview.web.WebView
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
+@OptIn(ExperimentalLayoutApi::class)
 @SuppressLint("JavascriptInterface")
 @Composable
 fun TwitchChat(
@@ -47,10 +50,45 @@ fun TwitchChat(
     val coroutineScope = rememberCoroutineScope()
     val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
 
+    val density = LocalDensity.current
+    
+    // Determine orientation
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    // Emote menu state is now persistent until back press
+    val isEmoteMenuVisible by viewModel.isEmoteMenuVisible.collectAsState()
+    val keyboardHeightPx by viewModel.keyboardHeightPx.collectAsState()
+    
+    // Track IME insets
+    val ime = WindowInsets.ime
+    val navBars = WindowInsets.navigationBars
+    
+    // Current IME height state
+    val currentImeHeightPx = remember(density) {
+        derivedStateOf { (ime.getBottom(density) - navBars.getBottom(density)).coerceAtLeast(0) }
+    }
+    
+    val isImeVisible = WindowInsets.isImeVisible
+
+    // Persist keyboard height when it changes
+    val imeTarget = WindowInsets.imeAnimationTarget
+    val targetImeHeightPx = (imeTarget.getBottom(density) - navBars.getBottom(density)).coerceAtLeast(0)
+    
+    LaunchedEffect(targetImeHeightPx, isLandscape) {
+        if (targetImeHeightPx > with(density) { 100.dp.toPx() }) {
+            viewModel.updateKeyboardHeight(context, targetImeHeightPx, isLandscape)
+        }
+    }
+
+    // Initialize keyboard height on start
+    LaunchedEffect(isLandscape) {
+        viewModel.initKeyboardHeight(context, isLandscape)
+    }
+
     if (chatMode == SettingsManager.ChatMode.NATIVE) {
         val isLoggedIn by viewModel.isLoggedIn.collectAsState()
         val emoteSuggestions by viewModel.emoteSuggestions.collectAsState()
-        val isEmoteMenuVisible by viewModel.isEmoteMenuVisible.collectAsState()
         val selectedEmoteForInfo by viewModel.selectedEmoteForInfo.collectAsState()
         val emoteMenuTabs by viewModel.emoteMenuTabs.collectAsState()
         
@@ -60,7 +98,7 @@ fun TwitchChat(
         val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
 
         BackHandler(enabled = isEmoteMenuVisible) {
-            viewModel.toggleEmoteMenu()
+            viewModel.setEmoteMenuVisible(false)
         }
 
         LaunchedEffect(refreshTrigger) {
@@ -89,7 +127,7 @@ fun TwitchChat(
                                 viewModel.sendMessage(text)
                             }
                         },
-                        onEmoteToggle = { viewModel.toggleEmoteMenu() },
+                        onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
                         isEmoteMenuVisible = isEmoteMenuVisible,
                         suggestions = emoteSuggestions,
                         onEmoteSelected = { /* Logic handled in ChatInputBox for now */ },
@@ -100,18 +138,30 @@ fun TwitchChat(
                         onToggleMode = onToggleMode
                     )
 
-                    // Emote menu or keyboard space
-                    if (isEmoteMenuVisible) {
-                        EmoteMenu(
-                            tabs = emoteMenuTabs,
-                            onEmoteClick = { emote ->
-                                viewModel.insertEmote(emote)
-                            },
-                            onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                            height = 320.dp
-                        )
+                    // Emote menu area
+                    val menuHeight = if (keyboardHeightPx > 0) {
+                        with(density) { keyboardHeightPx.toDp() }
                     } else {
+                        if (isLandscape) 200.dp else 350.dp
+                    }
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        // This space animates with the keyboard
                         Spacer(modifier = Modifier.imePadding())
+
+                        if (isEmoteMenuVisible) {
+                            EmoteMenu(
+                                tabs = emoteMenuTabs,
+                                onEmoteClick = { emote ->
+                                    viewModel.insertEmote(emote)
+                                },
+                                onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                                height = menuHeight
+                            )
+                        }
                     }
                 }
             }

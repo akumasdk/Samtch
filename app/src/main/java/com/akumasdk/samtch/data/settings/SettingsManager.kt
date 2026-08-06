@@ -21,6 +21,8 @@ object SettingsManager {
     private val PLAYER_TOOLTIP_SHOW_COUNT = intPreferencesKey("player_tooltip_show_count")
     private val THEME_MODE = intPreferencesKey("theme_mode") // 0 = DARK, 1 = LIGHT, 2 = SYSTEM
     private val LAST_VERSION_CODE = intPreferencesKey("last_version_code")
+    private val KEYBOARD_HEIGHT_PORTRAIT = intPreferencesKey("keyboard_height_portrait")
+    private val KEYBOARD_HEIGHT_LANDSCAPE = intPreferencesKey("keyboard_height_landscape")
 
     enum class AdBlockMode {
         VAFT, VIDEO_SWAP
@@ -116,6 +118,26 @@ object SettingsManager {
     suspend fun setThemeMode(context: Context, mode: ThemeMode) {
         context.dataStore.edit { preferences ->
             preferences[THEME_MODE] = mode.ordinal
+        }
+    }
+
+    fun getKeyboardHeight(context: Context, isLandscape: Boolean): Flow<Int> {
+        return context.dataStore.data.map { preferences ->
+            if (isLandscape) {
+                preferences[KEYBOARD_HEIGHT_LANDSCAPE] ?: 0
+            } else {
+                preferences[KEYBOARD_HEIGHT_PORTRAIT] ?: 0
+            }
+        }
+    }
+
+    suspend fun setKeyboardHeight(context: Context, isLandscape: Boolean, height: Int) {
+        context.dataStore.edit { preferences ->
+            if (isLandscape) {
+                preferences[KEYBOARD_HEIGHT_LANDSCAPE] = height
+            } else {
+                preferences[KEYBOARD_HEIGHT_PORTRAIT] = height
+            }
         }
     }
 

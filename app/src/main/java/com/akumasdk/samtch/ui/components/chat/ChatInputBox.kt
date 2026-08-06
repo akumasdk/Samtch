@@ -42,6 +42,7 @@ import com.akumasdk.samtch.ui.theme.SamtchTheme
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ChatInputBox(
     isLoggedIn: Boolean,
@@ -53,14 +54,15 @@ fun ChatInputBox(
     onEmoteLongClick: (Emote) -> Unit,
     onTextChange: (String, Int) -> Unit,
     emoteInsertFlow: SharedFlow<Emote>,
+    modifier: Modifier = Modifier,
     portraitMode: PortraitMode? = null,
-    onToggleMode: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onToggleMode: (() -> Unit)? = null
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    val isImeVisible = WindowInsets.isImeVisible
     
     val handleEmoteSelected: (Emote) -> Unit = { emote ->
         val text = textFieldValue.text
@@ -126,12 +128,18 @@ fun ChatInputBox(
                     IconButton(
                         onClick = {
                             if (isEmoteMenuVisible) {
-                                // Close emotes, show keyboard
-                                onEmoteToggle()
-                                focusRequester.requestFocus()
-                                keyboardController?.show()
+                                // If emotes are open, we toggle between keyboard and menu
+                                if (isImeVisible) {
+                                    // Keyboard is open, hide it to reveal menu
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                } else {
+                                    // Menu is open, show keyboard to cover it
+                                    focusRequester.requestFocus()
+                                    keyboardController?.show()
+                                }
                             } else {
-                                // Show emotes, hide keyboard
+                                // Transition to emotes
                                 keyboardController?.hide()
                                 focusManager.clearFocus()
                                 onEmoteToggle()
@@ -140,8 +148,8 @@ fun ChatInputBox(
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
-                            imageVector = if (isEmoteMenuVisible) Icons.Default.Keyboard else Icons.Default.EmojiEmotions,
-                            contentDescription = if (isEmoteMenuVisible) "Keyboard" else "Emotes",
+                            imageVector = if (isEmoteMenuVisible && !isImeVisible) Icons.Default.Keyboard else Icons.Default.EmojiEmotions,
+                            contentDescription = if (isEmoteMenuVisible && !isImeVisible) "Keyboard" else "Emotes",
                             tint = SamtchTheme.colors.secondaryText,
                             modifier = Modifier.size(22.dp)
                         )
