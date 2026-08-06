@@ -86,6 +86,7 @@ fun TwitchChat(
         val emoteSuggestions by viewModel.emoteSuggestions.collectAsState()
         val selectedEmoteForInfo by viewModel.selectedEmoteForInfo.collectAsState()
         val emoteMenuTabs by viewModel.emoteMenuTabs.collectAsState()
+        val systemNotice by viewModel.systemNotice.collectAsState()
         
         // Native chat refresh logic
         val chatLoadingText = stringResource(R.string.chat_connecting)
@@ -121,6 +122,10 @@ fun TwitchChat(
                         tonalElevation = 2.dp
                     ) {
                         Column {
+                            SystemNoticeBanner(
+                                message = systemNotice,
+                                onDismiss = { viewModel.dismissSystemNotice() }
+                            )
                             HorizontalDivider(color = SamtchTheme.colors.divider, thickness = 1.dp)
                             ChatInputBox(
                                 isLoggedIn = isLoggedIn,

@@ -55,6 +55,9 @@ class ChatViewModel : ViewModel() {
     private val _keyboardHeightPx = MutableStateFlow(0)
     val keyboardHeightPx = _keyboardHeightPx.asStateFlow()
 
+    private val _systemNotice = MutableStateFlow<String?>(null)
+    val systemNotice = _systemNotice.asStateFlow()
+
     private var currentChannel: String? = null
     private var connectionJob: Job? = null
     private val messageHistory = mutableListOf<ChatMessageUiState>()
@@ -185,14 +188,31 @@ class ChatViewModel : ViewModel() {
                     val uiState = ChatMessageMapper.mapToUiState(channel, msg)
                     messageBuffer.emit(uiState)
                 } else if (msg.command == "NOTICE" || msg.command == "USERNOTICE") {
+                    val messageText = msg.params.lastOrNull() ?: msg.raw
                     val systemMsg = ChatMessageUiState.SystemMessageUi(
                         id = msg.id,
-                        message = msg.params.lastOrNull() ?: msg.raw
+                        message = messageText
                     )
                     messageBuffer.emit(systemMsg)
+                    
+                    // Only NOTICE (slow mode, sub mode, etc.) triggers the persistent banner
+                    if (msg.command == "NOTICE") {
+                        _systemNotice.value = messageText
+                        // Auto-dismiss after 6 seconds
+                        launch {
+                            delay(6000.milliseconds)
+                            if (_systemNotice.value == messageText) {
+                                _systemNotice.value = null
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+
+    fun dismissSystemNotice() {
+        _systemNotice.value = null
     }
 
     private fun updateEmoteMenuTabs(channel: String) {
