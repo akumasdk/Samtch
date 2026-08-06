@@ -1,7 +1,9 @@
 package com.akumasdk.samtch.ui.components.chat
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -125,7 +127,15 @@ fun ChatInputBox(
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
                         .background(
-                            color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.5f),
+                            color = SamtchTheme.colors.textFieldBackground,
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                        .border(
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = if (isFocused) SamtchTheme.colors.accentColor.copy(alpha = 0.5f) 
+                                        else SamtchTheme.colors.divider
+                            ),
                             shape = RoundedCornerShape(24.dp)
                         )
                         .padding(horizontal = 4.dp),
