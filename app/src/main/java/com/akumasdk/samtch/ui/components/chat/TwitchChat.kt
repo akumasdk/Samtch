@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.components.chat
 import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
@@ -11,12 +12,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.components.chat.emote.EmoteInfoDialog
 import com.akumasdk.samtch.ui.components.chat.emotemenu.EmoteMenu
+import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ScriptLoader
@@ -36,7 +39,9 @@ fun TwitchChat(
     isCompact: Boolean = false,
     showInput: Boolean = true,
     refreshTrigger: Int = 0,
-    viewModel: ChatViewModel
+    viewModel: ChatViewModel,
+    portraitMode: PortraitMode? = null,
+    onToggleMode: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -53,6 +58,10 @@ fun TwitchChat(
         val chatLoadingText = stringResource(R.string.chat_connecting)
         val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
         val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
+
+        BackHandler(enabled = isEmoteMenuVisible) {
+            viewModel.toggleEmoteMenu()
+        }
 
         LaunchedEffect(refreshTrigger) {
             if (refreshTrigger > 0) {
@@ -81,21 +90,28 @@ fun TwitchChat(
                             }
                         },
                         onEmoteToggle = { viewModel.toggleEmoteMenu() },
+                        isEmoteMenuVisible = isEmoteMenuVisible,
                         suggestions = emoteSuggestions,
                         onEmoteSelected = { /* Logic handled in ChatInputBox for now */ },
                         onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                         onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
-                        emoteInsertFlow = viewModel.emoteInsertFlow
+                        emoteInsertFlow = viewModel.emoteInsertFlow,
+                        portraitMode = portraitMode,
+                        onToggleMode = onToggleMode
                     )
 
+                    // Emote menu or keyboard space
                     if (isEmoteMenuVisible) {
                         EmoteMenu(
                             tabs = emoteMenuTabs,
                             onEmoteClick = { emote ->
                                 viewModel.insertEmote(emote)
                             },
-                            onEmoteLongClick = { viewModel.showEmoteInfo(it) }
+                            onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                            height = 320.dp
                         )
+                    } else {
+                        Spacer(modifier = Modifier.imePadding())
                     }
                 }
             }

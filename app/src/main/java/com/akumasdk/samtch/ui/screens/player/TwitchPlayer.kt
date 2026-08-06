@@ -285,13 +285,15 @@ fun TwitchPlayer(
         }
 
         val chatContent = remember(channel) {
-            movableContentOf { config: ChatContentConfig, modifier: Modifier ->
+            movableContentOf { config: ChatContentConfig, pMode: PortraitMode?, onToggle: (() -> Unit)?, modifier: Modifier ->
                 TwitchChat(
                     channel = channel,
                     isCompact = config.isCompact,
                     showInput = config.showInput,
                     refreshTrigger = config.refreshTrigger,
                     viewModel = chatViewModel,
+                    portraitMode = pMode,
+                    onToggleMode = onToggle,
                     modifier = modifier
                 )
             }
@@ -470,8 +472,8 @@ fun TwitchPlayer(
                         }
                         isChatVisible = true
                     },
-                    chatContent = { config, modifier ->
-                        chatContent(config, modifier)
+                    chatContent = { config, pMode, onToggle, modifier ->
+                        chatContent(config, pMode, onToggle, modifier)
                     }
                 )
 
@@ -565,7 +567,7 @@ fun TwitchPlayer(
                             )
                     ) {
                         if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
-                            chatContent(ChatContentConfig(true, false, refreshTrigger), Modifier.fillMaxSize())
+                            chatContent(ChatContentConfig(true, false, refreshTrigger), null, null, Modifier.fillMaxSize())
                         } else {
                             playerContent(Modifier.fillMaxSize()) {
                                 Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")

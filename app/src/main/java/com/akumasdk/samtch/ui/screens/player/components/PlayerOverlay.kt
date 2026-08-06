@@ -26,7 +26,7 @@ fun PlayerOverlay(
     refreshTrigger: Int,
     onToggleChat: () -> Unit,
     onToggleMode: () -> Unit,
-    chatContent: @Composable (ChatContentConfig, Modifier) -> Unit
+    chatContent: @Composable (ChatContentConfig, PortraitMode?, (() -> Unit)?, Modifier) -> Unit
 ) {
     AnimatedVisibility(
         visible = !isMinimized,
@@ -50,7 +50,7 @@ fun PlayerOverlay(
                 isPip = isPip,
                 onToggleChat = onToggleChat,
                 chatContent = { isCompact, showInput, rTrigger, modifier ->
-                    chatContent(ChatContentConfig(isCompact, showInput, rTrigger), modifier)
+                    chatContent(ChatContentConfig(isCompact, showInput, rTrigger), null, null, modifier)
                 },
                 webView = { modifier, _ ->
                     Box(modifier = modifier)
@@ -72,8 +72,8 @@ fun PlayerOverlay(
                 expandTrigger = metadataExpandTrigger,
                 isPip = isPip,
                 onToggleMode = onToggleMode,
-                chatContent = { isCompact, showInput, modifier ->
-                    chatContent(ChatContentConfig(isCompact, showInput, refreshTrigger), modifier)
+                chatContent = { isCompact, showInput, pMode, onToggle, modifier ->
+                    chatContent(ChatContentConfig(isCompact, showInput, refreshTrigger), pMode, onToggle, modifier)
                 },
                 webView = { modifier, _ ->
                     Box(modifier = modifier)

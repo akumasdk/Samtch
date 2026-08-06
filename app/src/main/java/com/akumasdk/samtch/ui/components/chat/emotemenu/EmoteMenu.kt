@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -26,7 +27,8 @@ fun EmoteMenu(
     tabs: Map<String, List<Emote>>,
     onEmoteClick: (Emote) -> Unit,
     onEmoteLongClick: (Emote) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    height: Dp = 300.dp
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabTitles = tabs.keys.toList()
@@ -34,7 +36,7 @@ fun EmoteMenu(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(300.dp)
+            .height(height)
             .background(SamtchTheme.colors.dialogBackground)
     ) {
         if (tabTitles.isNotEmpty()) {

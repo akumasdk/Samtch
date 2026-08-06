@@ -44,7 +44,7 @@ fun PortraitPlayer(
     expandTrigger: Int = 0,
     isPip: Boolean = false,
     onToggleMode: () -> Unit = {},
-    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, Modifier) -> Unit,
+    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, PortraitMode, () -> Unit, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -132,15 +132,9 @@ fun PortraitPlayer(
                 chatContent(
                     false,
                     true,
+                    portraitMode,
+                    onToggleMode,
                     Modifier.fillMaxSize()
-                )
-
-                // Floating Toggle Mode Circle
-                ModeToggleButton(
-                    visible = !isAudioOnly,
-                    portraitMode = portraitMode,
-                    onClick = onToggleMode,
-                    modifier = Modifier.align(Alignment.BottomEnd)
                 )
             }
         }
