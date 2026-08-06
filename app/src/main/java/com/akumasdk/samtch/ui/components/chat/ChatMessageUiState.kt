@@ -9,6 +9,7 @@ data class EmoteInfo(
     val id: String,
     val code: String,
     val url: String,
+    val source: String = "",
     val isZeroWidth: Boolean = false
 )
 

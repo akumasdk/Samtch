@@ -218,6 +218,22 @@ object EmoteRepository {
             ?: globalState.ffzEmotes[code]
     }
 
+    fun getAllEmotes(channelName: String): List<Emote> {
+        val channelState = _channelStates[channelName]?.value
+        val globalState = _globalState.value
+        
+        return buildList {
+            channelState?.let {
+                addAll(it.seventvEmotes.values)
+                addAll(it.bttvEmotes.values)
+                addAll(it.ffzEmotes.values)
+            }
+            addAll(globalState.seventvEmotes.values)
+            addAll(globalState.bttvEmotes.values)
+            addAll(globalState.ffzEmotes.values)
+        }.distinctBy { it.id }
+    }
+
     fun getBadgeUrl(channelName: String, setId: String, version: String): String? {
         return null // Badges disabled for now
         /*

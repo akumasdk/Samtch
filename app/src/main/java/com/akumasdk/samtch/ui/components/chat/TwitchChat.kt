@@ -15,6 +15,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.ui.components.chat.emote.EmoteInfoDialog
+import com.akumasdk.samtch.ui.components.chat.emotemenu.EmoteMenu
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ScriptLoader
@@ -42,6 +44,10 @@ fun TwitchChat(
 
     if (chatMode == SettingsManager.ChatMode.NATIVE) {
         val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+        val emoteSuggestions by viewModel.emoteSuggestions.collectAsState()
+        val isEmoteMenuVisible by viewModel.isEmoteMenuVisible.collectAsState()
+        val selectedEmoteForInfo by viewModel.selectedEmoteForInfo.collectAsState()
+        val emoteMenuTabs by viewModel.emoteMenuTabs.collectAsState()
         
         // Native chat refresh logic
         val chatLoadingText = stringResource(R.string.chat_connecting)
@@ -55,23 +61,49 @@ fun TwitchChat(
             }
         }
         
-        Column(modifier = modifier.fillMaxSize()) {
-            NativeTwitchChat(
-                channel = channel,
-                modifier = Modifier.weight(1f),
-                isCompact = isCompact,
-                viewModel = viewModel
-            )
-            
-            if (showInput) {
-                HorizontalDivider(color = SamtchTheme.colors.divider, thickness = 1.dp)
-                ChatInputBox(
-                    isLoggedIn = isLoggedIn,
-                    onSendMessage = { text ->
-                        coroutineScope.launch {
-                            viewModel.sendMessage(text)
-                        }
+        Box(modifier = modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                NativeTwitchChat(
+                    channel = channel,
+                    modifier = Modifier.weight(1f),
+                    isCompact = isCompact,
+                    viewModel = viewModel,
+                    onEmoteLongClick = { viewModel.showEmoteInfo(it) }
+                )
+                
+                if (showInput) {
+                    HorizontalDivider(color = SamtchTheme.colors.divider, thickness = 1.dp)
+                    ChatInputBox(
+                        isLoggedIn = isLoggedIn,
+                        onSendMessage = { text ->
+                            coroutineScope.launch {
+                                viewModel.sendMessage(text)
+                            }
+                        },
+                        onEmoteToggle = { viewModel.toggleEmoteMenu() },
+                        suggestions = emoteSuggestions,
+                        onEmoteSelected = { /* Logic handled in ChatInputBox for now */ },
+                        onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                        onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
+                        emoteInsertFlow = viewModel.emoteInsertFlow
+                    )
+
+                    if (isEmoteMenuVisible) {
+                        EmoteMenu(
+                            tabs = emoteMenuTabs,
+                            onEmoteClick = { emote ->
+                                viewModel.insertEmote(emote)
+                            },
+                            onEmoteLongClick = { viewModel.showEmoteInfo(it) }
+                        )
                     }
+                }
+            }
+
+            selectedEmoteForInfo?.let { emote ->
+                EmoteInfoDialog(
+                    emote = emote,
+                    onDismiss = { viewModel.dismissEmoteInfo() }
                 )
             }
         }

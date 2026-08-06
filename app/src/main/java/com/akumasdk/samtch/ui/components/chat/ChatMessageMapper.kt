@@ -17,6 +17,7 @@ object ChatMessageMapper {
         val id: String,
         val code: String,
         val url: String,
+        val source: String,
         val range: IntRange,
         val isZeroWidth: Boolean = false
     )
@@ -76,7 +77,7 @@ object ChatMessageMapper {
                                     val code = messageText.substring(startUtf16, endUtf16 + 1)
                                     val adjStart = if (isAction) (startUtf16 - 8).coerceAtLeast(0) else startUtf16
                                     val adjEnd = if (isAction) (endUtf16 - 8).coerceAtLeast(0) else endUtf16
-                                    occurrences.add(EmoteOccurrence(id, code, url, adjStart..adjEnd))
+                                    occurrences.add(EmoteOccurrence(id, code, url, "Twitch", adjStart..adjEnd))
                                 } catch (e: Exception) {
                                     Log.e("ChatMessageMapper", "Error parsing Twitch emote range", e)
                                 }
@@ -92,7 +93,7 @@ object ChatMessageMapper {
                 if (occurrences.none { it.range.first <= start && it.range.last >= end }) {
                     val emote = EmoteRepository.getEmote(channelName, word)
                     if (emote != null) {
-                        occurrences.add(EmoteOccurrence(emote.id, word, emote.url, start..end, emote.isZeroWidth))
+                        occurrences.add(EmoteOccurrence(emote.id, word, emote.url, emote.type.name, start..end, emote.isZeroWidth))
                     }
                 }
             }
@@ -129,7 +130,7 @@ object ChatMessageMapper {
 
                     val inlineId = "cluster_${i}_${occurrence.id}"
                     val combinedUrl = cluster.joinToString("|") { it.url }
-                    val emoteInfo = EmoteInfo(inlineId, cluster.first().code, combinedUrl, occurrence.isZeroWidth)
+                    val emoteInfo = EmoteInfo(inlineId, cluster.first().code, combinedUrl, cluster.first().source, occurrence.isZeroWidth)
                     emotes.add(emoteInfo)
                     
                     appendInlineContent(inlineId, cluster.first().code)
@@ -168,27 +169,5 @@ object ChatMessageMapper {
 
     private fun parseBadges(message: IrcMessage, channelName: String): List<String> {
         return emptyList() // Badges disabled for now
-        /*
-        val badgesTag = message.tags["badges"] ?: return emptyList()
-        if (!TwitchAuthManager.getAuthState().isLoggedIn) return emptyList()
-        
-        val urls = mutableListOf<String>()
-        
-        badgesTag.split(",").forEach { badge ->
-            val parts = badge.split("/")
-            if (parts.size == 2) {
-                val setId = parts[0]
-                val version = parts[1]
-                EmoteRepository.getBadgeUrl(channelName, setId, version)?.let {
-                    urls.add(it)
-                }
-            }
-        }
-        
-        if (urls.isNotEmpty()) {
-            Log.d("ChatMessageMapper", "Resolved ${urls.size} badges for ${message.prefix}")
-        }
-        return urls
-        */
     }
 }

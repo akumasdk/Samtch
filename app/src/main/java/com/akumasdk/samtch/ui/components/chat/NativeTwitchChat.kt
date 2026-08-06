@@ -31,7 +31,8 @@ fun NativeTwitchChat(
     channel: String,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
-    viewModel: ChatViewModel = viewModel()
+    viewModel: ChatViewModel = viewModel(),
+    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
 ) {
     val messages by viewModel.messages.collectAsState()
     val listState = rememberLazyListState()
@@ -104,7 +105,11 @@ fun NativeTwitchChat(
                 contentType = { _, it -> it.contentType }
             ) { _, msg ->
                 key(msg.id, isCompact) {
-                    ChatMessageRow(message = msg, isCompact = isCompact)
+                    ChatMessageRow(
+                        message = msg,
+                        isCompact = isCompact,
+                        onEmoteLongClick = onEmoteLongClick
+                    )
                 }
             }
         }

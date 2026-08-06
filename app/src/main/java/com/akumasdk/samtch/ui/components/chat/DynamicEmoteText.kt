@@ -1,11 +1,13 @@
 package com.akumasdk.samtch.ui.components.chat
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -24,14 +26,15 @@ fun DynamicEmoteText(
     emotes: List<EmoteInfo>,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
-    style: TextStyle = TextStyle.Default
+    style: TextStyle = TextStyle.Default,
+    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val baseHeight = if (isCompact) 24f else 32f
     
     val measuredWidths = remember { mutableStateMapOf<String, Float>() }
 
-    val inlineContent = remember(emotes, measuredWidths.toMap(), baseHeight) {
+    val inlineContent = remember(emotes, measuredWidths.toMap(), baseHeight, onEmoteLongClick) {
         emotes.associate { emote ->
             val urls = emote.url.split("|")
             val baseEmoteUrl = urls.first()
@@ -42,7 +45,15 @@ fun DynamicEmoteText(
             emote.id to InlineTextContent(
                 Placeholder(width.sp, baseHeight.sp, PlaceholderVerticalAlign.Center)
             ) {
-                Box {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(emote, onEmoteLongClick) {
+                            detectTapGestures(
+                                onLongPress = { onEmoteLongClick?.invoke(emote) }
+                            )
+                        }
+                ) {
                     urls.forEach { url ->
                         AsyncImage(
                             model = ImageRequest.Builder(context)
