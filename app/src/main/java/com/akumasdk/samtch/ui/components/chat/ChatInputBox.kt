@@ -65,6 +65,12 @@ fun ChatInputBox(
     var isFocused by remember { mutableStateOf(false) }
     val isImeVisible = WindowInsets.isImeVisible
     
+    LaunchedEffect(isEmoteMenuVisible, isImeVisible) {
+        if (!isEmoteMenuVisible && !isImeVisible) {
+            focusManager.clearFocus()
+        }
+    }
+
     val handleEmoteSelected: (Emote) -> Unit = { emote ->
         val text = textFieldValue.text
         val selection = textFieldValue.selection
