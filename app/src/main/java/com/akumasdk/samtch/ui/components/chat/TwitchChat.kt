@@ -4,10 +4,12 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,16 +63,8 @@ fun TwitchChat(
     val keyboardHeightPx by viewModel.keyboardHeightPx.collectAsState()
     
     // Track IME insets
-    val ime = WindowInsets.ime
     val navBars = WindowInsets.navigationBars
     
-    // Current IME height state
-    val currentImeHeightPx = remember(density) {
-        derivedStateOf { (ime.getBottom(density) - navBars.getBottom(density)).coerceAtLeast(0) }
-    }
-    
-    val isImeVisible = WindowInsets.isImeVisible
-
     // Persist keyboard height when it changes
     val imeTarget = WindowInsets.imeAnimationTarget
     val targetImeHeightPx = (imeTarget.getBottom(density) - navBars.getBottom(density)).coerceAtLeast(0)
@@ -119,48 +113,64 @@ fun TwitchChat(
                 )
                 
                 if (showInput) {
-                    HorizontalDivider(color = SamtchTheme.colors.divider, thickness = 1.dp)
-                    ChatInputBox(
-                        isLoggedIn = isLoggedIn,
-                        onSendMessage = { text ->
-                            coroutineScope.launch {
-                                viewModel.sendMessage(text)
-                            }
-                        },
-                        onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
-                        isEmoteMenuVisible = isEmoteMenuVisible,
-                        suggestions = emoteSuggestions,
-                        onEmoteSelected = { /* Logic handled in ChatInputBox for now */ },
-                        onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                        onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
-                        emoteInsertFlow = viewModel.emoteInsertFlow,
-                        portraitMode = portraitMode,
-                        onToggleMode = onToggleMode
-                    )
-
-                    // Emote menu area
-                    val menuHeight = if (keyboardHeightPx > 0) {
-                        with(density) { keyboardHeightPx.toDp() }
-                    } else {
-                        if (isLandscape) 200.dp else 350.dp
-                    }
-
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.BottomCenter
+                    Surface(
+                        color = SamtchTheme.colors.dialogBackground,
+                        tonalElevation = 2.dp
                     ) {
-                        // This space animates with the keyboard
-                        Spacer(modifier = Modifier.imePadding())
-
-                        if (isEmoteMenuVisible) {
-                            EmoteMenu(
-                                tabs = emoteMenuTabs,
-                                onEmoteClick = { emote ->
-                                    viewModel.insertEmote(emote)
+                        Column {
+                            HorizontalDivider(color = SamtchTheme.colors.divider, thickness = 1.dp)
+                            ChatInputBox(
+                                isLoggedIn = isLoggedIn,
+                                onSendMessage = { text ->
+                                    coroutineScope.launch {
+                                        viewModel.sendMessage(text)
+                                    }
                                 },
+                                onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
+                                isEmoteMenuVisible = isEmoteMenuVisible,
+                                suggestions = emoteSuggestions,
+                                onEmoteSelected = { /* Logic handled in ChatInputBox for now */ },
                                 onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                                height = menuHeight
+                                onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
+                                emoteInsertFlow = viewModel.emoteInsertFlow,
+                                portraitMode = portraitMode,
+                                onToggleMode = onToggleMode
                             )
+
+                            // Unified keyboard/emote area using WindowInsets union logic
+                            val navBarHeightPx = navBars.getBottom(density)
+                            val menuHeightPx = if (keyboardHeightPx > 0) keyboardHeightPx else with(density) { (if (isLandscape) 200.dp else 350.dp).roundToPx() }
+                            val totalMenuHeightPx = menuHeightPx + navBarHeightPx
+
+                            val emoteMenuInsets = WindowInsets(bottom = if (isEmoteMenuVisible) totalMenuHeightPx else 0)
+                            val combinedInsets = WindowInsets.ime.exclude(navBars).union(emoteMenuInsets)
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .windowInsetsBottomHeight(combinedInsets),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                // Emote menu rendered conditionally
+                                if (isEmoteMenuVisible) {
+                                    val currentImeHeightPxValue = (WindowInsets.ime.getBottom(density) - navBarHeightPx).coerceAtLeast(0)
+                                    val isKeyboardFullyVisible = currentImeHeightPxValue >= (menuHeightPx * 0.95f).toInt()
+                                    
+                                    if (!isKeyboardFullyVisible) {
+                                        Column {
+                                            EmoteMenu(
+                                                tabs = emoteMenuTabs,
+                                                onEmoteClick = { emote ->
+                                                    viewModel.insertEmote(emote)
+                                                },
+                                                onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                                                height = with(density) { menuHeightPx.toDp() }
+                                            )
+                                            Spacer(modifier = Modifier.height(with(density) { navBarHeightPx.toDp() }))
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
