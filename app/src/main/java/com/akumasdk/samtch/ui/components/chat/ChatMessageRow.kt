@@ -22,9 +22,11 @@ fun ChatMessageRow(
     message: ChatMessageUiState,
     isCompact: Boolean = false,
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
-    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
+    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
+    fontSize: Int = 14,
+    emoteSize: Int = 28
 ) {
-    val fontSize = if (isCompact) 14.sp else 18.sp
+    val displayFontSize = if (isCompact) (fontSize - 2).sp else fontSize.sp
     
     when (message) {
         is ChatMessageUiState.PrivMessageUi -> {
@@ -69,9 +71,10 @@ fun ChatMessageRow(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                 onEmoteClick = onEmoteClick,
                 onEmoteLongClick = onEmoteLongClick,
+                emoteSize = emoteSize,
                 style = TextStyle(
                     color = if (message.isAction) userColor else SamtchTheme.colors.primaryText,
-                    fontSize = fontSize,
+                    fontSize = displayFontSize,
                     fontWeight = if (message.isAction) FontWeight.Bold else FontWeight.Normal
                 )
             )
@@ -80,7 +83,7 @@ fun ChatMessageRow(
             Text(
                 text = message.message,
                 color = SamtchTheme.colors.secondaryText,
-                fontSize = if (isCompact) 12.sp else 15.sp,
+                fontSize = if (isCompact) (fontSize - 2).sp else (fontSize + 1).sp,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                 style = MaterialTheme.typography.bodySmall
             )

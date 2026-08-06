@@ -36,6 +36,8 @@ fun NativeTwitchChat(
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
 ) {
     val messages by viewModel.messages.collectAsState()
+    val chatFontSize by viewModel.chatFontSize.collectAsState()
+    val chatEmoteSize by viewModel.chatEmoteSize.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     
@@ -110,7 +112,9 @@ fun NativeTwitchChat(
                         message = msg,
                         isCompact = isCompact,
                         onEmoteClick = onEmoteClick,
-                        onEmoteLongClick = onEmoteLongClick
+                        onEmoteLongClick = onEmoteLongClick,
+                        fontSize = chatFontSize,
+                        emoteSize = chatEmoteSize
                     )
                 }
             }

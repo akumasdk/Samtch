@@ -29,6 +29,8 @@ object SettingsManager {
     private val KEYBOARD_HEIGHT_PORTRAIT = intPreferencesKey("keyboard_height_portrait")
     private val KEYBOARD_HEIGHT_LANDSCAPE = intPreferencesKey("keyboard_height_landscape")
     private val RECENT_EMOTES = stringPreferencesKey("recent_emotes")
+    private val CHAT_FONT_SIZE = intPreferencesKey("chat_font_size")
+    private val CHAT_EMOTE_SIZE = intPreferencesKey("chat_emote_size")
 
     enum class AdBlockMode {
         VAFT, VIDEO_SWAP
@@ -196,6 +198,30 @@ object SettingsManager {
             // Keep only top 40
             val limitedList = currentList.take(40)
             preferences[RECENT_EMOTES] = Json.encodeToString(limitedList)
+        }
+    }
+
+    fun getChatFontSize(context: Context): Flow<Int> {
+        return context.dataStore.data.map { preferences ->
+            preferences[CHAT_FONT_SIZE] ?: 14
+        }
+    }
+
+    suspend fun setChatFontSize(context: Context, size: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[CHAT_FONT_SIZE] = size
+        }
+    }
+
+    fun getChatEmoteSize(context: Context): Flow<Int> {
+        return context.dataStore.data.map { preferences ->
+            preferences[CHAT_EMOTE_SIZE] ?: 28
+        }
+    }
+
+    suspend fun setChatEmoteSize(context: Context, size: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[CHAT_EMOTE_SIZE] = size
         }
     }
 }

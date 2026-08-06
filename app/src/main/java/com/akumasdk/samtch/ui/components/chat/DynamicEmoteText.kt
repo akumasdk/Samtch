@@ -28,10 +28,11 @@ fun DynamicEmoteText(
     isCompact: Boolean = false,
     style: TextStyle = TextStyle.Default,
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
-    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
+    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
+    emoteSize: Int = 28
 ) {
     val context = LocalContext.current
-    val baseHeight = if (isCompact) 24f else 32f
+    val baseHeight = if (isCompact) (emoteSize * 0.8f) else emoteSize.toFloat()
     
     val measuredWidths = remember { mutableStateMapOf<String, Float>() }
 

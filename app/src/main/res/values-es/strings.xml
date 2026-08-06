@@ -43,6 +43,7 @@
     <string name="support_project_summary">Donaciones a través de Ko-fi</string>
     <string name="close_button">Cerrar</string>
     <string name="ok_button">Aceptar</string>
+    <string name="reset_default">Restablecer valores predeterminados</string>
 
     <!-- PiP -->
     <string name="pip_action_refresh">Actualizar</string>
@@ -76,6 +77,8 @@
     <string name="chat_mode_native">Nativo (Más Rápido / Experimental)</string>
     <string name="chat_mode_legacy">Integrado (Original)</string>
     <string name="chat_mode_notice">Nota: El chat nativo incluye soporte para emoticonos de BetterTTV y 7TV.</string>
+    <string name="chat_settings_font_size">Tamaño de fuente</string>
+    <string name="chat_settings_emote_size">Tamaño de emoticono</string>
 
     <!-- Theme Settings -->
     <string name="theme_mode_title">Modo de Tema</string>

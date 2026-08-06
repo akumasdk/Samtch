@@ -55,6 +55,12 @@ class ChatViewModel : ViewModel() {
     private val _keyboardHeightPx = MutableStateFlow(0)
     val keyboardHeightPx = _keyboardHeightPx.asStateFlow()
 
+    private val _chatFontSize = MutableStateFlow(14)
+    val chatFontSize = _chatFontSize.asStateFlow()
+
+    private val _chatEmoteSize = MutableStateFlow(28)
+    val chatEmoteSize = _chatEmoteSize.asStateFlow()
+
     private val _systemNotice = MutableStateFlow<String?>(null)
     val systemNotice = _systemNotice.asStateFlow()
 
@@ -112,6 +118,18 @@ class ChatViewModel : ViewModel() {
                 SettingsManager.getRecentEmotes(context).collect { recent ->
                     _recentEmotes.value = recent
                     currentChannel?.let { updateEmoteMenuTabs(it) }
+                }
+            }
+
+            // Collect chat settings
+            launch {
+                SettingsManager.getChatFontSize(context).collect { size ->
+                    _chatFontSize.value = size
+                }
+            }
+            launch {
+                SettingsManager.getChatEmoteSize(context).collect { size ->
+                    _chatEmoteSize.value = size
                 }
             }
 
