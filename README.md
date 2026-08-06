@@ -37,7 +37,8 @@ Samtch is a lightweight Twitch client for Android designed for a clean, ad-free 
 
 ## ✨ Features
 
-- **Native Twitch Chat**: A full native chat experience featuring support for **BetterTTV** and **7TV** emotes, smooth auto-scrolling, and a high-performance compact mode.
+- **Native Twitch Chat**: A full native chat experience featuring support for **BetterTTV** and **7TV** (v3) emotes, smooth auto-scrolling, and a high-performance compact mode.
+- **Intelligent Emote Browser**: Includes a tabbed browser for **Recently Used**, Channel, and Global emotes, plus a smart suggestion system with scoring for fast typing.
 - **Just Chatting (Chat-Only) Mode**: A dedicated silent mode designed for community interaction without video or audio playback, saving battery and data.
 - **Premium Audio-Only Mode**: A dedicated "music player" aesthetic for background listening, featuring high-resolution stream artwork, dark gradients, and synchronized media notifications.
 - **Rich Stream Metadata**: Real-time titles, game categories, **stream tags**, and viewer counts fetched via GraphQL. Features a dynamic metadata bar that automatically shrinks to maximize chat space.
