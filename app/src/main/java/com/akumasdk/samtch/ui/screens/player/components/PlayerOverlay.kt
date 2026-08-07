@@ -31,7 +31,7 @@ fun PlayerOverlay(
     chatContent: @Composable (ChatContentConfig, PortraitMode?, (() -> Unit)?, Modifier) -> Unit
 ) {
     AnimatedVisibility(
-        visible = !isMinimized,
+        visible = !isMinimized && !isPip,
         enter = fadeIn(animationSpec = SamtchAnimation.EmphasizedTween),
         exit = fadeOut(animationSpec = SamtchAnimation.FastTween)
     ) {
