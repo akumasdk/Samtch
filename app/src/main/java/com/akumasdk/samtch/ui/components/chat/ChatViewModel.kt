@@ -115,7 +115,7 @@ class ChatViewModel : ViewModel() {
             
             // Collect recent emotes
             launch {
-                SettingsManager.getRecentEmotes(context).collect { recent ->
+                SettingsManager.getRecentEmotes(context, channel).collect { recent ->
                     _recentEmotes.value = recent
                     currentChannel?.let { updateEmoteMenuTabs(it) }
                 }
@@ -373,8 +373,9 @@ class ChatViewModel : ViewModel() {
     }
 
     fun recordEmoteUsage(context: android.content.Context, emote: Emote) {
+        val channel = currentChannel ?: return
         viewModelScope.launch {
-            SettingsManager.addRecentEmote(context, emote)
+            SettingsManager.addRecentEmote(context, channel, emote)
         }
     }
 
