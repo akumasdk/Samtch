@@ -406,6 +406,9 @@ fun TwitchPlayer(
 
         val chatContent = remember(channel) {
             movableContentOf { config: ChatContentConfig, pMode: PortraitMode?, onToggle: (() -> Unit)?, modifier: Modifier ->
+                val liveMetadata = playerViewModel.streamMetadata
+                val livePreviewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
+
                 TwitchChat(
                     channel = channel,
                     isCompact = config.isCompact,

@@ -86,46 +86,55 @@ fun FullscreenPlayer(
             enter = slideInHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeIn(),
             exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
         ) {
-            Column(
+            com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground(
+                channel = channel,
+                previewUrl = previewImageUrl,
                 modifier = Modifier
                     .width(300.dp)
-                    .fillMaxHeight()
-                    .background(SamtchTheme.colors.chatBackground)
-                    .systemBarsPadding()
-                    .displayCutoutPadding()
+                    .fillMaxHeight(),
+                alpha = 0.3f,
+                blurRadius = 60.dp
             ) {
-                // Status Banner in the same space as portrait (between video and metadata/chat)
-                StatusBanner(text = adblockText)
-
-                // Metadata space above chat (Only visible when chat is open)
-                AnimatedVisibility(
-                    visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
-                    enter = SamtchAnimation.FadeIn,
-                    exit = SamtchAnimation.FadeOut
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(SamtchTheme.colors.chatBackground.copy(alpha = 0.5f))
+                        .systemBarsPadding()
+                        .displayCutoutPadding()
                 ) {
-                    StreamMetadataBar(
-                        channel = channel,
-                        displayName = displayName,
-                        avatarUrl = avatarUrl,
-                        streamTitle = streamTitle,
-                        gameName = gameName,
-                        viewersCount = viewersCount,
-                        streamStartedAt = streamStartedAt,
-                        expandTrigger = expandTrigger,
-                        forceSlim = forceSlimMetadata,
-                        onClick = { showInfoDialog = true },
-                        modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
+                    // Status Banner in the same space as portrait (between video and metadata/chat)
+                    StatusBanner(text = adblockText)
+
+                    // Metadata space above chat (Only visible when chat is open)
+                    AnimatedVisibility(
+                        visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                        enter = SamtchAnimation.FadeIn,
+                        exit = SamtchAnimation.FadeOut
+                    ) {
+                        StreamMetadataBar(
+                            channel = channel,
+                            displayName = displayName,
+                            avatarUrl = avatarUrl,
+                            streamTitle = streamTitle,
+                            gameName = gameName,
+                            viewersCount = viewersCount,
+                            streamStartedAt = streamStartedAt,
+                            expandTrigger = expandTrigger,
+                            forceSlim = forceSlimMetadata,
+                            onClick = { showInfoDialog = true },
+                            modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
+                        )
+                    }
+
+                    chatContent(
+                        true,
+                        true,
+                        refreshTrigger,
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
                     )
                 }
-
-                chatContent(
-                    true,
-                    true,
-                    refreshTrigger,
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                )
             }
         }
     }
