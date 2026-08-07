@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
     - name: Checkout code
@@ -31,28 +32,19 @@ jobs:
         echo "VERSION=v$VERSION_NAME" >> $GITHUB_OUTPUT
         echo "Detected version: v$VERSION_NAME"
 
-    - name: Detect workflow file changes
-      id: workflow_changes
-      run: |
-        if git diff-tree --no-commit-id --name-only -r HEAD | grep -q '^.github/workflows/'; then
-          echo "contains_workflow_changes=true" >> $GITHUB_OUTPUT
-          echo "Workflow files changed in this commit. Skipping tag/release creation."
-        else
-          echo "contains_workflow_changes=false" >> $GITHUB_OUTPUT
-        fi
-
     - name: Check if Tag Exists
-      if: steps.workflow_changes.outputs.contains_workflow_changes != 'true'
+      id: tag_check
       run: |
         VERSION="${{ steps.get_version.outputs.VERSION }}"
         if git rev-parse "$VERSION" >/dev/null 2>&1; then
-          echo "Error: Tag $VERSION already exists. This version has already been released."
-          echo "Please bump the version in app/build.gradle.kts before pushing to main."
-          exit 1
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "Tag $VERSION already exists. Skipping release steps."
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
         fi
 
     - name: Create and Push Tag
-      if: steps.workflow_changes.outputs.contains_workflow_changes != 'true'
+      if: steps.tag_check.outputs.exists == 'false'
       run: |
         VERSION="${{ steps.get_version.outputs.VERSION }}"
         git config user.name "github-actions[bot]"
@@ -65,11 +57,13 @@ jobs:
       run: chmod +x gradlew
 
     - name: Decode and setup Keystore
+      if: steps.tag_check.outputs.exists == 'false'
       run: |
         echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > $GITHUB_WORKSPACE/release.jks
         chmod 600 $GITHUB_WORKSPACE/release.jks
 
     - name: Build Signed Release APKs
+      if: steps.tag_check.outputs.exists == 'false'
       env:
         KEYSTORE_FILE: ${{ github.workspace }}/release.jks
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -80,7 +74,7 @@ jobs:
 
     - name: Prepare APKs for release
       id: apks
-      if: steps.workflow_changes.outputs.contains_workflow_changes != 'true'
+      if: steps.tag_check.outputs.exists == 'false'
       run: |
         VERSION="${{ steps.get_version.outputs.VERSION }}"
         
@@ -96,7 +90,7 @@ jobs:
         echo "foss_path=Samtch-$VERSION-foss.apk" >> $GITHUB_OUTPUT
 
     - name: Extract Changelog
-      if: steps.workflow_changes.outputs.contains_workflow_changes != 'true'
+      if: steps.tag_check.outputs.exists == 'false'
       run: |
         VERSION="${{ steps.get_version.outputs.VERSION }}"
         # Extract notes between ## Samtch VERSION and the next ## or ---
@@ -108,8 +102,8 @@ jobs:
         echo -e "\n### Downloads\n- **Full**: Samtch-$VERSION-full.apk (Includes Auto-Updates)\n- **FOSS**: Samtch-$VERSION-foss.apk (For F-Droid compliance)" >> RELEASE_NOTES.md
 
     - name: Create Release and Upload APKs
-      if: steps.workflow_changes.outputs.contains_workflow_changes != 'true'
-      uses: softprops/action-gh-release@v1
+      if: steps.tag_check.outputs.exists == 'false'
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.get_version.outputs.VERSION }}
         files: |
