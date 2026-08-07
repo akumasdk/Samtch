@@ -71,16 +71,14 @@ fun Modifier.playerGestureHandler(
                             if (isLeftSide) {
                                 val sensitivity = 2.5f
                                 val delta = (-dragDelta / size.height) * sensitivity
-                                val currentB = activity?.window?.attributes?.screenBrightness ?: 0.5f
-                                val newB = (if (currentB < 0) 0.5f else currentB) + delta
-                                val finalB = newB.coerceIn(0f, 1f)
-                                
-                                activity?.let {
-                                    val lp = it.window.attributes
-                                    lp.screenBrightness = finalB
-                                    it.window.attributes = lp
+                                val currentWindowB = activity?.window?.attributes?.screenBrightness ?: -1f
+                                val baseB = if (currentWindowB < 0) {
+                                    com.akumasdk.samtch.util.SystemSettingsUtil.getSystemBrightness(context)
+                                } else {
+                                    currentWindowB
                                 }
-                                onBrightnessChange(finalB)
+                                val newB = (baseB + delta).coerceIn(0f, 1f)
+                                onBrightnessChange(newB)
                             } else {
                                 val maxV = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).toFloat().coerceAtLeast(1f)
                                 val sensitivity = 3.5f
