@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +69,8 @@ import com.akumasdk.samtch.ui.screens.player.components.AudioOnlyPlayer
 import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
 import com.akumasdk.samtch.ui.screens.player.components.AudioServiceEffects
 import com.akumasdk.samtch.ui.screens.player.components.FullscreenChatToggle
+import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureIndicators
+import com.akumasdk.samtch.ui.screens.player.components.playerGestureHandler
 import com.akumasdk.samtch.ui.screens.player.components.PlayerLifecycleEffects
 import com.akumasdk.samtch.ui.screens.player.components.PlayerOverlay
 import com.akumasdk.samtch.ui.screens.player.components.PlayerWebView
@@ -110,11 +113,38 @@ fun TwitchPlayer(
         val context = LocalContext.current
         
         var isAudioOnly by playerViewModel::isAudioOnly
-        var portraitMode by playerViewModel::portraitMode
+            var portraitMode by playerViewModel::portraitMode
         
         val streamMetadata = playerViewModel.streamMetadata
         val avatarUrl = playerViewModel.avatarUrl
         val streamSubtitle = playerViewModel.streamSubtitle
+
+        // Gesture Overlay State
+        var isDraggingVolume by remember { mutableStateOf(false) }
+        var showVolumeOverlay by remember { mutableStateOf(false) }
+        var volumeProgress by remember { mutableFloatStateOf(0f) }
+
+        var isDraggingBrightness by remember { mutableStateOf(false) }
+        var showBrightnessOverlay by remember { mutableStateOf(false) }
+        var brightnessProgress by remember { mutableFloatStateOf(0.5f) }
+
+        LaunchedEffect(isDraggingVolume) {
+            if (isDraggingVolume) {
+                showVolumeOverlay = true
+            } else {
+                delay(2.seconds)
+                showVolumeOverlay = false
+            }
+        }
+
+        LaunchedEffect(isDraggingBrightness) {
+            if (isDraggingBrightness) {
+                showBrightnessOverlay = true
+            } else {
+                delay(2.seconds)
+                showBrightnessOverlay = false
+            }
+        }
 
         var isUiLoading by remember { mutableStateOf(true) }
         val defaultLoadingMessage = stringResource(R.string.loading_stream)
@@ -561,6 +591,13 @@ fun TwitchPlayer(
                                     .clip(RectangleShape)
                             }
                             .onSizeChanged { stablePlayerSize = it }
+                            .playerGestureHandler(
+                                isFullscreen = isFullscreen && !isAudioOnly,
+                                onBrightnessChange = { brightnessProgress = it },
+                                onVolumeChange = { volumeProgress = it },
+                                onVolumeDragging = { isDraggingVolume = it },
+                                onBrightnessDragging = { isDraggingBrightness = it }
+                            )
                             .playerInputHandler(
                                 size = stablePlayerSize,
                                 isFullscreen = isFullscreen,
@@ -609,6 +646,14 @@ fun TwitchPlayer(
                         // Overlays on top of the player
                         if (!isMinimized && !isPip) {
                             if (isFullscreen && !isAudioOnly) {
+                                // Visual indicators for gestures
+                                PlayerGestureIndicators(
+                                    showVolume = showVolumeOverlay,
+                                    volumeProgress = volumeProgress,
+                                    showBrightness = showBrightnessOverlay,
+                                    brightnessProgress = brightnessProgress
+                                )
+
                                 TapTooltip(
                                     visible = showFullscreenControls && tooltipShowCount < 3,
                                     modifier = Modifier.align(Alignment.Center)
