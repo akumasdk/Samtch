@@ -1,5 +1,21 @@
 # Changelog
 
+## Samtch v0.4.1
+
+### What's New
+- **Immersive Background**: Introduced a blurred stream preview background for the portrait player and chat input area. Includes smooth crossfade transitions when the stream image updates.
+- **Redesigned Portrait Chat Input**: Optimized the chat interface by separating the emote menu and player mode toggle buttons for better accessibility.
+- **Advanced Gesture Rockers**: Overhauled fullscreen volume and brightness controls with significantly increased sensitivity and high-precision accumulation for a smoother feel.
+- **Intelligent Gesture Passthrough**: Refined touch handling to allow interacting with the Twitch player iframe (like quality settings) even while the gesture rockers are active.
+- **Per-Channel Recent Emotes**: The "Recent" emote tab now stores and displays usage history separately for every channel, ensuring a tailored experience.
+- **System Brightness Synchronization**: App-level brightness adjustments now sync perfectly with Android system settings and automatically restore to original levels when exiting fullscreen or entering PiP.
+- **Immersive Toggle Setting**: Added a new "Immersive Background" option in Settings to allow users to choose between the blurred effect or standard backgrounds.
+- **Refined Navigation Flow**: 
+    - Back pressing in fullscreen now correctly returns the app to portrait mode.
+    - Toggling Audio-Only mode from fullscreen now performs a clean transition back to the portrait layout.
+
+---
+
 ## Samtch v0.4.0
 
 ### What's New
