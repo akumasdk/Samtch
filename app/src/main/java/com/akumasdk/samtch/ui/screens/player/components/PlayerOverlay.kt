@@ -25,6 +25,7 @@ fun PlayerOverlay(
     isChatVisible: Boolean,
     refreshTrigger: Int,
     forceSlimMetadata: Boolean = false,
+    isImmersiveEnabled: Boolean = true,
     onToggleChat: () -> Unit,
     onToggleMode: () -> Unit,
     chatContent: @Composable (ChatContentConfig, PortraitMode?, (() -> Unit)?, Modifier) -> Unit
@@ -48,8 +49,8 @@ fun PlayerOverlay(
                 previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                 isChatVisible = isChatVisible,
                 expandTrigger = metadataExpandTrigger,
-                isPip = isPip,
                 forceSlimMetadata = forceSlimMetadata,
+                isImmersiveEnabled = isImmersiveEnabled,
                 onToggleChat = onToggleChat,
                 chatContent = { isCompact, showInput, rTrigger, modifier ->
                     chatContent(ChatContentConfig(isCompact, showInput, rTrigger), null, null, modifier)
@@ -72,8 +73,8 @@ fun PlayerOverlay(
                 previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                 portraitMode = portraitMode,
                 expandTrigger = metadataExpandTrigger,
-                isPip = isPip,
                 forceSlimMetadata = forceSlimMetadata,
+                isImmersiveEnabled = isImmersiveEnabled,
                 onToggleMode = onToggleMode,
                 chatContent = { isCompact, showInput, pMode, onToggle, modifier ->
                     chatContent(ChatContentConfig(isCompact, showInput, refreshTrigger), pMode, onToggle, modifier)

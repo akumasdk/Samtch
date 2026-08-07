@@ -86,6 +86,8 @@
     <string name="theme_mode_dark">Dark</string>
     <string name="theme_mode_light">Light</string>
     <string name="theme_mode_system">System</string>
+    <string name="immersive_background_title">Immersive Background</string>
+    <string name="immersive_background_summary">Show a blurred stream preview as the player and chat background</string>
 
     <!-- Player Loading Status -->
     <string name="loading_stream">Loading stream…</string>

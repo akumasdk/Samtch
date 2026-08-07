@@ -87,6 +87,7 @@ fun SettingsScreen(
     val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
     val isPipEnabled by SettingsManager.isPipEnabled(context).collectAsState(initial = true)
     val isAudioBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
+    val isImmersiveBackgroundEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -143,6 +144,13 @@ fun SettingsScreen(
                     onClick = { showThemeModeDialog = true },
                     onReset = { scope.launch { SettingsManager.setThemeMode(context, SettingsManager.ThemeMode.SYSTEM) } }
                 ) 
+            }
+            item { 
+                ImmersiveBackgroundToggleItem(
+                    isImmersiveBackgroundEnabled,
+                    onToggle = { scope.launch { SettingsManager.setImmersiveBackgroundEnabled(context, it) } },
+                    onReset = { scope.launch { SettingsManager.setImmersiveBackgroundEnabled(context, true) } }
+                )
             }
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
 
@@ -332,6 +340,20 @@ private fun ThemeModeItem(themeMode: SettingsManager.ThemeMode, onClick: () -> U
         leadingContent = { Icon(imageVector = Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         modifier = Modifier.combinedClickable(
             onClick = onClick,
+            onLongClick = onReset
+        )
+    )
+}
+
+@Composable
+private fun ImmersiveBackgroundToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.immersive_background_title)) },
+        supportingContent = { Text(stringResource(R.string.immersive_background_summary)) },
+        leadingContent = { Icon(imageVector = Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
+        modifier = Modifier.combinedClickable(
+            onClick = { onToggle(!enabled) },
             onLongClick = onReset
         )
     )

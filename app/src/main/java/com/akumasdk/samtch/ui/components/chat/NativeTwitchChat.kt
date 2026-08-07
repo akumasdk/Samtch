@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.components.chat
 import android.annotation.SuppressLint
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -52,6 +53,7 @@ fun NativeTwitchChat(
     channel: String,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
+    isImmersiveEnabled: Boolean = true,
     viewModel: ChatViewModel = viewModel(),
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
@@ -109,7 +111,12 @@ fun NativeTwitchChat(
         }
     }
 
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier.then(
+            if (!isImmersiveEnabled) Modifier.background(SamtchTheme.colors.chatBackground)
+            else Modifier
+        )
+    ) {
         val reversedMessages = remember(messages) { messages.asReversed() }
         
         LazyColumn(

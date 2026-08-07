@@ -35,7 +35,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.components.chat.emote.EmoteInfoDialog
@@ -69,6 +68,7 @@ fun TwitchChat(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+    val isImmersiveEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
 
     val density = LocalDensity.current
     
@@ -121,21 +121,24 @@ fun TwitchChat(
             }
         }
         
-        Box(modifier = modifier) {
+        Box(modifier = modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 NativeTwitchChat(
                     channel = channel,
                     modifier = Modifier.weight(1f),
                     isCompact = isCompact,
+                    isImmersiveEnabled = isImmersiveEnabled,
                     viewModel = viewModel,
                     onEmoteClick = { viewModel.showEmoteInfo(it) },
                     onEmoteLongClick = { viewModel.showEmoteInfo(it) }
                 )
                 
                 if (showInput) {
+                    val surfaceAlpha = if (isImmersiveEnabled) 0.6f else 1.0f
+
                     Surface(
-                        modifier = Modifier.zIndex(1f).fillMaxWidth(),
-                        color = SamtchTheme.colors.dialogBackground.copy(alpha = 0.6f),
+                        modifier = Modifier.fillMaxWidth(),
+                        color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
                         tonalElevation = 2.dp
                     ) {
                         Column {

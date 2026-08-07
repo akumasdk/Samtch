@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
@@ -45,8 +46,8 @@ fun FullscreenPlayer(
     isChatVisible: Boolean = false,
     expandTrigger: Int = 0,
     refreshTrigger: Int = 0,
-    isPip: Boolean = false,
     forceSlimMetadata: Boolean = false,
+    isImmersiveEnabled: Boolean = true,
     onToggleChat: () -> Unit = {},
     chatContent: @Composable (isCompact: Boolean, showInput: Boolean, refreshTrigger: Int, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
@@ -80,25 +81,28 @@ fun FullscreenPlayer(
             webView(Modifier.fillMaxSize(), onToggleChat)
         }
 
-        // Optional Side Chat with Metadata Bar
         AnimatedVisibility(
             visible = isChatVisible,
             enter = slideInHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeIn(),
             exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
         ) {
-            com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground(
+            val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
+            val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
+            val surfaceAlpha = if (isImmersiveEnabled) 0.4f else 1.0f
+
+            PlayerBackground(
                 channel = channel,
                 previewUrl = previewImageUrl,
                 modifier = Modifier
                     .width(300.dp)
                     .fillMaxHeight(),
-                alpha = 0.3f,
-                blurRadius = 60.dp
+                alpha = bgAlpha,
+                blurRadius = bgBlur
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(SamtchTheme.colors.chatBackground.copy(alpha = 0.5f))
+                        .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
                         .systemBarsPadding()
                         .displayCutoutPadding()
                 ) {

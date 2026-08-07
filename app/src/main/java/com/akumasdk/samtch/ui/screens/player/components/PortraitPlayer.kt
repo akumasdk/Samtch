@@ -40,8 +40,8 @@ fun PortraitPlayer(
     previewImageUrl: String? = null,
     portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
     expandTrigger: Int = 0,
-    isPip: Boolean = false,
     forceSlimMetadata: Boolean = false,
+    isImmersiveEnabled: Boolean = true,
     onToggleMode: () -> Unit = {},
     chatContent: @Composable (isCompact: Boolean, showInput: Boolean, PortraitMode, () -> Unit, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
@@ -63,12 +63,15 @@ fun PortraitPlayer(
         )
     }
 
+    val bgAlpha = if (isImmersiveEnabled) 0.3f else 0.2f
+    val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
+
     PlayerBackground(
         channel = channel,
         previewUrl = previewImageUrl,
         modifier = Modifier.fillMaxSize(),
-        alpha = 0.3f,
-        blurRadius = 60.dp
+        alpha = bgAlpha,
+        blurRadius = bgBlur
     ) {
         Column(
             modifier = Modifier

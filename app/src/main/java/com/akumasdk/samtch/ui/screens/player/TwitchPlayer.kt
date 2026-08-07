@@ -115,6 +115,8 @@ fun TwitchPlayer(
         var isAudioOnly by playerViewModel::isAudioOnly
             var portraitMode by playerViewModel::portraitMode
         
+        val isImmersiveEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
+
         val streamMetadata = playerViewModel.streamMetadata
         val avatarUrl = playerViewModel.avatarUrl
         val streamSubtitle = playerViewModel.streamSubtitle
@@ -406,9 +408,6 @@ fun TwitchPlayer(
 
         val chatContent = remember(channel) {
             movableContentOf { config: ChatContentConfig, pMode: PortraitMode?, onToggle: (() -> Unit)?, modifier: Modifier ->
-                val liveMetadata = playerViewModel.streamMetadata
-                val livePreviewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
-
                 TwitchChat(
                     channel = channel,
                     isCompact = config.isCompact,
@@ -593,6 +592,7 @@ fun TwitchPlayer(
                     isChatVisible = isChatVisible,
                     refreshTrigger = refreshTrigger,
                     forceSlimMetadata = forceSlimMetadata,
+                    isImmersiveEnabled = isImmersiveEnabled,
                     onToggleChat = { 
                         isChatVisible = !isChatVisible
                         if (isFullscreen) showFullscreenControls = true

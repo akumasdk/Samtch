@@ -86,6 +86,8 @@
     <string name="theme_mode_dark">Oscuro</string>
     <string name="theme_mode_light">Claro</string>
     <string name="theme_mode_system">Sistema</string>
+    <string name="immersive_background_title">Fondo Inmersivo</string>
+    <string name="immersive_background_summary">Muestra una vista previa del stream desenfocada como fondo del reproductor y el chat</string>
 
     <!-- Player Loading Status -->
     <string name="loading_stream">Cargando stream…</string>
