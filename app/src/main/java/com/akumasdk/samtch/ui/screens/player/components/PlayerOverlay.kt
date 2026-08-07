@@ -34,7 +34,7 @@ fun PlayerOverlay(
         enter = fadeIn(animationSpec = SamtchAnimation.EmphasizedTween),
         exit = fadeOut(animationSpec = SamtchAnimation.FastTween)
     ) {
-        if (isFullscreen) {
+        if (isFullscreen && !isAudioOnly) {
             FullscreenPlayer(
                 channel = channel,
                 displayName = streamMetadata?.user?.displayName,

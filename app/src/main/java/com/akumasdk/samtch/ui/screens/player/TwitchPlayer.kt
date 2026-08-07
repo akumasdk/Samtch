@@ -217,11 +217,17 @@ fun TwitchPlayer(
 
         Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, isMinimized: $isMinimized)")
 
-        // Handle back button to return to browser (minimize)
+        // Handle back button behavior:
+        // 1. If in fullscreen, return to portrait
+        // 2. Otherwise, minimize (return to browser)
         if (!isPip && !isMinimized) {
             BackHandler {
-                Log.d("TwitchPlayer", "BackHandler triggered for $channel")
-                onBack?.invoke()
+                Log.d("TwitchPlayer", "BackHandler triggered for $channel. isFullscreen=$isFullscreen")
+                if (isFullscreen) {
+                    onToggleFullscreen()
+                } else {
+                    onBack?.invoke()
+                }
             }
         }
 
@@ -368,6 +374,9 @@ fun TwitchPlayer(
                                 onToggleFullscreen = onToggleFullscreen,
                                 onToggleChat = onToggleChat,
                                 onToggleAudioOnly = {
+                                    if (isFullscreen) {
+                                        onToggleFullscreen()
+                                    }
                                     isAudioOnly = true
                                     portraitMode = PortraitMode.AUDIO_AND_CHAT
                                 },
@@ -537,7 +546,7 @@ fun TwitchPlayer(
                                     }
                                     .size(layout.width.value, layout.height.value)
                                     .clip(RoundedCornerShape(layout.cornerRadius.value))
-                            } else if (isFullscreen) {
+                            } else if (isFullscreen && !isAudioOnly) {
                             Modifier
                                 .align(Alignment.TopStart)
                                 .width(layout.width.value)
@@ -558,14 +567,14 @@ fun TwitchPlayer(
                                 isMinimized = isMinimized,
                                 doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
                                 onDoubleTapCenter = {
-                                    if (isFullscreen) {
+                                    if (isFullscreen && !isAudioOnly) {
                                         isChatVisible = !isChatVisible
                                     } else {
                                         onToggleFullscreen()
                                     }
                                 },
                                 onSingleTap = {
-                                    if (isFullscreen) {
+                                    if (isFullscreen && !isAudioOnly) {
                                         showFullscreenControls = !showFullscreenControls
                                     } else {
                                         metadataExpandTrigger++
@@ -599,7 +608,7 @@ fun TwitchPlayer(
 
                         // Overlays on top of the player
                         if (!isMinimized && !isPip) {
-                            if (isFullscreen) {
+                            if (isFullscreen && !isAudioOnly) {
                                 TapTooltip(
                                     visible = showFullscreenControls && tooltipShowCount < 3,
                                     modifier = Modifier.align(Alignment.Center)
