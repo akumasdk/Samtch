@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
@@ -45,8 +46,8 @@ fun FullscreenPlayer(
     isChatVisible: Boolean = false,
     expandTrigger: Int = 0,
     refreshTrigger: Int = 0,
-    isPip: Boolean = false,
     forceSlimMetadata: Boolean = false,
+    isImmersiveEnabled: Boolean = true,
     onToggleChat: () -> Unit = {},
     chatContent: @Composable (isCompact: Boolean, showInput: Boolean, refreshTrigger: Int, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
@@ -80,52 +81,64 @@ fun FullscreenPlayer(
             webView(Modifier.fillMaxSize(), onToggleChat)
         }
 
-        // Optional Side Chat with Metadata Bar
         AnimatedVisibility(
             visible = isChatVisible,
             enter = slideInHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeIn(),
             exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
         ) {
-            Column(
+            val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
+            val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
+            val surfaceAlpha = if (isImmersiveEnabled) 0.4f else 1.0f
+
+            PlayerBackground(
+                channel = channel,
+                previewUrl = previewImageUrl,
                 modifier = Modifier
                     .width(300.dp)
-                    .fillMaxHeight()
-                    .background(SamtchTheme.colors.chatBackground)
-                    .systemBarsPadding()
-                    .displayCutoutPadding()
+                    .fillMaxHeight(),
+                alpha = bgAlpha,
+                blurRadius = bgBlur
             ) {
-                // Status Banner in the same space as portrait (between video and metadata/chat)
-                StatusBanner(text = adblockText)
-
-                // Metadata space above chat (Only visible when chat is open)
-                AnimatedVisibility(
-                    visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
-                    enter = SamtchAnimation.FadeIn,
-                    exit = SamtchAnimation.FadeOut
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
+                        .systemBarsPadding()
+                        .displayCutoutPadding()
                 ) {
-                    StreamMetadataBar(
-                        channel = channel,
-                        displayName = displayName,
-                        avatarUrl = avatarUrl,
-                        streamTitle = streamTitle,
-                        gameName = gameName,
-                        viewersCount = viewersCount,
-                        streamStartedAt = streamStartedAt,
-                        expandTrigger = expandTrigger,
-                        forceSlim = forceSlimMetadata,
-                        onClick = { showInfoDialog = true },
-                        modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
+                    // Status Banner in the same space as portrait (between video and metadata/chat)
+                    StatusBanner(text = adblockText)
+
+                    // Metadata space above chat (Only visible when chat is open)
+                    AnimatedVisibility(
+                        visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                        enter = SamtchAnimation.FadeIn,
+                        exit = SamtchAnimation.FadeOut
+                    ) {
+                        StreamMetadataBar(
+                            channel = channel,
+                            displayName = displayName,
+                            avatarUrl = avatarUrl,
+                            streamTitle = streamTitle,
+                            gameName = gameName,
+                            viewersCount = viewersCount,
+                            streamStartedAt = streamStartedAt,
+                            expandTrigger = expandTrigger,
+                            forceSlim = forceSlimMetadata,
+                            onClick = { showInfoDialog = true },
+                            modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
+                        )
+                    }
+
+                    chatContent(
+                        true,
+                        true,
+                        refreshTrigger,
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
                     )
                 }
-
-                chatContent(
-                    true,
-                    true,
-                    refreshTrigger,
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                )
             }
         }
     }

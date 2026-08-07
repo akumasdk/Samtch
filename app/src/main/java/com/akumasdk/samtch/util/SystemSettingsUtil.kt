@@ -36,4 +36,34 @@ object SystemSettingsUtil {
             contentResolver.unregisterContentObserver(observer)
         }
     }
+
+    fun getSystemBrightness(context: Context): Float {
+        return try {
+            val brightness = Settings.System.getInt(
+                context.contentResolver,
+                Settings.System.SCREEN_BRIGHTNESS
+            )
+            brightness / 255f
+        } catch (e: Exception) {
+            0.5f
+        }
+    }
+
+    fun observeSystemBrightness(context: Context): Flow<Float> = callbackFlow {
+        val contentResolver = context.contentResolver
+        val settingUri = Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS)
+
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                trySend(getSystemBrightness(context))
+            }
+        }
+
+        contentResolver.registerContentObserver(settingUri, false, observer)
+        trySend(getSystemBrightness(context))
+
+        awaitClose {
+            contentResolver.unregisterContentObserver(observer)
+        }
+    }
 }

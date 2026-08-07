@@ -9,24 +9,22 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.ui.components.metadata.StatusBanner
-import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
-import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
-import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 
 @Composable
 fun PortraitPlayer(
@@ -42,8 +40,8 @@ fun PortraitPlayer(
     previewImageUrl: String? = null,
     portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
     expandTrigger: Int = 0,
-    isPip: Boolean = false,
     forceSlimMetadata: Boolean = false,
+    isImmersiveEnabled: Boolean = true,
     onToggleMode: () -> Unit = {},
     chatContent: @Composable (isCompact: Boolean, showInput: Boolean, PortraitMode, () -> Unit, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
@@ -65,11 +63,15 @@ fun PortraitPlayer(
         )
     }
 
+    val bgAlpha = if (isImmersiveEnabled) 0.3f else 0.2f
+    val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
+
     PlayerBackground(
         channel = channel,
         previewUrl = previewImageUrl,
         modifier = Modifier.fillMaxSize(),
-        alpha = 0.2f
+        alpha = bgAlpha,
+        blurRadius = bgBlur
     ) {
         Column(
             modifier = Modifier

@@ -1,12 +1,28 @@
 package com.akumasdk.samtch.ui.components.chat
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -18,8 +34,17 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.SmartDisplay
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,7 +53,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -133,16 +157,61 @@ fun ChatInputBox(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Left Action Pill: Emote & Toggle Mode
+                    // Far Left: Mode Toggle Button (Independent Circle)
+                    AnimatedVisibility(
+                        visible = onToggleMode != null && portraitMode != null && portraitMode != PortraitMode.AUDIO_AND_CHAT,
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkHorizontally()
+                    ) {
+                        val currentMode = portraitMode ?: return@AnimatedVisibility
+                        val currentToggle = onToggleMode ?: return@AnimatedVisibility
+
+                        Surface(
+                            onClick = currentToggle,
+                            color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.7f),
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, SamtchTheme.colors.divider),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                AnimatedContent(
+                                    targetState = currentMode,
+                                    transitionSpec = {
+                                        (fadeIn() + scaleIn(initialScale = 0.8f))
+                                            .togetherWith(fadeOut() + scaleOut(targetScale = 0.8f))
+                                    },
+                                    label = "ModeIconMorph"
+                                ) { mode ->
+                                    Icon(
+                                        imageVector = when (mode) {
+                                            PortraitMode.VIDEO_AND_CHAT, PortraitMode.AUDIO_AND_CHAT -> Icons.AutoMirrored.Filled.Chat
+                                            PortraitMode.CHAT_ONLY -> Icons.Default.SmartDisplay
+                                        },
+                                        contentDescription = stringResource(R.string.content_desc_toggle_mode),
+                                        tint = SamtchTheme.colors.secondaryText,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Center Pill: Emote Toggle + Text Field
                     Surface(
-                        color = SamtchTheme.colors.textFieldBackground,
+                        modifier = Modifier.weight(1f),
+                        color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.7f),
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, SamtchTheme.colors.divider)
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = if (isFocused) SamtchTheme.colors.accentColor.copy(alpha = 0.5f) 
+                                    else SamtchTheme.colors.divider
+                        )
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(start = 4.dp, end = 16.dp)
                         ) {
+                            // Integrated Emote Toggle
                             IconButton(
                                 onClick = {
                                     if (isEmoteMenuVisible) {
@@ -181,90 +250,46 @@ fun ChatInputBox(
                                 }
                             }
 
-                            AnimatedVisibility(
-                                visible = onToggleMode != null && portraitMode != null && portraitMode != PortraitMode.AUDIO_AND_CHAT,
-                                enter = fadeIn() + expandHorizontally(),
-                                exit = fadeOut() + shrinkHorizontally()
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.CenterStart
                             ) {
-                                val currentMode = portraitMode ?: return@AnimatedVisibility
-                                val currentToggle = onToggleMode ?: return@AnimatedVisibility
-
-                                IconButton(
-                                    onClick = currentToggle,
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    AnimatedContent(
-                                        targetState = currentMode,
-                                        transitionSpec = {
-                                            (fadeIn() + scaleIn(initialScale = 0.8f))
-                                                .togetherWith(fadeOut() + scaleOut(targetScale = 0.8f))
-                                        },
-                                        label = "ModeIconMorph"
-                                    ) { mode ->
-                                        Icon(
-                                            imageVector = when (mode) {
-                                                PortraitMode.VIDEO_AND_CHAT, PortraitMode.AUDIO_AND_CHAT -> Icons.AutoMirrored.Filled.Chat
-                                                PortraitMode.CHAT_ONLY -> Icons.Default.SmartDisplay
-                                            },
-                                            contentDescription = stringResource(R.string.content_desc_toggle_mode),
-                                            tint = SamtchTheme.colors.secondaryText,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    }
+                                if (textFieldValue.text.isEmpty()) {
+                                    Text(
+                                        text = stringResource(R.string.chat_input_placeholder),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
+                                        fontSize = 15.sp
+                                    )
                                 }
-                            }
-                        }
-                    }
-
-                    // Center Pill: Text Field
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        color = SamtchTheme.colors.textFieldBackground,
-                        shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(
-                            width = 1.dp,
-                            color = if (isFocused) SamtchTheme.colors.accentColor.copy(alpha = 0.5f) 
-                                    else SamtchTheme.colors.divider
-                        )
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            if (textFieldValue.text.isEmpty()) {
-                                Text(
-                                    text = stringResource(R.string.chat_input_placeholder),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
-                                    fontSize = 15.sp
+                                BasicTextField(
+                                    value = textFieldValue,
+                                    onValueChange = {
+                                        textFieldValue = it
+                                        onTextChange(it.text, it.selection.start)
+                                    },
+                                    textStyle = TextStyle(
+                                        color = SamtchTheme.colors.primaryText,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Normal
+                                    ),
+                                    cursorBrush = SolidColor(SamtchTheme.colors.twitchPurpleLight),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                    keyboardActions = KeyboardActions(onSend = {
+                                        if (textFieldValue.text.isNotBlank()) {
+                                            onSendMessage(textFieldValue.text)
+                                            textFieldValue = TextFieldValue("")
+                                            onTextChange("", 0)
+                                        }
+                                    }),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(focusRequester)
+                                        .onFocusChanged { isFocused = it.isFocused }
                                 )
                             }
-                            BasicTextField(
-                                value = textFieldValue,
-                                onValueChange = {
-                                    textFieldValue = it
-                                    onTextChange(it.text, it.selection.start)
-                                },
-                                textStyle = TextStyle(
-                                    color = SamtchTheme.colors.primaryText,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Normal
-                                ),
-                                cursorBrush = SolidColor(SamtchTheme.colors.twitchPurpleLight),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                                keyboardActions = KeyboardActions(onSend = {
-                                    if (textFieldValue.text.isNotBlank()) {
-                                        onSendMessage(textFieldValue.text)
-                                        textFieldValue = TextFieldValue("")
-                                        onTextChange("", 0)
-                                    }
-                                }),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focusRequester)
-                                    .onFocusChanged { isFocused = it.isFocused }
-                            )
                         }
                     }
 
@@ -275,7 +300,7 @@ fun ChatInputBox(
                         label = "SendButtonColor"
                     )
                     val sendBgColor by animateColorAsState(
-                        if (sendEnabled) SamtchTheme.colors.twitchPurple else SamtchTheme.colors.textFieldBackground,
+                        if (sendEnabled) SamtchTheme.colors.twitchPurple else SamtchTheme.colors.textFieldBackground.copy(alpha = 0.7f),
                         label = "SendBgColor"
                     )
 
@@ -318,14 +343,13 @@ fun ChatInputBox(
                         val currentToggle = onToggleMode ?: return@AnimatedVisibility
 
                         Surface(
+                            onClick = currentToggle,
                             color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(24.dp),
-                            border = BorderStroke(1.dp, SamtchTheme.colors.divider)
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, SamtchTheme.colors.divider),
+                            modifier = Modifier.size(44.dp)
                         ) {
-                            IconButton(
-                                onClick = currentToggle,
-                                modifier = Modifier.size(40.dp)
-                            ) {
+                            Box(contentAlignment = Alignment.Center) {
                                 AnimatedContent(
                                     targetState = currentMode,
                                     transitionSpec = {

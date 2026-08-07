@@ -9,10 +9,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.akumasdk.samtch.data.emote.Emote
-import com.akumasdk.samtch.data.emote.EmoteType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -28,9 +26,9 @@ object SettingsManager {
     private val LAST_VERSION_CODE = intPreferencesKey("last_version_code")
     private val KEYBOARD_HEIGHT_PORTRAIT = intPreferencesKey("keyboard_height_portrait")
     private val KEYBOARD_HEIGHT_LANDSCAPE = intPreferencesKey("keyboard_height_landscape")
-    private val RECENT_EMOTES = stringPreferencesKey("recent_emotes")
     private val CHAT_FONT_SIZE = intPreferencesKey("chat_font_size")
     private val CHAT_EMOTE_SIZE = intPreferencesKey("chat_emote_size")
+    private val IMMERSIVE_BACKGROUND_ENABLED = booleanPreferencesKey("immersive_background_enabled")
 
     enum class AdBlockMode {
         VAFT, VIDEO_SWAP
@@ -167,9 +165,11 @@ object SettingsManager {
         }
     }
 
-    fun getRecentEmotes(context: Context): Flow<List<Emote>> {
+    private fun getRecentEmotesKey(channel: String) = stringPreferencesKey("recent_emotes_${channel.lowercase()}")
+
+    fun getRecentEmotes(context: Context, channel: String): Flow<List<Emote>> {
         return context.dataStore.data.map { preferences ->
-            val json = preferences[RECENT_EMOTES] ?: return@map emptyList<Emote>()
+            val json = preferences[getRecentEmotesKey(channel)] ?: return@map emptyList<Emote>()
             try {
                 Json.decodeFromString<List<Emote>>(json)
             } catch (_: Exception) {
@@ -178,13 +178,14 @@ object SettingsManager {
         }
     }
 
-    suspend fun addRecentEmote(context: Context, emote: Emote) {
+    suspend fun addRecentEmote(context: Context, channel: String, emote: Emote) {
         context.dataStore.edit { preferences ->
-            val currentJson = preferences[RECENT_EMOTES]
+            val key = getRecentEmotesKey(channel)
+            val currentJson = preferences[key]
             val currentList = if (currentJson != null) {
                 try {
                     Json.decodeFromString<List<Emote>>(currentJson).toMutableList()
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     mutableListOf()
                 }
             } else {
@@ -197,7 +198,7 @@ object SettingsManager {
 
             // Keep only top 40
             val limitedList = currentList.take(40)
-            preferences[RECENT_EMOTES] = Json.encodeToString(limitedList)
+            preferences[key] = Json.encodeToString(limitedList)
         }
     }
 
@@ -222,6 +223,18 @@ object SettingsManager {
     suspend fun setChatEmoteSize(context: Context, size: Int) {
         context.dataStore.edit { preferences ->
             preferences[CHAT_EMOTE_SIZE] = size
+        }
+    }
+
+    fun isImmersiveBackgroundEnabled(context: Context): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[IMMERSIVE_BACKGROUND_ENABLED] ?: true
+        }
+    }
+
+    suspend fun setImmersiveBackgroundEnabled(context: Context, enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[IMMERSIVE_BACKGROUND_ENABLED] = enabled
         }
     }
 }
