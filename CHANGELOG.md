@@ -1,5 +1,12 @@
 # Changelog
 
+## Samtch v0.4.2
+
+### What's New
+- **PiP Overlay Visibility Fix**: Updated player overlay visibility logic so controls behave correctly when Picture-in-Picture mode is active.
+
+---
+
 ## Samtch v0.4.1
 
 ### What's New
