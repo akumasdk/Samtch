@@ -215,13 +215,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // 3. SYSTEM BAR THEME CONSISTENCY
-                // This ensures icons follow theme even when bars are re-shown after fullscreen
-                LaunchedEffect(darkTheme, isFullscreen, isMinimized) {
-                    windowInsetsController.isAppearanceLightStatusBars = !darkTheme
-                    windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
-                }
-
                 val browserState = rememberSaveableWebViewState(Constants.Twitch.MOBILE_URL)
                 val browserNavigator = rememberWebViewNavigator()
 
