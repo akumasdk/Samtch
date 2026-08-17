@@ -95,4 +95,23 @@ object HelixApi {
             parameter("broadcaster_id", broadcasterId)
         }
     }
+
+    suspend fun getUsers(context: android.content.Context, logins: List<String>? = null, ids: List<String>? = null): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_USERS) {
+            header("Client-Id", clientId)
+            addAuth(context)
+            logins?.forEach { parameter("login", it) }
+            ids?.forEach { parameter("id", it) }
+        }
+    }
+
+    suspend fun getStreams(context: android.content.Context, logins: List<String>): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_STREAMS) {
+            header("Client-Id", clientId)
+            addAuth(context)
+            logins.forEach { parameter("user_login", it) }
+        }
+    }
 }

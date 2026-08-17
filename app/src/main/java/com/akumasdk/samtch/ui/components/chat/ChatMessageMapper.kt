@@ -168,6 +168,16 @@ object ChatMessageMapper {
     }
 
     private fun parseBadges(message: IrcMessage, channelName: String): List<String> {
-        return emptyList() // Badges disabled for now
+        val badgesTag = message.tags["badges"] ?: return emptyList()
+        return badgesTag.split(",").mapNotNull { badgeStr ->
+            val parts = badgeStr.split("/")
+            if (parts.size == 2) {
+                val setId = parts[0]
+                val version = parts[1]
+                EmoteRepository.getBadgeUrl(channelName, setId, version)
+            } else {
+                null
+            }
+        }
     }
 }

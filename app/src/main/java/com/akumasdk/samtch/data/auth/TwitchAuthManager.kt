@@ -13,6 +13,7 @@ object TwitchAuthManager {
 
     data class AuthState(
         val userName: String? = null,
+        val userId: String? = null,
         val authToken: String? = null,
         val clientId: String? = null,
         val isLoggedIn: Boolean = false
@@ -24,10 +25,11 @@ object TwitchAuthManager {
             val oauthToken = runBlocking { SettingsManager.getAuthToken(context).first() }
             val oauthClientId = runBlocking { SettingsManager.getAuthClientId(context).first() }
             val oauthUserName = runBlocking { SettingsManager.getAuthUserName(context).first() }
+            val oauthUserId = runBlocking { SettingsManager.getAuthUserId(context).first() }
             val oauthLoggedIn = runBlocking { SettingsManager.isLoggedIn(context).first() }
 
             if (oauthLoggedIn && !oauthToken.isNullOrEmpty()) {
-                return AuthState(oauthUserName, oauthToken, oauthClientId, true)
+                return AuthState(oauthUserName, oauthUserId, oauthToken, oauthClientId, true)
             }
 
             // 2. Fallback to cookies
@@ -48,7 +50,7 @@ object TwitchAuthManager {
                 Log.d(TAG, "Detected logged-in user from cookies: $userName")
             }
 
-            AuthState(userName, authToken, Constants.Twitch.CLIENT_ID, isLoggedIn)
+            AuthState(userName, null, authToken, Constants.Twitch.CLIENT_ID, isLoggedIn)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting auth state", e)
             AuthState()

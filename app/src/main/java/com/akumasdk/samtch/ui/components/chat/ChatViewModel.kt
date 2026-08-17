@@ -174,11 +174,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             // Load emotes and badges
             launch { 
-                EmoteRepository.loadGlobalEmotes()
+                EmoteRepository.loadGlobalEmotes(context)
                 updateEmoteMenuTabs(channel)
             }
             launch { 
-                EmoteRepository.loadChannelEmotes(channel)
+                EmoteRepository.loadChannelEmotes(context, channel)
                 updateEmoteMenuTabs(channel)
             }
 

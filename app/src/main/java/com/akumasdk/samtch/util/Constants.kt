@@ -23,6 +23,8 @@ object Constants {
             const val HLS_BASE = "https://usher.ttvnw.net/api/channel/hls/"
             const val INTEGRITY = "https://gql.twitch.tv/integrity"
             const val HELIX_VALIDATE = "https://id.twitch.tv/oauth2/validate"
+            const val HELIX_USERS = "https://api.twitch.tv/helix/users"
+            const val HELIX_STREAMS = "https://api.twitch.tv/helix/streams"
             const val HELIX_GLOBAL_BADGES = "https://api.twitch.tv/helix/chat/badges/global"
             const val HELIX_CHANNEL_BADGES = "https://api.twitch.tv/helix/chat/badges"
         }

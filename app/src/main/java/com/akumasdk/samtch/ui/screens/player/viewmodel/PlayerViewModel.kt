@@ -1,12 +1,13 @@
 package com.akumasdk.samtch.ui.screens.player.viewmodel
 
+import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -14,7 +15,10 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
-import com.akumasdk.samtch.data.model.TwitchStreamMetadata
+import com.akumasdk.samtch.data.api.helix.HelixApiClient
+import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
+import com.akumasdk.samtch.data.api.helix.dto.UserDto
+import com.akumasdk.samtch.data.model.*
 import com.akumasdk.samtch.service.PlaybackService
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Job
@@ -25,7 +29,7 @@ import kotlin.time.Duration.Companion.seconds
 import androidx.core.net.toUri
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 
-class PlayerViewModel : ViewModel() {
+class PlayerViewModel(application: Application) : AndroidViewModel(application) {
     var channel by mutableStateOf<String?>(null)
         private set
         
@@ -130,7 +134,9 @@ class PlayerViewModel : ViewModel() {
             repeat(3) { attempt ->
                 if (success) return@repeat
                 Log.d("PlayerViewModel", "Initial metadata fetch for $channel (attempt ${attempt + 1})")
-                val metadata = TwitchGqlService.getStreamMetadata(channel)
+                
+                val metadata = fetchMetadata(channel)
+                
                 if (metadata != null) {
                     updateMetadataState(metadata)
                     success = true
@@ -143,12 +149,33 @@ class PlayerViewModel : ViewModel() {
             while (true) {
                 delay(1.minutes)
                 Log.d("PlayerViewModel", "Periodic metadata fetch for $channel")
-                val metadata = TwitchGqlService.getStreamMetadata(channel)
+                
+                val metadata = fetchMetadata(channel)
+                
                 if (metadata != null) {
                     updateMetadataState(metadata)
                 }
             }
         }
+    }
+
+    private suspend fun fetchMetadata(channel: String): TwitchStreamMetadata? {
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(getApplication())
+        
+        if (auth.isLoggedIn) {
+            try {
+                val helixStream = HelixApiClient.getStreamMetadata(getApplication(), channel).getOrNull()
+                val helixUser = HelixApiClient.getUsers(getApplication(), logins = listOf(channel)).getOrNull()?.firstOrNull()
+                
+                if (helixUser != null) {
+                    return TwitchHelixMapper.mapHelixToMetadata(helixUser, helixStream)
+                }
+            } catch (e: Exception) {
+                Log.e("PlayerViewModel", "Helix metadata fetch failed, falling back to GQL", e)
+            }
+        }
+        
+        return TwitchGqlService.getStreamMetadata(channel)
     }
 
     private fun updateMetadataState(metadata: TwitchStreamMetadata) {

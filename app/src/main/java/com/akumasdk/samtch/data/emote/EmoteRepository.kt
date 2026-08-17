@@ -2,6 +2,7 @@ package com.akumasdk.samtch.data.emote
 
 import android.util.Log
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
+import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.dto.BadgeSetDto
 import com.akumasdk.samtch.data.api.thirdparty.BTTVApi
 import com.akumasdk.samtch.data.api.thirdparty.FFZApi
@@ -37,7 +38,7 @@ object EmoteRepository {
         "SoSnowy", "IceCold", "SantaHat", "TopHat", "ReinDeer", "CandyCane", "cvMask", "cvHazmat"
     )
 
-    suspend fun loadGlobalEmotes() = withContext(Dispatchers.IO) {
+    suspend fun loadGlobalEmotes(context: android.content.Context) = withContext(Dispatchers.IO) {
         if (_globalState.value.isLoaded) return@withContext
         try {
             val bttvMap = mutableMapOf<String, Emote>()
@@ -80,9 +81,8 @@ object EmoteRepository {
                 }
             } catch (e: Exception) { Log.e(TAG, "FFZ Global load failed", e) }
 
-            // Load Global Badges via Helix (Disabled for now)
-            // val globalBadges = mapHelixBadges(HelixApiClient.getGlobalBadges())
-            val globalBadges = emptyMap<String, Map<String, TwitchBadgeDto>>()
+            // Load Global Badges via Helix
+            val globalBadges = mapHelixBadges(HelixApiClient.getGlobalBadges(context).getOrDefault(emptyList()))
 
             _globalState.update { it.copy(
                 bttvEmotes = bttvMap,
@@ -97,7 +97,7 @@ object EmoteRepository {
         }
     }
 
-    suspend fun loadChannelEmotes(channelName: String) = withContext(Dispatchers.IO) {
+    suspend fun loadChannelEmotes(context: android.content.Context, channelName: String) = withContext(Dispatchers.IO) {
         val stateFlow = _channelStates.getOrPut(channelName) { MutableStateFlow(ChannelEmoteState()) }
         if (stateFlow.value.isLoaded) return@withContext
 
@@ -106,7 +106,14 @@ object EmoteRepository {
             val seventvMap = mutableMapOf<String, Emote>()
             val ffzMap = mutableMapOf<String, Emote>()
             
-            val userId = TwitchGqlService.getUserId(channelName)
+            val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+            val userId = if (auth.isLoggedIn && auth.userName.equals(channelName, ignoreCase = true)) {
+                auth.userId
+            } else {
+                HelixApiClient.getUserIdByName(context, channelName).getOrNull() 
+                    ?: TwitchGqlService.getUserId(channelName) // Fallback to GQL
+            }
+
             if (userId == null) {
                 Log.e(TAG, "Failed to get User ID for $channelName, channel emotes won't load")
                 return@withContext
@@ -150,9 +157,8 @@ object EmoteRepository {
                 }
             } catch (e: Exception) { Log.e(TAG, "FFZ Channel load failed for $channelName", e) }
 
-            // Load Channel Badges via Helix (Disabled for now)
-            // val channelBadges = mapHelixBadges(HelixApiClient.getChannelBadges(userId))
-            val channelBadges = emptyMap<String, Map<String, TwitchBadgeDto>>()
+            // Load Channel Badges via Helix
+            val channelBadges = mapHelixBadges(HelixApiClient.getChannelBadges(context, userId).getOrDefault(emptyList()))
 
             stateFlow.update { it.copy(
                 bttvEmotes = bttvMap,
@@ -217,26 +223,25 @@ object EmoteRepository {
     }
 
     fun getBadgeUrl(channelName: String, setId: String, version: String): String? {
-        return null // Badges disabled for now
-        /*
         val channelState = _channelStates[channelName]?.value
         val globalState = _globalState.value
-        
+
         val badge = channelState?.displayBadges?.get(setId)?.takeIf { it.version == version }
             ?: channelState?.badges?.get(setId)?.get(version)
             ?: globalState.badges[setId]?.get(version)
             
         if (badge == null) {
             Log.d(TAG, "Badge not found: $setId/$version in $channelName")
+            return null
         }
 
-        val url = badge?.bestUrl ?: return null
+        val url = badge.bestUrl ?: return null
+                 
         return when {
             url.startsWith("http") -> url
             url.startsWith("//") -> "https:$url"
             else -> "https://$url"
         }
-        */
     }
 
     private fun parseSevenTVEmote(emote: SevenTVEmote): Emote? {
