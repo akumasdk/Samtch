@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
 class TwitchChatClient(
+    private val context: android.content.Context,
     private val httpClient: HttpClient = HttpClient { install(WebSockets) }
 ) {
     private val TAG = "TwitchChatClient"
@@ -45,7 +46,7 @@ class TwitchChatClient(
         currentChannel = channel
 
         connectionJob = scope.launch {
-            val authState = TwitchAuthManager.getAuthState()
+            val authState = TwitchAuthManager.getAuthState(context)
             val nick = authState.userName ?: "justinfan${(10000..99999).random()}"
             val pass = if (authState.authToken != null) "oauth:${authState.authToken}" else "SCHMOOPIE"
 

@@ -1,7 +1,8 @@
 package com.akumasdk.samtch.ui.components.chat
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.emote.Emote
@@ -21,9 +22,9 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
-class ChatViewModel : ViewModel() {
+class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val TAG = "ChatViewModel"
-    private val chatClient = TwitchChatClient()
+    private val chatClient = TwitchChatClient(application)
     
     private val _messages = MutableStateFlow<ImmutableList<ChatMessageUiState>>(persistentListOf())
     val messages = _messages.asStateFlow()
@@ -89,7 +90,7 @@ class ChatViewModel : ViewModel() {
         _messages.value = persistentListOf()
 
         // 3. Check login status
-        val authState = TwitchAuthManager.getAuthState()
+        val authState = TwitchAuthManager.getAuthState(getApplication())
         _isLoggedIn.value = authState.isLoggedIn
         val loggedInUser = authState.userName
         _loggedInUser.value = loggedInUser
@@ -277,7 +278,7 @@ class ChatViewModel : ViewModel() {
 
     suspend fun sendMessage(message: String) {
         val channel = currentChannel ?: return
-        val authState = TwitchAuthManager.getAuthState()
+        val authState = TwitchAuthManager.getAuthState(getApplication())
         
         // 1. Manually inject the message for immediate feedback
         if (authState.isLoggedIn && !authState.userName.isNullOrEmpty()) {

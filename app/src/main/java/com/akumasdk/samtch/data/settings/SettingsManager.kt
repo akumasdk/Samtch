@@ -30,6 +30,13 @@ object SettingsManager {
     private val CHAT_EMOTE_SIZE = intPreferencesKey("chat_emote_size")
     private val IMMERSIVE_BACKGROUND_ENABLED = booleanPreferencesKey("immersive_background_enabled")
 
+    // Auth
+    private val AUTH_TOKEN = stringPreferencesKey("auth_token")
+    private val AUTH_CLIENT_ID = stringPreferencesKey("auth_client_id")
+    private val AUTH_USER_NAME = stringPreferencesKey("auth_user_name")
+    private val AUTH_USER_ID = stringPreferencesKey("auth_user_id")
+    private val AUTH_IS_LOGGED_IN = booleanPreferencesKey("auth_is_logged_in")
+
     enum class AdBlockMode {
         VAFT, VIDEO_SWAP
     }
@@ -235,6 +242,30 @@ object SettingsManager {
     suspend fun setImmersiveBackgroundEnabled(context: Context, enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[IMMERSIVE_BACKGROUND_ENABLED] = enabled
+        }
+    }
+
+    // Auth methods
+    fun getAuthToken(context: Context): Flow<String?> = context.dataStore.data.map { it[AUTH_TOKEN] }
+    fun getAuthClientId(context: Context): Flow<String?> = context.dataStore.data.map { it[AUTH_CLIENT_ID] }
+    fun getAuthUserName(context: Context): Flow<String?> = context.dataStore.data.map { it[AUTH_USER_NAME] }
+    fun getAuthUserId(context: Context): Flow<String?> = context.dataStore.data.map { it[AUTH_USER_ID] }
+    fun isLoggedIn(context: Context): Flow<Boolean> = context.dataStore.data.map { it[AUTH_IS_LOGGED_IN] ?: false }
+
+    suspend fun setAuthData(
+        context: Context,
+        token: String?,
+        clientId: String?,
+        userName: String?,
+        userId: String?,
+        isLoggedIn: Boolean
+    ) {
+        context.dataStore.edit { preferences ->
+            if (token != null) preferences[AUTH_TOKEN] = token else preferences.remove(AUTH_TOKEN)
+            if (clientId != null) preferences[AUTH_CLIENT_ID] = clientId else preferences.remove(AUTH_CLIENT_ID)
+            if (userName != null) preferences[AUTH_USER_NAME] = userName else preferences.remove(AUTH_USER_NAME)
+            if (userId != null) preferences[AUTH_USER_ID] = userId else preferences.remove(AUTH_USER_ID)
+            preferences[AUTH_IS_LOGGED_IN] = isLoggedIn
         }
     }
 }

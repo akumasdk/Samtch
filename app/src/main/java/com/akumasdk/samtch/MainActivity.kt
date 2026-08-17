@@ -367,6 +367,15 @@ class MainActivity : ComponentActivity() {
                                 android.webkit.CookieManager.getInstance().removeAllCookies { 
                                     lifecycleScope.launch(Dispatchers.Main) {
                                         Log.d("MainActivity", "Logout: cookies cleared, triggering hard refresh for browser and player.")
+                                        // Clear OAuth data
+                                        SettingsManager.setAuthData(
+                                            context = this@MainActivity,
+                                            token = null,
+                                            clientId = null,
+                                            userName = null,
+                                            userId = null,
+                                            isLoggedIn = false
+                                        )
                                         refreshTriggerState.intValue += 1
                                         isSettingsOpen = false
                                     }
