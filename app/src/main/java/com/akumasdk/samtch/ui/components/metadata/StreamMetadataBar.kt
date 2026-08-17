@@ -31,6 +31,7 @@ fun StreamMetadataBar(
     expandTrigger: Int = 0,
     forceExpanded: Boolean = false,
     forceSlim: Boolean = false,
+    isImmersiveEnabled: Boolean = true,
     onClick: () -> Unit = {},
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
@@ -57,6 +58,8 @@ fun StreamMetadataBar(
         }
     }
 
+    val surfaceAlpha = if (isImmersiveEnabled) 0.6f else 1.0f
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -68,8 +71,8 @@ fun StreamMetadataBar(
                     onClick()
                 }
             },
-        color = SamtchTheme.colors.dialogBackground,
-        tonalElevation = 2.dp
+        color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
+        tonalElevation = if (isImmersiveEnabled) 0.dp else 2.dp
     ) {
         AnimatedContent(
             targetState = isSlim,

@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.components.chat.emote.EmoteInfoDialog
+import com.akumasdk.samtch.ui.components.chat.emote.BadgeInfoDialog
+import com.akumasdk.samtch.ui.components.chat.user.UserInfoDialog
 import com.akumasdk.samtch.ui.components.chat.emotemenu.EmoteMenu
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import com.akumasdk.samtch.ui.theme.SamtchTheme
@@ -102,6 +104,8 @@ fun TwitchChat(
         val isLoggedIn by viewModel.isLoggedIn.collectAsState()
         val emoteSuggestions by viewModel.emoteSuggestions.collectAsState()
         val selectedEmoteForInfo by viewModel.selectedEmoteForInfo.collectAsState()
+        val selectedBadgeForInfo by viewModel.selectedBadgeForInfo.collectAsState()
+        val selectedUserForInfo by viewModel.selectedUserForInfo.collectAsState()
         val emoteMenuTabs by viewModel.emoteMenuTabs.collectAsState()
         val systemNotice by viewModel.systemNotice.collectAsState()
         
@@ -129,7 +133,9 @@ fun TwitchChat(
                     isImmersiveEnabled = isImmersiveEnabled,
                     viewModel = viewModel,
                     onEmoteClick = { viewModel.showEmoteInfo(it) },
-                    onEmoteLongClick = { viewModel.showEmoteInfo(it) }
+                    onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                    onBadgeClick = { viewModel.showBadgeInfo(it) },
+                    onUserClick = { viewModel.showUserInfo(it) }
                 )
                 
                 if (showInput) {
@@ -225,6 +231,20 @@ fun TwitchChat(
                         viewModel.insertEmote(it)
                         viewModel.recordEmoteUsage(context, it)
                     }
+                )
+            }
+
+            selectedBadgeForInfo?.let { badge ->
+                BadgeInfoDialog(
+                    badge = badge,
+                    onDismiss = { viewModel.dismissBadgeInfo() }
+                )
+            }
+
+            selectedUserForInfo?.let { user ->
+                UserInfoDialog(
+                    user = user,
+                    onDismiss = { viewModel.dismissUserInfo() }
                 )
             }
         }

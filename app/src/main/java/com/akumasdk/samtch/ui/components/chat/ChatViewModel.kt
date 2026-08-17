@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
+import com.akumasdk.samtch.data.badge.BadgeRepository
+import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.data.emote.Emote
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
@@ -43,6 +45,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _selectedEmoteForInfo = MutableStateFlow<Emote?>(null)
     val selectedEmoteForInfo = _selectedEmoteForInfo.asStateFlow()
+
+    private val _selectedBadgeForInfo = MutableStateFlow<TwitchBadgeDto?>(null)
+    val selectedBadgeForInfo = _selectedBadgeForInfo.asStateFlow()
+
+    private val _selectedUserForInfo = MutableStateFlow<com.akumasdk.samtch.data.api.helix.dto.UserDto?>(null)
+    val selectedUserForInfo = _selectedUserForInfo.asStateFlow()
 
     private val _emoteMenuTabs = MutableStateFlow<Map<Int, List<Emote>>>(emptyMap())
     val emoteMenuTabs = _emoteMenuTabs.asStateFlow()
@@ -162,11 +170,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             launch {
                 combine(
                     EmoteRepository.globalState,
-                    EmoteRepository.getChannelState(channel)
-                ) { global, channelState ->
-                    global to channelState
-                }.collectLatest { (global, channelState) ->
-                    if (global.isLoaded || channelState.isLoaded) {
+                    EmoteRepository.getChannelState(channel),
+                    BadgeRepository.globalState,
+                    BadgeRepository.getChannelState(channel)
+                ) { globalEmotes, channelEmotes, globalBadges, channelBadges ->
+                    globalEmotes.isLoaded || channelEmotes.isLoaded || globalBadges.isLoaded || channelBadges.isLoaded
+                }.collectLatest { anyLoaded ->
+                    if (anyLoaded) {
                         delay(1000.milliseconds) // Debounce re-mapping
                         remapMessages(channel)
                     }
@@ -176,11 +186,21 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             // Load emotes and badges
             launch { 
                 EmoteRepository.loadGlobalEmotes(context)
+                BadgeRepository.loadGlobalBadges(context)
                 updateEmoteMenuTabs(channel)
             }
             launch { 
-                EmoteRepository.loadChannelEmotes(context, channel)
-                updateEmoteMenuTabs(channel)
+                val userId = if (authState.isLoggedIn && authState.userName.equals(channel, ignoreCase = true)) {
+                    authState.userId
+                } else {
+                    com.akumasdk.samtch.data.api.helix.HelixApiClient.getUserIdByName(context, channel).getOrNull()
+                }
+                
+                if (userId != null) {
+                    EmoteRepository.loadChannelEmotes(context, channel)
+                    BadgeRepository.loadChannelBadges(context, channel, userId)
+                    updateEmoteMenuTabs(channel)
+                }
             }
 
             chatClient.connect(channel)
@@ -366,6 +386,27 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissEmoteInfo() {
         _selectedEmoteForInfo.value = null
+    }
+
+    fun showBadgeInfo(badge: TwitchBadgeDto) {
+        _selectedBadgeForInfo.value = badge
+    }
+
+    fun dismissBadgeInfo() {
+        _selectedBadgeForInfo.value = null
+    }
+
+    fun showUserInfo(userName: String) {
+        viewModelScope.launch {
+            val user = com.akumasdk.samtch.data.api.helix.HelixApiClient.getUsers(getApplication(), logins = listOf(userName)).getOrNull()?.firstOrNull()
+            if (user != null) {
+                _selectedUserForInfo.value = user
+            }
+        }
+    }
+
+    fun dismissUserInfo() {
+        _selectedUserForInfo.value = null
     }
 
     fun insertEmote(emote: Emote) {

@@ -122,6 +122,7 @@ fun PortraitPlayer(
                     expandTrigger = expandTrigger,
                     forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
                     forceSlim = forceSlimMetadata,
+                    isImmersiveEnabled = isImmersiveEnabled,
                     onClick = { showInfoDialog = true }
                 )
             }

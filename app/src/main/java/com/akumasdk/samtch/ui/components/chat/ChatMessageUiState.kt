@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.components.chat
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 
 @Immutable
 data class EmoteInfo(
@@ -27,6 +28,7 @@ sealed interface ChatMessageUiState {
         val annotatedString: AnnotatedString,
         val emotes: List<EmoteInfo>,
         val badgeUrls: List<String> = emptyList(),
+        val badges: List<TwitchBadgeDto> = emptyList(),
         val isAction: Boolean = false
     ) : ChatMessageUiState
 

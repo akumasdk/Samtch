@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.R
@@ -80,6 +81,7 @@ import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import com.akumasdk.samtch.ui.screens.player.util.unloadWebView
 import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
@@ -712,7 +714,30 @@ fun TwitchPlayer(
                             )
                     ) {
                         if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
-                            chatContent(ChatContentConfig(true, false, refreshTrigger), null, null, Modifier.fillMaxSize())
+                            val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
+                            val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
+                            val surfaceAlpha = if (isImmersiveEnabled) 0.4f else 1.0f
+
+                            PlayerBackground(
+                                channel = channel,
+                                previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                                modifier = Modifier.fillMaxSize(),
+                                alpha = bgAlpha,
+                                blurRadius = bgBlur
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
+                                ) {
+                                    chatContent(
+                                        ChatContentConfig(true, false, refreshTrigger),
+                                        null,
+                                        null,
+                                        Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
                         } else {
                             playerContent(Modifier.fillMaxSize()) {
                                 Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")

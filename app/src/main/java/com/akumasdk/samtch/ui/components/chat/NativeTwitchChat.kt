@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import kotlinx.coroutines.launch
 
@@ -56,7 +57,9 @@ fun NativeTwitchChat(
     isImmersiveEnabled: Boolean = true,
     viewModel: ChatViewModel = viewModel(),
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
-    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
+    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
+    onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
+    onUserClick: ((String) -> Unit)? = null
 ) {
     val messages by viewModel.messages.collectAsState()
     val chatFontSize by viewModel.chatFontSize.collectAsState()
@@ -141,6 +144,8 @@ fun NativeTwitchChat(
                         isCompact = isCompact,
                         onEmoteClick = onEmoteClick,
                         onEmoteLongClick = onEmoteLongClick,
+                        onBadgeClick = onBadgeClick,
+                        onUserClick = onUserClick,
                         fontSize = chatFontSize,
                         emoteSize = chatEmoteSize
                     )

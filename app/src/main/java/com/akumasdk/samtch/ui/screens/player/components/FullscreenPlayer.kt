@@ -125,6 +125,7 @@ fun FullscreenPlayer(
                             streamStartedAt = streamStartedAt,
                             expandTrigger = expandTrigger,
                             forceSlim = forceSlimMetadata,
+                            isImmersiveEnabled = isImmersiveEnabled,
                             onClick = { showInfoDialog = true },
                             modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
                         )
