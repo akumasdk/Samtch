@@ -4,10 +4,12 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,12 +27,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -89,6 +94,9 @@ fun TwitchChat(
     val imeTarget = WindowInsets.imeAnimationTarget
     val targetImeHeightPx = (imeTarget.getBottom(density) - navBars.getBottom(density)).coerceAtLeast(0)
     
+    var inputAreaHeightPx by remember { mutableIntStateOf(0) }
+    val inputAreaHeightDp = if (showInput) with(density) { inputAreaHeightPx.toDp() } else 0.dp
+
     LaunchedEffect(targetImeHeightPx, isLandscape) {
         if (targetImeHeightPx > with(density) { 100.dp.toPx() }) {
             viewModel.updateKeyboardHeight(context, targetImeHeightPx, isLandscape)
@@ -125,97 +133,102 @@ fun TwitchChat(
         }
         
         Box(modifier = modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                NativeTwitchChat(
-                    channel = channel,
-                    modifier = Modifier.weight(1f),
-                    isCompact = isCompact,
-                    isImmersiveEnabled = isImmersiveEnabled,
-                    viewModel = viewModel,
-                    onEmoteClick = { viewModel.showEmoteInfo(it) },
-                    onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                    onBadgeClick = { viewModel.showBadgeInfo(it) },
-                    onUserClick = { viewModel.showUserInfo(it) }
+            NativeTwitchChat(
+                channel = channel,
+                modifier = Modifier.fillMaxSize(),
+                isCompact = isCompact,
+                isImmersiveEnabled = isImmersiveEnabled,
+                viewModel = viewModel,
+                onEmoteClick = { viewModel.showEmoteInfo(it) },
+                onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                onBadgeClick = { viewModel.showBadgeInfo(it) },
+                onUserClick = { viewModel.showUserInfo(it) },
+                contentPadding = PaddingValues(
+                    top = 74.dp, 
+                    bottom = inputAreaHeightDp + 8.dp
                 )
-                
-                if (showInput) {
-                    val surfaceAlpha = if (isImmersiveEnabled) 0.6f else 1.0f
+            )
+            
+            if (showInput) {
+                val surfaceAlpha = if (isImmersiveEnabled) 0.3f else 1.0f
 
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
-                        tonalElevation = 2.dp
-                    ) {
-                        Column {
-                            SystemNoticeBanner(
-                                message = systemNotice,
-                                onDismiss = { viewModel.dismissSystemNotice() }
-                            )
-                            HorizontalDivider(color = SamtchTheme.colors.divider, thickness = 1.dp)
-                            ChatInputBox(
-                                isLoggedIn = isLoggedIn,
-                                onSendMessage = { text ->
-                                    coroutineScope.launch {
-                                        viewModel.sendMessage(text)
-                                    }
-                                },
-                                onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
-                                isEmoteMenuVisible = isEmoteMenuVisible,
-                                suggestions = emoteSuggestions,
-                                onEmoteSelected = { emote ->
-                                    viewModel.recordEmoteUsage(context, emote)
-                                },
-                                onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                                onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
-                                emoteInsertFlow = viewModel.emoteInsertFlow,
-                                portraitMode = portraitMode,
-                                onToggleMode = onToggleMode,
-                                onLoginRequested = onLoginRequested
-                            )
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .onSizeChanged { inputAreaHeightPx = it.height },
+                    color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
+                    border = if (isImmersiveEnabled) BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder) else null,
+                    tonalElevation = 0.dp
+                ) {
+                    Column {
+                        SystemNoticeBanner(
+                            message = systemNotice,
+                            onDismiss = { viewModel.dismissSystemNotice() }
+                        )
+                        ChatInputBox(
+                            isLoggedIn = isLoggedIn,
+                            onSendMessage = { text ->
+                                coroutineScope.launch {
+                                    viewModel.sendMessage(text)
+                                }
+                            },
+                            onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
+                            isEmoteMenuVisible = isEmoteMenuVisible,
+                            suggestions = emoteSuggestions,
+                            onEmoteSelected = { emote ->
+                                viewModel.recordEmoteUsage(context, emote)
+                            },
+                            onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                            onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
+                            emoteInsertFlow = viewModel.emoteInsertFlow,
+                            portraitMode = portraitMode,
+                            onToggleMode = onToggleMode,
+                            onLoginRequested = onLoginRequested
+                        )
 
-                            // Unified area structure that prevents "double padding" and flicker
-                            val menuHeight = if (keyboardHeightPx > 0) {
-                                with(density) { keyboardHeightPx.toDp() }
-                            } else {
-                                if (isLandscape) 200.dp else 350.dp
-                            }
+                        // Unified area structure that prevents "double padding" and flicker
+                        val menuHeight = if (keyboardHeightPx > 0) {
+                            with(density) { keyboardHeightPx.toDp() }
+                        } else {
+                            if (isLandscape) 200.dp else 350.dp
+                        }
 
-                            // Calculate target height for the interaction area
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.BottomCenter
-                            ) {
-                                // 1. Use the system's native IME + Navigation Bar padding.
-                                // This ensures the container height is ALWAYS correct, even on first launch.
-                                Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.ime.union(WindowInsets.navigationBars)))
+                        // Calculate target height for the interaction area
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            // 1. Use the system's native IME + Navigation Bar padding.
+                            // This ensures the container height is ALWAYS correct, even on first launch.
+                            Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.ime.union(WindowInsets.navigationBars)))
+                            
+                            // 2. The Interaction space: Holds the emote menu at a stable height
+                            if (isEmoteMenuVisible) {
+                                val currentImeBottom = WindowInsets.ime.getBottom(density)
+                                val navBarBottom = WindowInsets.navigationBars.getBottom(density)
+                                val currentKeyboardHeightPx = (currentImeBottom - navBarBottom).coerceAtLeast(0)
+                                val menuHeightPx = with(density) { menuHeight.toPx() }
                                 
-                                // 2. The Interaction space: Holds the emote menu at a stable height
-                                if (isEmoteMenuVisible) {
-                                    val currentImeBottom = WindowInsets.ime.getBottom(density)
-                                    val navBarBottom = WindowInsets.navigationBars.getBottom(density)
-                                    val currentKeyboardHeightPx = (currentImeBottom - navBarBottom).coerceAtLeast(0)
-                                    val menuHeightPx = with(density) { menuHeight.toPx() }
-                                    
-                                    // Optimization: Hide menu rendering if keyboard completely covers it
-                                    val isKeyboardCoveringMenu = currentKeyboardHeightPx >= (menuHeightPx * 0.98f).toInt()
-                                    
-                                    Column {
-                                        Box(modifier = Modifier.height(menuHeight)) {
-                                            if (!isKeyboardCoveringMenu) {
-                                                EmoteMenu(
-                                                    tabs = emoteMenuTabs,
-                                                    onEmoteClick = { emote ->
-                                                        viewModel.insertEmote(emote)
-                                                        viewModel.recordEmoteUsage(context, emote)
-                                                    },
-                                                    onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                                                    height = menuHeight
-                                                )
-                                            }
+                                // Optimization: Hide menu rendering if keyboard completely covers it
+                                val isKeyboardCoveringMenu = currentKeyboardHeightPx >= (menuHeightPx * 0.98f).toInt()
+                                
+                                Column {
+                                    Box(modifier = Modifier.height(menuHeight)) {
+                                        if (!isKeyboardCoveringMenu) {
+                                            EmoteMenu(
+                                                tabs = emoteMenuTabs,
+                                                onEmoteClick = { emote ->
+                                                    viewModel.insertEmote(emote)
+                                                    viewModel.recordEmoteUsage(context, emote)
+                                                },
+                                                onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                                                height = menuHeight
+                                            )
                                         }
-                                        // Ensure emotes sit above the navigation bar
-                                        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                                     }
+                                    // Ensure emotes sit above the navigation bar
+                                    Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                                 }
                             }
                         }

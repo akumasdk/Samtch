@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
@@ -21,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -99,21 +99,34 @@ fun FullscreenPlayer(
                 alpha = bgAlpha,
                 blurRadius = bgBlur
             ) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
                         .systemBarsPadding()
                         .displayCutoutPadding()
                 ) {
-                    // Status Banner in the same space as portrait (between video and metadata/chat)
-                    StatusBanner(text = adblockText)
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Status Banner in the same space as portrait (between video and metadata/chat)
+                        StatusBanner(text = adblockText)
 
-                    // Metadata space above chat (Only visible when chat is open)
-                    AnimatedVisibility(
+                        // Chat area that metadata bar will overlay
+                        Box(modifier = Modifier.weight(1f)) {
+                            chatContent(
+                                true,
+                                true,
+                                refreshTrigger,
+                                Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    // Metadata space above chat (Overlay)
+                    this@Row.AnimatedVisibility(
                         visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
                         enter = SamtchAnimation.FadeIn,
-                        exit = SamtchAnimation.FadeOut
+                        exit = SamtchAnimation.FadeOut,
+                        modifier = Modifier.align(Alignment.TopCenter)
                     ) {
                         StreamMetadataBar(
                             channel = channel,
@@ -130,15 +143,6 @@ fun FullscreenPlayer(
                             modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
                         )
                     }
-
-                    chatContent(
-                        true,
-                        true,
-                        refreshTrigger,
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    )
                 }
             }
         }

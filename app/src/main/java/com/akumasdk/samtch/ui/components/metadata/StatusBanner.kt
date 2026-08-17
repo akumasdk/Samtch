@@ -38,7 +38,7 @@ fun StatusBanner(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(SamtchTheme.colors.accentColor.copy(alpha = 0.9f))
+                .background(SamtchTheme.colors.accentColor.copy(alpha = 0.7f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,

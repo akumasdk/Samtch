@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.components.metadata
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -10,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
@@ -58,7 +60,7 @@ fun StreamMetadataBar(
         }
     }
 
-    val surfaceAlpha = if (isImmersiveEnabled) 0.6f else 1.0f
+    val surfaceAlpha = if (isImmersiveEnabled) 0.8f else 1.0f
 
     Surface(
         modifier = modifier
@@ -72,8 +74,10 @@ fun StreamMetadataBar(
                 }
             },
         color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
-        tonalElevation = if (isImmersiveEnabled) 0.dp else 2.dp
+        border = if (isImmersiveEnabled) BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.2f)) else null,
+        tonalElevation = 0.dp
     ) {
+        // No extra lighting effects for a cleaner Telegram-like look
         AnimatedContent(
             targetState = isSlim,
             transitionSpec = {

@@ -45,6 +45,7 @@ data class SamtchColors(
     val loadingOverlay: Color,
     val defaultUserColor: Color,
     val accentColor: Color,
+    val glassBorder: Color,
     val audioPlayerBackgroundStart: Color,
     val audioPlayerBackgroundEnd: Color
 )
@@ -67,6 +68,7 @@ val LocalSamtchColors = staticCompositionLocalOf {
         dialogBackground = Color(0xFF1F1F23),
         cardBackground = Color.Black.copy(alpha = 0.4f),
         accentColor = TwitchPurpleLight,
+        glassBorder = Color.Black.copy(alpha = 0.08f),
         loadingOverlay = Color.Black.copy(alpha = 0.6f),
         audioPlayerBackgroundStart = TwitchDarkGray,
         audioPlayerBackgroundEnd = TwitchBlack
@@ -128,11 +130,12 @@ fun SamtchTheme(
             adblockBackground = Color.Black.copy(alpha = 0.7f),
             tooltipBackground = Color.Black.copy(alpha = 0.7f),
             tabButtonBackground = Color.Black.copy(alpha = 0.6f),
-            divider = Color.White.copy(alpha = 0.1f),
-            textFieldBackground = Color.Black.copy(alpha = 0.3f),
+            divider = Color.White.copy(alpha = 0.15f),
+            textFieldBackground = Color.Black.copy(alpha = 0.4f),
             defaultUserColor = TwitchPurpleLight,
             cardBackground = Color.Black.copy(alpha = 0.4f),
             accentColor = TwitchPurpleLight,
+            glassBorder = Color.White.copy(alpha = 0.12f),
             loadingOverlay = TwitchBlack.copy(alpha = 0.6f),
             audioPlayerBackgroundStart = TwitchDarkGray,
             audioPlayerBackgroundEnd = TwitchBlack
@@ -151,10 +154,11 @@ fun SamtchTheme(
             tooltipBackground = Color.White.copy(alpha = 0.9f),
             tabButtonBackground = Color.White.copy(alpha = 0.8f),
             divider = Color.Black.copy(alpha = 0.1f),
-            textFieldBackground = Color(0xFFEFEFF1),
+            textFieldBackground = Color.Black.copy(alpha = 0.05f),
             defaultUserColor = Color(0xFF6441A5), // Darker Twitch-like purple for light mode
             cardBackground = Color(0xFFEFEEF1), // Twitch light mode UI background
             accentColor = TwitchPurple, // Standard Twitch Purple for brand consistency
+            glassBorder = Color.Black.copy(alpha = 0.08f),
             loadingOverlay = Color.White.copy(alpha = 0.35f),
             audioPlayerBackgroundStart = Color(0xFFF7F7F8),
             audioPlayerBackgroundEnd = Color.White

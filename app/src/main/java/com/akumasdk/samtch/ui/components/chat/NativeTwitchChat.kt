@@ -59,7 +59,8 @@ fun NativeTwitchChat(
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
     onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
-    onUserClick: ((String) -> Unit)? = null
+    onUserClick: ((String) -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(top = 74.dp, bottom = 0.dp)
 ) {
     val messages by viewModel.messages.collectAsState()
     val chatFontSize by viewModel.chatFontSize.collectAsState()
@@ -67,6 +68,8 @@ fun NativeTwitchChat(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     
+    val chatBg = SamtchTheme.colors.chatBackground
+
     var shouldAutoScroll by rememberSaveable { mutableStateOf(true) }
     var lastJumpTime by remember { mutableLongStateOf(0L) }
 
@@ -116,7 +119,7 @@ fun NativeTwitchChat(
 
     Box(
         modifier = modifier.then(
-            if (!isImmersiveEnabled) Modifier.background(SamtchTheme.colors.chatBackground)
+            if (!isImmersiveEnabled) Modifier.background(chatBg)
             else Modifier
         )
     ) {
@@ -125,7 +128,7 @@ fun NativeTwitchChat(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 0.dp),
+            contentPadding = contentPadding,
             reverseLayout = true
         ) {
             // Floor spacer to provide consistent gap from input box
