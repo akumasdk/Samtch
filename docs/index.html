@@ -27,7 +27,7 @@
             border-top: 4px solid #9147ff;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            margin: 0 auto 20px auto;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -45,9 +45,15 @@
     </div>
 
     <script>
-        // The app intercepts the URL fragment before the page even fully loads,
-        // but this script is here as a fallback or for debugging.
-        console.log("Login redirect received. Token is in the URL fragment.");
+        // Use the JS bridge to signal the Android app that the redirect page has loaded
+        window.onload = function() {
+            if (window.LoginBridge && typeof window.LoginBridge.onLoginSuccess === 'function') {
+                console.log("Signaling success to Android via LoginBridge...");
+                window.LoginBridge.onLoginSuccess();
+            } else {
+                console.log("LoginBridge not found or incompatible.");
+            }
+        };
     </script>
 </body>
 </html>
