@@ -292,6 +292,7 @@ fun TwitchPlayer(
         PlayerLifecycleEffects(
             channel = channel,
             isPip = isPip,
+            refreshTrigger = refreshTrigger,
             lifecycleState = lifecycleState,
             portraitMode = portraitMode,
             chatViewModel = chatViewModel,

@@ -32,7 +32,9 @@ object TwitchAuthManager {
                 return AuthState(oauthUserName, oauthUserId, oauthToken, oauthClientId, true)
             }
 
-            // 2. Fallback to cookies
+            // 2. Passive cookie detection (for UI/Browser identification only)
+            // Note: We return isLoggedIn = false here because Helix API calls 
+            // require the formal OAuth flow implemented above.
             val cookieManager = CookieManager.getInstance()
             val cookies = cookieManager.getCookie(Constants.Twitch.BASE_URL) ?: return AuthState()
 
@@ -44,13 +46,11 @@ object TwitchAuthManager {
             val userName = cookieMap["login"]?.lowercase()
             val authToken = cookieMap["auth-token"]
 
-            val isLoggedIn = !userName.isNullOrEmpty() && !authToken.isNullOrEmpty()
-            
-            if (isLoggedIn) {
-                Log.d(TAG, "Detected logged-in user from cookies: $userName")
+            if (!userName.isNullOrEmpty()) {
+                Log.d(TAG, "Detected user via cookies: $userName (Anonymous mode for APIs)")
             }
 
-            AuthState(userName, null, authToken, Constants.Twitch.CLIENT_ID, isLoggedIn)
+            return AuthState(userName, null, authToken, Constants.Twitch.CLIENT_ID, false)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting auth state", e)
             AuthState()

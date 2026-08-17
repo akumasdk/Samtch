@@ -11,22 +11,35 @@ object HelixApiClient {
     private const val TAG = "HelixApiClient"
 
     suspend fun getGlobalBadges(context: Context): Result<List<BadgeSetDto>> = runCatching {
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        if (!auth.isLoggedIn) return@runCatching emptyList()
+
         val response = HelixApi.getGlobalBadges(context)
         if (!response.status.isSuccess()) {
+            val body = response.bodyAsText()
+            Log.e(TAG, "Failed to fetch global badges: ${response.status} body=$body")
             throw Exception("Failed to fetch global badges: ${response.status}")
         }
         response.body<DataListDto<BadgeSetDto>>().data
     }
 
     suspend fun getChannelBadges(context: Context, broadcasterId: String): Result<List<BadgeSetDto>> = runCatching {
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        if (!auth.isLoggedIn) return@runCatching emptyList()
+
         val response = HelixApi.getChannelBadges(context, broadcasterId)
         if (!response.status.isSuccess()) {
+            val body = response.bodyAsText()
+            Log.e(TAG, "Failed to fetch channel badges for $broadcasterId: ${response.status} body=$body")
             throw Exception("Failed to fetch channel badges: ${response.status}")
         }
         response.body<DataListDto<BadgeSetDto>>().data
     }
 
     suspend fun getUsers(context: Context, logins: List<String>? = null, ids: List<String>? = null): Result<List<UserDto>> = runCatching {
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        if (!auth.isLoggedIn) throw Exception("Helix requires authentication")
+
         val response = HelixApi.getUsers(context, logins, ids)
         if (!response.status.isSuccess()) {
             throw Exception("Failed to fetch users: ${response.status}")
@@ -40,6 +53,9 @@ object HelixApiClient {
     }
 
     suspend fun getStreams(context: Context, logins: List<String>): Result<List<StreamDto>> = runCatching {
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        if (!auth.isLoggedIn) throw Exception("Helix requires authentication")
+
         val response = HelixApi.getStreams(context, logins)
         if (!response.status.isSuccess()) {
             throw Exception("Failed to fetch streams: ${response.status}")

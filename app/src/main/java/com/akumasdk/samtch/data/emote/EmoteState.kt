@@ -5,7 +5,8 @@ data class GlobalEmoteState(
     val seventvEmotes: Map<String, Emote> = emptyMap(),
     val ffzEmotes: Map<String, Emote> = emptyMap(),
     val badges: Map<String, Map<String, TwitchBadgeDto>> = emptyMap(),
-    val isLoaded: Boolean = false
+    val isLoaded: Boolean = false,
+    val loadedWithAuth: Boolean = false
 )
 
 data class ChannelEmoteState(
@@ -14,5 +15,6 @@ data class ChannelEmoteState(
     val ffzEmotes: Map<String, Emote> = emptyMap(),
     val badges: Map<String, Map<String, TwitchBadgeDto>> = emptyMap(),
     val displayBadges: Map<String, TwitchBadgeDto> = emptyMap(),
-    val isLoaded: Boolean = false
+    val isLoaded: Boolean = false,
+    val loadedWithAuth: Boolean = false
 )

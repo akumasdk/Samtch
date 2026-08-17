@@ -76,9 +76,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         channel: String, 
         loadingMessage: String, 
         welcomeMessageTemplate: String = "Welcome to %s's chat!",
-        loginMessageTemplate: String? = null
+        loginMessageTemplate: String? = null,
+        forceRefresh: Boolean = false
     ) {
-        if (currentChannel == channel) return
+        if (currentChannel == channel && !forceRefresh) return
         
         // 1. Instantly cancel any active session logic for the previous channel
         connectionJob?.cancel()
@@ -157,15 +158,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     }
             }
 
-            // Watch for emote load status to trigger remapping
+            // Watch for load status to trigger remapping (emotes and badges)
             launch {
                 combine(
                     EmoteRepository.globalState,
                     EmoteRepository.getChannelState(channel)
                 ) { global, channelState ->
-                    global.isLoaded || channelState.isLoaded
-                }.collectLatest { anyLoaded ->
-                    if (anyLoaded) {
+                    global to channelState
+                }.collectLatest { (global, channelState) ->
+                    if (global.isLoaded || channelState.isLoaded) {
                         delay(1000.milliseconds) // Debounce re-mapping
                         remapMessages(channel)
                     }

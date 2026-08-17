@@ -2,6 +2,10 @@ package com.akumasdk.samtch.ui.screens.player.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
@@ -61,6 +65,7 @@ fun AudioServiceEffects(
 fun PlayerLifecycleEffects(
     channel: String,
     isPip: Boolean,
+    refreshTrigger: Int,
     lifecycleState: Lifecycle.State,
     portraitMode: PortraitMode,
     chatViewModel: com.akumasdk.samtch.ui.components.chat.ChatViewModel,
@@ -71,13 +76,17 @@ fun PlayerLifecycleEffects(
     onLoadingTimeout: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    var lastRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
+
     // Manage chat connection lifecycle
-    LaunchedEffect(channel, isPip, lifecycleState, portraitMode) {
+    LaunchedEffect(channel, isPip, lifecycleState, portraitMode, refreshTrigger) {
         val isForeground = lifecycleState.isAtLeast(Lifecycle.State.STARTED)
         val shouldBeConnected = isForeground && (!isPip || portraitMode == PortraitMode.CHAT_ONLY)
-        
+        val isManualRefresh = refreshTrigger > lastRefreshTrigger
+        lastRefreshTrigger = refreshTrigger
+
         if (shouldBeConnected) {
-            chatViewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
+            chatViewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = isManualRefresh)
         } else {
             chatViewModel.disconnect()
         }

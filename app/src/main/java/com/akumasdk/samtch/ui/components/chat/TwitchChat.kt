@@ -116,8 +116,7 @@ fun TwitchChat(
 
         LaunchedEffect(refreshTrigger) {
             if (refreshTrigger > 0) {
-                viewModel.disconnect()
-                viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
+                viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = true)
             }
         }
         

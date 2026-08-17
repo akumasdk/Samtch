@@ -30,7 +30,7 @@ object EmoteRepository {
         aspectRatioCache[url] = ratio
     }
 
-    fun getChannelState(channelName: String) = _channelStates.getOrPut(channelName) {
+    fun getChannelState(channelName: String) = _channelStates.getOrPut(channelName.lowercase()) {
         MutableStateFlow(ChannelEmoteState())
     }.asStateFlow()
 
@@ -39,7 +39,8 @@ object EmoteRepository {
     )
 
     suspend fun loadGlobalEmotes(context: android.content.Context) = withContext(Dispatchers.IO) {
-        if (_globalState.value.isLoaded) return@withContext
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        if (_globalState.value.isLoaded && _globalState.value.loadedWithAuth == auth.isLoggedIn) return@withContext
         try {
             val bttvMap = mutableMapOf<String, Emote>()
             val seventvMap = mutableMapOf<String, Emote>()
@@ -82,14 +83,24 @@ object EmoteRepository {
             } catch (e: Exception) { Log.e(TAG, "FFZ Global load failed", e) }
 
             // Load Global Badges via Helix
-            val globalBadges = mapHelixBadges(HelixApiClient.getGlobalBadges(context).getOrDefault(emptyList()))
+            val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+            Log.d(TAG, "Loading global badges. isLoggedIn=${auth.isLoggedIn}")
+            val globalBadges = if (auth.isLoggedIn) {
+                val badgeResult = HelixApiClient.getGlobalBadges(context)
+                val badgeSets = badgeResult.getOrDefault(emptyList())
+                Log.d(TAG, "Global badge fetch result size: ${badgeSets.size}")
+                mapHelixBadges(badgeSets)
+            } else {
+                emptyMap()
+            }
 
             _globalState.update { it.copy(
                 bttvEmotes = bttvMap,
                 seventvEmotes = seventvMap,
                 ffzEmotes = ffzMap,
                 badges = globalBadges,
-                isLoaded = true
+                isLoaded = true,
+                loadedWithAuth = auth.isLoggedIn
             ) }
             Log.d(TAG, "Global emotes and ${globalBadges.size} badge sets loaded")
         } catch (e: Exception) {
@@ -98,24 +109,25 @@ object EmoteRepository {
     }
 
     suspend fun loadChannelEmotes(context: android.content.Context, channelName: String) = withContext(Dispatchers.IO) {
-        val stateFlow = _channelStates.getOrPut(channelName) { MutableStateFlow(ChannelEmoteState()) }
-        if (stateFlow.value.isLoaded) return@withContext
+        val channelLower = channelName.lowercase()
+        val stateFlow = _channelStates.getOrPut(channelLower) { MutableStateFlow(ChannelEmoteState()) }
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        if (stateFlow.value.isLoaded && stateFlow.value.loadedWithAuth == auth.isLoggedIn) return@withContext
 
         try {
             val bttvMap = mutableMapOf<String, Emote>()
             val seventvMap = mutableMapOf<String, Emote>()
             val ffzMap = mutableMapOf<String, Emote>()
             
-            val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
-            val userId = if (auth.isLoggedIn && auth.userName.equals(channelName, ignoreCase = true)) {
+            val userId = if (auth.isLoggedIn && auth.userName.equals(channelLower, ignoreCase = true)) {
                 auth.userId
             } else {
-                HelixApiClient.getUserIdByName(context, channelName).getOrNull() 
-                    ?: TwitchGqlService.getUserId(channelName) // Fallback to GQL
+                HelixApiClient.getUserIdByName(context, channelLower).getOrNull() 
+                    ?: TwitchGqlService.getUserId(channelLower) // Fallback to GQL
             }
 
             if (userId == null) {
-                Log.e(TAG, "Failed to get User ID for $channelName, channel emotes won't load")
+                Log.e(TAG, "Failed to get User ID for $channelLower, channel emotes won't load")
                 return@withContext
             }
 
@@ -128,7 +140,7 @@ object EmoteRepository {
                         isZeroWidth = it.code in BTTV_ZERO_WIDTH
                     )
                 }
-            } catch (e: Exception) { Log.e(TAG, "BTTV Channel load failed for $channelName", e) }
+            } catch (e: Exception) { Log.e(TAG, "BTTV Channel load failed for $channelLower", e) }
 
             // Load 7TV Channel
             try {
@@ -136,7 +148,7 @@ object EmoteRepository {
                 seventvUser.emote_set?.emotes?.forEach { emote ->
                     parseSevenTVEmote(emote)?.let { seventvMap[it.code] = it }
                 }
-            } catch (e: Exception) { Log.e(TAG, "7TV Channel load failed for $channelName", e) }
+            } catch (e: Exception) { Log.e(TAG, "7TV Channel load failed for $channelLower", e) }
 
             // Load FFZ Channel
             try {
@@ -155,21 +167,30 @@ object EmoteRepository {
                         }
                     }
                 }
-            } catch (e: Exception) { Log.e(TAG, "FFZ Channel load failed for $channelName", e) }
+            } catch (e: Exception) { Log.e(TAG, "FFZ Channel load failed for $channelLower", e) }
 
             // Load Channel Badges via Helix
-            val channelBadges = mapHelixBadges(HelixApiClient.getChannelBadges(context, userId).getOrDefault(emptyList()))
+            Log.d(TAG, "Loading channel badges for $channelLower. isLoggedIn=${auth.isLoggedIn}, userId=$userId")
+            val channelBadges = if (auth.isLoggedIn) {
+                val badgeResult = HelixApiClient.getChannelBadges(context, userId)
+                val badgeSets = badgeResult.getOrDefault(emptyList())
+                Log.d(TAG, "Channel badge fetch result size for $channelLower: ${badgeSets.size}")
+                mapHelixBadges(badgeSets)
+            } else {
+                emptyMap()
+            }
 
             stateFlow.update { it.copy(
                 bttvEmotes = bttvMap,
                 seventvEmotes = seventvMap,
                 ffzEmotes = ffzMap,
                 badges = channelBadges,
-                isLoaded = true
+                isLoaded = true,
+                loadedWithAuth = auth.isLoggedIn
             ) }
-            Log.d(TAG, "Channel emotes and ${channelBadges.size} badge sets loaded for $channelName")
+            Log.d(TAG, "Channel emotes and ${channelBadges.size} badge sets loaded for $channelLower")
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading emotes for channel $channelName", e)
+            Log.e(TAG, "Error loading emotes for channel $channelLower", e)
         }
     }
 
@@ -195,7 +216,7 @@ object EmoteRepository {
     }
 
     fun getEmote(channelName: String, code: String): Emote? {
-        val channelState = _channelStates[channelName]?.value
+        val channelState = _channelStates[channelName.lowercase()]?.value
         val globalState = _globalState.value
         
         return channelState?.seventvEmotes?.get(code)
@@ -207,7 +228,7 @@ object EmoteRepository {
     }
 
     fun getAllEmotes(channelName: String): List<Emote> {
-        val channelState = _channelStates[channelName]?.value
+        val channelState = _channelStates[channelName.lowercase()]?.value
         val globalState = _globalState.value
         
         return buildList {
@@ -223,15 +244,22 @@ object EmoteRepository {
     }
 
     fun getBadgeUrl(channelName: String, setId: String, version: String): String? {
-        val channelState = _channelStates[channelName]?.value
+        val channelLower = channelName.lowercase()
+        val channelState = _channelStates[channelLower]?.value
         val globalState = _globalState.value
+
+        // If no badges were loaded (e.g. user not logged in), don't log "not found"
+        if (globalState.badges.isEmpty() && (channelState?.badges?.isEmpty() != false)) {
+            return null
+        }
 
         val badge = channelState?.displayBadges?.get(setId)?.takeIf { it.version == version }
             ?: channelState?.badges?.get(setId)?.get(version)
             ?: globalState.badges[setId]?.get(version)
             
         if (badge == null) {
-            Log.d(TAG, "Badge not found: $setId/$version in $channelName")
+            // Only log if we actually have some badges loaded, to avoid spam for anonymous users
+            Log.d(TAG, "Badge not found: $setId/$version in $channelLower")
             return null
         }
 
