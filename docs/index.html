@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samtch Login</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #0e0e10;
+            color: #efeff1;
+            text-align: center;
+        }
+        .container {
+            padding: 20px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(145, 71, 255, 0.2);
+            border-top: 4px solid #9147ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 { font-size: 24px; margin-bottom: 8px; }
+        p { color: #adadb8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1>Logging you in...</h1>
+        <p>You can close this window if it doesn't close automatically.</p>
+    </div>
+
+    <script>
+        // The app intercepts the URL fragment before the page even fully loads,
+        // but this script is here as a fallback or for debugging.
+        console.log("Login redirect received. Token is in the URL fragment.");
+    </script>
+</body>
+</html>
