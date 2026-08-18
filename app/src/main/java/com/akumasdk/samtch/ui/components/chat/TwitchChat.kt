@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -154,7 +154,11 @@ fun TwitchChat(
             )
             
             if (showInput) {
-                val surfaceAlpha = if (isImmersiveEnabled) 0.5f else 1.0f
+                val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
+                val surfaceAlpha = if (isImmersiveEnabled) {
+                    if (isLightMode) 0.94f else 0.82f
+                } else 1.0f
+                val imageAlpha = if (isLightMode) 0.5f else 0.7f
 
                 Surface(
                     modifier = Modifier
@@ -163,7 +167,7 @@ fun TwitchChat(
                         .onSizeChanged { inputAreaHeightPx = it.height },
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                     color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
-                    border = if (isImmersiveEnabled) BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder) else null,
+                    border = if (isImmersiveEnabled) BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)) else null,
                     tonalElevation = 0.dp
                 ) {
                     Box(modifier = Modifier.fillMaxWidth()) {
@@ -171,8 +175,9 @@ fun TwitchChat(
                             PlayerBackground(
                                 channel = channel,
                                 previewUrl = previewImageUrl,
-                                alpha = 0.8f,
-                                blurRadius = 60.dp,
+                                alpha = imageAlpha,
+                                blurRadius = 150.dp,
+                                containerColor = Color.Transparent,
                                 modifier = Modifier.matchParentSize()
                             )
                         }

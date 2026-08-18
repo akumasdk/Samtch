@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
@@ -50,6 +51,24 @@ fun StreamMetadataBar(
         label = "MetadataBarHeight"
     )
 
+    val animatedTopPadding by animateDpAsState(
+        targetValue = if (isSlim) 0.dp else 8.dp,
+        animationSpec = SamtchAnimation.DpSpring,
+        label = "MetadataTopPadding"
+    )
+
+    val animatedHorizontalPadding by animateDpAsState(
+        targetValue = if (isSlim) 0.dp else 12.dp,
+        animationSpec = SamtchAnimation.DpSpring,
+        label = "MetadataHorizontalPadding"
+    )
+
+    val animatedTopRadius by animateDpAsState(
+        targetValue = if (isSlim) 0.dp else 16.dp,
+        animationSpec = SamtchAnimation.DpSpring,
+        label = "MetadataTopRadius"
+    )
+
     // Manual expansion / Title change / Force expansion
     LaunchedEffect(expandTrigger, streamTitle, forceExpanded) {
         isSlimManual = false
@@ -63,24 +82,39 @@ fun StreamMetadataBar(
         }
     }
 
-    val surfaceAlpha = if (isImmersiveEnabled) 0.5f else 1.0f
+    val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
+    val surfaceAlpha = if (isImmersiveEnabled) {
+        if (isLightMode) 0.94f else 0.82f
+    } else 1.0f
+    val imageAlpha = if (isLightMode) 0.5f else 0.7f
 
     Surface(
         modifier = modifier
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(
+                start = animatedHorizontalPadding.coerceAtLeast(0.dp),
+                top = animatedTopPadding.coerceAtLeast(0.dp),
+                end = animatedHorizontalPadding.coerceAtLeast(0.dp),
+                bottom = 8.dp
+            )
             .fillMaxWidth()
             .height(animatedHeight),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(
+            topStart = animatedTopRadius.coerceAtLeast(0.dp),
+            topEnd = animatedTopRadius.coerceAtLeast(0.dp),
+            bottomStart = 16.dp,
+            bottomEnd = 16.dp
+        ),
         color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
-        border = if (isImmersiveEnabled) BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.2f)) else null,
+        border = if (isImmersiveEnabled) BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)) else null,
         tonalElevation = 0.dp
     ) {
         if (isImmersiveEnabled) {
             PlayerBackground(
                 channel = channel,
                 previewUrl = previewImageUrl,
-                alpha = 0.8f,
-                blurRadius = 60.dp,
+                alpha = imageAlpha,
+                blurRadius = 150.dp,
+                containerColor = Color.Transparent,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -105,7 +139,8 @@ fun StreamMetadataBar(
                     channel = channel,
                     displayName = displayName,
                     streamTitle = streamTitle,
-                    viewersCount = viewersCount
+                    viewersCount = viewersCount,
+                    streamStartedAt = streamStartedAt
                 )
             } else {
                 StandardMetadataBar(

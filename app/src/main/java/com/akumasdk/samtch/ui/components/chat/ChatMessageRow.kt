@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -33,7 +34,15 @@ fun ChatMessageRow(
     
     when (message) {
         is ChatMessageUiState.PrivMessageUi -> {
-            val userColor = if (message.userColor == Color.Unspecified) SamtchTheme.colors.defaultUserColor else message.userColor
+            val isLightMode = SamtchTheme.colors.chatBackground.luminance() > 0.5f
+            val baseUserColor = if (message.userColor == Color.Unspecified) SamtchTheme.colors.defaultUserColor else message.userColor
+            
+            // Adjust user colors for readability in light mode if they are too light
+            val userColor = if (isLightMode && baseUserColor.luminance() > 0.6f) {
+                SamtchTheme.colors.accentColor
+            } else {
+                baseUserColor
+            }
             
             val combinedEmotes = remember(message.emotes, message.badges) {
                 val badgesAsEmotes = message.badges.mapIndexed { index, badge ->

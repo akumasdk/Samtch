@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
@@ -27,13 +28,14 @@ fun PlayerBackground(
     modifier: Modifier = Modifier,
     alpha: Float = 0.4f,
     blurRadius: Dp = 0.dp,
+    containerColor: Color = SamtchTheme.colors.rootBackground,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
     val context = LocalContext.current
     val finalUrl = previewUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
 
     Box(
-        modifier = modifier.background(SamtchTheme.colors.rootBackground)
+        modifier = modifier.background(containerColor)
     ) {
         Crossfade(
             targetState = finalUrl,

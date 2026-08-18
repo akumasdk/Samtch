@@ -141,11 +141,13 @@ fun SamtchTheme(
             audioPlayerBackgroundEnd = TwitchBlack
         )
     } else {
+        val darkPurple = Color(0xFF6441A5) // Deep purple for high contrast on light backgrounds
         SamtchColors(
             chatBackground = Color.White,
             miniPlayerBackground = Color.White,
             miniPlayerTitle = Color.Black,
-            miniPlayerSubtitle = TwitchPurple,
+            miniPlayerSubtitle = darkPurple,
+            twitchPurpleLight = darkPurple,
             primaryText = Color.Black,
             secondaryText = Color.DarkGray,
             dialogBackground = Color.White,
@@ -155,9 +157,9 @@ fun SamtchTheme(
             tabButtonBackground = Color.White.copy(alpha = 0.8f),
             divider = Color.Black.copy(alpha = 0.1f),
             textFieldBackground = Color.Black.copy(alpha = 0.05f),
-            defaultUserColor = Color(0xFF6441A5), // Darker Twitch-like purple for light mode
+            defaultUserColor = darkPurple,
             cardBackground = Color(0xFFEFEEF1), // Twitch light mode UI background
-            accentColor = TwitchPurple, // Standard Twitch Purple for brand consistency
+            accentColor = darkPurple, 
             glassBorder = Color.Black.copy(alpha = 0.08f),
             loadingOverlay = Color.White.copy(alpha = 0.35f),
             audioPlayerBackgroundStart = Color(0xFFF7F7F8),

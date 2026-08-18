@@ -11,7 +11,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
@@ -53,7 +51,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
@@ -136,23 +133,6 @@ fun ChatInputBox(
         modifier = modifier.fillMaxWidth(),
         color = Color.Transparent, // Managed by parent background or inner Column
     ) {
-        // Frosted glass edge highlight
-        if (portraitMode != PortraitMode.AUDIO_AND_CHAT) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.12f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -190,7 +170,7 @@ fun ChatInputBox(
                             onClick = currentToggle,
                             color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
                             shape = CircleShape,
-                            border = BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder),
+                            border = BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)),
                             modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -221,7 +201,7 @@ fun ChatInputBox(
                         modifier = Modifier.weight(1f),
                         color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder)
+                        border = BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f))
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -291,7 +271,7 @@ fun ChatInputBox(
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Normal
                                     ),
-                                    cursorBrush = SolidColor(SamtchTheme.colors.twitchPurpleLight),
+                                    cursorBrush = SolidColor(SamtchTheme.colors.accentColor),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                     keyboardActions = KeyboardActions(onSend = {
                                         if (textFieldValue.text.isNotBlank()) {
@@ -361,7 +341,7 @@ fun ChatInputBox(
                             onClick = currentToggle,
                             color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
                             shape = CircleShape,
-                            border = BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder),
+                            border = BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)),
                             modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -390,7 +370,7 @@ fun ChatInputBox(
                     Surface(
                         color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder),
+                        border = BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)),
                         modifier = Modifier
                             .weight(1f)
                             .clickable { onLoginRequested() }
