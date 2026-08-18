@@ -119,6 +119,7 @@ fun TwitchChat(
         val selectedBadgeForInfo by viewModel.selectedBadgeForInfo.collectAsState()
         val selectedUserForInfo by viewModel.selectedUserForInfo.collectAsState()
         val emoteMenuTabs by viewModel.emoteMenuTabs.collectAsState()
+        val isEmoteLoading by viewModel.isEmoteLoading.collectAsState()
         val systemNotice by viewModel.systemNotice.collectAsState()
         
         // Native chat refresh logic
@@ -244,7 +245,11 @@ fun TwitchChat(
                                                         viewModel.recordEmoteUsage(context, emote)
                                                     },
                                                     onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                                                    height = menuHeight
+                                                    height = menuHeight,
+                                                    channel = channel,
+                                                    previewImageUrl = previewImageUrl,
+                                                    isImmersiveEnabled = isImmersiveEnabled,
+                                                    isLoading = isEmoteLoading
                                                 )
                                             }
                                         }

@@ -114,4 +114,30 @@ object HelixApi {
             logins.forEach { parameter("user_login", it) }
         }
     }
+
+    suspend fun getGlobalEmotes(context: android.content.Context): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_GLOBAL_EMOTES) {
+            header("Client-Id", clientId)
+            addAuth(context)
+        }
+    }
+
+    suspend fun getChannelEmotes(context: android.content.Context, broadcasterId: String): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_CHANNEL_EMOTES) {
+            header("Client-Id", clientId)
+            addAuth(context)
+            parameter("broadcaster_id", broadcasterId)
+        }
+    }
+
+    suspend fun getUserEmotes(context: android.content.Context, userId: String): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_USER_EMOTES) {
+            header("Client-Id", clientId)
+            addAuth(context)
+            parameter("user_id", userId)
+        }
+    }
 }

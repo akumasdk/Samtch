@@ -73,6 +73,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _systemNotice = MutableStateFlow<String?>(null)
     val systemNotice = _systemNotice.asStateFlow()
 
+    private val _isEmoteLoading = MutableStateFlow(false)
+    val isEmoteLoading = _isEmoteLoading.asStateFlow()
+
     private var currentChannel: String? = null
     private var connectionJob: Job? = null
     private val messageHistory = mutableListOf<ChatMessageUiState>()
@@ -174,6 +177,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     BadgeRepository.globalState,
                     BadgeRepository.getChannelState(channel)
                 ) { globalEmotes, channelEmotes, globalBadges, channelBadges ->
+                    _isEmoteLoading.value = !globalEmotes.isLoaded || !channelEmotes.isLoaded
                     globalEmotes.isLoaded || channelEmotes.isLoaded || globalBadges.isLoaded || channelBadges.isLoaded
                 }.collectLatest { anyLoaded ->
                     if (anyLoaded) {
@@ -186,6 +190,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             // Load emotes and badges
             launch { 
                 EmoteRepository.loadGlobalEmotes(context)
+                EmoteRepository.loadUserEmotes(context)
                 BadgeRepository.loadGlobalBadges(context)
                 updateEmoteMenuTabs(channel)
             }
@@ -258,6 +263,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun updateEmoteMenuTabs(channel: String) {
         val channelState = EmoteRepository.getChannelState(channel).value
         val globalState = EmoteRepository.globalState.value
+        val userState = EmoteRepository.userEmoteState.value
 
         val tabs = mutableMapOf<Int, List<Emote>>()
         
@@ -266,11 +272,29 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             tabs[com.akumasdk.samtch.R.string.emote_menu_recent] = recent
         }
 
-        val channelEmotes = (channelState.seventvEmotes.values + channelState.bttvEmotes.values + channelState.ffzEmotes.values).toList()
-        if (channelEmotes.isNotEmpty()) {
-            tabs[com.akumasdk.samtch.R.string.emote_menu_channel] = channelEmotes
+        // 1. Twitch Channel Emotes
+        val twitchChannel = channelState.twitchEmotes.values.toList()
+        // 2. 3rd Party Channel Emotes
+        val thirdPartyChannel = (channelState.seventvEmotes.values + channelState.bttvEmotes.values + channelState.ffzEmotes.values).toList()
+        
+        val allChannelEmotes = (twitchChannel + thirdPartyChannel).distinctBy { it.id }
+        if (allChannelEmotes.isNotEmpty()) {
+            tabs[com.akumasdk.samtch.R.string.emote_menu_channel] = allChannelEmotes
         }
 
+        // 3. User's Owned Emotes
+        val userEmotes = userState.twitchEmotes.values.toList()
+        if (userEmotes.isNotEmpty()) {
+            tabs[com.akumasdk.samtch.R.string.emote_menu_user] = userEmotes
+        }
+
+        // 4. Twitch Global Emotes
+        val twitchGlobal = globalState.twitchEmotes.values.toList()
+        if (twitchGlobal.isNotEmpty()) {
+            tabs[com.akumasdk.samtch.R.string.emote_menu_twitch] = twitchGlobal
+        }
+
+        // 5. 3rd Party Global Emotes
         val globalEmotes = (globalState.seventvEmotes.values + globalState.bttvEmotes.values + globalState.ffzEmotes.values).toList()
         if (globalEmotes.isNotEmpty()) {
             tabs[com.akumasdk.samtch.R.string.emote_menu_global] = globalEmotes

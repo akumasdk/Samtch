@@ -66,4 +66,43 @@ object HelixApiClient {
     suspend fun getStreamMetadata(context: Context, login: String): Result<StreamDto?> = runCatching {
         getStreams(context, listOf(login)).getOrThrow().firstOrNull()
     }
+
+    suspend fun getGlobalEmotes(context: Context): Result<List<HelixEmoteDto>> = runCatching {
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        if (!auth.isLoggedIn) return@runCatching emptyList()
+
+        val response = HelixApi.getGlobalEmotes(context)
+        if (!response.status.isSuccess()) {
+            val body = response.bodyAsText()
+            Log.e(TAG, "Failed to fetch global emotes: ${response.status} body=$body")
+            throw Exception("Failed to fetch global emotes")
+        }
+        response.body<HelixEmoteResponse>().data
+    }
+
+    suspend fun getChannelEmotes(context: Context, broadcasterId: String): Result<List<HelixEmoteDto>> = runCatching {
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        if (!auth.isLoggedIn) return@runCatching emptyList()
+
+        val response = HelixApi.getChannelEmotes(context, broadcasterId)
+        if (!response.status.isSuccess()) {
+            val body = response.bodyAsText()
+            Log.e(TAG, "Failed to fetch channel emotes for $broadcasterId: ${response.status} body=$body")
+            throw Exception("Failed to fetch channel emotes")
+        }
+        response.body<HelixEmoteResponse>().data
+    }
+
+    suspend fun getUserEmotes(context: Context, userId: String): Result<List<HelixEmoteDto>> = runCatching {
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        if (!auth.isLoggedIn) return@runCatching emptyList()
+
+        val response = HelixApi.getUserEmotes(context, userId)
+        if (!response.status.isSuccess()) {
+            val body = response.bodyAsText()
+            Log.e(TAG, "Failed to fetch user emotes for $userId: ${response.status} body=$body")
+            throw Exception("Failed to fetch user emotes")
+        }
+        response.body<HelixEmoteResponse>().data
+    }
 }

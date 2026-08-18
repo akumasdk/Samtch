@@ -111,9 +111,15 @@
     <string name="status_chat_only">CHAT ONLY MODE</string>
     <string name="status_audio_only">AUDIO ONLY MODE</string>
     <string name="emote_menu_recent">Recent</string>
+    <string name="emote_menu_twitch">Twitch</string>
     <string name="emote_menu_channel">Channel</string>
+    <string name="emote_menu_user">Personal</string>
     <string name="emote_menu_global">Global</string>
     <string name="emote_menu_empty">No emotes available</string>
+    <string name="emote_source_twitch">Twitch</string>
+    <string name="emote_source_seventv">7TV</string>
+    <string name="emote_source_bttv">BetterTTV</string>
+    <string name="emote_source_ffz">FrankerFaceZ</string>
 
     <!-- Stream Info Dialog -->
     <string name="stream_title_label">Title</string>
