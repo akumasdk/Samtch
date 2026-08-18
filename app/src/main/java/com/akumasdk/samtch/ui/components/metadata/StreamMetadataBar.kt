@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import kotlinx.coroutines.delay
@@ -30,6 +32,7 @@ fun StreamMetadataBar(
     gameName: String? = null,
     viewersCount: Int = 0,
     streamStartedAt: String? = null,
+    previewImageUrl: String? = null,
     expandTrigger: Int = 0,
     forceExpanded: Boolean = false,
     forceSlim: Boolean = false,
@@ -60,26 +63,37 @@ fun StreamMetadataBar(
         }
     }
 
-    val surfaceAlpha = if (isImmersiveEnabled) 0.8f else 1.0f
+    val surfaceAlpha = if (isImmersiveEnabled) 0.5f else 1.0f
 
     Surface(
         modifier = modifier
+            .padding(horizontal = 12.dp, vertical = 8.dp)
             .fillMaxWidth()
-            .height(animatedHeight)
-            .clickable { 
+            .height(animatedHeight),
+        shape = RoundedCornerShape(16.dp),
+        color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
+        border = if (isImmersiveEnabled) BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.2f)) else null,
+        tonalElevation = 0.dp
+    ) {
+        if (isImmersiveEnabled) {
+            PlayerBackground(
+                channel = channel,
+                previewUrl = previewImageUrl,
+                alpha = 0.8f,
+                blurRadius = 60.dp,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        
+        AnimatedContent(
+            targetState = isSlim,
+            modifier = Modifier.clickable { 
                 if (isSlim) {
                     isSlimManual = false
                 } else {
                     onClick()
                 }
             },
-        color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
-        border = if (isImmersiveEnabled) BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.2f)) else null,
-        tonalElevation = 0.dp
-    ) {
-        // No extra lighting effects for a cleaner Telegram-like look
-        AnimatedContent(
-            targetState = isSlim,
             transitionSpec = {
                 SamtchAnimation.FadeIn togetherWith SamtchAnimation.FadeOut
             },

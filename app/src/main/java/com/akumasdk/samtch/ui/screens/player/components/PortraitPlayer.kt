@@ -140,6 +140,7 @@ fun PortraitPlayer(
                         gameName = gameName,
                         viewersCount = viewersCount,
                         streamStartedAt = streamStartedAt,
+                        previewImageUrl = previewImageUrl,
                         expandTrigger = expandTrigger,
                         forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
                         forceSlim = forceSlimMetadata,

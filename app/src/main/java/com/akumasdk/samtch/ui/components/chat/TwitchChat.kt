@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imeAnimationTarget
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
@@ -42,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.components.chat.emote.EmoteInfoDialog
 import com.akumasdk.samtch.ui.components.chat.emote.BadgeInfoDialog
 import com.akumasdk.samtch.ui.components.chat.user.UserInfoDialog
@@ -70,7 +73,8 @@ fun TwitchChat(
     viewModel: ChatViewModel,
     portraitMode: PortraitMode? = null,
     onToggleMode: (() -> Unit)? = null,
-    onLoginRequested: () -> Unit = {}
+    onLoginRequested: () -> Unit = {},
+    previewImageUrl: String? = null
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -144,91 +148,104 @@ fun TwitchChat(
                 onBadgeClick = { viewModel.showBadgeInfo(it) },
                 onUserClick = { viewModel.showUserInfo(it) },
                 contentPadding = PaddingValues(
-                    top = 74.dp, 
+                    top = 88.dp, 
                     bottom = inputAreaHeightDp + 8.dp
                 )
             )
             
             if (showInput) {
-                val surfaceAlpha = if (isImmersiveEnabled) 0.3f else 1.0f
+                val surfaceAlpha = if (isImmersiveEnabled) 0.5f else 1.0f
 
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .onSizeChanged { inputAreaHeightPx = it.height },
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                     color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
                     border = if (isImmersiveEnabled) BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder) else null,
                     tonalElevation = 0.dp
                 ) {
-                    Column {
-                        SystemNoticeBanner(
-                            message = systemNotice,
-                            onDismiss = { viewModel.dismissSystemNotice() }
-                        )
-                        ChatInputBox(
-                            isLoggedIn = isLoggedIn,
-                            onSendMessage = { text ->
-                                coroutineScope.launch {
-                                    viewModel.sendMessage(text)
-                                }
-                            },
-                            onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
-                            isEmoteMenuVisible = isEmoteMenuVisible,
-                            suggestions = emoteSuggestions,
-                            onEmoteSelected = { emote ->
-                                viewModel.recordEmoteUsage(context, emote)
-                            },
-                            onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                            onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
-                            emoteInsertFlow = viewModel.emoteInsertFlow,
-                            portraitMode = portraitMode,
-                            onToggleMode = onToggleMode,
-                            onLoginRequested = onLoginRequested
-                        )
-
-                        // Unified area structure that prevents "double padding" and flicker
-                        val menuHeight = if (keyboardHeightPx > 0) {
-                            with(density) { keyboardHeightPx.toDp() }
-                        } else {
-                            if (isLandscape) 200.dp else 350.dp
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        if (isImmersiveEnabled) {
+                            PlayerBackground(
+                                channel = channel,
+                                previewUrl = previewImageUrl,
+                                alpha = 0.8f,
+                                blurRadius = 60.dp,
+                                modifier = Modifier.matchParentSize()
+                            )
                         }
 
-                        // Calculate target height for the interaction area
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.BottomCenter
-                        ) {
-                            // 1. Use the system's native IME + Navigation Bar padding.
-                            // This ensures the container height is ALWAYS correct, even on first launch.
-                            Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.ime.union(WindowInsets.navigationBars)))
-                            
-                            // 2. The Interaction space: Holds the emote menu at a stable height
-                            if (isEmoteMenuVisible) {
-                                val currentImeBottom = WindowInsets.ime.getBottom(density)
-                                val navBarBottom = WindowInsets.navigationBars.getBottom(density)
-                                val currentKeyboardHeightPx = (currentImeBottom - navBarBottom).coerceAtLeast(0)
-                                val menuHeightPx = with(density) { menuHeight.toPx() }
-                                
-                                // Optimization: Hide menu rendering if keyboard completely covers it
-                                val isKeyboardCoveringMenu = currentKeyboardHeightPx >= (menuHeightPx * 0.98f).toInt()
-                                
-                                Column {
-                                    Box(modifier = Modifier.height(menuHeight)) {
-                                        if (!isKeyboardCoveringMenu) {
-                                            EmoteMenu(
-                                                tabs = emoteMenuTabs,
-                                                onEmoteClick = { emote ->
-                                                    viewModel.insertEmote(emote)
-                                                    viewModel.recordEmoteUsage(context, emote)
-                                                },
-                                                onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                                                height = menuHeight
-                                            )
-                                        }
+                        Column {
+                            SystemNoticeBanner(
+                                message = systemNotice,
+                                onDismiss = { viewModel.dismissSystemNotice() }
+                            )
+                            ChatInputBox(
+                                isLoggedIn = isLoggedIn,
+                                onSendMessage = { text ->
+                                    coroutineScope.launch {
+                                        viewModel.sendMessage(text)
                                     }
-                                    // Ensure emotes sit above the navigation bar
-                                    Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                                },
+                                onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
+                                isEmoteMenuVisible = isEmoteMenuVisible,
+                                suggestions = emoteSuggestions,
+                                onEmoteSelected = { emote ->
+                                    viewModel.recordEmoteUsage(context, emote)
+                                },
+                                onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                                onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
+                                emoteInsertFlow = viewModel.emoteInsertFlow,
+                                portraitMode = portraitMode,
+                                onToggleMode = onToggleMode,
+                                onLoginRequested = onLoginRequested
+                            )
+
+                            // Unified area structure that prevents "double padding" and flicker
+                            val menuHeight = if (keyboardHeightPx > 0) {
+                                with(density) { keyboardHeightPx.toDp() }
+                            } else {
+                                if (isLandscape) 200.dp else 350.dp
+                            }
+
+                            // Calculate target height for the interaction area
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                // 1. Use the system's native IME + Navigation Bar padding.
+                                // This ensures the container height is ALWAYS correct, even on first launch.
+                                Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.ime.union(WindowInsets.navigationBars)))
+                                
+                                // 2. The Interaction space: Holds the emote menu at a stable height
+                                if (isEmoteMenuVisible) {
+                                    val currentImeBottom = WindowInsets.ime.getBottom(density)
+                                    val navBarBottom = WindowInsets.navigationBars.getBottom(density)
+                                    val currentKeyboardHeightPx = (currentImeBottom - navBarBottom).coerceAtLeast(0)
+                                    val menuHeightPx = with(density) { menuHeight.toPx() }
+                                    
+                                    // Optimization: Hide menu rendering if keyboard completely covers it
+                                    val isKeyboardCoveringMenu = currentKeyboardHeightPx >= (menuHeightPx * 0.98f).toInt()
+                                    
+                                    Column {
+                                        Box(modifier = Modifier.height(menuHeight)) {
+                                            if (!isKeyboardCoveringMenu) {
+                                                EmoteMenu(
+                                                    tabs = emoteMenuTabs,
+                                                    onEmoteClick = { emote ->
+                                                        viewModel.insertEmote(emote)
+                                                        viewModel.recordEmoteUsage(context, emote)
+                                                    },
+                                                    onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                                                    height = menuHeight
+                                                )
+                                            }
+                                        }
+                                        // Ensure emotes sit above the navigation bar
+                                        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                                    }
                                 }
                             }
                         }

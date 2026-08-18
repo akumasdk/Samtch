@@ -188,7 +188,7 @@ fun ChatInputBox(
 
                         Surface(
                             onClick = currentToggle,
-                            color = SamtchTheme.colors.textFieldBackground,
+                            color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
                             shape = CircleShape,
                             border = BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder),
                             modifier = Modifier.size(44.dp)
@@ -219,7 +219,7 @@ fun ChatInputBox(
                     // Center Pill: Emote Toggle + Text Field
                     Surface(
                         modifier = Modifier.weight(1f),
-                        color = SamtchTheme.colors.textFieldBackground,
+                        color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
                         shape = RoundedCornerShape(24.dp),
                         border = BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder)
                     ) {
@@ -316,7 +316,7 @@ fun ChatInputBox(
                         label = "SendButtonColor"
                     )
                     val sendBgColor by animateColorAsState(
-                        if (sendEnabled) SamtchTheme.colors.twitchPurple else SamtchTheme.colors.textFieldBackground,
+                        if (sendEnabled) SamtchTheme.colors.twitchPurple else SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
                         label = "SendBgColor"
                     )
 
@@ -359,7 +359,7 @@ fun ChatInputBox(
 
                         Surface(
                             onClick = currentToggle,
-                            color = SamtchTheme.colors.textFieldBackground,
+                            color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
                             shape = CircleShape,
                             border = BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder),
                             modifier = Modifier.size(44.dp)
@@ -388,7 +388,7 @@ fun ChatInputBox(
                     }
 
                     Surface(
-                        color = SamtchTheme.colors.textFieldBackground,
+                        color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
                         shape = RoundedCornerShape(24.dp),
                         border = BorderStroke(0.5.dp, SamtchTheme.colors.glassBorder),
                         modifier = Modifier

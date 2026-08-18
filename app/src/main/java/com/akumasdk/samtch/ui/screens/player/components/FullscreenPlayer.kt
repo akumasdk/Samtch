@@ -110,7 +110,7 @@ fun FullscreenPlayer(
                         // Status Banner in the same space as portrait (between video and metadata/chat)
                         StatusBanner(text = adblockText)
 
-                        // Chat area that metadata bar will overlay
+                        // Chat area
                         Box(modifier = Modifier.weight(1f)) {
                             chatContent(
                                 true,
@@ -136,6 +136,7 @@ fun FullscreenPlayer(
                             gameName = gameName,
                             viewersCount = viewersCount,
                             streamStartedAt = streamStartedAt,
+                            previewImageUrl = previewImageUrl,
                             expandTrigger = expandTrigger,
                             forceSlim = forceSlimMetadata,
                             isImmersiveEnabled = isImmersiveEnabled,

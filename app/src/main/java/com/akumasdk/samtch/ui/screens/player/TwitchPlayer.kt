@@ -420,6 +420,7 @@ fun TwitchPlayer(
                     portraitMode = pMode,
                     onToggleMode = onToggle,
                     onLoginRequested = onLoginRequested,
+                    previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                     modifier = modifier
                 )
             }

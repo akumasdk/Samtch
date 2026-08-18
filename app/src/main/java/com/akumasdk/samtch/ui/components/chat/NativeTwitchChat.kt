@@ -69,6 +69,7 @@ fun NativeTwitchChat(
     val scope = rememberCoroutineScope()
     
     val chatBg = SamtchTheme.colors.chatBackground
+    val bottomPadding = contentPadding.calculateBottomPadding()
 
     var shouldAutoScroll by rememberSaveable { mutableStateOf(true) }
     var lastJumpTime by remember { mutableLongStateOf(0L) }
@@ -163,7 +164,7 @@ fun NativeTwitchChat(
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
+                .padding(bottom = bottomPadding + 12.dp)
         ) {
             Button(
                 onClick = {
