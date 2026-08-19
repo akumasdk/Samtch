@@ -40,10 +40,8 @@ fun SystemNoticeBanner(
             modifier = Modifier.fillMaxWidth()
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
-                if (isImmersiveEnabled && channel.isNotEmpty()) {
+                if (isImmersiveEnabled) {
                     PlayerBackground(
-                        channel = channel,
-                        previewUrl = previewImageUrl,
                         alpha = 0.6f,
                         blurRadius = 150.dp,
                         containerColor = Color.Transparent,

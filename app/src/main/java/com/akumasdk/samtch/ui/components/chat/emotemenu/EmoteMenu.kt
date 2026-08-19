@@ -62,10 +62,8 @@ fun EmoteMenu(
             .height(height)
             .background(SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha))
     ) {
-        if (isImmersiveEnabled && channel.isNotEmpty()) {
+        if (isImmersiveEnabled) {
             PlayerBackground(
-                channel = channel,
-                previewUrl = previewImageUrl,
                 alpha = imageAlpha,
                 blurRadius = 150.dp,
                 containerColor = Color.Transparent,

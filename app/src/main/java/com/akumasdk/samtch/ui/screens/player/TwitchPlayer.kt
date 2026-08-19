@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -80,8 +81,10 @@ import com.akumasdk.samtch.ui.screens.player.models.ChatContentConfig
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import com.akumasdk.samtch.ui.screens.player.util.unloadWebView
 import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
+import com.akumasdk.samtch.ui.theme.LocalStreamPreview
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.ui.theme.StreamPreviewInfo
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
@@ -420,7 +423,6 @@ fun TwitchPlayer(
                     portraitMode = pMode,
                     onToggleMode = onToggle,
                     onLoginRequested = onLoginRequested,
-                    previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                     modifier = modifier
                 )
             }
@@ -582,38 +584,45 @@ fun TwitchPlayer(
                 }
 
                 // 1. FULL PLAYER OVERLAY (Chat, Metadata)
-                PlayerOverlay(
-                    isMinimized = isMinimized,
-                    isFullscreen = isFullscreen,
-                    channel = channel,
-                    streamMetadata = streamMetadata,
-                    avatarUrl = avatarUrl,
-                    isAudioOnly = isAudioOnly,
-                    adblockText = bannerText,
-                    portraitMode = portraitMode,
-                    metadataExpandTrigger = metadataExpandTrigger,
-                    isPip = isPip,
-                    isChatVisible = isChatVisible,
-                    refreshTrigger = refreshTrigger,
-                    forceSlimMetadata = forceSlimMetadata,
-                    isImmersiveEnabled = isImmersiveEnabled,
-                    onToggleChat = { 
-                        isChatVisible = !isChatVisible
-                        if (isFullscreen) showFullscreenControls = true
-                    },
-                    onToggleMode = {
-                        if (portraitMode == PortraitMode.CHAT_ONLY) {
-                            portraitMode = PortraitMode.VIDEO_AND_CHAT
-                            isAudioOnly = false
-                        } else {
-                            portraitMode = PortraitMode.CHAT_ONLY
-                        }
-                        isChatVisible = true
-                    },
-                    chatContent = { config, pMode, onToggle, modifier ->
-                        chatContent(config, pMode, onToggle, modifier)
+                CompositionLocalProvider(
+            LocalStreamPreview provides StreamPreviewInfo(
+                channel = channel,
+                previewUrl = streamMetadata?.user?.stream?.previewImageUrl
+            )
+        ) {
+            PlayerOverlay(
+                isMinimized = isMinimized,
+                isFullscreen = isFullscreen,
+                channel = channel,
+                streamMetadata = streamMetadata,
+                avatarUrl = avatarUrl,
+                isAudioOnly = isAudioOnly,
+                adblockText = bannerText,
+                portraitMode = portraitMode,
+                metadataExpandTrigger = metadataExpandTrigger,
+                isPip = isPip,
+                isChatVisible = isChatVisible,
+                refreshTrigger = refreshTrigger,
+                forceSlimMetadata = forceSlimMetadata,
+                isImmersiveEnabled = isImmersiveEnabled,
+                onToggleChat = { 
+                    isChatVisible = !isChatVisible
+                    if (isFullscreen) showFullscreenControls = true
+                },
+                onToggleMode = {
+                    if (portraitMode == PortraitMode.CHAT_ONLY) {
+                        portraitMode = PortraitMode.VIDEO_AND_CHAT
+                        isAudioOnly = false
+                    } else {
+                        portraitMode = PortraitMode.CHAT_ONLY
                     }
-                )
+                    isChatVisible = true
+                },
+                chatContent = { config, pMode, onToggle, modifier ->
+                    chatContent(config, pMode, onToggle, modifier)
+                }
+            )
+        }
 
                 // 2. MINI PLAYER SHELL & DISMISS LOGIC
                 val dismissState = rememberSwipeToDismissBoxState(
