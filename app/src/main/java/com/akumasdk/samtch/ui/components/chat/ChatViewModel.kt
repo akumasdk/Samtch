@@ -76,6 +76,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _currentChannel = MutableStateFlow<String?>(null)
     private val _tabUpdateTrigger = MutableStateFlow(0)
+    private val userTags = mutableMapOf<String, String>()
 
     init {
         // Automatically refresh emotes when login state changes for the current channel
@@ -166,6 +167,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         rawIrcMessages.clear()
         messageHistory.clear()
         _messages.value = persistentListOf()
+        userTags.clear()
         
         val authState = TwitchAuthManager.getAuthState(getApplication())
         if (authState.isLoggedIn && !authState.userName.isNullOrEmpty() && !loginMessageTemplate.isNullOrEmpty()) {
@@ -291,6 +293,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                             }
                         }
                     }
+                } else if (msg.command == "USERSTATE" || msg.command == "GLOBALUSERSTATE") {
+                    userTags.putAll(msg.tags)
                 }
             }
         }
@@ -360,13 +364,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         
         // 1. Manually inject the message for immediate feedback
         if (authState.isLoggedIn && !authState.userName.isNullOrEmpty()) {
+            val tags = userTags.toMutableMap()
+            if (!tags.containsKey("display-name")) {
+                tags["display-name"] = authState.userName
+            }
+
             val syntheticMsg = IrcMessage(
                 id = UUID.randomUUID().toString(),
                 raw = "", // Raw isn't needed for mapping
                 prefix = "${authState.userName}!${authState.userName}@${authState.userName}.tmi.twitch.tv",
                 command = "PRIVMSG",
                 params = listOf("#$channel", message),
-                tags = mapOf("display-name" to authState.userName)
+                tags = tags
             )
             
             val uiState = ChatMessageMapper.mapToUiState(channel, syntheticMsg)
@@ -389,6 +398,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _messages.value = persistentListOf()
         messageHistory.clear()
         rawIrcMessages.clear()
+        userTags.clear()
         _emoteSuggestions.value = emptyList()
         _isEmoteMenuVisible.value = false
         _selectedEmoteForInfo.value = null
