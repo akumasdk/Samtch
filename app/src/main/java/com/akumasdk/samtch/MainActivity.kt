@@ -356,6 +356,15 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             onBack = { isSettingsOpen = false },
                             onLogout = {
+                                // Close player if active
+                                selectedChannel = null
+                                isMinimized = false
+                                playerViewModel.updateChannel(null)
+                                try {
+                                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
+                                    stopService(stopIntent)
+                                } catch (_: Exception) {}
+
                                 // Clear all cookies and trigger hard refresh
                                 android.webkit.CookieManager.getInstance().removeAllCookies { 
                                     lifecycleScope.launch(Dispatchers.Main) {

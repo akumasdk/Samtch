@@ -105,7 +105,11 @@ fun StreamMetadataBar(
             bottomEnd = 16.dp
         ),
         color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
-        border = if (isImmersiveEnabled) BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)) else null,
+        border = if (isImmersiveEnabled) {
+            BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f))
+        } else {
+            BorderStroke(0.5.dp, SamtchTheme.colors.divider)
+        },
         tonalElevation = 0.dp
     ) {
         if (isImmersiveEnabled) {

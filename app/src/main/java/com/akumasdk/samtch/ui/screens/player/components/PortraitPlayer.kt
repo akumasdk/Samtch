@@ -106,7 +106,12 @@ fun PortraitPlayer(
             }
 
             // Space for Status Banner between player and metadata
-            StatusBanner(text = adblockText)
+            StatusBanner(
+                text = adblockText,
+                isImmersiveEnabled = isImmersiveEnabled,
+                channel = channel,
+                previewImageUrl = previewImageUrl
+            )
 
             // Wrap metadata and chat in a Box to allow metadata bar to overlay chat
             Box(

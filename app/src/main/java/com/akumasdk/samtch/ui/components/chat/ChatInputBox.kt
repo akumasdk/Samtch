@@ -228,7 +228,7 @@ fun ChatInputBox(
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 val isEmoteIcon = !(isEmoteMenuVisible && !isImeVisible)
-                                
+
                                 AnimatedContent(
                                     targetState = isEmoteIcon,
                                     transitionSpec = {
@@ -311,6 +311,7 @@ fun ChatInputBox(
                         enabled = sendEnabled,
                         color = sendBgColor,
                         shape = CircleShape,
+                        border = BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)),
                         modifier = Modifier.size(44.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {

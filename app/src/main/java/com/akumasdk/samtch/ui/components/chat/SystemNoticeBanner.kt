@@ -15,13 +15,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @Composable
 fun SystemNoticeBanner(
     message: String?,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isImmersiveEnabled: Boolean = false,
+    channel: String = "",
+    previewImageUrl: String? = null
 ) {
     AnimatedVisibility(
         visible = !message.isNullOrEmpty(),
@@ -30,36 +34,50 @@ fun SystemNoticeBanner(
         modifier = modifier.fillMaxWidth()
     ) {
         Surface(
-            color = SamtchTheme.colors.accentColor.copy(alpha = 0.95f),
+            color = if (isImmersiveEnabled) SamtchTheme.colors.accentColor.copy(alpha = 0.5f) 
+                    else SamtchTheme.colors.accentColor,
             contentColor = Color.White,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = message ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss",
-                        tint = Color.White.copy(alpha = 0.8f),
-                        modifier = Modifier.size(16.dp)
+            Box(modifier = Modifier.fillMaxWidth()) {
+                if (isImmersiveEnabled && channel.isNotEmpty()) {
+                    PlayerBackground(
+                        channel = channel,
+                        previewUrl = previewImageUrl,
+                        alpha = 0.6f,
+                        blurRadius = 150.dp,
+                        containerColor = Color.Transparent,
+                        modifier = Modifier.matchParentSize()
                     )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = message ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Dismiss",
+                            tint = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }

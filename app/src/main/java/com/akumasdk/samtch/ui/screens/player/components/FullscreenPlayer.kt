@@ -122,7 +122,12 @@ fun FullscreenPlayer(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        StatusBanner(text = adblockText)
+                        StatusBanner(
+                            text = adblockText,
+                            isImmersiveEnabled = isImmersiveEnabled,
+                            channel = channel,
+                            previewImageUrl = previewImageUrl
+                        )
 
                         this@Row.AnimatedVisibility(
                             visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),

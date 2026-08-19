@@ -9,5 +9,6 @@ enum class PortraitMode {
 data class ChatContentConfig(
     val isCompact: Boolean,
     val showInput: Boolean,
-    val refreshTrigger: Int
+    val refreshTrigger: Int,
+    val isFullscreen: Boolean = false
 )

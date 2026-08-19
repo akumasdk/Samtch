@@ -1,7 +1,6 @@
 package com.akumasdk.samtch.ui.components.chat.emotemenu
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -10,6 +9,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +39,7 @@ fun EmoteMenu(
     tabs: Map<Int, List<Emote>>,
     onEmoteClick: (Emote) -> Unit,
     onEmoteLongClick: (Emote) -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     height: Dp = 300.dp,
     channel: String = "",
@@ -73,24 +75,42 @@ fun EmoteMenu(
 
         Column(modifier = Modifier.fillMaxSize()) {
             if (tabResIds.isNotEmpty()) {
-                SecondaryScrollableTabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = Color.Transparent,
-                    contentColor = SamtchTheme.colors.accentColor,
-                    edgePadding = 0.dp,
-                    divider = {}
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    tabResIds.forEachIndexed { index, resId ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = {
-                                Text(
-                                    text = stringResource(resId),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = if (selectedTabIndex == index) SamtchTheme.colors.accentColor else SamtchTheme.colors.secondaryText
-                                )
-                            }
+                    SecondaryScrollableTabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        containerColor = Color.Transparent,
+                        contentColor = SamtchTheme.colors.accentColor,
+                        edgePadding = 0.dp,
+                        divider = {},
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        tabResIds.forEachIndexed { index, resId ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                text = {
+                                    Text(
+                                        text = stringResource(resId),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = if (selectedTabIndex == index) SamtchTheme.colors.accentColor else SamtchTheme.colors.secondaryText
+                                    )
+                                }
+                            )
+                        }
+                    }
+                    
+                    IconButton(
+                        onClick = onRefresh,
+                        modifier = Modifier.padding(end = 4.dp).size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = SamtchTheme.colors.secondaryText.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

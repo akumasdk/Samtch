@@ -186,7 +186,10 @@ fun TwitchChat(
                         Column {
                             SystemNoticeBanner(
                                 message = systemNotice,
-                                onDismiss = { viewModel.dismissSystemNotice() }
+                                onDismiss = { viewModel.dismissSystemNotice() },
+                                isImmersiveEnabled = isImmersiveEnabled,
+                                channel = channel,
+                                previewImageUrl = previewImageUrl
                             )
                             ChatInputBox(
                                 isLoggedIn = isLoggedIn,
@@ -238,6 +241,10 @@ fun TwitchChat(
                                     Column {
                                         Box(modifier = Modifier.height(menuHeight)) {
                                             if (!isKeyboardCoveringMenu) {
+                                                val chatLoadingText = stringResource(R.string.chat_connecting)
+                                                val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
+                                                val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
+
                                                 EmoteMenu(
                                                     tabs = emoteMenuTabs,
                                                     onEmoteClick = { emote ->
@@ -245,6 +252,9 @@ fun TwitchChat(
                                                         viewModel.recordEmoteUsage(context, emote)
                                                     },
                                                     onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                                                    onRefresh = {
+                                                        viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = true)
+                                                    },
                                                     height = menuHeight,
                                                     channel = channel,
                                                     previewImageUrl = previewImageUrl,

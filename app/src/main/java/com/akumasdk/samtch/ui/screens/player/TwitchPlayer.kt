@@ -732,7 +732,7 @@ fun TwitchPlayer(
                                         .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
                                 ) {
                                     chatContent(
-                                        ChatContentConfig(true, false, refreshTrigger),
+                                        ChatContentConfig(true, false, refreshTrigger, isFullscreen = isFullscreen),
                                         null,
                                         null,
                                         Modifier.fillMaxSize()

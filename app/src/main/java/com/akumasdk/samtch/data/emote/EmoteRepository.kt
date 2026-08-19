@@ -43,6 +43,8 @@ object EmoteRepository {
 
     suspend fun loadGlobalEmotes(context: android.content.Context) = withContext(Dispatchers.IO) {
         val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        // If already loaded with the same auth state, skip. 
+        // But for global emotes, we should always try to load 3rd party ones even if not logged in.
         if (_globalState.value.isLoaded && _globalState.value.loadedWithAuth == auth.isLoggedIn) return@withContext
         try {
             val bttvMap = mutableMapOf<String, Emote>()
@@ -50,7 +52,7 @@ object EmoteRepository {
             val ffzMap = mutableMapOf<String, Emote>()
             val twitchMap = mutableMapOf<String, Emote>()
 
-            // Load Twitch Global
+            // Load Twitch Global - Requires Helix (needs Auth usually, but let's try)
             if (auth.isLoggedIn) {
                 try {
                     HelixApiClient.getGlobalEmotes(context).getOrNull()?.forEach {
@@ -59,7 +61,7 @@ object EmoteRepository {
                 } catch (e: Exception) { Log.e(TAG, "Twitch Global load failed", e) }
             }
 
-            // Load BTTV Global
+            // Load 3rd Party Global - No Auth required
             try {
                 BTTVApi.getGlobalEmotes().forEach {
                     bttvMap[it.code] = Emote(

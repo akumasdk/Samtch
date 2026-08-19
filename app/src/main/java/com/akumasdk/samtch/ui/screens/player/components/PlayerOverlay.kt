@@ -53,7 +53,7 @@ fun PlayerOverlay(
                 isImmersiveEnabled = isImmersiveEnabled,
                 onToggleChat = onToggleChat,
                 chatContent = { isCompact, showInput, rTrigger, modifier ->
-                    chatContent(ChatContentConfig(isCompact, showInput, rTrigger), null, null, modifier)
+                    chatContent(ChatContentConfig(isCompact, showInput, rTrigger, isFullscreen = true), null, null, modifier)
                 },
                 webView = { modifier, _ ->
                     Box(modifier = modifier)
