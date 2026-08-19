@@ -1,5 +1,17 @@
 # Changelog
 
+## Samtch v1.0.0 (First Stable Release)
+
+### What's New
+- **Dark Immersive Backgrounds on Light Theme**: Optimized system bar appearance to ensure icons remain legible when using blurred backgrounds in Light Mode.
+- **Enhanced UI Contrast & Immersive Effects**: Refined glass styling, metadata bar animations, and overall interface contrast for a more premium feel.
+- **Twitch Badges & User Info**: Implemented native dialogs for Twitch badges and user profiles directly within the chat.
+- **Channel Emotes Integration**: Expanded 3rd-party emote support to include channel-specific emotes from BTTV and 7TV.
+- **Improved Authentication**: Refined OAuth flow and Helix API integration for more reliable login and session management.
+- **Stability Fixes**: Addressed various edge cases in chat rendering, emote mapping, and system bar synchronization.
+
+---
+
 ## Samtch v0.4.2
 
 ### What's New
