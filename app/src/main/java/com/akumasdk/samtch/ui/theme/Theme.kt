@@ -50,6 +50,12 @@ data class SamtchColors(
     val audioPlayerBackgroundEnd: Color
 )
 
+@Immutable
+data class SystemBarsAppearance(
+    val lightStatusBars: Boolean? = null,
+    val lightNavigationBars: Boolean? = null
+)
+
 val LocalSamtchColors = staticCompositionLocalOf {
     SamtchColors(
         chatBackground = TwitchChatBackground,
@@ -74,6 +80,8 @@ val LocalSamtchColors = staticCompositionLocalOf {
         audioPlayerBackgroundEnd = TwitchBlack
     )
 }
+
+val LocalSystemBarsAppearance = staticCompositionLocalOf { SystemBarsAppearance() }
 
 object SamtchTheme {
     val colors: SamtchColors
@@ -168,12 +176,13 @@ fun SamtchTheme(
     }
 
     val view = LocalView.current
+    val systemBarsAppearance = LocalSystemBarsAppearance.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             val windowInsetsController = WindowCompat.getInsetsController(window, view)
-            windowInsetsController.isAppearanceLightStatusBars = !darkTheme
-            windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
+            windowInsetsController.isAppearanceLightStatusBars = systemBarsAppearance.lightStatusBars ?: !darkTheme
+            windowInsetsController.isAppearanceLightNavigationBars = systemBarsAppearance.lightNavigationBars ?: !darkTheme
         }
     }
 

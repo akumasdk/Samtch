@@ -84,6 +84,7 @@ import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
 import com.akumasdk.samtch.ui.theme.LocalStreamPreview
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.ui.util.SystemBarsAppearance
 import com.akumasdk.samtch.ui.theme.StreamPreviewInfo
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
@@ -571,246 +572,267 @@ fun TwitchPlayer(
 
         // Root Container
         SharedTransitionLayout {
-            var stablePlayerSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+            val isSystemBarsOverride = !isMinimized && isImmersiveEnabled
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                // Fullscreen Background
-                if (!isMinimized) {
-                    PlayerBackground(
-                        channel = channel,
-                        previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                        modifier = Modifier.fillMaxSize()
-                    )
+            SystemBarsAppearance(
+                lightStatusBars = if (isSystemBarsOverride) false else null,
+                lightNavigationBars = if (isSystemBarsOverride) false else null
+            ) {
+                var stablePlayerSize by remember {
+                    mutableStateOf(androidx.compose.ui.unit.IntSize.Zero)
                 }
 
-                // 1. FULL PLAYER OVERLAY (Chat, Metadata)
-                CompositionLocalProvider(
-            LocalStreamPreview provides StreamPreviewInfo(
-                channel = channel,
-                previewUrl = streamMetadata?.user?.stream?.previewImageUrl
-            )
-        ) {
-            PlayerOverlay(
-                isMinimized = isMinimized,
-                isFullscreen = isFullscreen,
-                channel = channel,
-                streamMetadata = streamMetadata,
-                avatarUrl = avatarUrl,
-                isAudioOnly = isAudioOnly,
-                adblockText = bannerText,
-                portraitMode = portraitMode,
-                metadataExpandTrigger = metadataExpandTrigger,
-                isPip = isPip,
-                isChatVisible = isChatVisible,
-                refreshTrigger = refreshTrigger,
-                forceSlimMetadata = forceSlimMetadata,
-                isImmersiveEnabled = isImmersiveEnabled,
-                onToggleChat = { 
-                    isChatVisible = !isChatVisible
-                    if (isFullscreen) showFullscreenControls = true
-                },
-                onToggleMode = {
-                    if (portraitMode == PortraitMode.CHAT_ONLY) {
-                        portraitMode = PortraitMode.VIDEO_AND_CHAT
-                        isAudioOnly = false
-                    } else {
-                        portraitMode = PortraitMode.CHAT_ONLY
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Fullscreen Background
+                    if (!isMinimized) {
+                        PlayerBackground(
+                            channel = channel,
+                            previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
-                    isChatVisible = true
-                },
-                chatContent = { config, pMode, onToggle, modifier ->
-                    chatContent(config, pMode, onToggle, modifier)
-                }
-            )
-        }
 
-                // 2. MINI PLAYER SHELL & DISMISS LOGIC
-                val dismissState = rememberSwipeToDismissBoxState(
-                    confirmValueChange = {
-                        if (it == SwipeToDismissBoxValue.StartToEnd || it == SwipeToDismissBoxValue.EndToStart) {
-                            onClose()
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                )
-
-                MiniPlayerContainer(
-                    visible = isMinimized,
-                    channel = channel,
-                    displayName = streamMetadata?.user?.displayName,
-                    streamTitle = streamMetadata?.user?.stream?.title,
-                    elevation = layout.elevation.value,
-                    nudgeOffset = nudgeOffset.value,
-                    dismissState = dismissState,
-                    onExpand = onExpand,
-                    onClose = onClose,
-                    content = {
-                        // This placeholder box will be filled by Point 3 (the shared player)
-                    }
-                )
-
-                // 3. THE STABLE PLAYER (Stable during layout changes)
-                // We always render the player if a channel is selected to preserve the WebView 
-                // instance and allow fast switching between modes.
-                val shouldRenderPlayer = true
-                
-                if (shouldRenderPlayer) {
-                    key(channel) { 
-                        Box(
-                            modifier = if (isPip) {
-                                Modifier.fillMaxSize()
-                            } else if (isMinimized) {
-                                Modifier
-                                    .align(Alignment.BottomStart)
-                                    .navigationBarsPadding()
-                                    .padding(bottom = layout.paddingBottom.value)
-                                    .padding(start = layout.paddingStart.value)
-                                    .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
-                                    .offset { 
-                                        // Follow the swipe to dismiss offset
-                                        IntOffset(dismissState.requireOffset().roundToInt(), 0) 
-                                    }
-                                    .size(layout.width.value, layout.height.value)
-                                    .clip(RoundedCornerShape(layout.cornerRadius.value))
-                            } else if (isFullscreen && !isAudioOnly) {
-                            Modifier
-                                .align(Alignment.TopStart)
-                                .width(layout.width.value)
-                                .fillMaxHeight()
-                                .clip(RectangleShape)
-                        } else {
-                                Modifier
-                                    .align(Alignment.TopStart)
-                                    .statusBarsPadding()
-                                    .fillMaxWidth()
-                                    .height(layout.height.value)
-                                    .clip(RectangleShape)
+                    // 1. FULL PLAYER OVERLAY (Chat, Metadata)
+                    CompositionLocalProvider(
+                        LocalStreamPreview provides StreamPreviewInfo(
+                            channel = channel,
+                            previewUrl = streamMetadata?.user?.stream?.previewImageUrl
+                        )
+                    ) {
+                        PlayerOverlay(
+                            isMinimized = isMinimized,
+                            isFullscreen = isFullscreen,
+                            channel = channel,
+                            streamMetadata = streamMetadata,
+                            avatarUrl = avatarUrl,
+                            isAudioOnly = isAudioOnly,
+                            adblockText = bannerText,
+                            portraitMode = portraitMode,
+                            metadataExpandTrigger = metadataExpandTrigger,
+                            isPip = isPip,
+                            isChatVisible = isChatVisible,
+                            refreshTrigger = refreshTrigger,
+                            forceSlimMetadata = forceSlimMetadata,
+                            isImmersiveEnabled = isImmersiveEnabled,
+                            onToggleChat = {
+                                isChatVisible = !isChatVisible
+                                if (isFullscreen) showFullscreenControls = true
+                            },
+                            onToggleMode = {
+                                if (portraitMode == PortraitMode.CHAT_ONLY) {
+                                    portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                    isAudioOnly = false
+                                } else {
+                                    portraitMode = PortraitMode.CHAT_ONLY
+                                }
+                                isChatVisible = true
+                            },
+                            chatContent = { config, pMode, onToggle, modifier ->
+                                chatContent(config, pMode, onToggle, modifier)
                             }
-                            .onSizeChanged { stablePlayerSize = it }
-                            .playerGestureHandler(
-                                isFullscreen = isFullscreen && !isAudioOnly,
-                                onBrightnessChange = { 
-                                    brightnessProgress = it
-                                    hasExplicitBrightness = true
-                                },
-                                onVolumeChange = { volumeProgress = it },
-                                onVolumeDragging = { isDraggingVolume = it },
-                                onBrightnessDragging = { isDraggingBrightness = it }
-                            )
-                            .playerInputHandler(
-                                size = stablePlayerSize,
-                                isFullscreen = isFullscreen,
-                                isMinimized = isMinimized,
-                                doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
-                                onDoubleTapCenter = {
-                                    if (isFullscreen && !isAudioOnly) {
-                                        isChatVisible = !isChatVisible
-                                    } else {
-                                        onToggleFullscreen()
+                        )
+                    }
+
+                    // 2. MINI PLAYER SHELL & DISMISS LOGIC
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = {
+                            if (it == SwipeToDismissBoxValue.StartToEnd || it == SwipeToDismissBoxValue.EndToStart) {
+                                onClose()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    )
+
+                    MiniPlayerContainer(
+                        visible = isMinimized,
+                        channel = channel,
+                        displayName = streamMetadata?.user?.displayName,
+                        streamTitle = streamMetadata?.user?.stream?.title,
+                        elevation = layout.elevation.value,
+                        nudgeOffset = nudgeOffset.value,
+                        dismissState = dismissState,
+                        onExpand = onExpand,
+                        onClose = onClose,
+                        content = {
+                            // This placeholder box will be filled by Point 3 (the shared player)
+                        }
+                    )
+
+                    // 3. THE STABLE PLAYER (Stable during layout changes)
+                    // We always render the player if a channel is selected to preserve the WebView 
+                    // instance and allow fast switching between modes.
+                    val shouldRenderPlayer = true
+
+                    if (shouldRenderPlayer) {
+                        key(channel) {
+                            Box(
+                                modifier = if (isPip) {
+                                    Modifier.fillMaxSize()
+                                } else if (isMinimized) {
+                                    Modifier
+                                        .align(Alignment.BottomStart)
+                                        .navigationBarsPadding()
+                                        .padding(bottom = layout.paddingBottom.value)
+                                        .padding(start = layout.paddingStart.value)
+                                        .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
+                                        .offset {
+                                            // Follow the swipe to dismiss offset
+                                            IntOffset(dismissState.requireOffset().roundToInt(), 0)
+                                        }
+                                        .size(layout.width.value, layout.height.value)
+                                        .clip(RoundedCornerShape(layout.cornerRadius.value))
+                                } else if (isFullscreen && !isAudioOnly) {
+                                    Modifier
+                                        .align(Alignment.TopStart)
+                                        .width(layout.width.value)
+                                        .fillMaxHeight()
+                                        .clip(RectangleShape)
+                                } else {
+                                    Modifier
+                                        .align(Alignment.TopStart)
+                                        .statusBarsPadding()
+                                        .fillMaxWidth()
+                                        .height(layout.height.value)
+                                        .clip(RectangleShape)
+                                }
+                                    .onSizeChanged { stablePlayerSize = it }
+                                    .playerGestureHandler(
+                                        isFullscreen = isFullscreen && !isAudioOnly,
+                                        onBrightnessChange = {
+                                            brightnessProgress = it
+                                            hasExplicitBrightness = true
+                                        },
+                                        onVolumeChange = { volumeProgress = it },
+                                        onVolumeDragging = { isDraggingVolume = it },
+                                        onBrightnessDragging = { isDraggingBrightness = it }
+                                    )
+                                    .playerInputHandler(
+                                        size = stablePlayerSize,
+                                        isFullscreen = isFullscreen,
+                                        isMinimized = isMinimized,
+                                        doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
+                                        onDoubleTapCenter = {
+                                            if (isFullscreen && !isAudioOnly) {
+                                                isChatVisible = !isChatVisible
+                                            } else {
+                                                onToggleFullscreen()
+                                            }
+                                        },
+                                        onSingleTap = {
+                                            if (isFullscreen && !isAudioOnly) {
+                                                showFullscreenControls = !showFullscreenControls
+                                            } else {
+                                                metadataExpandTrigger++
+                                                if (portraitMode == PortraitMode.CHAT_ONLY) {
+                                                    portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                                }
+                                            }
+                                        }
+                                    )
+                            ) {
+                                if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
+                                    val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
+                                    val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
+                                    val surfaceAlpha = if (isImmersiveEnabled) 0.4f else 1.0f
+
+                                    PlayerBackground(
+                                        channel = channel,
+                                        previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                                        modifier = Modifier.fillMaxSize(),
+                                        alpha = bgAlpha,
+                                        blurRadius = bgBlur
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    SamtchTheme.colors.chatBackground.copy(
+                                                        alpha = surfaceAlpha
+                                                    )
+                                                )
+                                        ) {
+                                            chatContent(
+                                                ChatContentConfig(
+                                                    true,
+                                                    false,
+                                                    refreshTrigger,
+                                                    isFullscreen = isFullscreen
+                                                ),
+                                                null,
+                                                null,
+                                                Modifier.fillMaxSize()
+                                            )
+                                        }
                                     }
-                                },
-                                onSingleTap = {
-                                    if (isFullscreen && !isAudioOnly) {
-                                        showFullscreenControls = !showFullscreenControls
-                                    } else {
-                                        metadataExpandTrigger++
-                                        if (portraitMode == PortraitMode.CHAT_ONLY) {
-                                            portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                } else {
+                                    playerContent(Modifier.fillMaxSize()) {
+                                        Log.d(
+                                            "TwitchPlayer",
+                                            "Toggle chat requested via bridge. isFullscreen: $isFullscreen"
+                                        )
+                                        if (isFullscreen) {
+                                            isChatVisible = !isChatVisible
+                                            showFullscreenControls = true
+                                        } else {
+                                            // Cycle modes in portrait
+                                            if (portraitMode == PortraitMode.CHAT_ONLY) {
+                                                portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                                isAudioOnly = false
+                                            } else {
+                                                portraitMode = PortraitMode.CHAT_ONLY
+                                            }
+                                            isChatVisible = true
                                         }
                                     }
                                 }
-                            )
-                    ) {
-                        if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
-                            val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
-                            val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
-                            val surfaceAlpha = if (isImmersiveEnabled) 0.4f else 1.0f
 
-                            PlayerBackground(
-                                channel = channel,
-                                previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                                modifier = Modifier.fillMaxSize(),
-                                alpha = bgAlpha,
-                                blurRadius = bgBlur
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
-                                ) {
-                                    chatContent(
-                                        ChatContentConfig(true, false, refreshTrigger, isFullscreen = isFullscreen),
-                                        null,
-                                        null,
-                                        Modifier.fillMaxSize()
-                                    )
-                                }
-                            }
-                        } else {
-                            playerContent(Modifier.fillMaxSize()) {
-                                Log.d("TwitchPlayer", "Toggle chat requested via bridge. isFullscreen: $isFullscreen")
-                                if (isFullscreen) {
-                                    isChatVisible = !isChatVisible
-                                    showFullscreenControls = true
-                                } else {
-                                    // Cycle modes in portrait
-                                    if (portraitMode == PortraitMode.CHAT_ONLY) {
-                                        portraitMode = PortraitMode.VIDEO_AND_CHAT
-                                        isAudioOnly = false
-                                    } else {
-                                        portraitMode = PortraitMode.CHAT_ONLY
+                                // Overlays on top of the player
+                                if (!isMinimized && !isPip) {
+                                    if (isFullscreen && !isAudioOnly) {
+                                        // Visual indicators for gestures
+                                        PlayerGestureIndicators(
+                                            showVolume = showVolumeOverlay,
+                                            volumeProgress = volumeProgress,
+                                            showBrightness = showBrightnessOverlay,
+                                            brightnessProgress = brightnessProgress
+                                        )
+
+                                        TapTooltip(
+                                            visible = showFullscreenControls && tooltipShowCount < 2,
+                                            modifier = Modifier.align(Alignment.Center)
+                                        )
+
+                                        // Toggle Chat Tab Button
+                                        FullscreenChatToggle(
+                                            visible = showFullscreenControls,
+                                            isChatVisible = isChatVisible,
+                                            onClick = {
+                                                isChatVisible = !isChatVisible
+                                                showFullscreenControls = true
+                                            },
+                                            modifier = Modifier.align(Alignment.CenterEnd)
+                                        )
                                     }
-                                    isChatVisible = true
+                                }
+                                if (isMinimized) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Transparent)
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null, // No ripple here, the parent Surface will show it or we just want the action
+                                                onClick = onExpand
+                                            )
+                                    )
                                 }
                             }
-                        }
-
-                        // Overlays on top of the player
-                        if (!isMinimized && !isPip) {
-                            if (isFullscreen && !isAudioOnly) {
-                                // Visual indicators for gestures
-                                PlayerGestureIndicators(
-                                    showVolume = showVolumeOverlay,
-                                    volumeProgress = volumeProgress,
-                                    showBrightness = showBrightnessOverlay,
-                                    brightnessProgress = brightnessProgress
-                                )
-
-                                TapTooltip(
-                                    visible = showFullscreenControls && tooltipShowCount < 2,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-
-                                // Toggle Chat Tab Button
-                                FullscreenChatToggle(
-                                    visible = showFullscreenControls,
-                                    isChatVisible = isChatVisible,
-                                    onClick = {
-                                        isChatVisible = !isChatVisible
-                                        showFullscreenControls = true
-                                    },
-                                    modifier = Modifier.align(Alignment.CenterEnd)
-                                )
-                            }
-                        }
-                        if (isMinimized) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Transparent)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null, // No ripple here, the parent Surface will show it or we just want the action
-                                        onClick = onExpand
-                                    )
-                            )
                         }
                     }
                 }
             }
         }
     }
-}
 }
