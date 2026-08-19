@@ -28,6 +28,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.ui.theme.LocalStreamPreview
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.ui.components.metadata.util.formatStreamDuration
 import com.akumasdk.samtch.ui.components.metadata.util.formatViewerCount
@@ -46,6 +47,8 @@ fun StreamInfoDialog(
     onDismiss: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val previewInfo = LocalStreamPreview.current
+    val targetUrl = previewImageUrl ?: previewInfo.previewUrl
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -62,10 +65,10 @@ fun StreamInfoDialog(
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 // Background Preview Image with enhanced gradient overlay
-                if (!previewImageUrl.isNullOrEmpty()) {
+                if (!targetUrl.isNullOrEmpty()) {
                     Box(modifier = Modifier.matchParentSize()) {
                         AsyncImage(
-                            model = previewImageUrl,
+                            model = targetUrl,
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop

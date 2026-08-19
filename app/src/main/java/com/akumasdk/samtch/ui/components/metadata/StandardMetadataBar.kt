@@ -97,7 +97,7 @@ internal fun StandardMetadataBar(
             ) {
                 Text(
                     text = displayName ?: channel,
-                    color = SamtchTheme.colors.twitchPurpleLight,
+                    color = SamtchTheme.colors.accentColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
@@ -121,7 +121,7 @@ internal fun StandardMetadataBar(
                         Text(
                             text = duration,
                             color = SamtchTheme.colors.secondaryText,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
                         )
@@ -155,13 +155,13 @@ internal fun StandardMetadataBar(
                     Icon(
                         imageVector = Icons.Default.Gamepad,
                         contentDescription = null,
-                        tint = SamtchTheme.colors.twitchPurpleLight.copy(alpha = 0.6f),
+                        tint = SamtchTheme.colors.accentColor.copy(alpha = 0.6f),
                         modifier = Modifier.size(14.dp) // Matched size to text optics
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = gameName,
-                        color = SamtchTheme.colors.twitchPurpleLight.copy(alpha = 0.8f),
+                        color = SamtchTheme.colors.accentColor.copy(alpha = 0.8f),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -181,7 +181,7 @@ internal fun StandardMetadataBar(
                     Box(modifier = Modifier.padding(start = 8.dp)) {
                         AnimatedViewerCount(
                             count = viewersCount,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
                     }

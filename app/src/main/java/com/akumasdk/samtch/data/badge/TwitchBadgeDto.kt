@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.data.emote
+package com.akumasdk.samtch.data.badge
 
 import kotlinx.serialization.Serializable
 

@@ -1,28 +1,40 @@
 package com.akumasdk.samtch.data.auth
 
+import android.content.Context
 import android.util.Log
 import android.webkit.CookieManager
+import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.Constants
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 object TwitchAuthManager {
     private const val TAG = "TwitchAuthManager"
 
-    @Volatile
-    private var validatedClientId: String? = null
-
-    fun setValidatedClientId(id: String) {
-        validatedClientId = id
-    }
-
     data class AuthState(
         val userName: String? = null,
+        val userId: String? = null,
         val authToken: String? = null,
         val clientId: String? = null,
         val isLoggedIn: Boolean = false
     )
 
-    fun getAuthState(): AuthState {
+    fun getAuthState(context: Context): AuthState {
         return try {
+            // 1. Try OAuth from DataStore first
+            val oauthToken = runBlocking { SettingsManager.getAuthToken(context).first() }
+            val oauthClientId = runBlocking { SettingsManager.getAuthClientId(context).first() }
+            val oauthUserName = runBlocking { SettingsManager.getAuthUserName(context).first() }
+            val oauthUserId = runBlocking { SettingsManager.getAuthUserId(context).first() }
+            val oauthLoggedIn = runBlocking { SettingsManager.isLoggedIn(context).first() }
+
+            if (oauthLoggedIn && !oauthToken.isNullOrEmpty()) {
+                return AuthState(oauthUserName, oauthUserId, oauthToken, oauthClientId, true)
+            }
+
+            // 2. Passive cookie detection (for UI/Browser identification only)
+            // Note: We return isLoggedIn = false here because Helix API calls 
+            // require the formal OAuth flow implemented above.
             val cookieManager = CookieManager.getInstance()
             val cookies = cookieManager.getCookie(Constants.Twitch.BASE_URL) ?: return AuthState()
 
@@ -34,15 +46,13 @@ object TwitchAuthManager {
             val userName = cookieMap["login"]?.lowercase()
             val authToken = cookieMap["auth-token"]
 
-            val isLoggedIn = !userName.isNullOrEmpty() && !authToken.isNullOrEmpty()
-            
-            if (isLoggedIn) {
-                Log.d(TAG, "Detected logged-in user: $userName")
+            if (!userName.isNullOrEmpty()) {
+                Log.d(TAG, "Detected user via cookies: $userName (Anonymous mode for APIs)")
             }
 
-            AuthState(userName, authToken, validatedClientId, isLoggedIn)
+            return AuthState(userName, null, authToken, Constants.Twitch.CLIENT_ID, false)
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting auth state from cookies", e)
+            Log.e(TAG, "Error getting auth state", e)
             AuthState()
         }
     }

@@ -108,7 +108,7 @@ fun SettingsScreen(
             latestRelease = UpdateManager.checkForUpdate()
             isCheckingUpdate = false
         }
-        isLoggedIn = TwitchAuthManager.getAuthState().isLoggedIn
+        isLoggedIn = TwitchAuthManager.getAuthState(context).isLoggedIn
     }
 
     Scaffold(

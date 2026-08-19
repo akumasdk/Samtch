@@ -2,6 +2,8 @@ package com.akumasdk.samtch.ui.screens.player.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -103,42 +106,53 @@ fun PortraitPlayer(
             }
 
             // Space for Status Banner between player and metadata
-            StatusBanner(text = adblockText)
+            StatusBanner(
+                text = adblockText,
+                isImmersiveEnabled = isImmersiveEnabled,
+                channel = channel,
+                previewImageUrl = previewImageUrl
+            )
 
-            // Tiny metadata space above chat
-            AnimatedVisibility(
-                visible = !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
-                enter = SamtchAnimation.FadeIn,
-                exit = SamtchAnimation.FadeOut
-            ) {
-                StreamMetadataBar(
-                    channel = channel,
-                    displayName = displayName,
-                    avatarUrl = avatarUrl,
-                    streamTitle = streamTitle,
-                    gameName = gameName,
-                    viewersCount = viewersCount,
-                    streamStartedAt = streamStartedAt,
-                    expandTrigger = expandTrigger,
-                    forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
-                    forceSlim = forceSlimMetadata,
-                    onClick = { showInfoDialog = true }
-                )
-            }
-
-            // Twitch Chat & Mode Toggle Container
+            // Wrap metadata and chat in a Box to allow metadata bar to overlay chat
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                chatContent(
-                    false,
-                    true,
-                    portraitMode,
-                    onToggleMode,
-                    Modifier.fillMaxSize()
-                )
+                // Twitch Chat
+                Box(modifier = Modifier.fillMaxSize()) {
+                    chatContent(
+                        false,
+                        true,
+                        portraitMode,
+                        onToggleMode,
+                        Modifier.fillMaxSize()
+                    )
+                }
+
+                // Metadata space above chat (Overlay)
+                this@Column.AnimatedVisibility(
+                    visible = !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
+                    enter = SamtchAnimation.FadeIn,
+                    exit = SamtchAnimation.FadeOut,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                ) {
+                    StreamMetadataBar(
+                        channel = channel,
+                        displayName = displayName,
+                        avatarUrl = avatarUrl,
+                        streamTitle = streamTitle,
+                        gameName = gameName,
+                        viewersCount = viewersCount,
+                        streamStartedAt = streamStartedAt,
+                        previewImageUrl = previewImageUrl,
+                        expandTrigger = expandTrigger,
+                        forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
+                        forceSlim = forceSlimMetadata,
+                        isImmersiveEnabled = isImmersiveEnabled,
+                        onClick = { showInfoDialog = true }
+                    )
+                }
             }
         }
     }

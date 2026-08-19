@@ -7,6 +7,8 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import com.akumasdk.samtch.data.badge.BadgeRepository
+import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
 import com.akumasdk.samtch.util.Constants
@@ -100,7 +102,8 @@ object ChatMessageMapper {
 
             occurrences.sortBy { it.range.first }
 
-            val badges = parseBadges(message, channelName)
+            val badgesInfo = parseBadgesInfo(message, channelName)
+            val badgeUrls = badgesInfo.mapNotNull { it.bestUrl }
             val emotes = mutableListOf<EmoteInfo>()
             val annotatedString = buildAnnotatedString {
                 var lastPos = 0
@@ -155,7 +158,8 @@ object ChatMessageMapper {
                 messageText = cleanText,
                 annotatedString = annotatedString,
                 emotes = emotes,
-                badgeUrls = badges,
+                badgeUrls = badgeUrls,
+                badges = badgesInfo,
                 isAction = isAction
             )
         }
@@ -167,7 +171,17 @@ object ChatMessageMapper {
         )
     }
 
-    private fun parseBadges(message: IrcMessage, channelName: String): List<String> {
-        return emptyList() // Badges disabled for now
+    private fun parseBadgesInfo(message: IrcMessage, channelName: String): List<TwitchBadgeDto> {
+        val badgesTag = message.tags["badges"] ?: return emptyList()
+        return badgesTag.split(",").mapNotNull { badgeStr ->
+            val parts = badgeStr.split("/")
+            if (parts.size == 2) {
+                val setId = parts[0]
+                val version = parts[1]
+                BadgeRepository.getBadge(channelName, setId, version)
+            } else {
+                null
+            }
+        }
     }
 }

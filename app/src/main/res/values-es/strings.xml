@@ -111,9 +111,15 @@
     <string name="status_chat_only">MODO SOLO CHAT</string>
     <string name="status_audio_only">MODO SOLO AUDIO</string>
     <string name="emote_menu_recent">Recientes</string>
+    <string name="emote_menu_twitch">Twitch</string>
     <string name="emote_menu_channel">Canal</string>
+    <string name="emote_menu_user">Personal</string>
     <string name="emote_menu_global">Global</string>
     <string name="emote_menu_empty">No hay emoticonos disponibles</string>
+    <string name="emote_source_twitch">Twitch</string>
+    <string name="emote_source_seventv">7TV</string>
+    <string name="emote_source_bttv">BetterTTV</string>
+    <string name="emote_source_ffz">FrankerFaceZ</string>
 
     <!-- Stream Info Dialog -->
     <string name="stream_title_label">Título</string>

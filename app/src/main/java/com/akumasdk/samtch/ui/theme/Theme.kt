@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.theme
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -11,9 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 @Immutable
 data class SamtchColors(
@@ -41,8 +45,15 @@ data class SamtchColors(
     val loadingOverlay: Color,
     val defaultUserColor: Color,
     val accentColor: Color,
+    val glassBorder: Color,
     val audioPlayerBackgroundStart: Color,
     val audioPlayerBackgroundEnd: Color
+)
+
+@Immutable
+data class SystemBarsAppearance(
+    val lightStatusBars: Boolean? = null,
+    val lightNavigationBars: Boolean? = null
 )
 
 val LocalSamtchColors = staticCompositionLocalOf {
@@ -63,11 +74,14 @@ val LocalSamtchColors = staticCompositionLocalOf {
         dialogBackground = Color(0xFF1F1F23),
         cardBackground = Color.Black.copy(alpha = 0.4f),
         accentColor = TwitchPurpleLight,
+        glassBorder = Color.Black.copy(alpha = 0.08f),
         loadingOverlay = Color.Black.copy(alpha = 0.6f),
         audioPlayerBackgroundStart = TwitchDarkGray,
         audioPlayerBackgroundEnd = TwitchBlack
     )
 }
+
+val LocalSystemBarsAppearance = staticCompositionLocalOf { SystemBarsAppearance() }
 
 object SamtchTheme {
     val colors: SamtchColors
@@ -124,21 +138,24 @@ fun SamtchTheme(
             adblockBackground = Color.Black.copy(alpha = 0.7f),
             tooltipBackground = Color.Black.copy(alpha = 0.7f),
             tabButtonBackground = Color.Black.copy(alpha = 0.6f),
-            divider = Color.White.copy(alpha = 0.1f),
-            textFieldBackground = Color.Black.copy(alpha = 0.3f),
+            divider = Color.White.copy(alpha = 0.15f),
+            textFieldBackground = Color.Black.copy(alpha = 0.15f),
             defaultUserColor = TwitchPurpleLight,
             cardBackground = Color.Black.copy(alpha = 0.4f),
             accentColor = TwitchPurpleLight,
+            glassBorder = Color.White.copy(alpha = 0.12f),
             loadingOverlay = TwitchBlack.copy(alpha = 0.6f),
             audioPlayerBackgroundStart = TwitchDarkGray,
             audioPlayerBackgroundEnd = TwitchBlack
         )
     } else {
+        val darkPurple = Color(0xFF6441A5) // Deep purple for high contrast on light backgrounds
         SamtchColors(
             chatBackground = Color.White,
             miniPlayerBackground = Color.White,
             miniPlayerTitle = Color.Black,
-            miniPlayerSubtitle = TwitchPurple,
+            miniPlayerSubtitle = darkPurple,
+            twitchPurpleLight = darkPurple,
             primaryText = Color.Black,
             secondaryText = Color.DarkGray,
             dialogBackground = Color.White,
@@ -147,14 +164,26 @@ fun SamtchTheme(
             tooltipBackground = Color.White.copy(alpha = 0.9f),
             tabButtonBackground = Color.White.copy(alpha = 0.8f),
             divider = Color.Black.copy(alpha = 0.1f),
-            textFieldBackground = Color(0xFFEFEFF1),
-            defaultUserColor = Color(0xFF6441A5), // Darker Twitch-like purple for light mode
+            textFieldBackground = Color.Black.copy(alpha = 0.05f),
+            defaultUserColor = darkPurple,
             cardBackground = Color(0xFFEFEEF1), // Twitch light mode UI background
-            accentColor = TwitchPurple, // Standard Twitch Purple for brand consistency
+            accentColor = darkPurple, 
+            glassBorder = Color.Black.copy(alpha = 0.08f),
             loadingOverlay = Color.White.copy(alpha = 0.35f),
             audioPlayerBackgroundStart = Color(0xFFF7F7F8),
             audioPlayerBackgroundEnd = Color.White
         )
+    }
+
+    val view = LocalView.current
+    val systemBarsAppearance = LocalSystemBarsAppearance.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            val windowInsetsController = WindowCompat.getInsetsController(window, view)
+            windowInsetsController.isAppearanceLightStatusBars = systemBarsAppearance.lightStatusBars ?: !darkTheme
+            windowInsetsController.isAppearanceLightNavigationBars = systemBarsAppearance.lightNavigationBars ?: !darkTheme
+        }
     }
 
     CompositionLocalProvider(LocalSamtchColors provides samtchColors) {

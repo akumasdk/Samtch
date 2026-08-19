@@ -14,6 +14,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -29,12 +30,14 @@ fun DynamicEmoteText(
     style: TextStyle = TextStyle.Default,
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
+    onClick: ((Int) -> Unit)? = null,
     emoteSize: Int = 28
 ) {
     val context = LocalContext.current
     val baseHeight = if (isCompact) (emoteSize * 0.8f) else emoteSize.toFloat()
     
     val measuredWidths = remember { mutableStateMapOf<String, Float>() }
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
     val inlineContent = remember(emotes, measuredWidths.toMap(), baseHeight, onEmoteClick, onEmoteLongClick) {
         emotes.associate { emote ->
@@ -86,8 +89,16 @@ fun DynamicEmoteText(
 
     BasicText(
         text = text,
-        modifier = modifier,
+        modifier = modifier.pointerInput(onClick) {
+            detectTapGestures { offset ->
+                layoutResult?.let { result ->
+                    val position = result.getOffsetForPosition(offset)
+                    onClick?.invoke(position)
+                }
+            }
+        },
         style = style,
+        onTextLayout = { layoutResult = it },
         inlineContent = inlineContent
     )
 }

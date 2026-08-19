@@ -1,7 +1,11 @@
 package com.akumasdk.samtch.util
 
+import android.content.Context
 import android.util.Log
 import android.webkit.CookieManager
+import com.akumasdk.samtch.data.settings.SettingsManager
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import java.net.URI
 
 object TwitchUrlUtil {
@@ -79,8 +83,15 @@ object TwitchUrlUtil {
         return channelCandidate
     }
 
-    fun getCurrentUserFromCookies(): String? {
+    fun getCurrentUser(context: Context): String? {
         return try {
+            // 1. Try OAuth from DataStore first
+            val oauthUserName = runBlocking { SettingsManager.getAuthUserName(context).first() }
+            if (!oauthUserName.isNullOrEmpty()) {
+                return oauthUserName
+            }
+
+            // 2. Fallback to cookies
             val cookieManager = CookieManager.getInstance()
             val cookies = cookieManager.getCookie(Constants.Twitch.BASE_URL) ?: return null
 
@@ -89,11 +100,11 @@ object TwitchUrlUtil {
             val username = loginCookie?.split("=")?.getOrNull(1)?.trim()?.lowercase()
             
             if (!username.isNullOrEmpty()) {
-                Log.d("TwitchUrlUtil", "Detected logged-in user: $username")
+                Log.d("TwitchUrlUtil", "Detected logged-in user from cookies: $username")
                 username
             } else null
         } catch (e: Exception) {
-            Log.e("TwitchUrlUtil", "Error getting user from cookies", e)
+            Log.e("TwitchUrlUtil", "Error getting user", e)
             null
         }
     }

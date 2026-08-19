@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -15,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @Composable
@@ -23,6 +25,8 @@ fun ChatMessageRow(
     isCompact: Boolean = false,
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
+    onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
+    onUserClick: ((String) -> Unit)? = null,
     fontSize: Int = 14,
     emoteSize: Int = 28
 ) {
@@ -30,14 +34,23 @@ fun ChatMessageRow(
     
     when (message) {
         is ChatMessageUiState.PrivMessageUi -> {
-            val userColor = if (message.userColor == Color.Unspecified) SamtchTheme.colors.defaultUserColor else message.userColor
+            val isLightMode = SamtchTheme.colors.chatBackground.luminance() > 0.5f
+            val baseUserColor = if (message.userColor == Color.Unspecified) SamtchTheme.colors.defaultUserColor else message.userColor
             
-            val combinedEmotes = remember(message.emotes, message.badgeUrls) {
-                val badgesAsEmotes = message.badgeUrls.mapIndexed { index, url ->
+            // Adjust user colors for readability in light mode if they are too light
+            val userColor = if (isLightMode && baseUserColor.luminance() > 0.6f) {
+                SamtchTheme.colors.accentColor
+            } else {
+                baseUserColor
+            }
+            
+            val combinedEmotes = remember(message.emotes, message.badges) {
+                val badgesAsEmotes = message.badges.mapIndexed { index, badge ->
                     EmoteInfo(
                         id = "badge_${message.id}_$index",
-                        code = "badge",
-                        url = url
+                        code = badge.title,
+                        url = badge.bestUrl ?: "",
+                        source = "Badge"
                     )
                 }
                 badgesAsEmotes + message.emotes
@@ -45,14 +58,16 @@ fun ChatMessageRow(
 
             val fullAnnotatedString = buildAnnotatedString {
                 // Inline Badges
-                message.badgeUrls.forEachIndexed { index, _ ->
+                message.badges.forEachIndexed { index, _ ->
                     appendInlineContent("badge_${message.id}_$index", "[badge]")
                     append(" ")
                 }
 
                 // Name and Message content in one flow
                 withStyle(SpanStyle(color = userColor, fontWeight = FontWeight.Bold)) {
+                    pushStringAnnotation(tag = "username", annotation = message.displayName)
                     append(message.displayName)
+                    pop()
                 }
 
                 if (!message.isAction) {
@@ -69,8 +84,23 @@ fun ChatMessageRow(
                 emotes = combinedEmotes,
                 isCompact = isCompact,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                onEmoteClick = onEmoteClick,
+                onEmoteClick = { info ->
+                    if (info.source == "Badge") {
+                        val index = info.id.substringAfterLast("_").toIntOrNull()
+                        if (index != null && index < message.badges.size) {
+                            onBadgeClick?.invoke(message.badges[index])
+                        }
+                    } else {
+                        onEmoteClick?.invoke(info)
+                    }
+                },
                 onEmoteLongClick = onEmoteLongClick,
+                onClick = { offset ->
+                    fullAnnotatedString.getStringAnnotations(tag = "username", start = offset, end = offset)
+                        .firstOrNull()?.let { annotation ->
+                            onUserClick?.invoke(annotation.item)
+                        }
+                },
                 emoteSize = emoteSize,
                 style = TextStyle(
                     color = if (message.isAction) userColor else SamtchTheme.colors.primaryText,

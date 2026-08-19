@@ -43,7 +43,7 @@ class TwitchBrowserClient(
         if (!isSafe) {
             val lastSafeUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
             Log.d("TwitchBrowserClient", "Intercepted unsafe URL: $url. Redirecting to $lastSafeUrl")
-            if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUserFromCookies())) {
+            if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUser(context))) {
                 onChannelSelected(channelMatch!!)
             }
             view?.loadUrl(lastSafeUrl)
@@ -78,7 +78,7 @@ class TwitchBrowserClient(
             if (!isSafe) {
                 val lastSafeUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
                 Log.d("TwitchBrowserClient", "Page started on unsafe URL. Redirecting.")
-                if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUserFromCookies())) {
+                if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUser(context))) {
                     onChannelSelected(channelMatch!!)
                 }
                 view?.loadUrl(lastSafeUrl)

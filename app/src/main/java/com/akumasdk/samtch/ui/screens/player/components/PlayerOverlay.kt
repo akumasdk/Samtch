@@ -46,14 +46,13 @@ fun PlayerOverlay(
                 adblockText = adblockText,
                 refreshTrigger = refreshTrigger,
                 streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                 isChatVisible = isChatVisible,
                 expandTrigger = metadataExpandTrigger,
                 forceSlimMetadata = forceSlimMetadata,
                 isImmersiveEnabled = isImmersiveEnabled,
                 onToggleChat = onToggleChat,
                 chatContent = { isCompact, showInput, rTrigger, modifier ->
-                    chatContent(ChatContentConfig(isCompact, showInput, rTrigger), null, null, modifier)
+                    chatContent(ChatContentConfig(isCompact, showInput, rTrigger, isFullscreen = true), null, null, modifier)
                 },
                 webView = { modifier, _ ->
                     Box(modifier = modifier)
@@ -70,7 +69,6 @@ fun PlayerOverlay(
                 isAudioOnly = isAudioOnly,
                 adblockText = adblockText,
                 streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
                 portraitMode = portraitMode,
                 expandTrigger = metadataExpandTrigger,
                 forceSlimMetadata = forceSlimMetadata,

@@ -51,6 +51,7 @@ import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
+import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.login.LoginActivity
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
@@ -215,13 +216,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // 3. SYSTEM BAR THEME CONSISTENCY
-                // This ensures icons follow theme even when bars are re-shown after fullscreen
-                LaunchedEffect(darkTheme, isFullscreen, isMinimized) {
-                    windowInsetsController.isAppearanceLightStatusBars = !darkTheme
-                    windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
-                }
-
                 val browserState = rememberSaveableWebViewState(Constants.Twitch.MOBILE_URL)
                 val browserNavigator = rememberWebViewNavigator()
 
@@ -229,7 +223,7 @@ class MainActivity : ComponentActivity() {
                     contract = ActivityResultContracts.StartActivityForResult()
                 ) { result ->
                     if (result.resultCode == RESULT_OK) {
-                        Log.d("MainActivity", "Login successful, triggering hard refresh for browser and player.")
+                        Log.d("MainActivity", "Login successful, triggering hard refresh.")
                         refreshTriggerState.intValue += 1
                     }
                 }
@@ -363,10 +357,33 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             onBack = { isSettingsOpen = false },
                             onLogout = {
+                                // Close player if active
+                                selectedChannel = null
+                                isMinimized = false
+                                playerViewModel.updateChannel(null)
+                                try {
+                                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
+                                    stopService(stopIntent)
+                                } catch (_: Exception) {}
+
+                                // Clear emote and badge cache
+                                EmoteRepository.clearCache()
+                                com.akumasdk.samtch.data.badge.BadgeRepository.clearCache()
+
                                 // Clear all cookies and trigger hard refresh
                                 android.webkit.CookieManager.getInstance().removeAllCookies { 
                                     lifecycleScope.launch(Dispatchers.Main) {
-                                        Log.d("MainActivity", "Logout: cookies cleared, triggering hard refresh for browser and player.")
+                                        Log.d("MainActivity", "Logout: cookies cleared. Clearing OAuth data...")
+                                        // Await data clearing to ensure no race conditions with refresh
+                                        SettingsManager.setAuthData(
+                                            context = this@MainActivity,
+                                            token = null,
+                                            clientId = null,
+                                            userName = null,
+                                            userId = null,
+                                            isLoggedIn = false
+                                        )
+                                        Log.d("MainActivity", "OAuth data cleared. Triggering refresh.")
                                         refreshTriggerState.intValue += 1
                                         isSettingsOpen = false
                                     }

@@ -18,7 +18,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Serializable
-private data class ValidateResponse(
+data class ValidateResponse(
     val client_id: String,
     val login: String? = null,
     val scopes: List<String>? = null,
@@ -39,37 +39,17 @@ object HelixApi {
         install(ContentNegotiation) {
             json(json)
         }
-        /*
-        install(Logging) {
-            logger = object : Logger {
-                override fun log(message: String) {
-                    Log.d(TAG, message)
-                }
-            }
-            level = LogLevel.HEADERS
-        }
-        */
     }
     
-    private suspend fun getClientId(): String {
-        return TwitchGqlService.getDynamicClientId()
-        /*
-        val auth = TwitchAuthManager.getAuthState()
-        if (auth.isLoggedIn) {
-            auth.clientId?.let { return it }
-            
-            auth.authToken?.let { token ->
-                validateToken(token)?.let { id ->
-                    TwitchAuthManager.setValidatedClientId(id)
-                    return id
-                }
-            }
+    suspend fun getClientId(context: android.content.Context): String {
+        val auth = TwitchAuthManager.getAuthState(context)
+        if (auth.isLoggedIn && auth.clientId != null) {
+            return auth.clientId
         }
         return TwitchGqlService.getDynamicClientId()
-        */
     }
 
-    private suspend fun validateToken(token: String): String? {
+    suspend fun validateToken(token: String): ValidateResponse? {
         return try {
             Log.d(TAG, "Validating OAuth token...")
             val response = client.get(Constants.Twitch.Api.HELIX_VALIDATE) {
@@ -80,8 +60,8 @@ object HelixApi {
             
             if (response.status.value == 200) {
                 val body: ValidateResponse = json.decodeFromString(responseBody)
-                Log.d(TAG, "Token validated. Client-ID: ${body.client_id}")
-                body.client_id
+                Log.d(TAG, "Token validated for user: ${body.login}")
+                body
             } else {
                 Log.w(TAG, "Token validation failed: ${response.status}")
                 null
@@ -92,27 +72,72 @@ object HelixApi {
         }
     }
     
-    private fun HttpRequestBuilder.addAuth() {
-        val auth = TwitchAuthManager.getAuthState()
+    private fun HttpRequestBuilder.addAuth(context: android.content.Context) {
+        val auth = TwitchAuthManager.getAuthState(context)
         if (auth.isLoggedIn && auth.authToken != null) {
             bearerAuth(auth.authToken)
         }
     }
 
-    suspend fun getGlobalBadges(): HttpResponse {
-        val clientId = getClientId()
+    suspend fun getGlobalBadges(context: android.content.Context): HttpResponse {
+        val clientId = getClientId(context)
         return client.get(Constants.Twitch.Api.HELIX_GLOBAL_BADGES) {
             header("Client-Id", clientId)
-            addAuth()
+            addAuth(context)
         }
     }
 
-    suspend fun getChannelBadges(broadcasterId: String): HttpResponse {
-        val clientId = getClientId()
+    suspend fun getChannelBadges(context: android.content.Context, broadcasterId: String): HttpResponse {
+        val clientId = getClientId(context)
         return client.get(Constants.Twitch.Api.HELIX_CHANNEL_BADGES) {
             header("Client-Id", clientId)
-            addAuth()
+            addAuth(context)
             parameter("broadcaster_id", broadcasterId)
+        }
+    }
+
+    suspend fun getUsers(context: android.content.Context, logins: List<String>? = null, ids: List<String>? = null): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_USERS) {
+            header("Client-Id", clientId)
+            addAuth(context)
+            logins?.forEach { parameter("login", it) }
+            ids?.forEach { parameter("id", it) }
+        }
+    }
+
+    suspend fun getStreams(context: android.content.Context, logins: List<String>): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_STREAMS) {
+            header("Client-Id", clientId)
+            addAuth(context)
+            logins.forEach { parameter("user_login", it) }
+        }
+    }
+
+    suspend fun getGlobalEmotes(context: android.content.Context): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_GLOBAL_EMOTES) {
+            header("Client-Id", clientId)
+            addAuth(context)
+        }
+    }
+
+    suspend fun getChannelEmotes(context: android.content.Context, broadcasterId: String): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_CHANNEL_EMOTES) {
+            header("Client-Id", clientId)
+            addAuth(context)
+            parameter("broadcaster_id", broadcasterId)
+        }
+    }
+
+    suspend fun getUserEmotes(context: android.content.Context, userId: String): HttpResponse {
+        val clientId = getClientId(context)
+        return client.get(Constants.Twitch.Api.HELIX_USER_EMOTES) {
+            header("Client-Id", clientId)
+            addAuth(context)
+            parameter("user_id", userId)
         }
     }
 }

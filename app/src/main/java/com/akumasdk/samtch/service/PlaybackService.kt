@@ -28,6 +28,8 @@ import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
+import com.akumasdk.samtch.data.api.helix.HelixApiClient
+import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ExtM3UParser
 import com.google.common.collect.ImmutableList
@@ -226,9 +228,24 @@ class PlaybackService : MediaSessionService() {
         private suspend fun resolveMediaItem(item: MediaItem): MutableList<MediaItem> {
             val channelName = item.mediaId
             
+            val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(this@PlaybackService)
+
             // Parallel fetch for token and metadata
             val tokenPairDeferred = serviceScope.async { TwitchGqlService.getPlaybackAccessToken(channelName) }
-            val metadataDeferred = serviceScope.async { TwitchGqlService.getStreamMetadata(channelName) }
+            val metadataDeferred = serviceScope.async { 
+                if (auth.isLoggedIn) {
+                    try {
+                        val helixUser = HelixApiClient.getUsers(this@PlaybackService, logins = listOf(channelName)).getOrNull()?.firstOrNull()
+                        val helixStream = HelixApiClient.getStreamMetadata(this@PlaybackService, channelName).getOrNull()
+                        if (helixUser != null) {
+                            return@async TwitchHelixMapper.mapHelixToMetadata(helixUser, helixStream)
+                        }
+                    } catch (e: Exception) {
+                        // Fallback to GQL
+                    }
+                }
+                TwitchGqlService.getStreamMetadata(channelName)
+            }
             
             val tokenPair = tokenPairDeferred.await()
             val detailedMetadata = metadataDeferred.await()

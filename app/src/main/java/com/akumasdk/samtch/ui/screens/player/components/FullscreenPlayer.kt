@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -99,45 +100,57 @@ fun FullscreenPlayer(
                 alpha = bgAlpha,
                 blurRadius = bgBlur
             ) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
                         .systemBarsPadding()
                         .displayCutoutPadding()
                 ) {
-                    // Status Banner in the same space as portrait (between video and metadata/chat)
-                    StatusBanner(text = adblockText)
-
-                    // Metadata space above chat (Only visible when chat is open)
-                    AnimatedVisibility(
-                        visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
-                        enter = SamtchAnimation.FadeIn,
-                        exit = SamtchAnimation.FadeOut
-                    ) {
-                        StreamMetadataBar(
-                            channel = channel,
-                            displayName = displayName,
-                            avatarUrl = avatarUrl,
-                            streamTitle = streamTitle,
-                            gameName = gameName,
-                            viewersCount = viewersCount,
-                            streamStartedAt = streamStartedAt,
-                            expandTrigger = expandTrigger,
-                            forceSlim = forceSlimMetadata,
-                            onClick = { showInfoDialog = true },
-                            modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
+                    // 1. Chat area (Background layer)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        chatContent(
+                            true,
+                            true,
+                            refreshTrigger,
+                            Modifier.fillMaxSize()
                         )
                     }
 
-                    chatContent(
-                        true,
-                        true,
-                        refreshTrigger,
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    )
+                    // 2. Overlays (Banner + Metadata)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        StatusBanner(
+                            text = adblockText,
+                            isImmersiveEnabled = isImmersiveEnabled,
+                            channel = channel,
+                            previewImageUrl = previewImageUrl
+                        )
+
+                        this@Row.AnimatedVisibility(
+                            visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                            enter = SamtchAnimation.FadeIn,
+                            exit = SamtchAnimation.FadeOut
+                        ) {
+                            StreamMetadataBar(
+                                channel = channel,
+                                displayName = displayName,
+                                avatarUrl = avatarUrl,
+                                streamTitle = streamTitle,
+                                gameName = gameName,
+                                viewersCount = viewersCount,
+                                streamStartedAt = streamStartedAt,
+                                previewImageUrl = previewImageUrl,
+                                expandTrigger = expandTrigger,
+                                forceSlim = forceSlimMetadata,
+                                isImmersiveEnabled = isImmersiveEnabled,
+                                onClick = { showInfoDialog = true },
+                                modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
+                            )
+                        }
+                    }
                 }
             }
         }

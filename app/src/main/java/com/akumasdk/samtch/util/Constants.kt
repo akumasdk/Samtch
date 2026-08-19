@@ -13,15 +13,23 @@ object Constants {
         const val MOBILE_URL = "https://m.twitch.tv/"
         const val DOMAIN = "twitch.tv"
         const val CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
+        const val LOGIN_CLIENT_ID = "1eljwhgtfbalfkugdmf9zdevcusjiz"
+        const val REDIRECT_URL = "https://akumasdk.github.io/Samtch/"
         const val DEFAULT_CHANNEL = "forsen"
 
         object Api {
             const val GQL = "https://gql.twitch.tv/gql"
+            const val AUTH_BASE = "https://id.twitch.tv/oauth2/authorize?response_type=token"
             const val HLS_BASE = "https://usher.ttvnw.net/api/channel/hls/"
             const val INTEGRITY = "https://gql.twitch.tv/integrity"
             const val HELIX_VALIDATE = "https://id.twitch.tv/oauth2/validate"
+            const val HELIX_USERS = "https://api.twitch.tv/helix/users"
+            const val HELIX_STREAMS = "https://api.twitch.tv/helix/streams"
             const val HELIX_GLOBAL_BADGES = "https://api.twitch.tv/helix/chat/badges/global"
             const val HELIX_CHANNEL_BADGES = "https://api.twitch.tv/helix/chat/badges"
+            const val HELIX_GLOBAL_EMOTES = "https://api.twitch.tv/helix/chat/emotes/global"
+            const val HELIX_CHANNEL_EMOTES = "https://api.twitch.tv/helix/chat/emotes"
+            const val HELIX_USER_EMOTES = "https://api.twitch.tv/helix/chat/emotes/user"
         }
 
         object Templates {

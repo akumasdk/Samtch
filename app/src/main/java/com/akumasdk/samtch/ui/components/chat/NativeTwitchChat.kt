@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import kotlinx.coroutines.launch
 
@@ -56,7 +57,10 @@ fun NativeTwitchChat(
     isImmersiveEnabled: Boolean = true,
     viewModel: ChatViewModel = viewModel(),
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
-    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null
+    onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
+    onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
+    onUserClick: ((String) -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(top = 74.dp, bottom = 0.dp)
 ) {
     val messages by viewModel.messages.collectAsState()
     val chatFontSize by viewModel.chatFontSize.collectAsState()
@@ -64,6 +68,9 @@ fun NativeTwitchChat(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     
+    val chatBg = SamtchTheme.colors.chatBackground
+    val bottomPadding = contentPadding.calculateBottomPadding()
+
     var shouldAutoScroll by rememberSaveable { mutableStateOf(true) }
     var lastJumpTime by remember { mutableLongStateOf(0L) }
 
@@ -113,7 +120,7 @@ fun NativeTwitchChat(
 
     Box(
         modifier = modifier.then(
-            if (!isImmersiveEnabled) Modifier.background(SamtchTheme.colors.chatBackground)
+            if (!isImmersiveEnabled) Modifier.background(chatBg)
             else Modifier
         )
     ) {
@@ -122,7 +129,7 @@ fun NativeTwitchChat(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 0.dp),
+            contentPadding = contentPadding,
             reverseLayout = true
         ) {
             // Floor spacer to provide consistent gap from input box
@@ -141,6 +148,8 @@ fun NativeTwitchChat(
                         isCompact = isCompact,
                         onEmoteClick = onEmoteClick,
                         onEmoteLongClick = onEmoteLongClick,
+                        onBadgeClick = onBadgeClick,
+                        onUserClick = onUserClick,
                         fontSize = chatFontSize,
                         emoteSize = chatEmoteSize
                     )
@@ -155,7 +164,7 @@ fun NativeTwitchChat(
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
+                .padding(bottom = bottomPadding + 12.dp)
         ) {
             Button(
                 onClick = {

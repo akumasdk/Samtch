@@ -180,7 +180,7 @@ fun TwitchBrowser(
             // Check if this is a channel URL - if so, don't inject scripts
             val currentUrl = state.lastLoadedUrl ?: ""
             val channelMatch = TwitchUrlUtil.extractChannelFromUrl(currentUrl)
-            val currentUser = TwitchUrlUtil.getCurrentUserFromCookies()
+            val currentUser = TwitchUrlUtil.getCurrentUser(context)
 
             if (TwitchUrlUtil.isPlayableChannel(channelMatch, currentUser)) {
                 Log.d("TwitchBrowser", "Channel page detected, skipping script injection and stopping load")
@@ -241,7 +241,7 @@ fun TwitchBrowser(
                         Log.d("TwitchBrowser", "Sentinel: Unsafe or Escape detected. blocked=$blocked, url=$mobileUrl")
                         
                         // 1. Trigger the player (if it's a channel)
-                        if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUserFromCookies())) {
+                        if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUser(context))) {
                             currentOnChannelSelected(channelMatch!!)
                         }
                         
@@ -283,7 +283,7 @@ fun TwitchBrowser(
                 // "At All Costs" Guard: If the restored URL is a channel, force Home instead.
                 val restoredUrl = state.lastLoadedUrl
                 val channelMatch = restoredUrl?.let { TwitchUrlUtil.extractChannelFromUrl(it) }
-                val currentUser = TwitchUrlUtil.getCurrentUserFromCookies()
+                val currentUser = TwitchUrlUtil.getCurrentUser(context)
 
                 val urlToLoad = if (TwitchUrlUtil.isPlayableChannel(channelMatch, currentUser)) {
                     Log.d("TwitchBrowser", "onCreated: Restored URL is a channel ($channelMatch). Forcing Home instead.")

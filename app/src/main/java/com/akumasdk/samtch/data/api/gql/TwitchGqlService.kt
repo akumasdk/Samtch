@@ -87,6 +87,8 @@ object TwitchGqlService {
         withContext(Dispatchers.IO) {
             try {
                 val clientId = getDynamicClientId()
+                val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
+                
                 val payload = JSONObject().apply {
                     put("operationName", "StreamMetadata")
                     put("query", STREAM_METADATA_QUERY.trimIndent())
@@ -95,13 +97,16 @@ object TwitchGqlService {
                     })
                 }
 
-                val request = Request.Builder()
+                val requestBuilder = Request.Builder()
                     .url(Constants.Twitch.Api.GQL)
                     .post(payload.toString().toRequestBody("application/json".toMediaType()))
                     .addCommonHeaders(clientId)
-                    .build()
+                
+                if (!integrityToken.isNullOrBlank()) {
+                    requestBuilder.header("Client-Integrity", integrityToken)
+                }
 
-                val response = client.newCall(request).execute()
+                val response = client.newCall(requestBuilder.build()).execute()
                 val body = response.body.string()
 
                 if (!response.isSuccessful) return@withContext null
@@ -116,6 +121,8 @@ object TwitchGqlService {
     suspend fun getUserId(channelName: String): String? = withContext(Dispatchers.IO) {
         try {
             val clientId = getDynamicClientId()
+            val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
+
             val payload = JSONObject().apply {
                 put("operationName", "GetUserId")
                 put("query", GET_USER_ID_QUERY.trimIndent())
@@ -124,18 +131,28 @@ object TwitchGqlService {
                 })
             }
 
-            val request = Request.Builder()
+            val requestBuilder = Request.Builder()
                 .url(Constants.Twitch.Api.GQL)
                 .post(payload.toString().toRequestBody("application/json".toMediaType()))
                 .addCommonHeaders(clientId)
-                .build()
 
-            val response = client.newCall(request).execute()
+            if (!integrityToken.isNullOrBlank()) {
+                requestBuilder.header("Client-Integrity", integrityToken)
+            }
+
+            val response = client.newCall(requestBuilder.build()).execute()
             val body = response.body.string()
-            if (!response.isSuccessful) return@withContext null
+            if (!response.isSuccessful) {
+                Log.e(TAG, "GQL getUserId failed: ${response.code} body=$body")
+                return@withContext null
+            }
 
             val json = JSONObject(body)
-            json.optJSONObject("data")?.optJSONObject("user")?.optString("id")
+            val id = json.optJSONObject("data")?.optJSONObject("user")?.optString("id")
+            if (id.isNullOrEmpty()) {
+                Log.w(TAG, "GQL getUserId returned empty data for $channelName. Body=$body")
+            }
+            id
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching user ID", e)
             null
