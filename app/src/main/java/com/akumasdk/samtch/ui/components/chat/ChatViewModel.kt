@@ -77,6 +77,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentChannel = MutableStateFlow<String?>(null)
     private val _tabUpdateTrigger = MutableStateFlow(0)
 
+    init {
+        // Automatically refresh emotes when login state changes for the current channel
+        viewModelScope.launch {
+            isLoggedIn.collectLatest { loggedIn ->
+                val channel = _currentChannel.value
+                if (channel != null) {
+                    Log.d(TAG, "Auth change detected (loggedIn=$loggedIn). Refreshing emotes for $channel.")
+                    refreshEmotes(channel)
+                }
+            }
+        }
+    }
+
     // Emote Menu Tabs: Dynamically derived from repository states to ensure instant updates on login/load
     @OptIn(ExperimentalCoroutinesApi::class)
     val emoteMenuTabs: StateFlow<Map<Int, List<Emote>>> = combine(
@@ -85,7 +98,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     ) { channel, trigger -> channel to trigger }.flatMapLatest { (channelName, _) ->
         if (channelName == null) return@flatMapLatest flowOf(emptyMap<Int, List<Emote>>())
         
-        Log.d(TAG, "Re-calculating emote tabs for $channelName")
+        Log.d(TAG, "Observing emote repositories for $channelName")
         combine(
             _recentEmotes,
             EmoteRepository.globalState,
@@ -124,10 +137,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 tabs[com.akumasdk.samtch.R.string.emote_menu_global] = globalEmotes
             }
 
-            Log.d(TAG, "Tabs updated: ${tabs.keys.size} tabs found")
+            Log.d(TAG, "Tabs updated: ${tabs.keys.size} tabs found for $channelName")
             tabs
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     private var connectionJob: Job? = null
     private val messageHistory = mutableListOf<ChatMessageUiState>()
@@ -234,42 +247,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // Load emotes and badges reactively based on auth state
-            launch {
-                isLoggedIn.flatMapLatest { loggedIn ->
-                    Log.d(TAG, "Auth state changed (reactive). loggedIn=$loggedIn. Triggering emote loads.")
-                    flow {
-                        val auth = TwitchAuthManager.getAuthState(getApplication())
-                        
-                        // 1. Global & User
-                        EmoteRepository.loadGlobalEmotes(context)
-                        EmoteRepository.loadUserEmotes(context)
-                        BadgeRepository.loadGlobalBadges(context)
-                        
-                        // 2. Channel specific
-                        val userId = if (auth.isLoggedIn && auth.userName.equals(channel, ignoreCase = true)) {
-                            auth.userId
-                        } else {
-                            val resolved = com.akumasdk.samtch.data.api.helix.HelixApiClient.getUserIdByName(context, channel).getOrNull()
-                                ?: com.akumasdk.samtch.data.api.gql.TwitchGqlService.getUserId(channel)
-                            resolved
-                        }
-                        
-                        if (userId != null) {
-                            EmoteRepository.loadChannelEmotes(context, channel, userId)
-                            BadgeRepository.loadChannelBadges(context, channel, userId)
-                        } else {
-                            EmoteRepository.loadChannelEmotes(context, channel)
-                        }
-                        emit(Unit)
-                    }
-                }.collect {
-                    Log.d(TAG, "Emote load cycle finished for auth update")
-                    _tabUpdateTrigger.value += 1
-                }
-            }
-
             chatClient.connect(channel)
+            refreshEmotes(channel)
             
             // Welcome message once connected
             launch {
@@ -319,6 +298,42 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissSystemNotice() {
         _systemNotice.value = null
+    }
+
+    private fun refreshEmotes(channel: String): Job {
+        return viewModelScope.launch {
+            val context = getApplication<Application>()
+            val auth = TwitchAuthManager.getAuthState(context)
+
+            Log.d(TAG, "Refreshing emotes for channel: $channel (loggedIn=${auth.isLoggedIn})")
+            
+            kotlinx.coroutines.supervisorScope {
+                val globalJob = launch { EmoteRepository.loadGlobalEmotes(context) }
+                val userJob = launch { EmoteRepository.loadUserEmotes(context) }
+                val badgeJob = launch { BadgeRepository.loadGlobalBadges(context) }
+
+                val userId = if (auth.isLoggedIn && auth.userName.equals(channel, ignoreCase = true)) {
+                    auth.userId
+                } else {
+                    val resolved = com.akumasdk.samtch.data.api.helix.HelixApiClient.getUserIdByName(context, channel).getOrNull()
+                        ?: com.akumasdk.samtch.data.api.gql.TwitchGqlService.getUserId(channel)
+                    resolved
+                }
+
+                val channelJob = launch {
+                    if (userId != null) {
+                        EmoteRepository.loadChannelEmotes(context, channel, userId)
+                        BadgeRepository.loadChannelBadges(context, channel, userId)
+                    } else {
+                        EmoteRepository.loadChannelEmotes(context, channel)
+                    }
+                }
+                
+                kotlinx.coroutines.joinAll(globalJob, userJob, badgeJob, channelJob)
+            }
+            Log.d(TAG, "Refresh cycle complete, nudging UI")
+            _tabUpdateTrigger.value += 1
+        }
     }
 
     private fun remapMessages(channel: String) {

@@ -131,4 +131,12 @@ object BadgeRepository {
             "https://$url"
         }
     }
+
+    fun clearCache() {
+        Log.d(TAG, "Clearing badge cache")
+        _globalState.update { GlobalBadgeState() }
+        _channelStates.values.forEach { flow ->
+            flow.update { ChannelBadgeState() }
+        }
+    }
 }

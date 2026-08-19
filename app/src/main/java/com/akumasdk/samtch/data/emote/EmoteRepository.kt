@@ -308,8 +308,10 @@ object EmoteRepository {
         _globalState.update { GlobalEmoteState() }
         _userEmoteState.update { UserEmoteState() }
         
-        // Wipe all active channel flows
-        _channelStates.clear()
+        // Reset all active channel flows instead of clearing the map
+        _channelStates.values.forEach { flow ->
+            flow.update { ChannelEmoteState() }
+        }
         
         aspectRatioCache.clear()
     }

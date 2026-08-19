@@ -223,8 +223,7 @@ class MainActivity : ComponentActivity() {
                     contract = ActivityResultContracts.StartActivityForResult()
                 ) { result ->
                     if (result.resultCode == RESULT_OK) {
-                        Log.d("MainActivity", "Login successful, clearing emote cache and triggering hard refresh.")
-                        EmoteRepository.clearCache()
+                        Log.d("MainActivity", "Login successful, triggering hard refresh.")
                         refreshTriggerState.intValue += 1
                     }
                 }
@@ -367,8 +366,9 @@ class MainActivity : ComponentActivity() {
                                     stopService(stopIntent)
                                 } catch (_: Exception) {}
 
-                                // Clear emote cache
+                                // Clear emote and badge cache
                                 EmoteRepository.clearCache()
+                                com.akumasdk.samtch.data.badge.BadgeRepository.clearCache()
 
                                 // Clear all cookies and trigger hard refresh
                                 android.webkit.CookieManager.getInstance().removeAllCookies { 

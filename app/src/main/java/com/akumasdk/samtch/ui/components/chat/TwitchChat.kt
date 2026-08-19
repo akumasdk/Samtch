@@ -136,6 +136,10 @@ fun TwitchChat(
                 viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = true)
             }
         }
+
+        LaunchedEffect(channel) {
+            viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
+        }
         
         Box(modifier = modifier.fillMaxSize()) {
             if (isImmersiveEnabled) {
