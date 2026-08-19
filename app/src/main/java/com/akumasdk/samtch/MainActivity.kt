@@ -51,6 +51,7 @@ import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
+import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.login.LoginActivity
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
@@ -222,7 +223,8 @@ class MainActivity : ComponentActivity() {
                     contract = ActivityResultContracts.StartActivityForResult()
                 ) { result ->
                     if (result.resultCode == RESULT_OK) {
-                        Log.d("MainActivity", "Login successful, triggering hard refresh for browser and player.")
+                        Log.d("MainActivity", "Login successful, clearing emote cache and triggering hard refresh.")
+                        EmoteRepository.clearCache()
                         refreshTriggerState.intValue += 1
                     }
                 }
@@ -364,6 +366,9 @@ class MainActivity : ComponentActivity() {
                                     val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
                                     stopService(stopIntent)
                                 } catch (_: Exception) {}
+
+                                // Clear emote cache
+                                EmoteRepository.clearCache()
 
                                 // Clear all cookies and trigger hard refresh
                                 android.webkit.CookieManager.getInstance().removeAllCookies { 

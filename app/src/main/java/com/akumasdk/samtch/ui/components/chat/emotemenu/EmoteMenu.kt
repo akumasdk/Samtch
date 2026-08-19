@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.components.chat.emotemenu
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -50,6 +51,8 @@ fun EmoteMenu(
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabResIds = tabs.keys.toList()
 
+    Log.d("EmoteMenu", "Rendering menu. Tabs found: ${tabResIds.size}. Channel: $channel")
+    
     val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
     val surfaceAlpha = if (isImmersiveEnabled) {
         if (isLightMode) 0.94f else 0.82f

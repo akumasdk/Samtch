@@ -17,6 +17,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -52,9 +53,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedUserForInfo = MutableStateFlow<com.akumasdk.samtch.data.api.helix.dto.UserDto?>(null)
     val selectedUserForInfo = _selectedUserForInfo.asStateFlow()
 
-    private val _emoteMenuTabs = MutableStateFlow<Map<Int, List<Emote>>>(emptyMap())
-    val emoteMenuTabs = _emoteMenuTabs.asStateFlow()
-
     private val _recentEmotes = MutableStateFlow<List<Emote>>(emptyList())
     val recentEmotes = _recentEmotes.asStateFlow()
 
@@ -76,7 +74,61 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _isEmoteLoading = MutableStateFlow(false)
     val isEmoteLoading = _isEmoteLoading.asStateFlow()
 
-    private var currentChannel: String? = null
+    private val _currentChannel = MutableStateFlow<String?>(null)
+    private val _tabUpdateTrigger = MutableStateFlow(0)
+
+    // Emote Menu Tabs: Dynamically derived from repository states to ensure instant updates on login/load
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val emoteMenuTabs: StateFlow<Map<Int, List<Emote>>> = combine(
+        _currentChannel,
+        _tabUpdateTrigger
+    ) { channel, trigger -> channel to trigger }.flatMapLatest { (channelName, _) ->
+        if (channelName == null) return@flatMapLatest flowOf(emptyMap<Int, List<Emote>>())
+        
+        Log.d(TAG, "Re-calculating emote tabs for $channelName")
+        combine(
+            _recentEmotes,
+            EmoteRepository.globalState,
+            EmoteRepository.userEmoteState,
+            EmoteRepository.getChannelState(channelName)
+        ) { recent, global, userState, channelState ->
+            val tabs = mutableMapOf<Int, List<Emote>>()
+            
+            if (recent.isNotEmpty()) {
+                tabs[com.akumasdk.samtch.R.string.emote_menu_recent] = recent
+            }
+
+            // 1. Twitch Channel Emotes + 3rd Party
+            val twitchChannel = channelState.twitchEmotes.values.toList()
+            val thirdPartyChannel = (channelState.seventvEmotes.values + channelState.bttvEmotes.values + channelState.ffzEmotes.values).toList()
+            val allChannelEmotes = (twitchChannel + thirdPartyChannel).distinctBy { it.id }
+            if (allChannelEmotes.isNotEmpty()) {
+                tabs[com.akumasdk.samtch.R.string.emote_menu_channel] = allChannelEmotes
+            }
+
+            // 2. User's Owned Emotes
+            val userEmotes = userState.twitchEmotes.values.toList()
+            if (userEmotes.isNotEmpty()) {
+                tabs[com.akumasdk.samtch.R.string.emote_menu_user] = userEmotes
+            }
+
+            // 3. Twitch Global Emotes
+            val twitchGlobal = global.twitchEmotes.values.toList()
+            if (twitchGlobal.isNotEmpty()) {
+                tabs[com.akumasdk.samtch.R.string.emote_menu_twitch] = twitchGlobal
+            }
+
+            // 4. 3rd Party Global Emotes
+            val globalEmotes = (global.seventvEmotes.values + global.bttvEmotes.values + global.ffzEmotes.values).toList()
+            if (globalEmotes.isNotEmpty()) {
+                tabs[com.akumasdk.samtch.R.string.emote_menu_global] = globalEmotes
+            }
+
+            Log.d(TAG, "Tabs updated: ${tabs.keys.size} tabs found")
+            tabs
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     private var connectionJob: Job? = null
     private val messageHistory = mutableListOf<ChatMessageUiState>()
     private val rawIrcMessages = mutableListOf<IrcMessage>()
@@ -90,27 +142,27 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         loginMessageTemplate: String? = null,
         forceRefresh: Boolean = false
     ) {
-        if (currentChannel == channel && !forceRefresh) return
+        // 1. Update Auth state immediately on every connect attempt
+        val authState = TwitchAuthManager.getAuthState(getApplication())
+        _isLoggedIn.value = authState.isLoggedIn
+        _loggedInUser.value = authState.userName
+
+        if (_currentChannel.value == channel && !forceRefresh) return
         
-        // 1. Instantly cancel any active session logic for the previous channel
+        // 2. Instantly cancel any active session logic for the previous channel
         connectionJob?.cancel()
-        currentChannel = channel
+        _currentChannel.value = channel
+        _tabUpdateTrigger.value += 1
         
-        // 2. Wipe all state immediately to prevent "leakage" in UI
+        // 3. Wipe all state immediately to prevent "leakage" in UI
         rawIrcMessages.clear()
         messageHistory.clear()
         _messages.value = persistentListOf()
-
-        // 3. Check login status
-        val authState = TwitchAuthManager.getAuthState(getApplication())
-        _isLoggedIn.value = authState.isLoggedIn
-        val loggedInUser = authState.userName
-        _loggedInUser.value = loggedInUser
         
-        if (authState.isLoggedIn && !loggedInUser.isNullOrEmpty() && !loginMessageTemplate.isNullOrEmpty()) {
+        if (authState.isLoggedIn && !authState.userName.isNullOrEmpty() && !loginMessageTemplate.isNullOrEmpty()) {
             val loginMsg = ChatMessageUiState.SystemMessageUi(
                 id = "login_${UUID.randomUUID()}",
-                message = loginMessageTemplate.format(loggedInUser)
+                message = loginMessageTemplate.format(authState.userName)
             )
             messageHistory.add(loginMsg)
         }
@@ -130,7 +182,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             launch {
                 SettingsManager.getRecentEmotes(context, channel).collect { recent ->
                     _recentEmotes.value = recent
-                    currentChannel?.let { updateEmoteMenuTabs(it) }
                 }
             }
 
@@ -187,24 +238,38 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // Load emotes and badges
-            launch { 
-                EmoteRepository.loadGlobalEmotes(context)
-                EmoteRepository.loadUserEmotes(context)
-                BadgeRepository.loadGlobalBadges(context)
-                updateEmoteMenuTabs(channel)
-            }
-            launch { 
-                val userId = if (authState.isLoggedIn && authState.userName.equals(channel, ignoreCase = true)) {
-                    authState.userId
-                } else {
-                    com.akumasdk.samtch.data.api.helix.HelixApiClient.getUserIdByName(context, channel).getOrNull()
-                }
-                
-                if (userId != null) {
-                    EmoteRepository.loadChannelEmotes(context, channel)
-                    BadgeRepository.loadChannelBadges(context, channel, userId)
-                    updateEmoteMenuTabs(channel)
+            // Load emotes and badges reactively based on auth state
+            launch {
+                SettingsManager.isLoggedIn(getApplication()).flatMapLatest { loggedIn ->
+                    Log.d(TAG, "Auth state changed. loggedIn=$loggedIn. Triggering emote loads.")
+                    flow {
+                        val auth = TwitchAuthManager.getAuthState(getApplication())
+                        
+                        // 1. Global & User
+                        EmoteRepository.loadGlobalEmotes(context)
+                        EmoteRepository.loadUserEmotes(context)
+                        BadgeRepository.loadGlobalBadges(context)
+                        
+                        // 2. Channel specific
+                        val userId = if (auth.isLoggedIn && auth.userName.equals(channel, ignoreCase = true)) {
+                            auth.userId
+                        } else {
+                            val resolved = com.akumasdk.samtch.data.api.helix.HelixApiClient.getUserIdByName(context, channel).getOrNull()
+                                ?: com.akumasdk.samtch.data.api.gql.TwitchGqlService.getUserId(channel)
+                            resolved
+                        }
+                        
+                        if (userId != null) {
+                            EmoteRepository.loadChannelEmotes(context, channel, userId)
+                            BadgeRepository.loadChannelBadges(context, channel, userId)
+                        } else {
+                            EmoteRepository.loadChannelEmotes(context, channel)
+                        }
+                        emit(Unit)
+                    }
+                }.collect {
+                    Log.d(TAG, "Emote load cycle finished for auth update")
+                    _tabUpdateTrigger.value += 1
                 }
             }
 
@@ -260,49 +325,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _systemNotice.value = null
     }
 
-    private fun updateEmoteMenuTabs(channel: String) {
-        val channelState = EmoteRepository.getChannelState(channel).value
-        val globalState = EmoteRepository.globalState.value
-        val userState = EmoteRepository.userEmoteState.value
-
-        val tabs = mutableMapOf<Int, List<Emote>>()
-        
-        val recent = _recentEmotes.value
-        if (recent.isNotEmpty()) {
-            tabs[com.akumasdk.samtch.R.string.emote_menu_recent] = recent
-        }
-
-        // 1. Twitch Channel Emotes
-        val twitchChannel = channelState.twitchEmotes.values.toList()
-        // 2. 3rd Party Channel Emotes
-        val thirdPartyChannel = (channelState.seventvEmotes.values + channelState.bttvEmotes.values + channelState.ffzEmotes.values).toList()
-        
-        val allChannelEmotes = (twitchChannel + thirdPartyChannel).distinctBy { it.id }
-        if (allChannelEmotes.isNotEmpty()) {
-            tabs[com.akumasdk.samtch.R.string.emote_menu_channel] = allChannelEmotes
-        }
-
-        // 3. User's Owned Emotes
-        val userEmotes = userState.twitchEmotes.values.toList()
-        if (userEmotes.isNotEmpty()) {
-            tabs[com.akumasdk.samtch.R.string.emote_menu_user] = userEmotes
-        }
-
-        // 4. Twitch Global Emotes
-        val twitchGlobal = globalState.twitchEmotes.values.toList()
-        if (twitchGlobal.isNotEmpty()) {
-            tabs[com.akumasdk.samtch.R.string.emote_menu_twitch] = twitchGlobal
-        }
-
-        // 5. 3rd Party Global Emotes
-        val globalEmotes = (globalState.seventvEmotes.values + globalState.bttvEmotes.values + globalState.ffzEmotes.values).toList()
-        if (globalEmotes.isNotEmpty()) {
-            tabs[com.akumasdk.samtch.R.string.emote_menu_global] = globalEmotes
-        }
-
-        _emoteMenuTabs.value = tabs
-    }
-
     private fun remapMessages(channel: String) {
         if (rawIrcMessages.isEmpty()) return
         Log.d(TAG, "Remapping ${rawIrcMessages.size} messages for channel: $channel")
@@ -322,7 +344,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun sendMessage(message: String) {
-        val channel = currentChannel ?: return
+        val channel = _currentChannel.value ?: return
         val authState = TwitchAuthManager.getAuthState(getApplication())
         
         // 1. Manually inject the message for immediate feedback
@@ -359,7 +381,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _emoteSuggestions.value = emptyList()
         _isEmoteMenuVisible.value = false
         _selectedEmoteForInfo.value = null
-        currentChannel = null
+        _currentChannel.value = null
     }
 
     fun toggleEmoteMenu() {
@@ -371,7 +393,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun showEmoteInfo(emoteInfo: EmoteInfo) {
-        val channel = currentChannel ?: return
+        val channel = _currentChannel.value ?: return
         // Try to find the emote in our state
         val emote = EmoteRepository.getEmote(channel, emoteInfo.code)
         if (emote != null) {
@@ -440,14 +462,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun recordEmoteUsage(context: android.content.Context, emote: Emote) {
-        val channel = currentChannel ?: return
+        val channel = _currentChannel.value ?: return
         viewModelScope.launch {
             SettingsManager.addRecentEmote(context, channel, emote)
         }
     }
 
     fun updateSuggestions(text: String, cursorPosition: Int) {
-        val channel = currentChannel ?: return
+        val channel = _currentChannel.value ?: return
         val currentWord = extractCurrentWord(text, cursorPosition)
         
         if (currentWord.isBlank() || currentWord.length < 2) {

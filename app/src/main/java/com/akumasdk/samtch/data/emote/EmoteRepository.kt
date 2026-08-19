@@ -43,10 +43,12 @@ object EmoteRepository {
 
     suspend fun loadGlobalEmotes(context: android.content.Context) = withContext(Dispatchers.IO) {
         val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        
         // If already loaded with the same auth state, skip. 
-        // But for global emotes, we should always try to load 3rd party ones even if not logged in.
         if (_globalState.value.isLoaded && _globalState.value.loadedWithAuth == auth.isLoggedIn) return@withContext
+        
         try {
+            Log.d(TAG, "Loading global emotes. isLoggedIn=${auth.isLoggedIn}")
             val bttvMap = mutableMapOf<String, Emote>()
             val seventvMap = mutableMapOf<String, Emote>()
             val ffzMap = mutableMapOf<String, Emote>()
@@ -62,6 +64,7 @@ object EmoteRepository {
             }
 
             // Load 3rd Party Global - No Auth required
+            // Load BTTV Global
             try {
                 BTTVApi.getGlobalEmotes().forEach {
                     bttvMap[it.code] = Emote(
@@ -98,23 +101,26 @@ object EmoteRepository {
             } catch (e: Exception) { Log.e(TAG, "FFZ Global load failed", e) }
 
             _globalState.update { it.copy(
+                twitchEmotes = twitchMap,
                 bttvEmotes = bttvMap,
                 seventvEmotes = seventvMap,
                 ffzEmotes = ffzMap,
                 isLoaded = true,
-                loadedWithAuth = auth.isLoggedIn,
-                twitchEmotes = twitchMap
+                loadedWithAuth = auth.isLoggedIn
             ) }
-            Log.d(TAG, "Global emotes loaded")
+            Log.d(TAG, "Global emotes loaded. Twitch: ${twitchMap.size}, 3rd Party: ${bttvMap.size + seventvMap.size + ffzMap.size}")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading global emotes", e)
         }
     }
 
-    suspend fun loadChannelEmotes(context: android.content.Context, channelName: String) = withContext(Dispatchers.IO) {
+    suspend fun loadChannelEmotes(context: android.content.Context, channelName: String, userId: String? = null) = withContext(Dispatchers.IO) {
         val channelLower = channelName.lowercase()
         val stateFlow = _channelStates.getOrPut(channelLower) { MutableStateFlow(ChannelEmoteState()) }
         val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        
+        // If already loaded with the same auth state AND we're on the same channel, skip.
+        // For guest users, loadedWithAuth will be false.
         if (stateFlow.value.isLoaded && stateFlow.value.loadedWithAuth == auth.isLoggedIn) return@withContext
 
         try {
@@ -123,30 +129,33 @@ object EmoteRepository {
             val ffzMap = mutableMapOf<String, Emote>()
             val twitchMap = mutableMapOf<String, Emote>()
             
-            val userId = if (auth.isLoggedIn && auth.userName.equals(channelLower, ignoreCase = true)) {
+            // Resolve User ID: Use provided, or try Helix (if auth), or fallback to GQL (guest)
+            val resolvedUserId = userId ?: if (auth.isLoggedIn && auth.userName.equals(channelLower, ignoreCase = true)) {
                 auth.userId
             } else {
+                // For guests, HelixApiClient.getUserIdByName will fail, which is caught and returns null
                 HelixApiClient.getUserIdByName(context, channelLower).getOrNull() 
-                    ?: TwitchGqlService.getUserId(channelLower) // Fallback to GQL
+                    ?: TwitchGqlService.getUserId(channelLower)
             }
 
-            if (userId == null) {
+            if (resolvedUserId == null) {
                 Log.e(TAG, "Failed to get User ID for $channelLower, channel emotes won't load")
                 return@withContext
             }
 
-            // Load Twitch Channel
+            // Load Twitch Channel - Requires Auth
             if (auth.isLoggedIn) {
                 try {
-                    HelixApiClient.getChannelEmotes(context, userId).getOrNull()?.forEach {
+                    HelixApiClient.getChannelEmotes(context, resolvedUserId).getOrNull()?.forEach {
                         twitchMap[it.name] = mapHelixEmote(it)
                     }
                 } catch (e: Exception) { Log.e(TAG, "Twitch Channel load failed for $channelLower", e) }
             }
 
+            // Load 3rd Party Channel - Needs numerical Twitch ID
             // Load BTTV Channel
             try {
-                val bttvChannel = BTTVApi.getChannelEmotes(userId)
+                val bttvChannel = BTTVApi.getChannelEmotes(resolvedUserId)
                 (bttvChannel.channelEmotes + bttvChannel.sharedEmotes).forEach {
                     bttvMap[it.code] = Emote(
                         it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
@@ -157,7 +166,7 @@ object EmoteRepository {
 
             // Load 7TV Channel
             try {
-                val seventvUser = SevenTVApi.getChannelEmotes(userId)
+                val seventvUser = SevenTVApi.getChannelEmotes(resolvedUserId)
                 seventvUser.emote_set?.emotes?.forEach { emote ->
                     parseSevenTVEmote(emote)?.let { seventvMap[it.code] = it }
                 }
@@ -165,7 +174,7 @@ object EmoteRepository {
 
             // Load FFZ Channel
             try {
-                val ffzRoom = FFZApi.getChannelEmotes(userId)
+                val ffzRoom = FFZApi.getChannelEmotes(resolvedUserId)
                 ffzRoom.sets.values.forEach { set ->
                     set.emotes.forEach { emote ->
                         val url = emote.animated?.get("4") ?: emote.animated?.get("2") ?: emote.animated?.get("1")
@@ -190,7 +199,7 @@ object EmoteRepository {
                 loadedWithAuth = auth.isLoggedIn,
                 twitchEmotes = twitchMap
             ) }
-            Log.d(TAG, "Channel emotes loaded for $channelLower")
+            Log.d(TAG, "Channel emotes loaded for $channelLower (ID: $resolvedUserId)")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading emotes for channel $channelLower", e)
         }
@@ -292,5 +301,16 @@ object EmoteRepository {
             type = EmoteType.SEVENTV,
             isZeroWidth = emote.isZeroWidth
         )
+    }
+
+    fun clearCache() {
+        Log.d(TAG, "Clearing emote cache")
+        _globalState.update { GlobalEmoteState() }
+        _userEmoteState.update { UserEmoteState() }
+        
+        // Wipe all active channel flows
+        _channelStates.clear()
+        
+        aspectRatioCache.clear()
     }
 }
