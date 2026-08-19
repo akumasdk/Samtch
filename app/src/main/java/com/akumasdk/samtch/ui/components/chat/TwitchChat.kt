@@ -138,6 +138,18 @@ fun TwitchChat(
         }
         
         Box(modifier = modifier.fillMaxSize()) {
+            if (isImmersiveEnabled) {
+                val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
+                val imageAlpha = if (isLightMode) 0.5f else 0.7f
+                PlayerBackground(
+                    channel = channel,
+                    previewUrl = previewImageUrl,
+                    alpha = imageAlpha,
+                    blurRadius = 150.dp,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
+
             NativeTwitchChat(
                 channel = channel,
                 modifier = Modifier.fillMaxSize(),

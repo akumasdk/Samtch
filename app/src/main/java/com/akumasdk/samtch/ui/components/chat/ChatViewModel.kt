@@ -32,11 +32,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _messages = MutableStateFlow<ImmutableList<ChatMessageUiState>>(persistentListOf())
     val messages = _messages.asStateFlow()
 
-    private val _isLoggedIn = MutableStateFlow(false)
-    val isLoggedIn = _isLoggedIn.asStateFlow()
+    val isLoggedIn: StateFlow<Boolean> = SettingsManager.isLoggedIn(application)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    private val _loggedInUser = MutableStateFlow<String?>(null)
-    val loggedInUser = _loggedInUser.asStateFlow()
+    val loggedInUser: StateFlow<String?> = SettingsManager.getAuthUserName(application)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _emoteSuggestions = MutableStateFlow<List<Emote>>(emptyList())
     val emoteSuggestions = _emoteSuggestions.asStateFlow()
@@ -142,23 +142,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         loginMessageTemplate: String? = null,
         forceRefresh: Boolean = false
     ) {
-        // 1. Update Auth state immediately on every connect attempt
-        val authState = TwitchAuthManager.getAuthState(getApplication())
-        _isLoggedIn.value = authState.isLoggedIn
-        _loggedInUser.value = authState.userName
-
         if (_currentChannel.value == channel && !forceRefresh) return
         
-        // 2. Instantly cancel any active session logic for the previous channel
+        // 1. Instantly cancel any active session logic for the previous channel
         connectionJob?.cancel()
         _currentChannel.value = channel
         _tabUpdateTrigger.value += 1
         
-        // 3. Wipe all state immediately to prevent "leakage" in UI
+        // 2. Wipe all state immediately to prevent "leakage" in UI
         rawIrcMessages.clear()
         messageHistory.clear()
         _messages.value = persistentListOf()
         
+        val authState = TwitchAuthManager.getAuthState(getApplication())
         if (authState.isLoggedIn && !authState.userName.isNullOrEmpty() && !loginMessageTemplate.isNullOrEmpty()) {
             val loginMsg = ChatMessageUiState.SystemMessageUi(
                 id = "login_${UUID.randomUUID()}",
@@ -240,8 +236,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             // Load emotes and badges reactively based on auth state
             launch {
-                SettingsManager.isLoggedIn(getApplication()).flatMapLatest { loggedIn ->
-                    Log.d(TAG, "Auth state changed. loggedIn=$loggedIn. Triggering emote loads.")
+                isLoggedIn.flatMapLatest { loggedIn ->
+                    Log.d(TAG, "Auth state changed (reactive). loggedIn=$loggedIn. Triggering emote loads.")
                     flow {
                         val auth = TwitchAuthManager.getAuthState(getApplication())
                         

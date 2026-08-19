@@ -57,23 +57,19 @@ fun EmoteMenu(
     val surfaceAlpha = if (isImmersiveEnabled) {
         if (isLightMode) 0.94f else 0.82f
     } else 1.0f
-    val imageAlpha = if (isLightMode) 0.5f else 0.7f
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .background(SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha))
-    ) {
-        if (isImmersiveEnabled) {
-            PlayerBackground(
-                alpha = imageAlpha,
-                blurRadius = 150.dp,
-                containerColor = Color.Transparent,
-                modifier = Modifier.matchParentSize()
+            .then(
+                if (!isImmersiveEnabled) {
+                    Modifier.background(SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha))
+                } else {
+                    Modifier
+                }
             )
-        }
-
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (tabResIds.isNotEmpty()) {
                 Row(
