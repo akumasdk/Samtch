@@ -339,12 +339,15 @@ fun TwitchPlayer(
         Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, isMinimized: $isMinimized)")
 
         // Handle back button behavior:
-        // 1. If in fullscreen, return to portrait
-        // 2. Otherwise, minimize (return to browser)
+        // 1. If emote menu is open, close it
+        // 2. If in fullscreen, return to portrait
+        // 3. Otherwise, minimize (return to browser)
         if (!isPip && !isMinimized) {
             BackHandler {
-                Log.d("TwitchPlayer", "BackHandler triggered for $channel. isFullscreen=$isFullscreen")
-                if (isFullscreen) {
+                Log.d("TwitchPlayer", "BackHandler triggered for $channel. isFullscreen=$isFullscreen. isEmoteMenuVisible=$isEmoteMenuVisible")
+                if (isEmoteMenuVisible) {
+                    chatViewModel.setEmoteMenuVisible(false)
+                } else if (isFullscreen) {
                     onToggleFullscreen()
                 } else {
                     onBack?.invoke()

@@ -53,7 +53,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -90,6 +92,7 @@ fun ChatInputBox(
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val haptic = LocalHapticFeedback.current
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     var isFocused by remember { mutableStateOf(false) }
@@ -275,6 +278,7 @@ fun ChatInputBox(
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                     keyboardActions = KeyboardActions(onSend = {
                                         if (textFieldValue.text.isNotBlank()) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             onSendMessage(textFieldValue.text)
                                             textFieldValue = TextFieldValue("")
                                             onTextChange("", 0)
@@ -303,6 +307,7 @@ fun ChatInputBox(
                     Surface(
                         onClick = {
                             if (sendEnabled) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onSendMessage(textFieldValue.text)
                                 textFieldValue = TextFieldValue("")
                                 onTextChange("", 0)
