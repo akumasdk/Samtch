@@ -41,9 +41,11 @@ fun EmoteInfoDialog(
     onUseEmote: (Emote) -> Unit
 ) {
     val clipboardManager = LocalClipboardManager.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = SamtchTheme.colors.dialogBackground,
         contentColor = SamtchTheme.colors.primaryText,
         dragHandle = { BottomSheetDefaults.DragHandle(color = SamtchTheme.colors.secondaryText) }

@@ -31,9 +31,11 @@ fun UserInfoDialog(
     onDismiss: () -> Unit,
 ) {
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = SamtchTheme.colors.dialogBackground,
         contentColor = SamtchTheme.colors.primaryText,
         dragHandle = { BottomSheetDefaults.DragHandle(color = SamtchTheme.colors.secondaryText) }

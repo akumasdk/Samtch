@@ -1,5 +1,14 @@
 # Changelog
 
+## Samtch v1.1.1
+
+### What's New
+- **Stability Fix**: Resolved a critical `AnchoredDraggableUninitializedException` crash that occurred when opening Emote, Badge, or User info dialogs.
+- **System Bar Reliability**: Overhauled system bar appearance management to ensure status bar icons remain legible when using immersive blurred backgrounds in Light mode.
+- **Performance**: Optimized settings screen state to be fully reactive, reducing redundant Flow recreations and improving overall UI snappiness.
+
+---
+
 ## Samtch v1.1.0
 
 ### What's New
