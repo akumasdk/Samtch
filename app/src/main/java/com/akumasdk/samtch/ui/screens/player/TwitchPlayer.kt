@@ -588,6 +588,7 @@ fun TwitchPlayer(
                         PlayerBackground(
                             channel = channel,
                             previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                            refreshKey = playerViewModel.metadataRefreshTrigger,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -596,7 +597,8 @@ fun TwitchPlayer(
                     CompositionLocalProvider(
                         LocalStreamPreview provides StreamPreviewInfo(
                             channel = channel,
-                            previewUrl = streamMetadata?.user?.stream?.previewImageUrl
+                            previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                            refreshKey = playerViewModel.metadataRefreshTrigger
                         )
                     ) {
                         PlayerOverlay(

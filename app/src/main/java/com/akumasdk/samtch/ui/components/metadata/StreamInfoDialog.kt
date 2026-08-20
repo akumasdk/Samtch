@@ -28,7 +28,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.akumasdk.samtch.R
-import com.akumasdk.samtch.ui.theme.LocalStreamPreview
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.ui.components.metadata.util.formatStreamDuration
 import com.akumasdk.samtch.ui.components.metadata.util.formatViewerCount
@@ -47,8 +47,6 @@ fun StreamInfoDialog(
     onDismiss: () -> Unit
 ) {
     val scrollState = rememberScrollState()
-    val previewInfo = LocalStreamPreview.current
-    val targetUrl = previewImageUrl ?: previewInfo.previewUrl
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -65,29 +63,27 @@ fun StreamInfoDialog(
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 // Background Preview Image with enhanced gradient overlay
-                if (!targetUrl.isNullOrEmpty()) {
-                    Box(modifier = Modifier.matchParentSize()) {
-                        AsyncImage(
-                            model = targetUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                        // Layered gradient for maximum readability across light/dark themes
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(
-                                            SamtchTheme.colors.dialogBackground.copy(alpha = 0.6f),
-                                            SamtchTheme.colors.dialogBackground.copy(alpha = 0.85f),
-                                            SamtchTheme.colors.dialogBackground
-                                        )
+                PlayerBackground(
+                    previewUrl = previewImageUrl,
+                    alpha = 1.0f, // Using gradient for transparency control
+                    blurRadius = 0.dp,
+                    containerColor = Color.Transparent,
+                    modifier = Modifier.matchParentSize()
+                ) {
+                    // Layered gradient for maximum readability across light/dark themes
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        SamtchTheme.colors.dialogBackground.copy(alpha = 0.6f),
+                                        SamtchTheme.colors.dialogBackground.copy(alpha = 0.85f),
+                                        SamtchTheme.colors.dialogBackground
                                     )
                                 )
-                        )
-                    }
+                            )
+                    )
                 }
 
                 Column(

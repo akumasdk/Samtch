@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.components.playerComponents
 
+import android.util.Log
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -19,6 +20,7 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.akumasdk.samtch.ui.theme.LocalStreamPreview
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
 
@@ -26,6 +28,7 @@ import com.akumasdk.samtch.util.Constants
 fun PlayerBackground(
     channel: String = "",
     previewUrl: String? = null,
+    refreshKey: Any? = null,
     modifier: Modifier = Modifier,
     alpha: Float = 0.4f,
     blurRadius: Dp = 0.dp,
@@ -37,8 +40,20 @@ fun PlayerBackground(
     
     val targetChannel = channel.ifEmpty { previewInfo.channel }
     val targetUrl = previewUrl ?: previewInfo.previewUrl 
+    val targetRefreshKey = refreshKey ?: previewInfo.refreshKey
     
-    val finalUrl = targetUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(targetChannel.lowercase())
+    val baseUrl = targetUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(targetChannel.lowercase())
+    
+    val finalUrl = remember(baseUrl, targetRefreshKey) {
+        val url = if (targetRefreshKey != null) {
+            val connector = if (baseUrl.contains("?")) "&" else "?"
+            "$baseUrl${connector}t=${System.currentTimeMillis()}"
+        } else {
+            baseUrl
+        }
+        Log.d("PlayerBackground", "Preview URL: $url (RefreshKey: $targetRefreshKey)")
+        url
+    }
 
     Box(
         modifier = modifier.background(containerColor)
@@ -46,13 +61,19 @@ fun PlayerBackground(
         if (targetChannel.isNotEmpty() || targetUrl != null) {
             Crossfade(
                 targetState = finalUrl,
-                animationSpec = tween(durationMillis = 1200),
+                animationSpec = tween(
+                    durationMillis = 1600,
+                    easing = SamtchAnimation.EmphasizedEasing
+                ),
                 label = "PlayerBackgroundCrossfade"
             ) { url ->
                 var isLoaded by remember { mutableStateOf(false) }
                 val animatedAlpha by animateFloatAsState(
                     targetValue = if (isLoaded) alpha else 0f,
-                    animationSpec = tween(800),
+                    animationSpec = tween(
+                        durationMillis = 1200,
+                        easing = SamtchAnimation.StandardEasing
+                    ),
                     label = "ImageFadeAnimation"
                 )
 
