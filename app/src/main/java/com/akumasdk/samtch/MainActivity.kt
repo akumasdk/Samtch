@@ -339,6 +339,7 @@ class MainActivity : ComponentActivity() {
                                         val intent = Intent(this@MainActivity, LoginActivity::class.java)
                                         loginLauncher.launch(intent)
                                     },
+                                    onSettingsClick = { isSettingsOpen = true },
                                     onAudioOnlyModeChanged = { isAudioOnly ->
                                         isAudioOnlyModeState.value = isAudioOnly
                                         updatePipParams(isPipEnabled)

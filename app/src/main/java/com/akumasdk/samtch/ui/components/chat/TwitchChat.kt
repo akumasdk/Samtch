@@ -88,6 +88,7 @@ fun TwitchChat(
     portraitMode: PortraitMode? = null,
     onToggleMode: (() -> Unit)? = null,
     onLoginRequested: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     previewImageUrl: String? = null
 ) {
     val context = LocalContext.current
@@ -323,6 +324,7 @@ fun TwitchChat(
                                                             // Trigger global refresh (PiP, Player, etc.)
                                                             context.sendBroadcast(Intent(Constants.Actions.REFRESH).setPackage(context.packageName))
                                                         },
+                                                        onSettingsClick = onSettingsClick,
                                                         height = menuHeight,
                                                         channel = channel,
                                                         previewImageUrl = previewImageUrl,
