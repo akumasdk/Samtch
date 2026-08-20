@@ -257,6 +257,11 @@ fun TwitchChat(
                                     emoteInsertFlow = viewModel.emoteInsertFlow,
                                     portraitMode = portraitMode,
                                     onToggleMode = onToggleMode,
+                                    onFocusChanged = { focused ->
+                                        if (focused) {
+                                            viewModel.setEmoteMenuVisible(true)
+                                        }
+                                    },
                                     onLoginRequested = onLoginRequested
                                 )
 

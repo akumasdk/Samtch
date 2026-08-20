@@ -88,6 +88,7 @@ fun ChatInputBox(
     modifier: Modifier = Modifier,
     portraitMode: PortraitMode? = null,
     onToggleMode: (() -> Unit)? = null,
+    onFocusChanged: (Boolean) -> Unit = {},
     onLoginRequested: () -> Unit = {}
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
@@ -287,7 +288,10 @@ fun ChatInputBox(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .focusRequester(focusRequester)
-                                        .onFocusChanged { isFocused = it.isFocused }
+                                        .onFocusChanged { 
+                                            isFocused = it.isFocused
+                                            onFocusChanged(it.isFocused)
+                                        }
                                 )
                             }
                         }
