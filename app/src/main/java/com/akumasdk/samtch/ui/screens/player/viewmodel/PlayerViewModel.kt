@@ -40,6 +40,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     var avatarUrl by mutableStateOf<String?>(null)
     var streamSubtitle by mutableStateOf<String?>(null)
     
+    var metadataRefreshTrigger by mutableStateOf(0)
+    
     var hasBackgroundReloaded by mutableStateOf(false)
     
     var mediaController by mutableStateOf<MediaController?>(null)
@@ -58,6 +60,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         // Only reset background reload flag if it's a COMPLETELY new channel.
         if (isNewChannel) {
             hasBackgroundReloaded = false
+            metadataRefreshTrigger = 0
             
             // Always reset UI mode to standard when changing channels to avoid "breaking logic"
             portraitMode = PortraitMode.VIDEO_AND_CHAT
@@ -179,22 +182,10 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun updateMetadataState(metadata: TwitchStreamMetadata) {
-        val now = System.currentTimeMillis()
-        val timestampedMetadata = metadata.copy(
-            user = metadata.user?.copy(
-                stream = metadata.user.stream?.let { stream ->
-                    stream.copy(
-                        previewImageUrl = stream.previewImageUrl?.let { url ->
-                            val separator = if (url.contains("?")) "&" else "?"
-                            "$url${separator}t=$now"
-                        }
-                    )
-                }
-            )
-        )
-        streamMetadata = timestampedMetadata
+        streamMetadata = metadata
+        metadataRefreshTrigger++
         
-        timestampedMetadata.user?.let { user ->
+        metadata.user?.let { user ->
             // Optimization: Only update avatarUrl once per channel session to prevent flicker
             if (avatarUrl == null) {
                 avatarUrl = user.profileImageUrl

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Info
@@ -53,7 +54,6 @@ import com.akumasdk.samtch.ui.screens.settings.components.SelectionDialog
 import com.akumasdk.samtch.ui.screens.settings.components.SettingSectionHeader
 import com.akumasdk.samtch.ui.screens.settings.components.UpdateItem
 import com.akumasdk.samtch.R
-import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.model.GitHubRelease
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.UpdateManager
@@ -70,24 +70,26 @@ fun SettingsScreen(
     var showChatModeDialog by remember { mutableStateOf(false) }
     var showChatFontSizeDialog by remember { mutableStateOf(false) }
     var showChatEmoteSizeDialog by remember { mutableStateOf(false) }
+    var showChatBadgeSizeDialog by remember { mutableStateOf(false) }
     var showThemeModeDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
-    var isLoggedIn by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
 
-    val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
-    val chatFontSize by SettingsManager.getChatFontSize(context).collectAsState(initial = 14)
-    val chatEmoteSize by SettingsManager.getChatEmoteSize(context).collectAsState(initial = 28)
-    val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
-    val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
-    val isPipEnabled by SettingsManager.isPipEnabled(context).collectAsState(initial = true)
-    val isAudioBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
-    val isImmersiveBackgroundEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
+    val chatMode by remember(context) { SettingsManager.getChatMode(context) }.collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+    val chatFontSize by remember(context) { SettingsManager.getChatFontSize(context) }.collectAsState(initial = 14)
+    val chatEmoteSize by remember(context) { SettingsManager.getChatEmoteSize(context) }.collectAsState(initial = 28)
+    val chatBadgeSize by remember(context) { SettingsManager.getChatBadgeSize(context) }.collectAsState(initial = 18)
+    val themeMode by remember(context) { SettingsManager.getThemeMode(context) }.collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+    val adBlockMode by remember(context) { SettingsManager.getAdBlockMode(context) }.collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
+    val isPipEnabled by remember(context) { SettingsManager.isPipEnabled(context) }.collectAsState(initial = true)
+    val isAudioBackgroundEnabled by remember(context) { SettingsManager.isAudioOnlyBackgroundEnabled(context) }.collectAsState(initial = false)
+    val isImmersiveBackgroundEnabled by remember(context) { SettingsManager.isImmersiveBackgroundEnabled(context) }.collectAsState(initial = true)
+    val isLoggedIn by remember(context) { SettingsManager.isLoggedIn(context) }.collectAsState(initial = false)
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -108,7 +110,6 @@ fun SettingsScreen(
             latestRelease = UpdateManager.checkForUpdate()
             isCheckingUpdate = false
         }
-        isLoggedIn = TwitchAuthManager.getAuthState(context).isLoggedIn
     }
 
     Scaffold(
@@ -200,6 +201,13 @@ fun SettingsScreen(
                         chatEmoteSize, 
                         onClick = { showChatEmoteSizeDialog = true },
                         onReset = { scope.launch { SettingsManager.setChatEmoteSize(context, 28) } }
+                    ) 
+                }
+                item { 
+                    ChatBadgeSizeItem(
+                        chatBadgeSize, 
+                        onClick = { showChatBadgeSizeDialog = true },
+                        onReset = { scope.launch { SettingsManager.setChatBadgeSize(context, 18) } }
                     ) 
                 }
             } else {
@@ -309,6 +317,19 @@ fun SettingsScreen(
         )
     }
 
+    if (showChatBadgeSizeDialog) {
+        val badgeSizeOptions = listOf(14, 16, 18, 20, 22, 24, 28, 32)
+        SelectionDialog(
+            title = stringResource(R.string.chat_settings_badge_size),
+            options = badgeSizeOptions.map { size ->
+                "${size}dp" to { scope.launch { SettingsManager.setChatBadgeSize(context, size) } }
+            },
+            selectedIndex = badgeSizeOptions.indexOf(chatBadgeSize),
+            onReset = { scope.launch { SettingsManager.setChatBadgeSize(context, 18) } },
+            onDismiss = { showChatBadgeSizeDialog = false }
+        )
+    }
+
     if (showLogoutDialog) {
         LogoutDialog(onConfirm = onLogout, onDismiss = { showLogoutDialog = false })
     }
@@ -350,7 +371,7 @@ private fun ImmersiveBackgroundToggleItem(enabled: Boolean, onToggle: (Boolean) 
     ListItem(
         headlineContent = { Text(stringResource(R.string.immersive_background_title)) },
         supportingContent = { Text(stringResource(R.string.immersive_background_summary)) },
-        leadingContent = { Icon(imageVector = Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_radial_blur), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
         modifier = Modifier.combinedClickable(
             onClick = { onToggle(!enabled) },
@@ -446,6 +467,19 @@ private fun ChatEmoteSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Uni
         headlineContent = { Text(stringResource(R.string.chat_settings_emote_size)) },
         supportingContent = { Text("${size}dp") },
         leadingContent = { Icon(imageVector = Icons.Default.EmojiEmotions, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onReset
+        )
+    )
+}
+
+@Composable
+private fun ChatBadgeSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.chat_settings_badge_size)) },
+        supportingContent = { Text("${size}dp") },
+        leadingContent = { Icon(imageVector = Icons.Default.Diamond, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         modifier = Modifier.combinedClickable(
             onClick = onClick,
             onLongClick = onReset

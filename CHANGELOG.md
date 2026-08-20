@@ -1,5 +1,20 @@
 # Changelog
 
+## Samtch v1.1.0
+
+### What's New
+- **Synchronized Immersive Backgrounds**: Centralized background refresh logic using a metadata trigger, ensuring all components (Player, Chat, Info Dialog) update their blurred backgrounds simultaneously when stream metadata changes.
+- **Improved Emote Menu UX**:
+    - **Elegant Animations**: Replaced bouncy springs with sophisticated Material 3 emphasized easing for a smoother menu transition.
+    - **Intelligent Focus**: The emote menu now anticipates usage by opening exactly when the chat box is focused, eliminating redundant animations.
+    - **Quick Access Settings**: Added a settings cogwheel button directly within the emote menu for instant configuration access.
+    - **Interaction Polishing**: Implemented \"lift-to-dismiss\" logic for the chat area and added haptic vibration feedback when sending messages.
+- **Enhanced Chat Customization**: Added a new **Badge Size** setting in the configuration menu with a dedicated \"Gem\" icon for better visual density control.
+- **Navigation Refinement**: Improved back-button handling to prioritize closing the emote menu before minimizing the player or exiting fullscreen.
+- **Reactive Settings**: Resolved an issue where conditional settings options weren't updating instantly by making the settings screen state fully reactive.
+
+---
+
 ## Samtch v1.0.0 (First Stable Release)
 
 ### What's New

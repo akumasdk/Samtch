@@ -110,6 +110,7 @@ fun TwitchPlayer(
     onExpand: () -> Unit = {},
     onMetadataUpdated: (String?, String?) -> Unit = { _, _ -> },
     onLoginRequested: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     onAudioOnlyModeChanged: (Boolean) -> Unit = {},
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
 ) {
@@ -339,12 +340,15 @@ fun TwitchPlayer(
         Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, isMinimized: $isMinimized)")
 
         // Handle back button behavior:
-        // 1. If in fullscreen, return to portrait
-        // 2. Otherwise, minimize (return to browser)
+        // 1. If emote menu is open, close it
+        // 2. If in fullscreen, return to portrait
+        // 3. Otherwise, minimize (return to browser)
         if (!isPip && !isMinimized) {
             BackHandler {
-                Log.d("TwitchPlayer", "BackHandler triggered for $channel. isFullscreen=$isFullscreen")
-                if (isFullscreen) {
+                Log.d("TwitchPlayer", "BackHandler triggered for $channel. isFullscreen=$isFullscreen. isEmoteMenuVisible=$isEmoteMenuVisible")
+                if (isEmoteMenuVisible) {
+                    chatViewModel.setEmoteMenuVisible(false)
+                } else if (isFullscreen) {
                     onToggleFullscreen()
                 } else {
                     onBack?.invoke()
@@ -424,6 +428,7 @@ fun TwitchPlayer(
                     portraitMode = pMode,
                     onToggleMode = onToggle,
                     onLoginRequested = onLoginRequested,
+                    onSettingsClick = onSettingsClick,
                     modifier = modifier
                 )
             }
@@ -588,6 +593,7 @@ fun TwitchPlayer(
                         PlayerBackground(
                             channel = channel,
                             previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                            refreshKey = playerViewModel.metadataRefreshTrigger,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -596,7 +602,8 @@ fun TwitchPlayer(
                     CompositionLocalProvider(
                         LocalStreamPreview provides StreamPreviewInfo(
                             channel = channel,
-                            previewUrl = streamMetadata?.user?.stream?.previewImageUrl
+                            previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                            refreshKey = playerViewModel.metadataRefreshTrigger
                         )
                     ) {
                         PlayerOverlay(

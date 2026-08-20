@@ -1,9 +1,16 @@
 package com.akumasdk.samtch.ui.components.chat
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.util.Log
 import android.view.View
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -37,9 +44,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.R
@@ -50,6 +62,7 @@ import com.akumasdk.samtch.ui.components.chat.emote.BadgeInfoDialog
 import com.akumasdk.samtch.ui.components.chat.user.UserInfoDialog
 import com.akumasdk.samtch.ui.components.chat.emotemenu.EmoteMenu
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.ui.util.SystemBarsAppearance
 import com.akumasdk.samtch.util.Constants
@@ -75,10 +88,13 @@ fun TwitchChat(
     portraitMode: PortraitMode? = null,
     onToggleMode: (() -> Unit)? = null,
     onLoginRequested: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     previewImageUrl: String? = null
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
     val isImmersiveEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
 
@@ -128,10 +144,6 @@ fun TwitchChat(
         val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
         val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
 
-        BackHandler(enabled = isEmoteMenuVisible) {
-            viewModel.setEmoteMenuVisible(false)
-        }
-
         LaunchedEffect(refreshTrigger) {
             if (refreshTrigger > 0) {
                 viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = true)
@@ -163,7 +175,22 @@ fun TwitchChat(
 
                 NativeTwitchChat(
                     channel = channel,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    if (event.changes.any { it.changedToUp() }) {
+                                        if (isEmoteMenuVisible) {
+                                            viewModel.setEmoteMenuVisible(false)
+                                        }
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                    }
+                                }
+                            }
+                        },
                     isCompact = isCompact,
                     isImmersiveEnabled = isImmersiveEnabled,
                     viewModel = viewModel,
@@ -230,6 +257,11 @@ fun TwitchChat(
                                     emoteInsertFlow = viewModel.emoteInsertFlow,
                                     portraitMode = portraitMode,
                                     onToggleMode = onToggleMode,
+                                    onFocusChanged = { focused ->
+                                        if (focused) {
+                                            viewModel.setEmoteMenuVisible(true)
+                                        }
+                                    },
                                     onLoginRequested = onLoginRequested
                                 )
 
@@ -250,7 +282,26 @@ fun TwitchChat(
                                     Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.ime.union(WindowInsets.navigationBars)))
                                     
                                     // 2. The Interaction space: Holds the emote menu at a stable height
-                                    if (isEmoteMenuVisible) {
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = isEmoteMenuVisible,
+                                        enter = expandVertically(
+                                            animationSpec = tween(
+                                                durationMillis = 400,
+                                                easing = SamtchAnimation.EmphasizedEasing
+                                            )
+                                        ) + fadeIn(
+                                            animationSpec = tween(durationMillis = 300)
+                                        ),
+                                        exit = shrinkVertically(
+                                            animationSpec = tween(
+                                                durationMillis = 350,
+                                                easing = SamtchAnimation.EmphasizedEasing
+                                            )
+                                        ) + fadeOut(
+                                            animationSpec = tween(durationMillis = 250)
+                                        ),
+                                        label = "EmoteMenuVisibility"
+                                    ) {
                                         val currentImeBottom = WindowInsets.ime.getBottom(density)
                                         val navBarBottom = WindowInsets.navigationBars.getBottom(density)
                                         val currentKeyboardHeightPx = (currentImeBottom - navBarBottom).coerceAtLeast(0)
@@ -275,7 +326,10 @@ fun TwitchChat(
                                                         onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                                                         onRefresh = {
                                                             viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = true)
+                                                            // Trigger global refresh (PiP, Player, etc.)
+                                                            context.sendBroadcast(Intent(Constants.Actions.REFRESH).setPackage(context.packageName))
                                                         },
+                                                        onSettingsClick = onSettingsClick,
                                                         height = menuHeight,
                                                         channel = channel,
                                                         previewImageUrl = previewImageUrl,

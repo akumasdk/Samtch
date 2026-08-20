@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +42,7 @@ fun EmoteMenu(
     onEmoteClick: (Emote) -> Unit,
     onEmoteLongClick: (Emote) -> Unit,
     onRefresh: () -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
     height: Dp = 300.dp,
     channel: String = "",
@@ -101,11 +103,23 @@ fun EmoteMenu(
                     
                     IconButton(
                         onClick = onRefresh,
-                        modifier = Modifier.padding(end = 4.dp).size(40.dp)
+                        modifier = Modifier.padding(horizontal = 2.dp).size(40.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",
+                            tint = SamtchTheme.colors.secondaryText.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier.padding(end = 4.dp).size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
                             tint = SamtchTheme.colors.secondaryText.copy(alpha = 0.7f),
                             modifier = Modifier.size(20.dp)
                         )

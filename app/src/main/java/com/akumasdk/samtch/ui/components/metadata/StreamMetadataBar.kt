@@ -114,6 +114,7 @@ fun StreamMetadataBar(
     ) {
         if (isImmersiveEnabled) {
             PlayerBackground(
+                previewUrl = previewImageUrl,
                 alpha = imageAlpha,
                 blurRadius = 150.dp,
                 containerColor = Color.Transparent,

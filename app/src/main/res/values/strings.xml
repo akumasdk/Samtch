@@ -79,6 +79,7 @@
     <string name="chat_mode_notice">Note: Native chat includes BetterTTV and 7TV emote support.</string>
     <string name="chat_settings_font_size">Font Size</string>
     <string name="chat_settings_emote_size">Emote Size</string>
+    <string name="chat_settings_badge_size">Badge Size</string>
 
     <!-- Theme Settings -->
     <string name="theme_mode_title">Theme Mode</string>

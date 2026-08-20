@@ -28,7 +28,8 @@ fun ChatMessageRow(
     onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
     onUserClick: ((String) -> Unit)? = null,
     fontSize: Int = 14,
-    emoteSize: Int = 28
+    emoteSize: Int = 28,
+    badgeSize: Int = 18
 ) {
     val displayFontSize = if (isCompact) (fontSize - 2).sp else fontSize.sp
     
@@ -102,6 +103,7 @@ fun ChatMessageRow(
                         }
                 },
                 emoteSize = emoteSize,
+                badgeSize = badgeSize,
                 style = TextStyle(
                     color = if (message.isAction) userColor else SamtchTheme.colors.primaryText,
                     fontSize = displayFontSize,

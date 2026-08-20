@@ -68,6 +68,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _chatEmoteSize = MutableStateFlow(28)
     val chatEmoteSize = _chatEmoteSize.asStateFlow()
 
+    private val _chatBadgeSize = MutableStateFlow(18)
+    val chatBadgeSize = _chatBadgeSize.asStateFlow()
+
     private val _systemNotice = MutableStateFlow<String?>(null)
     val systemNotice = _systemNotice.asStateFlow()
 
@@ -205,6 +208,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             launch {
                 SettingsManager.getChatEmoteSize(context).collect { size ->
                     _chatEmoteSize.value = size
+                }
+            }
+            launch {
+                SettingsManager.getChatBadgeSize(context).collect { size ->
+                    _chatBadgeSize.value = size
                 }
             }
 

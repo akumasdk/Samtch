@@ -31,16 +31,21 @@ fun DynamicEmoteText(
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
     onClick: ((Int) -> Unit)? = null,
-    emoteSize: Int = 28
+    emoteSize: Int = 28,
+    badgeSize: Int = 18
 ) {
     val context = LocalContext.current
-    val baseHeight = if (isCompact) (emoteSize * 0.8f) else emoteSize.toFloat()
+    val baseEmoteHeight = if (isCompact) (emoteSize * 0.8f) else emoteSize.toFloat()
+    val baseBadgeHeight = if (isCompact) (badgeSize * 0.8f) else badgeSize.toFloat()
     
     val measuredWidths = remember { mutableStateMapOf<String, Float>() }
     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-    val inlineContent = remember(emotes, measuredWidths.toMap(), baseHeight, onEmoteClick, onEmoteLongClick) {
+    val inlineContent = remember(emotes, measuredWidths.toMap(), baseEmoteHeight, baseBadgeHeight, onEmoteClick, onEmoteLongClick) {
         emotes.associate { emote ->
+            val isBadge = emote.source == "Badge"
+            val baseHeight = if (isBadge) baseBadgeHeight else baseEmoteHeight
+
             val urls = emote.url.split("|")
             val baseEmoteUrl = urls.first()
             val cachedRatio = EmoteRepository.getAspectRatio(baseEmoteUrl)
