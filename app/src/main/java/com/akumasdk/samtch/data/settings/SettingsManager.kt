@@ -28,6 +28,7 @@ object SettingsManager {
     private val KEYBOARD_HEIGHT_LANDSCAPE = intPreferencesKey("keyboard_height_landscape")
     private val CHAT_FONT_SIZE = intPreferencesKey("chat_font_size")
     private val CHAT_EMOTE_SIZE = intPreferencesKey("chat_emote_size")
+    private val CHAT_BADGE_SIZE = intPreferencesKey("chat_badge_size")
     private val IMMERSIVE_BACKGROUND_ENABLED = booleanPreferencesKey("immersive_background_enabled")
 
     // Auth
@@ -230,6 +231,18 @@ object SettingsManager {
     suspend fun setChatEmoteSize(context: Context, size: Int) {
         context.dataStore.edit { preferences ->
             preferences[CHAT_EMOTE_SIZE] = size
+        }
+    }
+
+    fun getChatBadgeSize(context: Context): Flow<Int> {
+        return context.dataStore.data.map { preferences ->
+            preferences[CHAT_BADGE_SIZE] ?: 18
+        }
+    }
+
+    suspend fun setChatBadgeSize(context: Context, size: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[CHAT_BADGE_SIZE] = size
         }
     }
 

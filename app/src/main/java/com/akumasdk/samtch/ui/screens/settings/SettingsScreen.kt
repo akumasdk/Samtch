@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Info
@@ -69,6 +70,7 @@ fun SettingsScreen(
     var showChatModeDialog by remember { mutableStateOf(false) }
     var showChatFontSizeDialog by remember { mutableStateOf(false) }
     var showChatEmoteSizeDialog by remember { mutableStateOf(false) }
+    var showChatBadgeSizeDialog by remember { mutableStateOf(false) }
     var showThemeModeDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
@@ -81,6 +83,7 @@ fun SettingsScreen(
     val chatMode by remember(context) { SettingsManager.getChatMode(context) }.collectAsState(initial = SettingsManager.ChatMode.NATIVE)
     val chatFontSize by remember(context) { SettingsManager.getChatFontSize(context) }.collectAsState(initial = 14)
     val chatEmoteSize by remember(context) { SettingsManager.getChatEmoteSize(context) }.collectAsState(initial = 28)
+    val chatBadgeSize by remember(context) { SettingsManager.getChatBadgeSize(context) }.collectAsState(initial = 18)
     val themeMode by remember(context) { SettingsManager.getThemeMode(context) }.collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
     val adBlockMode by remember(context) { SettingsManager.getAdBlockMode(context) }.collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
     val isPipEnabled by remember(context) { SettingsManager.isPipEnabled(context) }.collectAsState(initial = true)
@@ -200,6 +203,13 @@ fun SettingsScreen(
                         onReset = { scope.launch { SettingsManager.setChatEmoteSize(context, 28) } }
                     ) 
                 }
+                item { 
+                    ChatBadgeSizeItem(
+                        chatBadgeSize, 
+                        onClick = { showChatBadgeSizeDialog = true },
+                        onReset = { scope.launch { SettingsManager.setChatBadgeSize(context, 18) } }
+                    ) 
+                }
             } else {
                 item { BttvSettingsItem(onClick = { isBttvSettingsOpen = true }) }
             }
@@ -307,6 +317,19 @@ fun SettingsScreen(
         )
     }
 
+    if (showChatBadgeSizeDialog) {
+        val badgeSizeOptions = listOf(14, 16, 18, 20, 22, 24, 28, 32)
+        SelectionDialog(
+            title = stringResource(R.string.chat_settings_badge_size),
+            options = badgeSizeOptions.map { size ->
+                "${size}dp" to { scope.launch { SettingsManager.setChatBadgeSize(context, size) } }
+            },
+            selectedIndex = badgeSizeOptions.indexOf(chatBadgeSize),
+            onReset = { scope.launch { SettingsManager.setChatBadgeSize(context, 18) } },
+            onDismiss = { showChatBadgeSizeDialog = false }
+        )
+    }
+
     if (showLogoutDialog) {
         LogoutDialog(onConfirm = onLogout, onDismiss = { showLogoutDialog = false })
     }
@@ -348,7 +371,7 @@ private fun ImmersiveBackgroundToggleItem(enabled: Boolean, onToggle: (Boolean) 
     ListItem(
         headlineContent = { Text(stringResource(R.string.immersive_background_title)) },
         supportingContent = { Text(stringResource(R.string.immersive_background_summary)) },
-        leadingContent = { Icon(imageVector = Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_radial_blur), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
         modifier = Modifier.combinedClickable(
             onClick = { onToggle(!enabled) },
@@ -444,6 +467,19 @@ private fun ChatEmoteSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Uni
         headlineContent = { Text(stringResource(R.string.chat_settings_emote_size)) },
         supportingContent = { Text("${size}dp") },
         leadingContent = { Icon(imageVector = Icons.Default.EmojiEmotions, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onReset
+        )
+    )
+}
+
+@Composable
+private fun ChatBadgeSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.chat_settings_badge_size)) },
+        supportingContent = { Text("${size}dp") },
+        leadingContent = { Icon(imageVector = Icons.Default.Diamond, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         modifier = Modifier.combinedClickable(
             onClick = onClick,
             onLongClick = onReset
