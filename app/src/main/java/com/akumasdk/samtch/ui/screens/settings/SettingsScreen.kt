@@ -53,7 +53,6 @@ import com.akumasdk.samtch.ui.screens.settings.components.SelectionDialog
 import com.akumasdk.samtch.ui.screens.settings.components.SettingSectionHeader
 import com.akumasdk.samtch.ui.screens.settings.components.UpdateItem
 import com.akumasdk.samtch.R
-import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.model.GitHubRelease
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.UpdateManager
@@ -76,18 +75,18 @@ fun SettingsScreen(
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
-    var isLoggedIn by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
 
-    val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
-    val chatFontSize by SettingsManager.getChatFontSize(context).collectAsState(initial = 14)
-    val chatEmoteSize by SettingsManager.getChatEmoteSize(context).collectAsState(initial = 28)
-    val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
-    val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
-    val isPipEnabled by SettingsManager.isPipEnabled(context).collectAsState(initial = true)
-    val isAudioBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
-    val isImmersiveBackgroundEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
+    val chatMode by remember(context) { SettingsManager.getChatMode(context) }.collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+    val chatFontSize by remember(context) { SettingsManager.getChatFontSize(context) }.collectAsState(initial = 14)
+    val chatEmoteSize by remember(context) { SettingsManager.getChatEmoteSize(context) }.collectAsState(initial = 28)
+    val themeMode by remember(context) { SettingsManager.getThemeMode(context) }.collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+    val adBlockMode by remember(context) { SettingsManager.getAdBlockMode(context) }.collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
+    val isPipEnabled by remember(context) { SettingsManager.isPipEnabled(context) }.collectAsState(initial = true)
+    val isAudioBackgroundEnabled by remember(context) { SettingsManager.isAudioOnlyBackgroundEnabled(context) }.collectAsState(initial = false)
+    val isImmersiveBackgroundEnabled by remember(context) { SettingsManager.isImmersiveBackgroundEnabled(context) }.collectAsState(initial = true)
+    val isLoggedIn by remember(context) { SettingsManager.isLoggedIn(context) }.collectAsState(initial = false)
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -108,7 +107,6 @@ fun SettingsScreen(
             latestRelease = UpdateManager.checkForUpdate()
             isCheckingUpdate = false
         }
-        isLoggedIn = TwitchAuthManager.getAuthState(context).isLoggedIn
     }
 
     Scaffold(
