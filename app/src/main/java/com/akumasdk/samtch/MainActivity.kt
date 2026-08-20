@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -161,242 +162,270 @@ class MainActivity : ComponentActivity() {
             key(BuildConfig.VERSION_CODE) {
                 SamtchTheme(darkTheme = darkTheme) {
                     var selectedChannel by rememberSaveable { mutableStateOf<String?>(null) }
-                var isInPipMode by isInPipModeState
-                var refreshTrigger by refreshTriggerState
-                var isMinimized by isMinimizedState
-                var isSettingsOpen by isSettingsOpenState
-                val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
+                    var isInPipMode by isInPipModeState
+                    var refreshTrigger by refreshTriggerState
+                    var isMinimized by isMinimizedState
+                    var isSettingsOpen by isSettingsOpenState
+                    val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
+                    val isImmersiveEnabled by SettingsManager.isImmersiveBackgroundEnabled(this@MainActivity).collectAsState(initial = true)
 
-                val physicalOrientation by orientationManager.orientation.collectAsState()
-                val isAutoRotateEnabled by SystemSettingsUtil.observeAutoRotate(this@MainActivity).collectAsState(initial = false)
-                
-                // Animated browser padding for smooth layout transitions
-                val playerViewModel: PlayerViewModel = viewModel()
-
-                val browserBottomPadding by animateDpAsState(
-                    targetValue = if (isMinimized && selectedChannel != null) 104.dp else 0.dp,
-                    animationSpec = SamtchAnimation.DpSpring,
-                    label = "BrowserPaddingAnimation"
-                )
-
-                // Unified Fullscreen State
-                var isFullscreen by rememberSaveable { 
-                    mutableStateOf(orientationManager.orientation.value == PhysicalOrientation.LANDSCAPE) 
-                }
-
-                // 1. AUTO-ROTATE LOGIC: Sync isFullscreen with physical tilt ONLY when in player mode
-                LaunchedEffect(physicalOrientation, isAutoRotateEnabled, selectedChannel, isMinimized) {
-                    if (isAutoRotateEnabled && selectedChannel != null && !isMinimized && !isAudioOnlyModeState.value) {
-                        when (physicalOrientation) {
-                            PhysicalOrientation.LANDSCAPE -> isFullscreen = true
-                            PhysicalOrientation.PORTRAIT -> isFullscreen = false
-                            else -> {}
+                    // 0. SYSTEM BARS REACTIVE CONTROL
+                    LaunchedEffect(darkTheme, selectedChannel, isMinimized, isSettingsOpen, isImmersiveEnabled) {
+                        val isPlayerActive = selectedChannel != null && !isMinimized
+                        // If we're in the player with immersive backgrounds, force light icons (dark bar feel)
+                        // unless we are in settings which is always themed normally.
+                        val forceLightIcons = isPlayerActive && isImmersiveEnabled && !isSettingsOpen
+                        
+                        val statusBarStyle = if (forceLightIcons) {
+                            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                        } else if (darkTheme) {
+                            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                        } else {
+                            SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
                         }
-                    }
-                }
 
-                // 2. ORIENTATION & UI MODE ENFORCEMENT
-                LaunchedEffect(selectedChannel, isMinimized, isAudioOnlyModeState.value, isFullscreen, isInPipMode, playerViewModel.portraitMode) {
-                    if (isInPipMode) return@LaunchedEffect
+                        val navigationBarStyle = if (darkTheme) {
+                            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                        } else {
+                            SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                        }
 
-                    // Immersive "Fullscreen" mode (hiding status/nav bars) is now EXCLUSIVELY for the landscape video player.
-                    // Portrait video, Audio Only, and Chat Only modes will always show the status bar.
-                    val useImmersiveMode = isFullscreen && 
-                                           selectedChannel != null && 
-                                           !isMinimized && 
-                                           !isAudioOnlyModeState.value && 
-                                           playerViewModel.portraitMode != PortraitMode.CHAT_ONLY
-
-                    if (useImmersiveMode) {
-                        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                    } else {
-                        windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                    }
-                }
-
-                val browserState = rememberSaveableWebViewState(Constants.Twitch.MOBILE_URL)
-                val browserNavigator = rememberWebViewNavigator()
-
-                val loginLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.StartActivityForResult()
-                ) { result ->
-                    if (result.resultCode == RESULT_OK) {
-                        Log.d("MainActivity", "Login successful, triggering hard refresh.")
-                        refreshTriggerState.intValue += 1
-                    }
-                }
-
-                LaunchedEffect(intent) {
-                    val action = intent.getStringExtra(Constants.Extras.ACTION)
-                    val newChannel = intent.getStringExtra(Constants.Extras.CHANNEL)
-                    if (action == Constants.Actions.STOP) {
-                        selectedChannel = null
-                        isMinimized = false
-                        playerViewModel.updateChannel(null)
-                    } else if (newChannel != null) {
-                        selectedChannel = newChannel
-                        isMinimized = false
-                        playerViewModel.updateChannel(newChannel)
-                    }
-                }
-
-                LaunchedEffect(pipRectState.value) {
-                    if ((pipRectState.value != null) && (selectedChannel != null)) {
-                        val builder = PictureInPictureParams.Builder()
-                        pipRectState.value?.let { builder.setSourceRectHint(it) }
-                        try {
-                            setPictureInPictureParams(builder.build())
-                        } catch (_: Exception) {}
-                    }
-                }
-
-                LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled, isMinimized, isSettingsOpen) {
-                    currentChannel = selectedChannel
-                    updatePipParams(isPipEnabled)
-                }
-
-                var displayedChannel by remember { mutableStateOf<String?>(null) }
-                if (selectedChannel != null) {
-                    displayedChannel = selectedChannel
-                }
-
-                val isPlayerActive = remember(selectedChannel, isMinimized) {
-                    selectedChannel != null && !isMinimized
-                }
-
-                Box(modifier = Modifier.fillMaxSize().background(SamtchTheme.colors.rootBackground)) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .navigationBarsPadding()
-                            .padding(bottom = browserBottomPadding.coerceAtLeast(0.dp))
-                    ) {
-                        TwitchBrowser(
-                            state = browserState,
-                            navigator = browserNavigator,
-                            isPlayerActive = isPlayerActive,
-                            refreshTrigger = refreshTrigger,
-                            hasBackgroundReloaded = playerViewModel.hasBackgroundReloaded,
-                            onBackgroundReloadFinished = { playerViewModel.hasBackgroundReloaded = true },
-                            onChannelSelected = { channel ->
-                                val isSameChannel = selectedChannel == channel
-                                selectedChannel = channel
-                                if (!isSameChannel) {
-                                    playerViewModel.updateChannel(channel)
-                                } else {
-                                    // If same channel is re-selected, reset background reload flag
-                                    // to ensure the browser performs a fresh background purge.
-                                    playerViewModel.hasBackgroundReloaded = false
-                                }
-                                isMinimized = false
-                            },
-                            onSettingsClick = { isSettingsOpen = true },
-                            onLoginRequested = {
-                                val intent = Intent(this@MainActivity, LoginActivity::class.java)
-                                loginLauncher.launch(intent)
-                            },
-                            onRefreshRequested = {
-                                refreshTriggerState.intValue += 1
-                            },
-                            onLoaded = { isAppLoadedState.value = true }
+                        enableEdgeToEdge(
+                            statusBarStyle = statusBarStyle,
+                            navigationBarStyle = navigationBarStyle
                         )
                     }
 
-                    AnimatedVisibility(
-                        visible = selectedChannel != null,
-                        enter = SamtchAnimation.PlayerEnterTransition,
-                        exit = SamtchAnimation.PlayerExitTransition,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        displayedChannel?.let { channel ->
-                            key(channel) {
-                                TwitchPlayer(
-                                    channel = channel,
-                                    isFullscreen = isFullscreen,
-                                    isPip = isInPipMode,
-                                    isMinimized = isMinimized,
-                                    refreshTrigger = refreshTrigger,
-                                    playerViewModel = playerViewModel,
-                                    onToggleFullscreen = { isFullscreen = !isFullscreen },
-                                    onBack = {
-                                        isMinimized = true
-                                        isFullscreen = false
-                                    },
-                                    onExpand = { isMinimized = false },
-                                    onClose = {
-                                        selectedChannel = null
-                                        playerViewModel.updateChannel(null)
-                                        val stopIntent = Intent(this@MainActivity, PlaybackService::class.java)
-                                        stopService(stopIntent)
-                                    },
-                                    onMetadataUpdated = { avatar, subtitle ->
-                                        lastAvatarUrl = avatar
-                                        lastSubtitle = subtitle
-                                    },
-                                    onLoginRequested = {
-                                        val intent = Intent(this@MainActivity, LoginActivity::class.java)
-                                        loginLauncher.launch(intent)
-                                    },
-                                    onSettingsClick = { isSettingsOpen = true },
-                                    onAudioOnlyModeChanged = { isAudioOnly ->
-                                        isAudioOnlyModeState.value = isAudioOnly
-                                        updatePipParams(isPipEnabled)
-                                    },
-                                    onVideoBoundsChanged = { rect -> pipRectState.value = rect }
-                                )
+                    val physicalOrientation by orientationManager.orientation.collectAsState()
+                    val isAutoRotateEnabled by SystemSettingsUtil.observeAutoRotate(this@MainActivity).collectAsState(initial = false)
+                    
+                    // Animated browser padding for smooth layout transitions
+                    val playerViewModel: PlayerViewModel = viewModel()
+
+                    val browserBottomPadding by animateDpAsState(
+                        targetValue = if (isMinimized && selectedChannel != null) 104.dp else 0.dp,
+                        animationSpec = SamtchAnimation.DpSpring,
+                        label = "BrowserPaddingAnimation"
+                    )
+
+                    // Unified Fullscreen State
+                    var isFullscreen by rememberSaveable { 
+                        mutableStateOf(orientationManager.orientation.value == PhysicalOrientation.LANDSCAPE) 
+                    }
+
+                    // 1. AUTO-ROTATE LOGIC: Sync isFullscreen with physical tilt ONLY when in player mode
+                    LaunchedEffect(physicalOrientation, isAutoRotateEnabled, selectedChannel, isMinimized) {
+                        if (isAutoRotateEnabled && selectedChannel != null && !isMinimized && !isAudioOnlyModeState.value) {
+                            when (physicalOrientation) {
+                                PhysicalOrientation.LANDSCAPE -> isFullscreen = true
+                                PhysicalOrientation.PORTRAIT -> isFullscreen = false
+                                else -> {}
                             }
                         }
                     }
 
-                    AnimatedVisibility(
-                        visible = isSettingsOpen,
-                        enter = SamtchAnimation.ScreenEnterTransition,
-                        exit = SamtchAnimation.ScreenExitTransition
-                    ) {
-                        SettingsScreen(
-                            onBack = { isSettingsOpen = false },
-                            onLogout = {
-                                // Close player if active
-                                selectedChannel = null
-                                isMinimized = false
-                                playerViewModel.updateChannel(null)
-                                try {
-                                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                                    stopService(stopIntent)
-                                } catch (_: Exception) {}
+                    // 2. ORIENTATION & UI MODE ENFORCEMENT
+                    LaunchedEffect(selectedChannel, isMinimized, isAudioOnlyModeState.value, isFullscreen, isInPipMode, playerViewModel.portraitMode) {
+                        if (isInPipMode) return@LaunchedEffect
 
-                                // Clear emote and badge cache
-                                EmoteRepository.clearCache()
-                                com.akumasdk.samtch.data.badge.BadgeRepository.clearCache()
+                        // Immersive "Fullscreen" mode (hiding status/nav bars) is now EXCLUSIVELY for the landscape video player.
+                        // Portrait video, Audio Only, and Chat Only modes will always show the status bar.
+                        val useImmersiveMode = isFullscreen && 
+                                               selectedChannel != null && 
+                                               !isMinimized && 
+                                               !isAudioOnlyModeState.value && 
+                                               playerViewModel.portraitMode != PortraitMode.CHAT_ONLY
 
-                                // Clear all cookies and trigger hard refresh
-                                android.webkit.CookieManager.getInstance().removeAllCookies { 
-                                    lifecycleScope.launch(Dispatchers.Main) {
-                                        Log.d("MainActivity", "Logout: cookies cleared. Clearing OAuth data...")
-                                        // Await data clearing to ensure no race conditions with refresh
-                                        SettingsManager.setAuthData(
-                                            context = this@MainActivity,
-                                            token = null,
-                                            clientId = null,
-                                            userName = null,
-                                            userId = null,
-                                            isLoggedIn = false
-                                        )
-                                        Log.d("MainActivity", "OAuth data cleared. Triggering refresh.")
-                                        refreshTriggerState.intValue += 1
-                                        isSettingsOpen = false
+                        if (useImmersiveMode) {
+                            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        } else {
+                            windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        }
+                    }
+
+                    val browserState = rememberSaveableWebViewState(Constants.Twitch.MOBILE_URL)
+                    val browserNavigator = rememberWebViewNavigator()
+
+                    val loginLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.StartActivityForResult()
+                    ) { result ->
+                        if (result.resultCode == RESULT_OK) {
+                            Log.d("MainActivity", "Login successful, triggering hard refresh.")
+                            refreshTriggerState.intValue += 1
+                        }
+                    }
+
+                    LaunchedEffect(intent) {
+                        val action = intent.getStringExtra(Constants.Extras.ACTION)
+                        val newChannel = intent.getStringExtra(Constants.Extras.CHANNEL)
+                        if (action == Constants.Actions.STOP) {
+                            selectedChannel = null
+                            isMinimized = false
+                            playerViewModel.updateChannel(null)
+                        } else if (newChannel != null) {
+                            selectedChannel = newChannel
+                            isMinimized = false
+                            playerViewModel.updateChannel(newChannel)
+                        }
+                    }
+
+                    LaunchedEffect(pipRectState.value) {
+                        if ((pipRectState.value != null) && (selectedChannel != null)) {
+                            val builder = PictureInPictureParams.Builder()
+                            pipRectState.value?.let { builder.setSourceRectHint(it) }
+                            try {
+                                setPictureInPictureParams(builder.build())
+                            } catch (_: Exception) {}
+                        }
+                    }
+
+                    LaunchedEffect(selectedChannel, isInPipMode, isPipEnabled, isMinimized, isSettingsOpen) {
+                        currentChannel = selectedChannel
+                        updatePipParams(isPipEnabled)
+                    }
+
+                    var displayedChannel by remember { mutableStateOf<String?>(null) }
+                    if (selectedChannel != null) {
+                        displayedChannel = selectedChannel
+                    }
+
+                    val isPlayerActive = remember(selectedChannel, isMinimized) {
+                        selectedChannel != null && !isMinimized
+                    }
+
+                    Box(modifier = Modifier.fillMaxSize().background(SamtchTheme.colors.rootBackground)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .navigationBarsPadding()
+                                .padding(bottom = browserBottomPadding.coerceAtLeast(0.dp))
+                        ) {
+                            TwitchBrowser(
+                                state = browserState,
+                                navigator = browserNavigator,
+                                isPlayerActive = isPlayerActive,
+                                refreshTrigger = refreshTrigger,
+                                hasBackgroundReloaded = playerViewModel.hasBackgroundReloaded,
+                                onBackgroundReloadFinished = { playerViewModel.hasBackgroundReloaded = true },
+                                onChannelSelected = { channel ->
+                                    val isSameChannel = selectedChannel == channel
+                                    selectedChannel = channel
+                                    if (!isSameChannel) {
+                                        playerViewModel.updateChannel(channel)
+                                    } else {
+                                        // If same channel is re-selected, reset background reload flag
+                                        // to ensure the browser performs a fresh background purge.
+                                        playerViewModel.hasBackgroundReloaded = false
+                                    }
+                                    isMinimized = false
+                                },
+                                onSettingsClick = { isSettingsOpen = true },
+                                onLoginRequested = {
+                                    val intent = Intent(this@MainActivity, LoginActivity::class.java)
+                                    loginLauncher.launch(intent)
+                                },
+                                onRefreshRequested = {
+                                    refreshTriggerState.intValue += 1
+                                },
+                                onLoaded = { isAppLoadedState.value = true }
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = selectedChannel != null,
+                            enter = SamtchAnimation.PlayerEnterTransition,
+                            exit = SamtchAnimation.PlayerExitTransition,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            displayedChannel?.let { channel ->
+                                key(channel) {
+                                    TwitchPlayer(
+                                        channel = channel,
+                                        isFullscreen = isFullscreen,
+                                        isPip = isInPipMode,
+                                        isMinimized = isMinimized,
+                                        refreshTrigger = refreshTrigger,
+                                        playerViewModel = playerViewModel,
+                                        onToggleFullscreen = { isFullscreen = !isFullscreen },
+                                        onBack = {
+                                            isMinimized = true
+                                            isFullscreen = false
+                                        },
+                                        onExpand = { isMinimized = false },
+                                        onClose = {
+                                            selectedChannel = null
+                                            playerViewModel.updateChannel(null)
+                                            val stopIntent = Intent(this@MainActivity, PlaybackService::class.java)
+                                            stopService(stopIntent)
+                                        },
+                                        onMetadataUpdated = { avatar, subtitle ->
+                                            lastAvatarUrl = avatar
+                                            lastSubtitle = subtitle
+                                        },
+                                        onLoginRequested = {
+                                            val intent = Intent(this@MainActivity, LoginActivity::class.java)
+                                            loginLauncher.launch(intent)
+                                        },
+                                        onSettingsClick = { isSettingsOpen = true },
+                                        onAudioOnlyModeChanged = { isAudioOnly ->
+                                            isAudioOnlyModeState.value = isAudioOnly
+                                            updatePipParams(isPipEnabled)
+                                        },
+                                        onVideoBoundsChanged = { rect -> pipRectState.value = rect }
+                                    )
+                                }
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = isSettingsOpen,
+                            enter = SamtchAnimation.ScreenEnterTransition,
+                            exit = SamtchAnimation.ScreenExitTransition
+                        ) {
+                            SettingsScreen(
+                                onBack = { isSettingsOpen = false },
+                                onLogout = {
+                                    // Close player if active
+                                    selectedChannel = null
+                                    isMinimized = false
+                                    playerViewModel.updateChannel(null)
+                                    try {
+                                        val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
+                                        stopService(stopIntent)
+                                    } catch (_: Exception) {}
+
+                                    // Clear emote and badge cache
+                                    EmoteRepository.clearCache()
+                                    com.akumasdk.samtch.data.badge.BadgeRepository.clearCache()
+
+                                    // Clear all cookies and trigger hard refresh
+                                    android.webkit.CookieManager.getInstance().removeAllCookies { 
+                                        lifecycleScope.launch(Dispatchers.Main) {
+                                            Log.d("MainActivity", "Logout: cookies cleared. Clearing OAuth data...")
+                                            // Await data clearing to ensure no race conditions with refresh
+                                            SettingsManager.setAuthData(
+                                                context = this@MainActivity,
+                                                token = null,
+                                                clientId = null,
+                                                userName = null,
+                                                userId = null,
+                                                isLoggedIn = false
+                                            )
+                                            Log.d("MainActivity", "OAuth data cleared. Triggering refresh.")
+                                            refreshTriggerState.intValue += 1
+                                            isSettingsOpen = false
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
         }
     }
-}
 
     @RequiresApi(Build.VERSION_CODES.S)
     private fun updatePipParams(isPipEnabled: Boolean = true) {

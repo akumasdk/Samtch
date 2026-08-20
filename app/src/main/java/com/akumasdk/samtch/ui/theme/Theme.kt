@@ -1,6 +1,5 @@
 package com.akumasdk.samtch.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -12,12 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 
 @Immutable
 data class SamtchColors(
@@ -50,12 +46,6 @@ data class SamtchColors(
     val audioPlayerBackgroundEnd: Color
 )
 
-@Immutable
-data class SystemBarsAppearance(
-    val lightStatusBars: Boolean? = null,
-    val lightNavigationBars: Boolean? = null
-)
-
 val LocalSamtchColors = staticCompositionLocalOf {
     SamtchColors(
         chatBackground = TwitchChatBackground,
@@ -80,8 +70,6 @@ val LocalSamtchColors = staticCompositionLocalOf {
         audioPlayerBackgroundEnd = TwitchBlack
     )
 }
-
-val LocalSystemBarsAppearance = staticCompositionLocalOf { SystemBarsAppearance() }
 
 object SamtchTheme {
     val colors: SamtchColors
@@ -173,17 +161,6 @@ fun SamtchTheme(
             audioPlayerBackgroundStart = Color(0xFFF7F7F8),
             audioPlayerBackgroundEnd = Color.White
         )
-    }
-
-    val view = LocalView.current
-    val systemBarsAppearance = LocalSystemBarsAppearance.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            val windowInsetsController = WindowCompat.getInsetsController(window, view)
-            windowInsetsController.isAppearanceLightStatusBars = systemBarsAppearance.lightStatusBars ?: !darkTheme
-            windowInsetsController.isAppearanceLightNavigationBars = systemBarsAppearance.lightNavigationBars ?: !darkTheme
-        }
     }
 
     CompositionLocalProvider(LocalSamtchColors provides samtchColors) {
