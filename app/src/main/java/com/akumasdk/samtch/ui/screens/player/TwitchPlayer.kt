@@ -9,8 +9,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -70,8 +68,10 @@ import com.akumasdk.samtch.ui.components.playerComponents.TapTooltip
 import com.akumasdk.samtch.ui.components.playerComponents.createTwitchPlayerUrl
 import com.akumasdk.samtch.ui.screens.player.components.AudioOnlyPlayer
 import com.akumasdk.samtch.ui.screens.player.components.AudioServiceEffects
+import com.akumasdk.samtch.ui.screens.player.components.BrightnessManager
 import com.akumasdk.samtch.ui.screens.player.components.FullscreenChatToggle
 import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureIndicators
+import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureOverlay
 import com.akumasdk.samtch.ui.screens.player.components.PlayerLifecycleEffects
 import com.akumasdk.samtch.ui.screens.player.components.PlayerOverlay
 import com.akumasdk.samtch.ui.screens.player.components.PlayerWebView
@@ -112,7 +112,7 @@ fun TwitchPlayer(
     onLoginRequested: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onAudioOnlyModeChanged: (Boolean) -> Unit = {},
-    onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {}
+    onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {},
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
@@ -130,112 +130,11 @@ fun TwitchPlayer(
 
         // Gesture Overlay State
         var isDraggingVolume by remember { mutableStateOf(false) }
-        var showVolumeOverlay by remember { mutableStateOf(false) }
         var volumeProgress by remember { mutableFloatStateOf(0f) }
 
         var isDraggingBrightness by remember { mutableStateOf(false) }
-        var showBrightnessOverlay by remember { mutableStateOf(false) }
         var brightnessProgress by remember { mutableFloatStateOf(0.5f) }
-        var originalBrightness by remember { mutableFloatStateOf(-100f) }
-
-        val activity = context as? android.app.Activity
-
-        // Handle Brightness Lifecycle & System Sync
-        var lastKnownSystemBrightness by remember { mutableFloatStateOf(-1f) }
         var hasExplicitBrightness by remember { mutableStateOf(false) }
-        val currentOriginalBrightness by rememberUpdatedState(originalBrightness)
-
-        LaunchedEffect(isFullscreen, isPip) {
-            if (isFullscreen && !isPip) {
-                // Initialize
-                val systemB = com.akumasdk.samtch.util.SystemSettingsUtil.getSystemBrightness(context)
-                lastKnownSystemBrightness = systemB
-                brightnessProgress = systemB
-                hasExplicitBrightness = false
-                
-                activity?.let {
-                    val lp = it.window.attributes
-                    originalBrightness = lp.screenBrightness
-                    // Start with system control
-                    lp.screenBrightness = -1f
-                    it.window.attributes = lp
-                }
-            } else {
-                // Restore when NOT in fullscreen OR when in PiP
-                if (originalBrightness != -100f) {
-                    activity?.let {
-                        val lp = it.window.attributes
-                        lp.screenBrightness = currentOriginalBrightness
-                        it.window.attributes = lp
-                    }
-                }
-            }
-        }
-
-        // Observe system brightness changes to keep our control in sync
-        LaunchedEffect(isFullscreen, isPip, isDraggingBrightness) {
-            if (isFullscreen && !isPip && !isDraggingBrightness) {
-                com.akumasdk.samtch.util.SystemSettingsUtil.observeSystemBrightness(context).collect { systemB ->
-                    // Only sync if the SYSTEM value actually changed relative to itself.
-                    if (lastKnownSystemBrightness != -1f && kotlin.math.abs(systemB - lastKnownSystemBrightness) > 0.02f) {
-                        brightnessProgress = systemB
-                        hasExplicitBrightness = false
-                    }
-                    lastKnownSystemBrightness = systemB
-                }
-            }
-        }
-
-        // Ensure brightness is restored when the player is completely dismissed
-        DisposableEffect(activity) {
-            onDispose {
-                if (currentOriginalBrightness != -100f) {
-                    activity?.let {
-                        val lp = it.window.attributes
-                        lp.screenBrightness = currentOriginalBrightness
-                        it.window.attributes = lp
-                    }
-                }
-            }
-        }
-
-        // Apply brightness changes while in fullscreen (but not in PiP)
-        LaunchedEffect(brightnessProgress, isFullscreen, isPip, isDraggingBrightness, hasExplicitBrightness) {
-            if (isFullscreen && !isPip) {
-                activity?.let {
-                    val lp = it.window.attributes
-                    val currentSystemB = com.akumasdk.samtch.util.SystemSettingsUtil.getSystemBrightness(context)
-                    
-                    val isSameAsSystem = kotlin.math.abs(brightnessProgress - currentSystemB) < 0.01f
-                    
-                    if (!isDraggingBrightness && (!hasExplicitBrightness || isSameAsSystem)) {
-                        lp.screenBrightness = -1f // Hand back control to system
-                    } else {
-                        lp.screenBrightness = brightnessProgress.coerceIn(0.01f, 1f)
-                    }
-                    
-                    it.window.attributes = lp
-                }
-            }
-        }
-
-        LaunchedEffect(isDraggingVolume) {
-            if (isDraggingVolume) {
-                showVolumeOverlay = true
-            } else {
-                delay(2.seconds)
-                showVolumeOverlay = false
-            }
-        }
-
-        LaunchedEffect(isDraggingBrightness) {
-            if (isDraggingBrightness) {
-                showBrightnessOverlay = true
-            } else {
-                delay(2.seconds)
-                showBrightnessOverlay = false
-            }
-        }
 
         var isUiLoading by remember { mutableStateOf(true) }
         val defaultLoadingMessage = stringResource(R.string.loading_stream)
@@ -307,15 +206,14 @@ fun TwitchPlayer(
             chatWelcomeTemplate = chatWelcomeTemplate,
             chatLoginTemplate = chatLoginTemplate,
             isUiLoading = isUiLoading,
-            onLoadingTimeout = { isUiLoading = false }
-        )
+        ) { isUiLoading = false }
 
         AudioServiceEffects(
             channel = channel,
             shouldUseAudioService = shouldUseAudioService,
             isAudioOnlyBackgroundEnabled = isAudioOnlyBackgroundEnabled,
             playerViewModel = playerViewModel,
-            context = context
+            context = context,
         )
 
         // Consolidated loading and metadata logic
@@ -357,10 +255,7 @@ fun TwitchPlayer(
         }
 
         val isVideoRequired = remember(isAudioOnly, portraitMode, isFullscreen, isMinimized) {
-            // Video is NOT required if:
-            // 1. Explicitly in Audio Only mode
-            // 2. In Chat Only mode (always unload video)
-            !isAudioOnly && portraitMode != PortraitMode.CHAT_ONLY && (isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
+            (!isAudioOnly) && (portraitMode != PortraitMode.CHAT_ONLY) && (isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
         }
 
         // Handle URL loading and refresh logic
@@ -540,6 +435,16 @@ fun TwitchPlayer(
                 }
             }
         }
+
+        BrightnessManager(
+            isFullscreen = isFullscreen,
+            isPip = isPip,
+            isDraggingBrightness = isDraggingBrightness,
+            brightnessProgress = brightnessProgress,
+            onBrightnessProgressChanged = { brightnessProgress = it },
+            hasExplicitBrightness = hasExplicitBrightness,
+            onHasExplicitBrightnessChanged = { hasExplicitBrightness = it }
+        )
 
         LaunchedEffect(isMinimized) {
             if (isMinimized && !hintShown) {
@@ -794,11 +699,10 @@ fun TwitchPlayer(
                             // Overlays on top of the player
                             if (!isMinimized && !isPip) {
                                 if (isFullscreen && !isAudioOnly) {
-                                    // Visual indicators for gestures
-                                    PlayerGestureIndicators(
-                                        showVolume = showVolumeOverlay,
+                                    PlayerGestureOverlay(
+                                        isDraggingVolume = isDraggingVolume,
+                                        isDraggingBrightness = isDraggingBrightness,
                                         volumeProgress = volumeProgress,
-                                        showBrightness = showBrightnessOverlay,
                                         brightnessProgress = brightnessProgress
                                     )
 
