@@ -69,7 +69,8 @@ fun ChatInputBox(
     portraitMode: PortraitMode? = null,
     onToggleMode: (() -> Unit)? = null,
     onFocusChanged: (Boolean) -> Unit = {},
-    onLoginRequested: () -> Unit = {}
+    onLoginRequested: () -> Unit = {},
+    isImmersiveEnabled: Boolean = true
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -92,13 +93,15 @@ fun ChatInputBox(
                     emoteInsertFlow = emoteInsertFlow,
                     portraitMode = portraitMode,
                     onToggleMode = onToggleMode,
-                    onFocusChanged = onFocusChanged
+                    onFocusChanged = onFocusChanged,
+                    isImmersiveEnabled = isImmersiveEnabled
                 )
             } else {
                 LoggedOutChatInput(
                     portraitMode = portraitMode,
                     onToggleMode = onToggleMode,
-                    onLoginRequested = onLoginRequested
+                    onLoginRequested = onLoginRequested,
+                    isImmersiveEnabled = isImmersiveEnabled
                 )
             }
         }
@@ -118,7 +121,8 @@ private fun LoggedInChatInput(
     emoteInsertFlow: SharedFlow<Emote>,
     portraitMode: PortraitMode?,
     onToggleMode: (() -> Unit)?,
-    onFocusChanged: (Boolean) -> Unit
+    onFocusChanged: (Boolean) -> Unit,
+    isImmersiveEnabled: Boolean
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     val haptic = LocalHapticFeedback.current
@@ -374,7 +378,8 @@ private fun SendButton(enabled: Boolean, onClick: () -> Unit) {
 private fun LoggedOutChatInput(
     portraitMode: PortraitMode?,
     onToggleMode: (() -> Unit)?,
-    onLoginRequested: () -> Unit
+    onLoginRequested: () -> Unit,
+    isImmersiveEnabled: Boolean
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -387,7 +392,7 @@ private fun LoggedOutChatInput(
 
         Surface(
             color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
-            shape = RoundedCornerShape(24.dp),
+            shape = if (isImmersiveEnabled) RoundedCornerShape(24.dp) else RoundedCornerShape(8.dp),
             border = BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)),
             modifier = Modifier
                 .weight(1f)

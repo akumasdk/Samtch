@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.components.chat
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.util.Log
 import android.view.View
@@ -284,7 +285,11 @@ private fun ChatInputArea(
         modifier = modifier
             .fillMaxWidth()
             .onSizeChanged(onSizeChanged),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = if (isImmersiveEnabled) {
+            RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        } else {
+            androidx.compose.ui.graphics.RectangleShape
+        },
         color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
         border = if (isImmersiveEnabled) BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)) else null,
         tonalElevation = 0.dp
@@ -330,7 +335,8 @@ private fun ChatInputArea(
                             viewModel.setEmoteMenuVisible(visible = true)
                         }
                     },
-                    onLoginRequested = onLoginRequested
+                    onLoginRequested = onLoginRequested,
+                    isImmersiveEnabled = isImmersiveEnabled
                 )
 
                 val menuHeight = if (keyboardHeightPx > 0) {
@@ -407,6 +413,7 @@ private fun ChatInputArea(
     }
 }
 
+@SuppressLint("JavascriptInterface")
 @Composable
 private fun WebChatContainer(
     channel: String,
