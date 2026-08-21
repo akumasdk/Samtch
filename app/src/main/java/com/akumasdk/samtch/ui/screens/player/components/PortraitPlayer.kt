@@ -66,7 +66,7 @@ fun PortraitPlayer(
         )
     }
 
-    val bgAlpha = if (isImmersiveEnabled) 0.3f else 0.2f
+    val bgAlpha = if (isImmersiveEnabled) 0.35f else 0.2f
     val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
 
     PlayerBackground(

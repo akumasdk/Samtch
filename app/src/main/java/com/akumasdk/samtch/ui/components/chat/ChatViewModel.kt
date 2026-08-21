@@ -77,6 +77,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _isEmoteLoading = MutableStateFlow(false)
     val isEmoteLoading = _isEmoteLoading.asStateFlow()
 
+    private val _hasTriggeredEmoteLoad = MutableStateFlow(false)
+
     private val _currentChannel = MutableStateFlow<String?>(null)
     private val _tabUpdateTrigger = MutableStateFlow(0)
     private val userTags = mutableMapOf<String, String>()
@@ -165,6 +167,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         connectionJob?.cancel()
         _currentChannel.value = channel
         _tabUpdateTrigger.value += 1
+        _hasTriggeredEmoteLoad.value = forceRefresh
         
         // 2. Wipe all state immediately to prevent "leakage" in UI
         rawIrcMessages.clear()
@@ -245,9 +248,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     EmoteRepository.globalState,
                     EmoteRepository.getChannelState(channel),
                     BadgeRepository.globalState,
-                    BadgeRepository.getChannelState(channel)
-                ) { globalEmotes, channelEmotes, globalBadges, channelBadges ->
-                    _isEmoteLoading.value = !globalEmotes.isLoaded || !channelEmotes.isLoaded
+                    BadgeRepository.getChannelState(channel),
+                    _hasTriggeredEmoteLoad
+                ) { globalEmotes, channelEmotes, globalBadges, channelBadges, triggered ->
+                    _isEmoteLoading.value = triggered && (!globalEmotes.isLoaded || !channelEmotes.isLoaded)
                     globalEmotes.isLoaded || channelEmotes.isLoaded || globalBadges.isLoaded || channelBadges.isLoaded
                 }.collectLatest { anyLoaded ->
                     if (anyLoaded) {
@@ -258,7 +262,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             chatClient.connect(channel)
-            refreshEmotes(channel)
+            
+            // Emote and badge loading is now deferred until the emote menu is opened
+            // to improve initial chat "snappiness" and reduce startup overhead.
+            if (forceRefresh) {
+                refreshEmotes(channel)
+            }
             
             // Welcome message once connected
             launch {
@@ -441,6 +450,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setEmoteMenuVisible(visible: Boolean) {
         _isEmoteMenuVisible.value = visible
+        
+        if (visible && !_hasTriggeredEmoteLoad.value) {
+            val channel = _currentChannel.value
+            if (channel != null) {
+                _hasTriggeredEmoteLoad.value = true
+                refreshEmotes(channel)
+            }
+        }
     }
 
     fun updateKeyboardHeight(context: android.content.Context, heightPx: Int, isLandscape: Boolean) {

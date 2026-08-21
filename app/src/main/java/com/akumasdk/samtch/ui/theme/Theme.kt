@@ -138,6 +138,7 @@ fun SamtchTheme(
         )
     } else {
         val darkPurple = Color(0xFF6441A5) // Deep purple for high contrast on light backgrounds
+        val offWhite = Color(0xFFF7F7F8) // Twitch light mode background
         SamtchColors(
             chatBackground = Color.White,
             miniPlayerBackground = Color.White,
@@ -147,7 +148,7 @@ fun SamtchTheme(
             primaryText = Color.Black,
             secondaryText = Color.DarkGray,
             dialogBackground = Color.White,
-            rootBackground = Color.White,
+            rootBackground = offWhite,
             adblockBackground = Color.White.copy(alpha = 0.9f),
             tooltipBackground = Color.White.copy(alpha = 0.9f),
             tabButtonBackground = Color.White.copy(alpha = 0.8f),

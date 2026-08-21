@@ -42,7 +42,7 @@ fun SystemNoticeBanner(
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (isImmersiveEnabled) {
                     PlayerBackground(
-                        alpha = 0.6f,
+                        alpha = 0.45f,
                         blurRadius = 150.dp,
                         containerColor = Color.Transparent,
                         modifier = Modifier.matchParentSize()

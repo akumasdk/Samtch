@@ -87,7 +87,7 @@ fun FullscreenPlayer(
             enter = slideInHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeIn(),
             exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
         ) {
-            val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
+            val bgAlpha = if (isImmersiveEnabled) 0.35f else 0f
             val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
             val surfaceAlpha = if (isImmersiveEnabled) 0.4f else 1.0f
 

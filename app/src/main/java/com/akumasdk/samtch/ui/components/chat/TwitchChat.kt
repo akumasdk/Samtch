@@ -240,7 +240,7 @@ private fun NativeChatContainer(
 @Composable
 private fun ChatImmersiveBackground(channel: String, previewImageUrl: String?) {
     val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
-    val imageAlpha = if (isLightMode) 0.5f else 0.7f
+    val imageAlpha = if (isLightMode) 0.45f else 0.65f
     PlayerBackground(
         channel = channel,
         previewUrl = previewImageUrl,
@@ -277,9 +277,9 @@ private fun ChatInputArea(
     val density = LocalDensity.current
     val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
     val surfaceAlpha = if (isImmersiveEnabled) {
-        if (isLightMode) 0.94f else 0.82f
+        if (isLightMode) 0.86f else 0.78f
     } else 1.0f
-    val imageAlpha = if (isLightMode) 0.5f else 0.7f
+    val imageAlpha = if (isLightMode) 0.45f else 0.65f
 
     Surface(
         modifier = modifier
@@ -330,10 +330,9 @@ private fun ChatInputArea(
                     emoteInsertFlow = viewModel.emoteInsertFlow,
                     portraitMode = portraitMode,
                     onToggleMode = onToggleMode,
-                    onFocusChanged = { focused ->
-                        if (focused) {
-                            viewModel.setEmoteMenuVisible(visible = true)
-                        }
+                    onFocusChanged = { _ ->
+                        // Logic removed to prevent triggering emote load on simple text input focus.
+                        // Emotes will only load when the emote menu icon is explicitly clicked.
                     },
                     onLoginRequested = onLoginRequested,
                     isImmersiveEnabled = isImmersiveEnabled
