@@ -66,7 +66,7 @@ fun StreamInfoDialog(
                 PlayerBackground(
                     previewUrl = previewImageUrl,
                     alpha = 1.0f, // Using gradient for transparency control
-                    blurRadius = 0.dp,
+                    blurRadius = 150.dp,
                     containerColor = Color.Transparent,
                     contentScale = ContentScale.FillBounds,
                     modifier = Modifier.matchParentSize()

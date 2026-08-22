@@ -1,5 +1,23 @@
 # Changelog
 
+## Samtch v1.1.2
+
+### What's New
+- **Fluid Theme Transitions**: Implemented a smooth, synchronized color animation system that elegantly fades the entire UI when switching between Light and Dark themes, including synchronized status bar icon transitions.
+- **Advanced Performance Engine**:
+    - **Concurrent Chat Processing**: Offloaded message parsing, UI mapping, and history re-rendering to background threads (`Dispatchers.Default`), ensuring the main thread remains free for silky-smooth 60ms scrolling even in high-traffic channels.
+    - **Snappy App Startup**: Moved script loading, version checks, and GQL cache warming to background IO, significantly reducing initial hang time.
+    - **Optimized Player Metadata**: Backgrounded Media3 metadata construction for faster player response.
+- **Refined Immersive Experience**:
+    - **Theme-Aware Immersion**: Refactored immersive backgrounds to be Dark Mode exclusive for the main chat and player areas, ensuring the Light Theme remains clean and readable.
+    - **Stretched Color Palette**: Updated all immersive backgrounds to use `FillBounds` scaling, "stretching" the preview image to capture and display the full spectrum of the stream's colors.
+    - **Polished Emote Menu**: Added subtle, pulsing placeholder dots for emotes during their initial load, providing immediate visual feedback.
+- **System Stability**: 
+    - **Thread-Safe State**: Migrated internal chat structures to concurrent collections to prevent race conditions during heavy traffic.
+    - **PiP Recovery**: Fixed an issue where system bars would lose theme synchronization after returning from Picture-in-Picture mode.
+
+---
+
 ## Samtch v1.1.1
 
 ### What's New
