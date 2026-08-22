@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -61,6 +62,7 @@ fun StatusBanner(
                         alpha = 0.6f,
                         blurRadius = 150.dp,
                         containerColor = Color.Transparent,
+                        contentScale = ContentScale.FillBounds,
                         modifier = Modifier.matchParentSize()
                     )
                 }

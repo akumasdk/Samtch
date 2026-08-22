@@ -19,6 +19,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -28,6 +30,7 @@ import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @Composable
 fun PortraitPlayer(
@@ -66,15 +69,17 @@ fun PortraitPlayer(
         )
     }
 
-    val bgAlpha = if (isImmersiveEnabled) 0.3f else 0.2f
-    val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
+    val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
+    val bgAlpha = if (isImmersiveEnabled && isActuallyDark) 0.35f else 0.2f
+    val bgBlur = if (isImmersiveEnabled && isActuallyDark) 60.dp else 0.dp
 
     PlayerBackground(
         channel = channel,
         previewUrl = previewImageUrl,
         modifier = Modifier.fillMaxSize(),
-        alpha = bgAlpha,
-        blurRadius = bgBlur
+        alpha = if (isActuallyDark) bgAlpha else 0f, // Disable root image in light mode
+        blurRadius = bgBlur,
+        contentScale = ContentScale.FillBounds
     ) {
         Column(
             modifier = Modifier

@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
@@ -83,10 +84,13 @@ fun StreamMetadataBar(
     }
 
     val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
-    val surfaceAlpha = if (isImmersiveEnabled) {
-        if (isLightMode) 0.94f else 0.82f
-    } else 1.0f
-    val imageAlpha = if (isLightMode) 0.5f else 0.7f
+    // Immersive mode is disabled for metadata bar in light mode as per request
+    val isImmersiveActuallyEnabled = isImmersiveEnabled && !isLightMode
+
+    val surfaceAlpha = if (isImmersiveActuallyEnabled) 0.82f else 1.0f
+    
+    // Minimal image alpha for very subtle color accents
+    val imageAlpha = 0.7f
 
     Surface(
         modifier = modifier
@@ -105,18 +109,19 @@ fun StreamMetadataBar(
             bottomEnd = 16.dp
         ),
         color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
-        border = if (isImmersiveEnabled) {
+        border = if (isImmersiveActuallyEnabled) {
             BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f))
         } else {
             BorderStroke(0.5.dp, SamtchTheme.colors.divider)
         },
         tonalElevation = 0.dp
     ) {
-        if (isImmersiveEnabled) {
+        if (isImmersiveActuallyEnabled) {
             PlayerBackground(
                 previewUrl = previewImageUrl,
                 alpha = imageAlpha,
                 blurRadius = 150.dp,
+                contentScale = ContentScale.FillBounds,
                 containerColor = Color.Transparent,
                 modifier = Modifier.fillMaxSize()
             )

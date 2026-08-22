@@ -22,6 +22,7 @@ materialIconsCore = "1.7.8"
 splashscreen = "1.0.1"
 playwright = "1.58.0"
 media3 = "1.5.1"
+palette = "1.0.0"
 
 [libraries]
 media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
@@ -61,6 +62,7 @@ ktor-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation",
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorClientCore" }
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktorClientCore" }
 playwright = { module = "com.microsoft.playwright:playwright", version.ref = "playwright" }
+androidx-palette-ktx = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

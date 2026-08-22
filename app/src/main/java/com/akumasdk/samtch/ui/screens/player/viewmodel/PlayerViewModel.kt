@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -17,17 +18,17 @@ import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
-import com.akumasdk.samtch.data.api.helix.dto.UserDto
-import com.akumasdk.samtch.data.model.*
+import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.service.PlaybackService
+import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import com.google.common.util.concurrent.MoreExecutors
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import androidx.core.net.toUri
-import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
     var channel by mutableStateOf<String?>(null)
@@ -112,21 +113,26 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateMediaItem(channelName: String) {
         val controller = mediaController ?: return
-        val metadata = MediaMetadata.Builder()
-            .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
-            .setArtist(streamMetadata?.user?.displayName ?: channelName)
-            .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
-            .setArtworkUri(avatarUrl?.toUri())
-            .build()
-            
-        controller.setMediaItem(
-            MediaItem.Builder()
+        
+        viewModelScope.launch(Dispatchers.Default) {
+            val metadata = MediaMetadata.Builder()
+                .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
+                .setArtist(streamMetadata?.user?.displayName ?: channelName)
+                .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
+                .setArtworkUri(avatarUrl?.toUri())
+                .build()
+                
+            val mediaItem = MediaItem.Builder()
                 .setMediaId(channelName)
                 .setMediaMetadata(metadata)
                 .build()
-        )
-        controller.prepare()
-        controller.play()
+
+            withContext(Dispatchers.Main) {
+                controller.setMediaItem(mediaItem)
+                controller.prepare()
+                controller.play()
+            }
+        }
     }
 
     private fun startMetadataFetch(channel: String) {

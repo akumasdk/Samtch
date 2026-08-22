@@ -22,7 +22,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Collections
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.milliseconds
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
@@ -77,9 +80,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _isEmoteLoading = MutableStateFlow(false)
     val isEmoteLoading = _isEmoteLoading.asStateFlow()
 
+    private val _hasTriggeredEmoteLoad = MutableStateFlow(false)
+
     private val _currentChannel = MutableStateFlow<String?>(null)
     private val _tabUpdateTrigger = MutableStateFlow(0)
-    private val userTags = mutableMapOf<String, String>()
+    private val userTags = ConcurrentHashMap<String, String>()
 
     init {
         // Automatically refresh emotes when login state changes for the current channel
@@ -147,8 +152,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     private var connectionJob: Job? = null
-    private val messageHistory = mutableListOf<ChatMessageUiState>()
-    private val rawIrcMessages = mutableListOf<IrcMessage>()
+    private val messageHistory = Collections.synchronizedList(mutableListOf<ChatMessageUiState>())
+    private val rawIrcMessages = Collections.synchronizedList(mutableListOf<IrcMessage>())
     private val messageBuffer = MutableSharedFlow<ChatMessageUiState>(extraBufferCapacity = 200)
 
     fun connect(
@@ -165,6 +170,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         connectionJob?.cancel()
         _currentChannel.value = channel
         _tabUpdateTrigger.value += 1
+        _hasTriggeredEmoteLoad.value = forceRefresh
         
         // 2. Wipe all state immediately to prevent "leakage" in UI
         rawIrcMessages.clear()
@@ -217,25 +223,36 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             // Collect messages in batches to prevent UI lag in high-traffic channels
-            launch {
+            launch(Dispatchers.Default) {
                 messageBuffer
                     .adaptiveChunked(150, 400, 10) // Batch updates every 150-400ms
                     .collect { newBatch ->
+                        val updatedList = synchronized(messageHistory) { messageHistory.toMutableList() }
+                        
                         // Deduplicate by ID to prevent LazyColumn duplicate key crash
                         newBatch.forEach { newMessage ->
-                            val existingIndex = messageHistory.indexOfFirst { it.id == newMessage.id }
+                            val existingIndex = updatedList.indexOfFirst { it.id == newMessage.id }
                             if (existingIndex != -1) {
-                                messageHistory[existingIndex] = newMessage
+                                updatedList[existingIndex] = newMessage
                             } else {
-                                messageHistory.add(newMessage)
+                                updatedList.add(newMessage)
                             }
                         }
                         
-                        if (messageHistory.size > 500) { // Slightly larger history for high-traffic
-                            val toRemove = messageHistory.size - 500
-                            repeat(toRemove) { messageHistory.removeAt(0) }
+                        if (updatedList.size > 500) { 
+                            val toRemove = updatedList.size - 500
+                            repeat(toRemove) { updatedList.removeAt(0) }
                         }
-                        _messages.value = messageHistory.toImmutableList()
+                        
+                        val immutableBatch = updatedList.toImmutableList()
+                        
+                        withContext(Dispatchers.Main) {
+                            synchronized(messageHistory) {
+                                messageHistory.clear()
+                                messageHistory.addAll(updatedList)
+                            }
+                            _messages.value = immutableBatch
+                        }
                     }
             }
 
@@ -245,9 +262,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     EmoteRepository.globalState,
                     EmoteRepository.getChannelState(channel),
                     BadgeRepository.globalState,
-                    BadgeRepository.getChannelState(channel)
-                ) { globalEmotes, channelEmotes, globalBadges, channelBadges ->
-                    _isEmoteLoading.value = !globalEmotes.isLoaded || !channelEmotes.isLoaded
+                    BadgeRepository.getChannelState(channel),
+                    _hasTriggeredEmoteLoad
+                ) { globalEmotes, channelEmotes, globalBadges, channelBadges, triggered ->
+                    _isEmoteLoading.value = triggered && (!globalEmotes.isLoaded || !channelEmotes.isLoaded)
                     globalEmotes.isLoaded || channelEmotes.isLoaded || globalBadges.isLoaded || channelBadges.isLoaded
                 }.collectLatest { anyLoaded ->
                     if (anyLoaded) {
@@ -258,7 +276,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             chatClient.connect(channel)
-            refreshEmotes(channel)
+            
+            // Emote and badge loading is now deferred until the emote menu is opened
+            // to improve initial chat "snappiness" and reduce startup overhead.
+            if (forceRefresh) {
+                refreshEmotes(channel)
+            }
             
             // Welcome message once connected
             launch {
@@ -274,35 +297,41 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             chatClient.messages.collect { msg ->
-                if (msg.command == "PRIVMSG") {
-                    if (rawIrcMessages.none { it.id == msg.id }) {
-                        rawIrcMessages.add(msg)
-                        if (rawIrcMessages.size > 500) rawIrcMessages.removeAt(0)
-                    }
-                    
-                    val uiState = ChatMessageMapper.mapToUiState(channel, msg)
-                    messageBuffer.emit(uiState)
-                } else if (msg.command == "NOTICE" || msg.command == "USERNOTICE") {
-                    val messageText = msg.params.lastOrNull() ?: msg.raw
-                    val systemMsg = ChatMessageUiState.SystemMessageUi(
-                        id = msg.id,
-                        message = messageText
-                    )
-                    messageBuffer.emit(systemMsg)
-                    
-                    // Only NOTICE (slow mode, sub mode, etc.) triggers the persistent banner
-                    if (msg.command == "NOTICE") {
-                        _systemNotice.value = messageText
-                        // Auto-dismiss after 6 seconds
-                        launch {
-                            delay(6000.milliseconds)
-                            if (_systemNotice.value == messageText) {
-                                _systemNotice.value = null
+                launch(Dispatchers.Default) {
+                    if (msg.command == "PRIVMSG") {
+                        synchronized(rawIrcMessages) {
+                            if (rawIrcMessages.none { it.id == msg.id }) {
+                                rawIrcMessages.add(msg)
+                                if (rawIrcMessages.size > 500) rawIrcMessages.removeAt(0)
                             }
                         }
+                        
+                        val uiState = ChatMessageMapper.mapToUiState(channel, msg)
+                        messageBuffer.emit(uiState)
+                    } else if (msg.command == "NOTICE" || msg.command == "USERNOTICE") {
+                        val messageText = msg.params.lastOrNull() ?: msg.raw
+                        val systemMsg = ChatMessageUiState.SystemMessageUi(
+                            id = msg.id,
+                            message = messageText
+                        )
+                        messageBuffer.emit(systemMsg)
+                        
+                        // Only NOTICE (slow mode, sub mode, etc.) triggers the persistent banner
+                        if (msg.command == "NOTICE") {
+                            withContext(Dispatchers.Main) {
+                                _systemNotice.value = messageText
+                                // Auto-dismiss after 6 seconds
+                                launch {
+                                    delay(6000.milliseconds)
+                                    if (_systemNotice.value == messageText) {
+                                        _systemNotice.value = null
+                                    }
+                                }
+                            }
+                        }
+                    } else if (msg.command == "USERSTATE" || msg.command == "GLOBALUSERSTATE") {
+                        userTags.putAll(msg.tags)
                     }
-                } else if (msg.command == "USERSTATE" || msg.command == "GLOBALUSERSTATE") {
-                    userTags.putAll(msg.tags)
                 }
             }
         }
@@ -352,18 +381,26 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (rawIrcMessages.isEmpty()) return
         Log.d(TAG, "Remapping ${rawIrcMessages.size} messages for channel: $channel")
         
-        val idToNewState = rawIrcMessages.associate { 
-            it.id to ChatMessageMapper.mapToUiState(channel, it) 
+        viewModelScope.launch(Dispatchers.Default) {
+            val idToNewState = synchronized(rawIrcMessages) {
+                rawIrcMessages.associate { 
+                    it.id to ChatMessageMapper.mapToUiState(channel, it) 
+                }
+            }
+            
+            withContext(Dispatchers.Main) {
+                // Update history in-place while preserving non-IRC messages
+                synchronized(messageHistory) {
+                    val newHistory = messageHistory.map { oldState ->
+                        idToNewState[oldState.id] ?: oldState
+                    }
+                    
+                    messageHistory.clear()
+                    messageHistory.addAll(newHistory)
+                    _messages.value = messageHistory.toImmutableList()
+                }
+            }
         }
-        
-        // Update history in-place while preserving non-IRC messages
-        val newHistory = messageHistory.map { oldState ->
-            idToNewState[oldState.id] ?: oldState
-        }
-        
-        messageHistory.clear()
-        messageHistory.addAll(newHistory)
-        _messages.value = messageHistory.toImmutableList()
     }
 
     suspend fun sendMessage(message: String) {
@@ -386,13 +423,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 tags = tags
             )
             
-            val uiState = ChatMessageMapper.mapToUiState(channel, syntheticMsg)
-            
-            messageHistory.add(uiState)
-            if (messageHistory.size > 500) {
-                messageHistory.removeAt(0)
+            withContext(Dispatchers.Default) {
+                val uiState = ChatMessageMapper.mapToUiState(channel, syntheticMsg)
+                
+                withContext(Dispatchers.Main) {
+                    synchronized(messageHistory) {
+                        messageHistory.add(uiState)
+                        if (messageHistory.size > 500) {
+                            messageHistory.removeAt(0)
+                        }
+                    }
+                    _messages.value = messageHistory.toImmutableList()
+                }
             }
-            _messages.value = messageHistory.toImmutableList()
         }
 
         // 2. Transmit to server
@@ -441,6 +484,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setEmoteMenuVisible(visible: Boolean) {
         _isEmoteMenuVisible.value = visible
+        
+        if (visible && !_hasTriggeredEmoteLoad.value) {
+            val channel = _currentChannel.value
+            if (channel != null) {
+                _hasTriggeredEmoteLoad.value = true
+                refreshEmotes(channel)
+            }
+        }
     }
 
     fun updateKeyboardHeight(context: android.content.Context, heightPx: Int, isLandscape: Boolean) {

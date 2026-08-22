@@ -68,7 +68,7 @@ fun AudioOnlyPlayer(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(SamtchTheme.colors.rootBackground.copy(alpha = 0.7f))
+                            .background(SamtchTheme.colors.rootBackground.copy(alpha = 0.85f))
                     )
                 }
             }

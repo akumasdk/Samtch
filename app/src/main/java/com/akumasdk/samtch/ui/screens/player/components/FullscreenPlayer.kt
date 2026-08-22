@@ -23,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -87,9 +89,10 @@ fun FullscreenPlayer(
             enter = slideInHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeIn(),
             exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
         ) {
-            val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
-            val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
-            val surfaceAlpha = if (isImmersiveEnabled) 0.4f else 1.0f
+            val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
+            val bgAlpha = if (isImmersiveEnabled && isActuallyDark) 0.35f else 0f
+            val bgBlur = if (isImmersiveEnabled && isActuallyDark) 60.dp else 0.dp
+            val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.4f else 1.0f
 
             PlayerBackground(
                 channel = channel,
@@ -97,8 +100,9 @@ fun FullscreenPlayer(
                 modifier = Modifier
                     .width(300.dp)
                     .fillMaxHeight(),
-                alpha = bgAlpha,
-                blurRadius = bgBlur
+                alpha = if (isActuallyDark) bgAlpha else 0f,
+                blurRadius = bgBlur,
+                contentScale = ContentScale.FillBounds
             ) {
                 Box(
                     modifier = Modifier
