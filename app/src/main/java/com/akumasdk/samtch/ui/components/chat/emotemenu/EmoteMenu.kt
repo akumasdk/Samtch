@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.components.chat.emotemenu
 
 import android.util.Log
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -217,6 +218,8 @@ fun EmoteItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    var isLoading by remember { mutableStateOf(true) }
+
     Box(
         modifier = Modifier
             .size(48.dp)
@@ -228,6 +231,24 @@ fun EmoteItem(
             },
         contentAlignment = Alignment.Center
     ) {
+        if (isLoading) {
+            val infiniteTransition = rememberInfiniteTransition(label = "DotPulse")
+            val alpha by infiniteTransition.animateFloat(
+                initialValue = 0.2f,
+                targetValue = 0.6f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(800, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "DotAlpha"
+            )
+            
+            Box(
+                modifier = Modifier
+                    .size(4.dp)
+                    .background(SamtchTheme.colors.secondaryText.copy(alpha = alpha), CircleShape)
+            )
+        }
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(emote.url)
@@ -235,7 +256,10 @@ fun EmoteItem(
                 .build(),
             contentDescription = emote.code,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Fit,
+            onState = { state ->
+                isLoading = state is coil.compose.AsyncImagePainter.State.Loading
+            }
         )
     }
 }

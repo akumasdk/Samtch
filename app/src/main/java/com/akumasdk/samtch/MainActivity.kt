@@ -18,9 +18,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,6 +54,7 @@ import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.emote.EmoteRepository
+import com.akumasdk.samtch.ui.MainViewModel
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.login.LoginActivity
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
@@ -70,11 +74,9 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-
-import com.akumasdk.samtch.ui.MainViewModel
-import androidx.activity.viewModels
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -151,7 +153,13 @@ class MainActivity : ComponentActivity() {
                     val playerViewModel: PlayerViewModel = viewModel()
                     val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
 
-                    LaunchedEffect(darkTheme, viewModel.selectedChannel, viewModel.isMinimized, viewModel.isSettingsOpen) {
+                    LaunchedEffect(darkTheme, viewModel.selectedChannel, viewModel.isMinimized, viewModel.isSettingsOpen, viewModel.isInPipMode) {
+                        // Sync status bar icons with the theme transition midpoint
+                        if (darkTheme != (viewModel.lastDarkTheme ?: darkTheme)) {
+                            delay(200) // Adjusted for 400ms total transition
+                        }
+                        viewModel.lastDarkTheme = darkTheme
+
                         val statusBarStyle = if (darkTheme) {
                             SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
                         } else {

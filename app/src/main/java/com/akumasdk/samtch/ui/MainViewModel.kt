@@ -20,6 +20,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var isMinimized by mutableStateOf(false)
     var isAudioOnlyMode by mutableStateOf(false)
     var isSettingsOpen by mutableStateOf(false)
+    var lastDarkTheme: Boolean? = null
 
     var lastAvatarUrl: String? = null
     var lastSubtitle: String? = null
