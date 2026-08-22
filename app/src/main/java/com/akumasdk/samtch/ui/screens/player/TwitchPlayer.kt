@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -385,7 +386,8 @@ fun TwitchPlayer(
                         PlayerBackground(
                             channel = channel,
                             previewUrl = previewImageUrl,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.FillBounds
                         ) {
                             PlayerWebView(
                                 state = state,
@@ -493,7 +495,8 @@ fun TwitchPlayer(
                         channel = channel,
                         previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         refreshKey = playerViewModel.metadataRefreshTrigger,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.FillBounds
                     )
                 }
 
@@ -650,7 +653,8 @@ fun TwitchPlayer(
                                     previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
                                     modifier = Modifier.fillMaxSize(),
                                     alpha = bgAlpha,
-                                    blurRadius = bgBlur
+                                    blurRadius = bgBlur,
+                                    contentScale = ContentScale.FillBounds
                                 ) {
                                     Box(
                                         modifier = Modifier

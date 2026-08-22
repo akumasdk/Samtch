@@ -35,13 +35,31 @@ fun ThemeModeItem(themeMode: SettingsManager.ThemeMode, onClick: () -> Unit, onR
 }
 
 @Composable
-fun ImmersiveBackgroundToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> Unit) {
+fun ImmersiveBackgroundToggleItem(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onReset: () -> Unit
+) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.immersive_background_title)) },
         supportingContent = { Text(stringResource(R.string.immersive_background_summary)) },
-        leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_radial_blur), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
-        modifier = Modifier.combinedClickable(onClick = { onToggle(!enabled) }, onLongClick = onReset)
+        leadingContent = {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_radial_blur),
+                contentDescription = null,
+                tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            )
+        },
+        trailingContent = {
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle
+            )
+        },
+        modifier = Modifier.combinedClickable(
+            onClick = { onToggle(!enabled) },
+            onLongClick = onReset
+        )
     )
 }
 

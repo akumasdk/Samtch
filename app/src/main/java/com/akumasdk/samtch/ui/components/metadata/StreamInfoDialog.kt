@@ -68,6 +68,7 @@ fun StreamInfoDialog(
                     alpha = 1.0f, // Using gradient for transparency control
                     blurRadius = 0.dp,
                     containerColor = Color.Transparent,
+                    contentScale = ContentScale.FillBounds,
                     modifier = Modifier.matchParentSize()
                 ) {
                     // Layered gradient for maximum readability across light/dark themes

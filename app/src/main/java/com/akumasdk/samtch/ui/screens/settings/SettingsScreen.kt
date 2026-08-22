@@ -59,6 +59,13 @@ fun SettingsScreen(
     val isImmersiveBackgroundEnabled by remember(context) { SettingsManager.isImmersiveBackgroundEnabled(context) }.collectAsState(initial = true)
     val isLoggedIn by remember(context) { SettingsManager.isLoggedIn(context) }.collectAsState(initial = false)
 
+    val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+    val isActuallyDark = when (themeMode) {
+        SettingsManager.ThemeMode.DARK -> true
+        SettingsManager.ThemeMode.LIGHT -> false
+        SettingsManager.ThemeMode.SYSTEM -> isSystemInDarkTheme
+    }
+
     BackHandler {
         if (showAboutDialog) {
             showAboutDialog = false
@@ -106,6 +113,7 @@ fun SettingsScreen(
             appearanceSection(
                 themeMode = themeMode,
                 isImmersiveEnabled = isImmersiveBackgroundEnabled,
+                isActuallyDark = isActuallyDark,
                 scope = scope,
                 context = context,
                 onThemeClick = { showThemeModeDialog = true }
@@ -190,6 +198,7 @@ fun SettingsScreen(
 private fun LazyListScope.appearanceSection(
     themeMode: SettingsManager.ThemeMode,
     isImmersiveEnabled: Boolean,
+    isActuallyDark: Boolean,
     scope: CoroutineScope,
     context: android.content.Context,
     onThemeClick: () -> Unit
@@ -202,12 +211,14 @@ private fun LazyListScope.appearanceSection(
             onReset = { scope.launch { SettingsManager.setThemeMode(context, SettingsManager.ThemeMode.SYSTEM) } }
         ) 
     }
-    item { 
-        ImmersiveBackgroundToggleItem(
-            isImmersiveEnabled,
-            onToggle = { scope.launch { SettingsManager.setImmersiveBackgroundEnabled(context, it) } },
-            onReset = { scope.launch { SettingsManager.setImmersiveBackgroundEnabled(context, true) } }
-        )
+    if (isActuallyDark) {
+        item { 
+            ImmersiveBackgroundToggleItem(
+                enabled = isImmersiveEnabled,
+                onToggle = { scope.launch { SettingsManager.setImmersiveBackgroundEnabled(context, it) } },
+                onReset = { scope.launch { SettingsManager.setImmersiveBackgroundEnabled(context, true) } }
+            )
+        }
     }
     item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
 }

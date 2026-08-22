@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -132,10 +133,14 @@ private fun NativeChatContainer(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val isImmersiveEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
     val density = LocalDensity.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
+
+    val isImmersiveBackgroundEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
+    // General chat immersive mode (background image + surface translucency) is dark-only
+    val isImmersiveEnabled = isImmersiveBackgroundEnabled && isActuallyDark
 
     val isEmoteMenuVisible by viewModel.isEmoteMenuVisible.collectAsState()
     val keyboardHeightPx by viewModel.keyboardHeightPx.collectAsState()
@@ -173,7 +178,7 @@ private fun NativeChatContainer(
     }
 
     LaunchedEffect(channel) {
-        viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate)
+        viewModel.connect(context, channel, chatLoadingText, welcomeMessageTemplate = chatWelcomeTemplate, loginMessageTemplate = chatLoginTemplate)
     }
     
     Box(modifier = modifier.fillMaxSize()) {
@@ -240,12 +245,13 @@ private fun NativeChatContainer(
 @Composable
 private fun ChatImmersiveBackground(channel: String, previewImageUrl: String?) {
     val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
-    val imageAlpha = if (isLightMode) 0.45f else 0.65f
+    val imageAlpha = if (isLightMode) 0.7f else 0.65f
     PlayerBackground(
         channel = channel,
         previewUrl = previewImageUrl,
         alpha = imageAlpha,
         blurRadius = 150.dp,
+        contentScale = ContentScale.FillBounds,
         modifier = Modifier.fillMaxSize()
     )
 }
@@ -277,9 +283,9 @@ private fun ChatInputArea(
     val density = LocalDensity.current
     val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
     val surfaceAlpha = if (isImmersiveEnabled) {
-        if (isLightMode) 0.86f else 0.78f
+        if (isLightMode) 0.82f else 0.78f
     } else 1.0f
-    val imageAlpha = if (isLightMode) 0.45f else 0.65f
+    val imageAlpha = if (isLightMode) 0.7f else 0.65f
 
     Surface(
         modifier = modifier
@@ -299,6 +305,7 @@ private fun ChatInputArea(
                 PlayerBackground(
                     alpha = imageAlpha,
                     blurRadius = 150.dp,
+                    contentScale = ContentScale.FillBounds,
                     containerColor = Color.Transparent,
                     modifier = Modifier.matchParentSize()
                 )

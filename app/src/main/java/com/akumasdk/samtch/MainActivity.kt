@@ -106,15 +106,19 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition { !viewModel.isAppLoaded }
 
-        ScriptLoader.initialize(this)
         orientationManager = DeviceOrientationManager(this)
 
-        lifecycleScope.launch {
+        lifecycleScope.launch(Dispatchers.IO) {
+            ScriptLoader.initialize(this@MainActivity)
+            
             val lastVersion = SettingsManager.getLastVersionCode(this@MainActivity).first()
             if ((lastVersion != -1) && (lastVersion != BuildConfig.VERSION_CODE)) {
                 SettingsManager.clear(this@MainActivity)
             }
             SettingsManager.setLastVersionCode(this@MainActivity, BuildConfig.VERSION_CODE)
+            
+            // Warm up Twitch GQL cache
+            TwitchGqlService.getPlaybackAccessToken("twitch")
         }
 
         handleIntent(intent)
@@ -122,10 +126,6 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            TwitchGqlService.getPlaybackAccessToken("twitch")
-        }
 
         val filter = IntentFilter().apply {
             addAction(Constants.Actions.REFRESH)
@@ -150,15 +150,9 @@ class MainActivity : ComponentActivity() {
                 SamtchTheme(darkTheme = darkTheme) {
                     val playerViewModel: PlayerViewModel = viewModel()
                     val isPipEnabled by SettingsManager.isPipEnabled(this@MainActivity).collectAsState(initial = true)
-                    val isImmersiveEnabled by SettingsManager.isImmersiveBackgroundEnabled(this@MainActivity).collectAsState(initial = true)
 
-                    LaunchedEffect(darkTheme, viewModel.selectedChannel, viewModel.isMinimized, viewModel.isSettingsOpen, isImmersiveEnabled) {
-                        val isPlayerActive = viewModel.selectedChannel != null && !viewModel.isMinimized
-                        val forceLightIcons = isPlayerActive && isImmersiveEnabled && !viewModel.isSettingsOpen
-                        
-                        val statusBarStyle = if (forceLightIcons) {
-                            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
-                        } else if (darkTheme) {
+                    LaunchedEffect(darkTheme, viewModel.selectedChannel, viewModel.isMinimized, viewModel.isSettingsOpen) {
+                        val statusBarStyle = if (darkTheme) {
                             SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
                         } else {
                             SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
