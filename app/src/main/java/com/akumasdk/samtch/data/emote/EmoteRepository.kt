@@ -119,9 +119,12 @@ object EmoteRepository {
         val stateFlow = _channelStates.getOrPut(channelLower) { MutableStateFlow(ChannelEmoteState()) }
         val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
         
-        // If already loaded with the same auth state AND we're on the same channel, skip.
-        // For guest users, loadedWithAuth will be false.
-        if (stateFlow.value.isLoaded && stateFlow.value.loadedWithAuth == auth.isLoggedIn) return@withContext
+        // If already loaded with a valid ID and same auth state, skip.
+        // If we didn't have an ID before but we do now, we MUST proceed.
+        val currentState = stateFlow.value
+        if (currentState.isLoaded && currentState.loadedWithAuth == auth.isLoggedIn && (userId == null || currentState.twitchEmotes.isNotEmpty() || currentState.seventvEmotes.isNotEmpty())) {
+             return@withContext
+        }
 
         try {
             val bttvMap = mutableMapOf<String, Emote>()
@@ -133,7 +136,7 @@ object EmoteRepository {
             val resolvedUserId = userId ?: if (auth.isLoggedIn && auth.userName.equals(channelLower, ignoreCase = true)) {
                 auth.userId
             } else {
-                // For guests, HelixApiClient.getUserIdByName will fail, which is caught and returns null
+                // Try Helix first (requires auth), then GQL (guest-friendly)
                 HelixApiClient.getUserIdByName(context, channelLower).getOrNull() 
                     ?: TwitchGqlService.getUserId(channelLower)
             }
@@ -167,7 +170,10 @@ object EmoteRepository {
             // Load 7TV Channel
             try {
                 val seventvUser = SevenTVApi.getChannelEmotes(resolvedUserId)
-                seventvUser.emote_set?.emotes?.forEach { emote ->
+                // The emote_set can be at the top level (UserConnection) or nested in 'user'
+                val activeSet = seventvUser.emoteSet ?: seventvUser.user?.emoteSet
+                
+                activeSet?.emotes?.forEach { emote ->
                     parseSevenTVEmote(emote)?.let { seventvMap[it.code] = it }
                 }
             } catch (e: Exception) { Log.e(TAG, "7TV Channel load failed for $channelLower", e) }
@@ -280,10 +286,12 @@ object EmoteRepository {
     private fun parseSevenTVEmote(emote: SevenTVEmote): Emote? {
         val data = emote.data ?: return null
         val hostUrl = data.host.url
+        if (hostUrl.isBlank()) return null
         
         // Find best quality (webp preferably)
         val bestFile = data.host.files.find { it.name == "4x.webp" }
-                      ?: data.host.files.find { it.format == "WEBP" }
+                      ?: data.host.files.find { it.format == "WEBP" && it.name.contains("4x") }
+                      ?: data.host.files.find { it.name == "2x.webp" }
                       ?: data.host.files.firstOrNull()
         
         val path = bestFile?.name ?: "4x.webp"
@@ -292,7 +300,7 @@ object EmoteRepository {
             hostUrl.startsWith("http") -> hostUrl
             else -> "https://$hostUrl"
         }
-        val url = "$baseUrl/$path"
+        val url = if (baseUrl.endsWith("/")) "$baseUrl$path" else "$baseUrl/$path"
         
         return Emote(
             id = emote.id,

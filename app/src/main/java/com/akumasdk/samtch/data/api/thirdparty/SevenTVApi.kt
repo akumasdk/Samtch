@@ -13,7 +13,11 @@ import kotlinx.serialization.json.Json
 object SevenTVApi {
     private val client = HttpClient {
         install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
+            json(Json { 
+                ignoreUnknownKeys = true 
+                coerceInputValues = true
+                explicitNulls = false
+            })
         }
     }
 

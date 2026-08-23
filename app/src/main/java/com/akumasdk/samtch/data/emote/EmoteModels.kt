@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.data.emote
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -34,8 +35,8 @@ data class BTTVChannelResponse(
 
 @Serializable
 data class SevenTVEmote(
-    val id: String,
-    val name: String,
+    val id: String = "",
+    val name: String = "",
     val flags: Int = 0,
     val data: SevenTVEmoteData? = null
 ) {
@@ -48,34 +49,43 @@ data class SevenTVEmoteData(
     val name: String = "",
     val flags: Int = 0,
     val animated: Boolean = false,
-    val host: SevenTVHost
+    val host: SevenTVHost = SevenTVHost()
 )
 
 @Serializable
 data class SevenTVHost(
-    val url: String,
+    val url: String = "",
     val files: List<SevenTVFile> = emptyList()
 )
 
 @Serializable
 data class SevenTVFile(
-    val name: String,
-    val format: String
+    val name: String = "",
+    val format: String = ""
 )
 
 @Serializable
 data class SevenTVEmoteSet(
-    val id: String,
-    val name: String,
+    val id: String = "",
+    val name: String = "",
     val emotes: List<SevenTVEmote> = emptyList()
 )
 
 @Serializable
 data class SevenTVUserResponse(
-    val id: String,
+    val id: String = "",
     val username: String = "",
-    val display_name: String = "",
-    val emote_set: SevenTVEmoteSet? = null
+    @SerialName("display_name") val displayName: String = "",
+    @SerialName("emote_set") val emoteSet: SevenTVEmoteSet? = null,
+    val user: SevenTVUserData? = null
+)
+
+@Serializable
+data class SevenTVUserData(
+    val id: String = "",
+    val username: String = "",
+    @SerialName("display_name") val displayName: String = "",
+    @SerialName("emote_set") val emoteSet: SevenTVEmoteSet? = null
 )
 
 @Serializable
