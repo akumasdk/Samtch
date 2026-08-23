@@ -135,7 +135,7 @@ fun NativeTwitchChat(
         ) {
             // Floor spacer to provide consistent gap from input box
             item(key = "floor_spacer") {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
             itemsIndexed(

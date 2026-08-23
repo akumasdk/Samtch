@@ -115,8 +115,11 @@ fun ChatMessageRow(
             Text(
                 text = message.message,
                 color = SamtchTheme.colors.secondaryText,
-                fontSize = if (isCompact) (fontSize - 2).sp else (fontSize + 1).sp,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                fontSize = if (isCompact) (fontSize - 3).sp else (fontSize + 1).sp,
+                modifier = Modifier.padding(
+                    horizontal = 8.dp, 
+                    vertical = if (isCompact) 1.dp else 2.dp
+                ),
                 style = MaterialTheme.typography.bodySmall
             )
         }

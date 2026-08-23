@@ -25,6 +25,7 @@ fun SystemNoticeBanner(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     isImmersiveEnabled: Boolean = false,
+    isCompact: Boolean = false,
     channel: String = "",
     previewImageUrl: String? = null
 ) {
@@ -54,15 +55,18 @@ fun SystemNoticeBanner(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(
+                            horizontal = 12.dp, 
+                            vertical = if (isCompact) 4.dp else 8.dp
+                        ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = message ?: "",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                        maxLines = 2,
+                        fontSize = if (isCompact) 11.sp else 13.sp,
+                        maxLines = if (isCompact) 1 else 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )

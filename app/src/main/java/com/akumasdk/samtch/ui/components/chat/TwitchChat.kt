@@ -212,7 +212,10 @@ private fun NativeChatContainer(
                 onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                 onBadgeClick = { viewModel.showBadgeInfo(it) },
                 onUserClick = { viewModel.showUserInfo(it) },
-                contentPadding = PaddingValues(top = 88.dp, bottom = 8.dp)
+                contentPadding = PaddingValues(
+                    top = 88.dp, 
+                    bottom = 4.dp
+                )
             )
             
             if (showInput) {
@@ -316,6 +319,7 @@ private fun ChatInputArea(
                     message = systemNotice,
                     onDismiss = { viewModel.dismissSystemNotice() },
                     isImmersiveEnabled = isImmersiveEnabled,
+                    isCompact = portraitMode == null,
                     channel = channel,
                     previewImageUrl = previewImageUrl
                 )
