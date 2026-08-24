@@ -14,12 +14,20 @@
 (function() {
     'use strict';
     const ourTwitchAdSolutionsVersion = 24;// Used to prevent conflicts with outdated versions of the scripts
-    if (typeof window.twitchAdSolutionsVersion !== 'undefined' && window.twitchAdSolutionsVersion >= ourTwitchAdSolutionsVersion) {
-        console.log("skipping vaft as there's another script active. ourVersion:" + ourTwitchAdSolutionsVersion + " activeVersion:" + window.twitchAdSolutionsVersion);
-        window.twitchAdSolutionsVersion = ourTwitchAdSolutionsVersion;
-        return;
-    }
+        if (typeof window.twitchAdSolutionsVersion !== 'undefined' && window.twitchAdSolutionsVersion >= ourTwitchAdSolutionsVersion) {
+            log("skipping vaft as there's another script active. ourVersion:" + ourTwitchAdSolutionsVersion + " activeVersion:" + window.twitchAdSolutionsVersion);
+            window.twitchAdSolutionsVersion = ourTwitchAdSolutionsVersion;
+            return;
+        }
     window.twitchAdSolutionsVersion = ourTwitchAdSolutionsVersion;
+
+    function log(msg) {
+        console.log('[Samtch-VAFT] ' + msg);
+        if (typeof TwitchPlayerBridge !== 'undefined' && TwitchPlayerBridge.log) {
+            TwitchPlayerBridge.log('VAFT', msg);
+        }
+    }
+
     function declareOptions(scope) {
         scope.AdSignifier = 'stitched';
         scope.ClientID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
@@ -130,8 +138,12 @@
                     super(twitchBlobUrl, options);
                     return;
                 }
+                log('Intercepting Twitch Worker: ' + twitchBlobUrl);
                 const newBlobStr = `
                     const pendingFetchRequests = new Map();
+                    function log(msg) {
+                        postMessage({ key: 'Log', value: msg });
+                    }
                     ${stripAdSegments.toString()}
                     ${getStreamUrlForResolution.toString()}
                     ${processM3U8.toString()}
@@ -198,6 +210,8 @@
                 this.addEventListener('message', (e) => {
                     if (e.data.key == 'UpdateAdBlockBanner') {
                         updateAdblockBanner(e.data);
+                    } else if (e.data.key == 'Log') {
+                        log('[Worker] ' + e.data.value);
                     } else if (e.data.key == 'CleanStreamUrlFound') {
                         if (typeof TwitchPlayerBridge !== 'undefined') {
                             if (TwitchPlayerBridge.onStreamUrlFoundWithMetadata) {
@@ -250,7 +264,7 @@
         return req.responseText;
     }
     function hookWorkerFetch() {
-        console.log('hookWorkerFetch (vaft)');
+        log('hookWorkerFetch (vaft)');
         const realFetch = fetch;
         fetch = async function(url, options) {
             if (typeof url === 'string') {
@@ -491,6 +505,7 @@
         }
         const haveAdTags = textStr.includes(AdSignifier) || SimulatedAdsDepth > 0;
         if (haveAdTags) {
+            log(`Ad signifier detected in M3U8 for ${streamInfo.ChannelName}. Starting swap flow.`);
             streamInfo.IsMidroll = textStr.includes('"MIDROLL"') || textStr.includes('"midroll"');
             if (!streamInfo.IsShowingAd) {
                 streamInfo.IsShowingAd = true;
@@ -518,7 +533,7 @@
             }
             const currentResolution = streamInfo.Urls[url];
             if (!currentResolution) {
-                console.log('Ads will leak due to missing resolution info for ' + url);
+                log('Ads will leak due to missing resolution info for ' + url);
                 return textStr;
             }
             const isHevc = currentResolution.Codecs.startsWith('hev') || currentResolution.Codecs.startsWith('hvc');
@@ -551,9 +566,10 @@
                         isFreshM3u8 = true;
                         try {
                             const accessTokenResponse = await getAccessToken(streamInfo.ChannelName, realPlayerType);
-                            if (accessTokenResponse.status === 200) {
-                                const accessToken = await accessTokenResponse.json();
-                                const urlInfo = new URL('https://usher.ttvnw.net/api/' + (V2API ? 'v2/' : '') + 'channel/hls/' + streamInfo.ChannelName + '.m3u8' + streamInfo.UsherParams);
+            if (accessTokenResponse.status === 200) {
+                const accessToken = await accessTokenResponse.json();
+                log(`Access token obtained for backup type: ${realPlayerType}`);
+                const urlInfo = new URL('https://usher.ttvnw.net/api/' + (V2API ? 'v2/' : '') + 'channel/hls/' + streamInfo.ChannelName + '.m3u8' + streamInfo.UsherParams);
                                 urlInfo.searchParams.set('sig', accessToken.data.streamPlaybackAccessToken.signature);
                                 urlInfo.searchParams.set('token', accessToken.data.streamPlaybackAccessToken.value);
                                 const encodingsM3u8Response = await realFetch(urlInfo.href);
@@ -570,20 +586,22 @@
                             if (streamM3u8Response.status == 200) {
                                 const m3u8Text = await streamM3u8Response.text();
                                 if (m3u8Text) {
-                                    if (playerType == FallbackPlayerType) {
-                                        fallbackM3u8 = m3u8Text;
-                                    }
-                                    if ((!m3u8Text.includes(AdSignifier) && (SimulatedAdsDepth == 0 || playerTypeIndex >= SimulatedAdsDepth - 1)) || (!fallbackM3u8 && playerTypeIndex >= BackupPlayerTypes.length - 1)) {
-                                        backupPlayerType = playerType;
-                                        backupM3u8 = m3u8Text;
-                                        postMessage({
-                                            key: 'CleanStreamUrlFound',
-                                            value: streamM3u8Url,
-                                            isValidated: true,
-                                            playerType: playerType
-                                        });
-                                        break;
-                                    }
+                        if (playerType == FallbackPlayerType) {
+                            fallbackM3u8 = m3u8Text;
+                            log('Fallback M3U8 cached: ' + playerType);
+                        }
+                        if ((!m3u8Text.includes(AdSignifier) && (SimulatedAdsDepth == 0 || playerTypeIndex >= SimulatedAdsDepth - 1)) || (!fallbackM3u8 && playerTypeIndex >= BackupPlayerTypes.length - 1)) {
+                            backupPlayerType = playerType;
+                            backupM3u8 = m3u8Text;
+                            log('Validated clean M3U8 found for: ' + playerType);
+                            postMessage({
+                                key: 'CleanStreamUrlFound',
+                                value: streamM3u8Url,
+                                isValidated: true,
+                                playerType: playerType
+                            });
+                            break;
+                        }
                                     if (isFullyCachedPlayerType) {
                                         break;
                                     }
@@ -610,7 +628,7 @@
                 textStr = backupM3u8;
                 if (streamInfo.ActiveBackupPlayerType != backupPlayerType) {
                     streamInfo.ActiveBackupPlayerType = backupPlayerType;
-                    console.log(`Blocking${(streamInfo.IsMidroll ? ' midroll ' : ' ')}ads (${backupPlayerType})`);
+                    log(`Blocking${(streamInfo.IsMidroll ? ' midroll ' : ' ')}ads (${backupPlayerType}). SWAPPING SOURCE.`);
                 }
             }
             // TODO: Improve hevc stripping. It should always strip when there is a codec mismatch (both ways)
@@ -619,7 +637,7 @@
                 textStr = stripAdSegments(textStr, stripHevc, streamInfo);
             }
         } else if (streamInfo.IsShowingAd) {
-            console.log('Finished blocking ads');
+            log('Finished blocking ads. RESTORING MAIN STREAM.');
             streamInfo.IsShowingAd = false;
             streamInfo.IsStrippingAdSegments = false;
             streamInfo.NumStrippedAdSegments = 0;
@@ -748,16 +766,17 @@
                           }
                       }
                     }
-                    if (player.getState() === 'Playing') {
-                        playerBufferState.hasStreamStarted = true;
-                    }
-                    const position = player.core?.state?.position;
-                    const bufferedPosition = player.core?.state?.bufferedPosition;
-                    const bufferDuration = player.getBufferDuration();
-                    if (position !== undefined && bufferedPosition !== undefined) {
-                        //console.log('position:' + position + ' bufferDuration:' + bufferDuration + ' bufferPosition:' + bufferedPosition + ' state: ' + player.core?.state?.state + ' started: ' + playerBufferState.hasStreamStarted);
-                        // NOTE: This could be improved. It currently lets the player fully eat the full buffer before it triggers pause/play
-                        if (playerBufferState.hasStreamStarted &&
+            if (playerState === 'Playing') {
+                playerBufferState.hasStreamStarted = true;
+            }
+            const position = player.core?.state?.position;
+            const bufferedPosition = player.core?.state?.bufferedPosition;
+            const bufferDuration = player.getBufferDuration();
+            if (position !== undefined && bufferedPosition !== undefined) {
+                const playerStateLog = player.core?.state?.state;
+                // log('position:' + position + ' bufferDuration:' + bufferDuration + ' bufferPosition:' + bufferedPosition + ' state: ' + playerStateLog + ' started: ' + playerBufferState.hasStreamStarted);
+                // NOTE: This could be improved. It currently lets the player fully eat the full buffer before it triggers pause/play
+                if (playerBufferState.hasStreamStarted &&
                             (!PlayerBufferingPrerollCheckEnabled || position > PlayerBufferingPrerollCheckOffset) &&
                             (playerBufferState.position == position || bufferDuration < PlayerBufferingDangerZone)  &&
                             playerBufferState.bufferedPosition == bufferedPosition &&
@@ -766,7 +785,7 @@
                         ) {
                             playerBufferState.numSame++;
                             if (playerBufferState.numSame == PlayerBufferingSameStateCount) {
-                                console.log('Attempt to fix buffering position:' + playerBufferState.position + ' bufferedPosition:' + playerBufferState.bufferedPosition + ' bufferDuration:' + playerBufferState.bufferDuration);
+                                log('Attempt to fix buffering position:' + playerBufferState.position + ' bufferedPosition:' + playerBufferState.bufferedPosition + ' bufferDuration:' + playerBufferState.bufferDuration);
                                 const isPausePlay = !PlayerBufferingDoPlayerReload;
                                 const isReload = PlayerBufferingDoPlayerReload;
                                 doTwitchPlayerTask(isPausePlay, isReload);
@@ -870,17 +889,17 @@
     function doTwitchPlayerTask(isPausePlay, isReload) {
         const playerAndState = getPlayerAndState();
         if (!playerAndState) {
-            console.log('Could not find react root');
+            log('Could not find react root');
             return;
         }
         const player = playerAndState.player;
         const playerState = playerAndState.state;
         if (!player) {
-            console.log('Could not find player');
+            log('Could not find player');
             return;
         }
         if (!playerState) {
-            console.log('Could not find player state');
+            log('Could not find player state');
             return;
         }
         if (player.isPaused() || player.core?.paused) {
@@ -912,7 +931,7 @@
                     localStorage.setItem(lsKeyQuality, JSON.stringify({default:player.core.state.quality.group}));
                 }
             } catch {}
-            console.log('Reloading Twitch player');
+            log('Reloading Twitch player');
             playerState.setSrc({ isNewMediaPlayerInstance: true, refreshAccessToken: true });
             postTwitchWorkerMessage('TriggeredPlayerReload');
             player.play();
@@ -1007,10 +1026,10 @@
                                 newBody.variables.playerType = ForceAccessTokenPlayerType;
                             }
                         }
-                        if (replacedPlayerType) {
-                            console.log(`Replaced '${replacedPlayerType}' player type with '${ForceAccessTokenPlayerType}' player type`);
-                            init.body = JSON.stringify(newBody);
-                        }
+            if (replacedPlayerType) {
+                log(`Replaced '${replacedPlayerType}' player type with '${ForceAccessTokenPlayerType}' player type`);
+                init.body = JSON.stringify(newBody);
+            }
                     }
                 }
             }
@@ -1131,7 +1150,7 @@
     }
     window.simulateAds = (depth) => {
         if (depth === undefined || depth < 0) {
-            console.log('Ad depth paramter required (0 = no simulated ad, 1+ = use backup player for given depth)');
+            log('Ad depth parameter required (0 = no simulated ad, 1+ = use backup player for given depth)');
             return;
         }
         postTwitchWorkerMessage('SimulateAds', depth);

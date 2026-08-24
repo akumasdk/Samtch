@@ -56,4 +56,9 @@ class TwitchPlayerBridge(
     fun onAdStatusChanged(isAd: Boolean, message: String) {
         onAdStatusChangedCallback(isAd, message)
     }
+
+    @JavascriptInterface
+    fun log(tag: String, message: String) {
+        android.util.Log.d("Orchestrator-$tag", message)
+    }
 }

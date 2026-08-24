@@ -114,6 +114,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     // Sync our local stream URL if it was changed by the service or elsewhere
                     val newUri = mediaItem?.localConfiguration?.uri?.toString()
+                    Log.d("PlayerViewModel", "MediaItem Transition: $newUri (reason=$reason)")
                     if (newUri != null && currentStreamUrl != newUri) {
                         currentStreamUrl = newUri
                     }
@@ -146,8 +147,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         val controller = mediaController ?: return
         
         // If we already have a clean URL, don't trigger the service resolution
-        if (currentStreamUrl != null) return
+        if (currentStreamUrl != null) {
+            Log.d("PlayerViewModel", "updateMediaItem: Already have a clean URL ($currentStreamUrl), skipping service resolution.")
+            return
+        }
 
+        Log.d("PlayerViewModel", "updateMediaItem: Triggering background resolution for $channelName")
         viewModelScope.launch(Dispatchers.Default) {
             val metadata = MediaMetadata.Builder()
                 .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
@@ -182,14 +187,15 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         if (isAdActive) {
             // Ignore non-validated streams (probing/network noise) during ad blocking
             if (!isValidated && source != "main") {
-                Log.d("PlayerViewModel", "Ignoring unvalidated stream during ad block: $source -> $url")
+                Log.d("PlayerViewModel", "Ignoring unvalidated stream during ad block: source=$source, validated=$isValidated -> $url")
                 return
             }
             
             // If we already applied a clean stream for THIS ad session, 
-            // only allow a swap if it's from a higher-quality source (optional, but keep it simple for now)
-            if (hasAppliedCleanStreamDuringAd && source != "embed") { 
-                Log.d("PlayerViewModel", "Lock active. Ignoring subsequent clean stream ($source): $url")
+            // only allow a swap if it's from a higher-priority source.
+            // vaft priority: main > embed > popout > autoplay
+            if (hasAppliedCleanStreamDuringAd) { 
+                Log.d("PlayerViewModel", "Lock active. Ignoring subsequent clean stream (source=$source, current=$currentStreamUrl): $url")
                 return
             }
         } else {
@@ -234,13 +240,17 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             controller.setMediaItem(mediaItem)
             controller.prepare()
             controller.play()
+            Log.d("PlayerViewModel", "MediaItem applied to controller: $url")
         }
     }
 
     fun onAdStatusChanged(isAd: Boolean, message: String) {
-        if (isAdActive == isAd) return
+        if (isAdActive == isAd) {
+            Log.d("PlayerViewModel", "Ad status redundancy check: isAd=$isAd")
+            return
+        }
         
-        Log.d("PlayerViewModel", "Ad status changed: isAd=$isAd, message=$message")
+        Log.d("PlayerViewModel", "Ad status changed: isAd=$isAd, type=$message. RESETTING LOCKS.")
         isAdActive = isAd
         
         if (!isAd) {
