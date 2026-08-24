@@ -1,15 +1,13 @@
 package com.akumasdk.samtch.ui.components.playerComponents
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
@@ -39,33 +37,40 @@ fun PlayerLoadingScreen(
         AsyncImage(
             model = finalUrl,
             contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().blur(30.dp),
             contentScale = ContentScale.Crop
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(SamtchTheme.colors.loadingOverlay)
+                .background(SamtchTheme.colors.loadingOverlay.copy(alpha = 0.7f))
         )
-        CircularProgressIndicator(
-            color = SamtchTheme.colors.loadingIndicator,
-            strokeWidth = 3.dp
-        )
-        Text(
-            text = loadingMessage,
-            color = SamtchTheme.colors.primaryText,
-            style = TextStyle(
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                shadow = Shadow(
-                    color = Color.Black.copy(alpha = 0.5f),
-                    blurRadius = 8f
+        
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                color = SamtchTheme.colors.loadingIndicator,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(48.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text(
+                text = loadingMessage.uppercase(),
+                color = SamtchTheme.colors.primaryText,
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.5f),
+                        blurRadius = 8f
+                    )
                 )
-            ),
-            modifier = Modifier
-                .padding(top = 16.dp)
-                .align(Alignment.Center)
-                .offset(y = 40.dp)
-        )
+            )
+        }
     }
 }

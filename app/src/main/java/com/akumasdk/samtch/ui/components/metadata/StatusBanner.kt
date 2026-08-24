@@ -42,42 +42,30 @@ fun StatusBanner(
         exit = shrinkVertically(),
         modifier = modifier.fillMaxWidth()
     ) {
-        Surface(
-            color = if (isImmersiveEnabled) SamtchTheme.colors.accentColor.copy(alpha = 0.5f)
-                    else SamtchTheme.colors.accentColor,
-            contentColor = Color.White,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { /* Consume clicks */ }
-                    )
-            ) {
-                if (isImmersiveEnabled) {
-                    PlayerBackground(
-                        alpha = 0.6f,
-                        blurRadius = 150.dp,
-                        containerColor = Color.Transparent,
-                        contentScale = ContentScale.FillBounds,
-                        modifier = Modifier.matchParentSize()
-                    )
-                }
-
-                Text(
-                    text = text,
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    if (isImmersiveEnabled) SamtchTheme.colors.twitchPurple.copy(alpha = 0.75f)
+                    else SamtchTheme.colors.twitchPurple
                 )
-            }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = { /* Consume clicks */ }
+                )
+                .padding(vertical = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text.uppercase(),
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.2.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

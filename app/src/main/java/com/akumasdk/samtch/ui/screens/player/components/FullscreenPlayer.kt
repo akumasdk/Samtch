@@ -93,70 +93,58 @@ fun FullscreenPlayer(
             exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
         ) {
             val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
-            val bgAlpha = if (isImmersiveEnabled && isActuallyDark) 0.35f else 0f
-            val bgBlur = if (isImmersiveEnabled && isActuallyDark) 60.dp else 0.dp
-            val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.4f else 1.0f
+            val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.45f else 1.0f
 
-            PlayerBackground(
-                channel = channel,
-                previewUrl = previewImageUrl,
+            Box(
                 modifier = Modifier
                     .width(300.dp)
-                    .fillMaxHeight(),
-                alpha = if (isActuallyDark) bgAlpha else 0f,
-                blurRadius = bgBlur,
-                contentScale = ContentScale.FillBounds
+                    .fillMaxHeight()
+                    .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
+                    .systemBarsPadding()
+                    .displayCutoutPadding()
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
-                        .systemBarsPadding()
-                        .displayCutoutPadding()
+                // 1. Chat area (Background layer)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    chatContent(
+                        true,
+                        true,
+                        refreshTrigger,
+                        Modifier.fillMaxSize()
+                    )
+                }
+
+                // 2. Overlays (Banner + Metadata)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // 1. Chat area (Background layer)
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        chatContent(
-                            true,
-                            true,
-                            refreshTrigger,
-                            Modifier.fillMaxSize()
-                        )
-                    }
+                    StatusBanner(
+                        text = adblockText,
+                        isImmersiveEnabled = isImmersiveEnabled,
+                        channel = channel,
+                        previewImageUrl = previewImageUrl
+                    )
 
-                    // 2. Overlays (Banner + Metadata)
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    this@Row.AnimatedVisibility(
+                        visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                        enter = SamtchAnimation.FadeIn,
+                        exit = SamtchAnimation.FadeOut
                     ) {
-                        StatusBanner(
-                            text = adblockText,
-                            isImmersiveEnabled = isImmersiveEnabled,
+                        StreamMetadataBar(
                             channel = channel,
-                            previewImageUrl = previewImageUrl
+                            displayName = displayName,
+                            avatarUrl = avatarUrl,
+                            streamTitle = streamTitle,
+                            gameName = gameName,
+                            viewersCount = viewersCount,
+                            streamStartedAt = streamStartedAt,
+                            previewImageUrl = previewImageUrl,
+                            expandTrigger = expandTrigger,
+                            forceSlim = forceSlimMetadata,
+                            isImmersiveEnabled = isImmersiveEnabled,
+                            onClick = { showInfoDialog = true },
+                            modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
                         )
-
-                        this@Row.AnimatedVisibility(
-                            visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
-                            enter = SamtchAnimation.FadeIn,
-                            exit = SamtchAnimation.FadeOut
-                        ) {
-                            StreamMetadataBar(
-                                channel = channel,
-                                displayName = displayName,
-                                avatarUrl = avatarUrl,
-                                streamTitle = streamTitle,
-                                gameName = gameName,
-                                viewersCount = viewersCount,
-                                streamStartedAt = streamStartedAt,
-                                previewImageUrl = previewImageUrl,
-                                expandTrigger = expandTrigger,
-                                forceSlim = forceSlimMetadata,
-                                isImmersiveEnabled = isImmersiveEnabled,
-                                onClick = { showInfoDialog = true },
-                                modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
-                            )
-                        }
                     }
                 }
             }

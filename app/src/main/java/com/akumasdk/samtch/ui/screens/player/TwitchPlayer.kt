@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,11 +50,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -73,6 +78,7 @@ import com.akumasdk.samtch.ui.screens.player.components.AudioServiceEffects
 import com.akumasdk.samtch.ui.screens.player.components.BrightnessManager
 import com.akumasdk.samtch.ui.screens.player.components.FullscreenChatToggle
 import com.akumasdk.samtch.ui.screens.player.components.NativePlayer
+import com.akumasdk.samtch.ui.screens.player.components.NativePlayerControls
 import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureIndicators
 import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureOverlay
 import com.akumasdk.samtch.ui.screens.player.components.PlayerLifecycleEffects
@@ -121,9 +127,20 @@ fun TwitchPlayer(
         val screenWidth = maxWidth
         val screenHeight = maxHeight
         val context = LocalContext.current
+        val view = LocalView.current
         
         var isAudioOnly by playerViewModel::isAudioOnly
         var portraitMode by playerViewModel::portraitMode
+        
+        // Keep screen on while player is active and not in audio-only mode
+        DisposableEffect(isAudioOnly) {
+            if (!isAudioOnly) {
+                view.keepScreenOn = true
+            }
+            onDispose {
+                view.keepScreenOn = false
+            }
+        }
         
         val isImmersiveEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
 
@@ -159,6 +176,7 @@ fun TwitchPlayer(
         val tooltipShowCount by SettingsManager.getPlayerTooltipShowCount(context).collectAsState(initial = 0)
 
         var isChatVisible by remember { mutableStateOf(true) }
+        var showNativeControls by remember { mutableStateOf(false) }
         var metadataExpandTrigger by remember { mutableIntStateOf(0) }
 
         val lifecycleOwner = LocalLifecycleOwner.current
@@ -390,10 +408,25 @@ fun TwitchPlayer(
                             contentScale = ContentScale.FillBounds
                         ) {
                             // Native Player
-                            NativePlayer(
-                                player = playerViewModel.mediaController,
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                NativePlayer(
+                                    player = playerViewModel.mediaController,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                // Custom Native Controls
+                                NativePlayerControls(
+                                    isVisible = showNativeControls && !isMinimized && !isPip,
+                                    isPlaying = liveIsPlaying,
+                                    onTogglePlayback = { playerViewModel.togglePlayback() },
+                                    onToggleFullscreen = onToggleFullscreen,
+                                    onToggleChat = onToggleChat,
+                                    onRefresh = { 
+                                        playerViewModel.updateMediaItem(channel)
+                                        lastProcessedRefreshTrigger-- // Force refresh
+                                    }
+                                )
+                            }
 
                             // Orchestrator WebView (Invisible)
                             PlayerWebView(
@@ -413,7 +446,11 @@ fun TwitchPlayer(
                                 onLoadingStatus = { loadingMessage = it },
                                 onAdblocked = { text ->
                                     adblockText = text
-                                    if (text.isNotEmpty() && isUiLoading) isUiLoading = false
+                                    playerViewModel.onAdblocked(text)
+                                    // Don't auto-dismiss loader if we are holding it for autoplay ads
+                                    if (text.isNotEmpty() && isUiLoading && !playerViewModel.isHoldingLoader) {
+                                        isUiLoading = false
+                                    }
                                 },
                                 onVideoBoundsChanged = onVideoBoundsChanged,
                                 onStreamUrlFound = { url, validated, source ->
@@ -429,8 +466,8 @@ fun TwitchPlayer(
                             )
                             
                             // Native player drives the loading screen now
-                            LaunchedEffect(playerViewModel.isPlaying) {
-                                if (playerViewModel.isPlaying) {
+                            LaunchedEffect(playerViewModel.isPlaying, playerViewModel.isHoldingLoader) {
+                                if (playerViewModel.isPlaying && !playerViewModel.isHoldingLoader) {
                                     isUiLoading = false
                                 }
                             }
@@ -474,6 +511,15 @@ fun TwitchPlayer(
             if (isFullscreen && showFullscreenControls) {
                 delay(5.seconds)
                 showFullscreenControls = false
+                showNativeControls = false
+            }
+        }
+
+        // Auto-hide native controls in portrait
+        LaunchedEffect(showNativeControls, isFullscreen) {
+            if (!isFullscreen && showNativeControls) {
+                delay(5.seconds)
+                showNativeControls = false
             }
         }
 
@@ -497,25 +543,245 @@ fun TwitchPlayer(
             isChatVisible = isChatVisible
         )
 
+        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val animatedTopPadding by androidx.compose.animation.core.animateDpAsState(
+            targetValue = if (isFullscreen && !isAudioOnly) 0.dp else statusBarHeight,
+            animationSpec = SamtchAnimation.DpSpring,
+            label = "PlayerTopPadding"
+        )
+
         // Root Container
         SharedTransitionLayout {
             var stablePlayerSize by remember {
                 mutableStateOf(androidx.compose.ui.unit.IntSize.Zero)
             }
 
+            // MINI PLAYER SHELL & DISMISS LOGIC
+            val dismissState = rememberSwipeToDismissBoxState(
+                confirmValueChange = {
+                    if (it == SwipeToDismissBoxValue.StartToEnd || it == SwipeToDismissBoxValue.EndToStart) {
+                        onClose()
+                        true
+                    } else {
+                        false
+                    }
+                }
+            )
+
             Box(modifier = Modifier.fillMaxSize()) {
-                // Fullscreen Background
+                // 1. Fullscreen Background (Bottom-most)
                 if (!isMinimized) {
+                    val bgAlpha by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = if (isFullscreen) 0.65f else 0.45f,
+                        animationSpec = SamtchAnimation.StandardTween,
+                        label = "BackgroundAlpha"
+                    )
+                    
                     PlayerBackground(
                         channel = channel,
                         previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
                         refreshKey = playerViewModel.metadataRefreshTrigger,
                         modifier = Modifier.fillMaxSize(),
+                        alpha = bgAlpha,
+                        blurRadius = if (isFullscreen) 30.dp else 0.dp,
                         contentScale = ContentScale.FillBounds
-                    )
+                    ) {
+                        // Immersive gradient overlay
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Black.copy(alpha = if (isFullscreen) 0.8f else 0.4f),
+                                            Color.Transparent,
+                                            Color.Black.copy(alpha = if (isFullscreen) 0.9f else 0.6f)
+                                        )
+                                    )
+                                )
+                        )
+                        
+                        // Dynamic radial glow that moves or scales slightly in fullscreen
+                        if (isFullscreen) {
+                            val glowScale by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = if (isChatVisible) 1.2f else 1.0f,
+                                animationSpec = SamtchAnimation.StandardTween,
+                                label = "GlowScale"
+                            )
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.radialGradient(
+                                            colors = listOf(
+                                                SamtchTheme.colors.twitchPurple.copy(alpha = 0.2f),
+                                                Color.Transparent
+                                            ),
+                                            center = Offset(0f, 0f),
+                                            radius = 800f * glowScale
+                                        )
+                                    )
+                            )
+                        }
+                    }
                 }
 
-                // 1. FULL PLAYER OVERLAY (Chat, Metadata)
+                // 2. THE STABLE PLAYER (Middle Layer)
+                // Unified modifier system for perfectly smooth transitions
+                key(channel) {
+                    Box(
+                        modifier = if (isPip) {
+                            Modifier.fillMaxSize()
+                        } else {
+                            Modifier
+                                .align(if (isMinimized) Alignment.BottomStart else Alignment.TopStart)
+                                .then(if (isMinimized) Modifier.navigationBarsPadding() else Modifier)
+                                .padding(
+                                    start = layout.paddingStart.value,
+                                    bottom = layout.paddingBottom.value,
+                                    top = if (!isMinimized && !isFullscreen) animatedTopPadding else 0.dp
+                                )
+                                .offset {
+                                    if (isMinimized) {
+                                        IntOffset(
+                                            (nudgeOffset.value + dismissState.requireOffset()).roundToInt(),
+                                            0
+                                        )
+                                    } else {
+                                        IntOffset.Zero
+                                    }
+                                }
+                                .size(layout.width.value, layout.height.value)
+                                .clip(RoundedCornerShape(layout.cornerRadius.value))
+                        }
+                            .onSizeChanged { stablePlayerSize = it }
+                            .playerGestureHandler(
+                                isFullscreen = isFullscreen && !isAudioOnly,
+                                onBrightnessChange = {
+                                    brightnessProgress = it
+                                    hasExplicitBrightness = true
+                                },
+                                onVolumeChange = { volumeProgress = it },
+                                onVolumeDragging = { isDraggingVolume = it },
+                                onBrightnessDragging = { isDraggingBrightness = it }
+                            )
+                            .playerInputHandler(
+                                size = stablePlayerSize,
+                                isFullscreen = isFullscreen,
+                                isMinimized = isMinimized,
+                                doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
+                                onDoubleTapCenter = {
+                                    if (isFullscreen && !isAudioOnly) {
+                                        isChatVisible = !isChatVisible
+                                    } else {
+                                        onToggleFullscreen()
+                                    }
+                                },
+                                onSingleTap = {
+                                    if (isFullscreen && !isAudioOnly) {
+                                        showFullscreenControls = !showFullscreenControls
+                                        showNativeControls = showFullscreenControls
+                                    } else {
+                                        showNativeControls = !showNativeControls
+                                        metadataExpandTrigger++
+                                        if (portraitMode == PortraitMode.CHAT_ONLY) {
+                                            portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                        }
+                                    }
+                                }
+                            )
+                    ) {
+                        if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
+                            val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
+                            val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
+                            val surfaceAlpha = if (isImmersiveEnabled) {
+                                if (SamtchTheme.colors.dialogBackground.luminance() > 0.5f) 0.94f else 0.82f
+                            } else 1.0f
+
+                            PlayerBackground(
+                                channel = channel,
+                                previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                                modifier = Modifier.fillMaxSize(),
+                                alpha = bgAlpha,
+                                blurRadius = bgBlur,
+                                contentScale = ContentScale.FillBounds
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            SamtchTheme.colors.chatBackground.copy(
+                                                alpha = surfaceAlpha
+                                            )
+                                        )
+                                ) {
+                                    chatContent(
+                                        ChatContentConfig(
+                                            true,
+                                            false,
+                                            refreshTrigger,
+                                            isFullscreen = isFullscreen
+                                        ),
+                                        null,
+                                        null,
+                                        Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+                        } else {
+                            playerContent(Modifier.fillMaxSize()) {
+                                Log.d(
+                                    "TwitchPlayer",
+                                    "Toggle chat requested via bridge. isFullscreen: $isFullscreen"
+                                )
+                                if (isFullscreen) {
+                                    isChatVisible = !isChatVisible
+                                    showFullscreenControls = true
+                                } else {
+                                    // Cycle modes in portrait
+                                    if (portraitMode == PortraitMode.CHAT_ONLY) {
+                                        portraitMode = PortraitMode.VIDEO_AND_CHAT
+                                        isAudioOnly = false
+                                    } else {
+                                        portraitMode = PortraitMode.CHAT_ONLY
+                                    }
+                                    isChatVisible = true
+                                }
+                            }
+                        }
+
+                        // Overlays on top of the player
+                        if (!isMinimized && !isPip) {
+                            if (isFullscreen && !isAudioOnly) {
+                                PlayerGestureOverlay(
+                                    isDraggingVolume = isDraggingVolume,
+                                    isDraggingBrightness = isDraggingBrightness,
+                                    volumeProgress = volumeProgress,
+                                    brightnessProgress = brightnessProgress
+                                )
+
+                                TapTooltip(
+                                    visible = showFullscreenControls && tooltipShowCount < 2,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+
+                                // Toggle Chat Tab Button
+                                FullscreenChatToggle(
+                                    visible = showFullscreenControls,
+                                    isChatVisible = isChatVisible,
+                                    onClick = {
+                                        isChatVisible = !isChatVisible
+                                        showFullscreenControls = true
+                                    },
+                                    modifier = Modifier.align(Alignment.CenterEnd)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 3. FULL PLAYER OVERLAY (Chat, Metadata) - Top-most layer
                 CompositionLocalProvider(
                     LocalStreamPreview provides StreamPreviewInfo(
                         channel = channel,
@@ -557,18 +823,7 @@ fun TwitchPlayer(
                     )
                 }
 
-                // 2. MINI PLAYER SHELL & DISMISS LOGIC
-                val dismissState = rememberSwipeToDismissBoxState(
-                    confirmValueChange = {
-                        if (it == SwipeToDismissBoxValue.StartToEnd || it == SwipeToDismissBoxValue.EndToStart) {
-                            onClose()
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                )
-
+                // 4. MINI PLAYER SHELL & DISMISS LOGIC
                 MiniPlayerContainer(
                     visible = isMinimized,
                     channel = channel,
@@ -580,171 +835,9 @@ fun TwitchPlayer(
                     onExpand = onExpand,
                     onClose = onClose,
                     content = {
-                        // This placeholder box will be filled by Point 3 (the shared player)
+                        // This placeholder box will be filled by Point 2 (the shared player)
                     }
                 )
-
-                // 3. THE STABLE PLAYER (Stable during layout changes)
-                // We always render the player if a channel is selected to preserve the WebView 
-                // instance and allow fast switching between modes.
-                val shouldRenderPlayer = true
-
-                if (shouldRenderPlayer) {
-                    key(channel) {
-                        Box(
-                            modifier = if (isPip) {
-                                Modifier.fillMaxSize()
-                            } else if (isMinimized) {
-                                Modifier
-                                    .align(Alignment.BottomStart)
-                                    .navigationBarsPadding()
-                                    .padding(bottom = layout.paddingBottom.value)
-                                    .padding(start = layout.paddingStart.value)
-                                    .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
-                                    .offset {
-                                        // Follow the swipe to dismiss offset
-                                        IntOffset(dismissState.requireOffset().roundToInt(), 0)
-                                    }
-                                    .size(layout.width.value, layout.height.value)
-                                    .clip(RoundedCornerShape(layout.cornerRadius.value))
-                            } else if (isFullscreen && !isAudioOnly) {
-                                Modifier
-                                    .align(Alignment.TopStart)
-                                    .width(layout.width.value)
-                                    .fillMaxHeight()
-                                    .clip(RectangleShape)
-                            } else {
-                                Modifier
-                                    .align(Alignment.TopStart)
-                                    .statusBarsPadding()
-                                    .fillMaxWidth()
-                                    .height(layout.height.value)
-                                    .clip(RectangleShape)
-                            }
-                                .onSizeChanged { stablePlayerSize = it }
-                                .playerGestureHandler(
-                                    isFullscreen = isFullscreen && !isAudioOnly,
-                                    onBrightnessChange = {
-                                        brightnessProgress = it
-                                        hasExplicitBrightness = true
-                                    },
-                                    onVolumeChange = { volumeProgress = it },
-                                    onVolumeDragging = { isDraggingVolume = it },
-                                    onBrightnessDragging = { isDraggingBrightness = it }
-                                )
-                                .playerInputHandler(
-                                    size = stablePlayerSize,
-                                    isFullscreen = isFullscreen,
-                                    isMinimized = isMinimized,
-                                    doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
-                                    onDoubleTapCenter = {
-                                        if (isFullscreen && !isAudioOnly) {
-                                            isChatVisible = !isChatVisible
-                                        } else {
-                                            onToggleFullscreen()
-                                        }
-                                    },
-                                    onSingleTap = {
-                                        if (isFullscreen && !isAudioOnly) {
-                                            showFullscreenControls = !showFullscreenControls
-                                        } else {
-                                            metadataExpandTrigger++
-                                            if (portraitMode == PortraitMode.CHAT_ONLY) {
-                                                portraitMode = PortraitMode.VIDEO_AND_CHAT
-                                            }
-                                        }
-                                    }
-                                )
-                        ) {
-                            if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
-                                val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
-                                val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
-                                val surfaceAlpha = if (isImmersiveEnabled) {
-                                    if (SamtchTheme.colors.dialogBackground.luminance() > 0.5f) 0.94f else 0.82f
-                                } else 1.0f
-
-                                PlayerBackground(
-                                    channel = channel,
-                                    previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                                    modifier = Modifier.fillMaxSize(),
-                                    alpha = bgAlpha,
-                                    blurRadius = bgBlur,
-                                    contentScale = ContentScale.FillBounds
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(
-                                                SamtchTheme.colors.chatBackground.copy(
-                                                    alpha = surfaceAlpha
-                                                )
-                                            )
-                                    ) {
-                                        chatContent(
-                                            ChatContentConfig(
-                                                true,
-                                                false,
-                                                refreshTrigger,
-                                                isFullscreen = isFullscreen
-                                            ),
-                                            null,
-                                            null,
-                                            Modifier.fillMaxSize()
-                                        )
-                                    }
-                                }
-                            } else {
-                                playerContent(Modifier.fillMaxSize()) {
-                                    Log.d(
-                                        "TwitchPlayer",
-                                        "Toggle chat requested via bridge. isFullscreen: $isFullscreen"
-                                    )
-                                    if (isFullscreen) {
-                                        isChatVisible = !isChatVisible
-                                        showFullscreenControls = true
-                                    } else {
-                                        // Cycle modes in portrait
-                                        if (portraitMode == PortraitMode.CHAT_ONLY) {
-                                            portraitMode = PortraitMode.VIDEO_AND_CHAT
-                                            isAudioOnly = false
-                                        } else {
-                                            portraitMode = PortraitMode.CHAT_ONLY
-                                        }
-                                        isChatVisible = true
-                                    }
-                                }
-                            }
-
-                            // Overlays on top of the player
-                            if (!isMinimized && !isPip) {
-                                if (isFullscreen && !isAudioOnly) {
-                                    PlayerGestureOverlay(
-                                        isDraggingVolume = isDraggingVolume,
-                                        isDraggingBrightness = isDraggingBrightness,
-                                        volumeProgress = volumeProgress,
-                                        brightnessProgress = brightnessProgress
-                                    )
-
-                                    TapTooltip(
-                                        visible = showFullscreenControls && tooltipShowCount < 2,
-                                        modifier = Modifier.align(Alignment.Center)
-                                    )
-
-                                    // Toggle Chat Tab Button
-                                    FullscreenChatToggle(
-                                        visible = showFullscreenControls,
-                                        isChatVisible = isChatVisible,
-                                        onClick = {
-                                            isChatVisible = !isChatVisible
-                                            showFullscreenControls = true
-                                        },
-                                        modifier = Modifier.align(Alignment.CenterEnd)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }

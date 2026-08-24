@@ -641,7 +641,8 @@
             isMidroll: streamInfo.IsMidroll,
             hasAds: streamInfo.IsShowingAd,
             isStrippingAdSegments: streamInfo.IsStrippingAdSegments,
-            numStrippedAdSegments: streamInfo.NumStrippedAdSegments
+            numStrippedAdSegments: streamInfo.NumStrippedAdSegments,
+            playerType: streamInfo.ActiveBackupPlayerType
         });
         return textStr;
     }
@@ -811,6 +812,9 @@
                 let message = '';
                 if (data.hasAds) {
                     message = 'Blocking' + (data.isMidroll ? ' midroll' : '') + ' ads' + (data.isStrippingAdSegments ? ' (stripping)' : '');
+                    if (data.playerType) {
+                        message += ' (' + data.playerType + ')';
+                    }
                 }
                 TwitchPlayerBridge.onAdblocked(message);
             }

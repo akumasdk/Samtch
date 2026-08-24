@@ -53,11 +53,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         private set
     var isAdActive by mutableStateOf(false)
         private set
+    var isHoldingLoader by mutableStateOf(false)
+        private set
         
     private var hasAppliedCleanStreamDuringAd = false
     private var lastUrlUpdateTime = 0L
-        
     private var metadataJob: Job? = null
+    private var loaderHoldJob: Job? = null
 
     fun updateChannel(newChannel: String?, forceRefresh: Boolean = false) {
         val isNewChannel = channel != newChannel
@@ -72,8 +74,11 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             metadataRefreshTrigger = 0
             currentStreamUrl = null
             isAdActive = false
+            isHoldingLoader = false
             hasAppliedCleanStreamDuringAd = false
             lastUrlUpdateTime = 0L
+            metadataJob?.cancel()
+            loaderHoldJob?.cancel()
             
             // Always reset UI mode to standard when changing channels to avoid "breaking logic"
             portraitMode = PortraitMode.VIDEO_AND_CHAT
@@ -128,7 +133,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun togglePlayback() {
         val controller = mediaController ?: return
-        if (controller.isPlaying) controller.pause() else controller.play()
+        if (controller.isPlaying) {
+            controller.pause()
+        } else {
+            // Catch up to live edge when resuming
+            controller.seekToDefaultPosition()
+            controller.play()
+        }
     }
 
     fun updateMediaItem(channelName: String) {
@@ -237,6 +248,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             hasAppliedCleanStreamDuringAd = false
             // Reset URL update time to allow immediate switch back to main stream
             lastUrlUpdateTime = 0L 
+        }
+    }
+
+    fun onAdblocked(text: String) {
+        if (text.contains("autoplay", ignoreCase = true) && isAdActive) {
+            Log.d("PlayerViewModel", "Autoplay ad detected, holding loader.")
+            isHoldingLoader = true
+            loaderHoldJob?.cancel()
+            loaderHoldJob = viewModelScope.launch {
+                delay(3.5.seconds) // Hold for 3.5 seconds to ensure clean stream swap
+                isHoldingLoader = false
+            }
         }
     }
 
