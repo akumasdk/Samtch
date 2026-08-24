@@ -366,9 +366,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             Log.d(TAG, "Refreshing emotes for channel: $channel (userId=$userId, loggedIn=${auth.isLoggedIn})")
             
             kotlinx.coroutines.supervisorScope {
-                val globalJob = launch { EmoteRepository.loadGlobalEmotes(context) }
-                val userJob = launch { EmoteRepository.loadUserEmotes(context) }
-                val badgeJob = launch { BadgeRepository.loadGlobalBadges(context) }
+                launch { EmoteRepository.loadGlobalEmotes(context) }
+                launch { EmoteRepository.loadUserEmotes(context) }
+                launch { BadgeRepository.loadGlobalBadges(context) }
 
                 val resolvedUserId = userId ?: if (auth.isLoggedIn && auth.userName.equals(channel, ignoreCase = true)) {
                     auth.userId
@@ -378,16 +378,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     resolved
                 }
 
-                val channelJob = launch {
-                    if (resolvedUserId != null) {
-                        EmoteRepository.loadChannelEmotes(context, channel, resolvedUserId)
-                        BadgeRepository.loadChannelBadges(context, channel, resolvedUserId)
-                    } else {
-                        EmoteRepository.loadChannelEmotes(context, channel)
-                    }
+                if (resolvedUserId != null) {
+                    launch { EmoteRepository.loadChannelEmotes(context, channel, resolvedUserId) }
+                    launch { BadgeRepository.loadChannelBadges(context, channel, resolvedUserId) }
+                } else {
+                    launch { EmoteRepository.loadChannelEmotes(context, channel) }
                 }
-                
-                kotlinx.coroutines.joinAll(globalJob, userJob, badgeJob, channelJob)
             }
             Log.d(TAG, "Refresh cycle complete, nudging UI")
             _tabUpdateTrigger.value += 1
