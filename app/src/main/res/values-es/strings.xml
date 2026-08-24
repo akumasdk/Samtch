@@ -127,6 +127,10 @@
     <string name="category_label">Categoría</string>
     <string name="viewers_label">Espectadores</string>
     <string name="uptime_label">Tiempo en vivo</string>
+    <string name="followers_label">Seguidores</string>
+    <string name="description_label">Descripción</string>
+    <string name="created_at_label">Cuenta creada</string>
+    <string name="open_external_button">Abrir en el navegador</string>
 
     <!-- Emote Info Dialog -->
     <string name="emote_info_source">Fuente</string>

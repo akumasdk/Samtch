@@ -188,6 +188,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun updateMetadataState(metadata: TwitchStreamMetadata) {
+        Log.d("PlayerViewModel", "Updating metadata state for ${metadata.user?.login}. Stream live: ${metadata.user?.stream != null}")
         streamMetadata = metadata
         metadataRefreshTrigger++
         

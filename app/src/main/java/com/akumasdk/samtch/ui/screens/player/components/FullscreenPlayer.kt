@@ -28,6 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.akumasdk.samtch.data.model.TwitchUser
 import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
@@ -46,6 +47,7 @@ fun FullscreenPlayer(
     adblockText: String = "",
     streamStartedAt: String? = null,
     previewImageUrl: String? = null,
+    user: TwitchUser? = null,
     isChatVisible: Boolean = false,
     expandTrigger: Int = 0,
     refreshTrigger: Int = 0,
@@ -68,6 +70,7 @@ fun FullscreenPlayer(
             viewersCount = viewersCount,
             streamStartedAt = streamStartedAt,
             previewImageUrl = previewImageUrl,
+            user = user,
             onDismiss = { showInfoDialog = false }
         )
     }
