@@ -21,7 +21,7 @@ fun PlayerWebView(
     onLoadingStatus: (String) -> Unit,
     onAdblocked: (String) -> Unit,
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit,
-    onStreamUrlFound: (String) -> Unit = {},
+    onStreamUrlFound: (String, Boolean, String) -> Unit = { _, _, _ -> },
     onAdStatusChanged: (Boolean, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {

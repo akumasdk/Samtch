@@ -38,7 +38,7 @@ fun WebViewContainer(
     onToggleAudioOnly: () -> Unit = {},
     onLoadingStatus: (String) -> Unit = {},
     onAdblocked: (String) -> Unit = {},
-    onStreamUrlFound: (String) -> Unit = {},
+    onStreamUrlFound: (String, Boolean, String) -> Unit = { _, _, _ -> },
     onAdStatusChanged: (Boolean, String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
@@ -195,7 +195,7 @@ fun WebViewContainer(
                         val url = request?.url?.toString() ?: ""
                         if (url.contains(".m3u8", ignoreCase = true)) {
                             Log.d("TwitchPlayer", "Orchestrator Intercepted M3U8: $url")
-                            post { currentOnStreamUrlFound(url) }
+                            post { currentOnStreamUrlFound(url, false, "network") }
                         }
                         return super.shouldInterceptRequest(view, request)
                     }
@@ -225,8 +225,8 @@ fun WebViewContainer(
                         onAdblockedCallback = { text: String ->
                             post { currentOnAdblocked(text) }
                         },
-                        onStreamUrlFoundCallback = { url: String ->
-                            post { currentOnStreamUrlFound(url) }
+                        onStreamUrlFoundCallback = { url: String, isValidated: Boolean, source: String ->
+                            post { currentOnStreamUrlFound(url, isValidated, source) }
                         },
                         onAdStatusChangedCallback = { isAd: Boolean, message: String ->
                             post { currentOnAdStatusChanged(isAd, message) }

@@ -416,8 +416,8 @@ fun TwitchPlayer(
                                     if (text.isNotEmpty() && isUiLoading) isUiLoading = false
                                 },
                                 onVideoBoundsChanged = onVideoBoundsChanged,
-                                onStreamUrlFound = { url ->
-                                    playerViewModel.onStreamUrlFound(url)
+                                onStreamUrlFound = { url, validated, source ->
+                                    playerViewModel.onStreamUrlFound(url, validated, source)
                                 },
                                 onAdStatusChanged = { isAd, msg ->
                                     playerViewModel.onAdStatusChanged(isAd, msg)

@@ -54,6 +54,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     var isAdActive by mutableStateOf(false)
         private set
         
+    private var hasAppliedCleanStreamDuringAd = false
+    private var lastUrlUpdateTime = 0L
+        
     private var metadataJob: Job? = null
 
     fun updateChannel(newChannel: String?, forceRefresh: Boolean = false) {
@@ -69,6 +72,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             metadataRefreshTrigger = 0
             currentStreamUrl = null
             isAdActive = false
+            hasAppliedCleanStreamDuringAd = false
+            lastUrlUpdateTime = 0L
             
             // Always reset UI mode to standard when changing channels to avoid "breaking logic"
             portraitMode = PortraitMode.VIDEO_AND_CHAT
@@ -99,6 +104,14 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             controller.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) {
                     isPlaying = playing
+                }
+                
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    // Sync our local stream URL if it was changed by the service or elsewhere
+                    val newUri = mediaItem?.localConfiguration?.uri?.toString()
+                    if (newUri != null && currentStreamUrl != newUri) {
+                        currentStreamUrl = newUri
+                    }
                 }
             })
             
@@ -148,11 +161,42 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun onStreamUrlFound(url: String) {
+    fun onStreamUrlFound(url: String, isValidated: Boolean = false, source: String = "unknown") {
         if (currentStreamUrl == url) return
         
-        Log.d("PlayerViewModel", "Clean stream URL found: $url")
+        val now = System.currentTimeMillis()
+        
+        // ORCHESTRATION LOGIC (Mimic VAFT Swap)
+        // 1. If an ad is active, we PRIORITIZE "validated" streams from VAFT logic.
+        if (isAdActive) {
+            // Ignore non-validated streams (probing/network noise) during ad blocking
+            if (!isValidated && source != "main") {
+                Log.d("PlayerViewModel", "Ignoring unvalidated stream during ad block: $source -> $url")
+                return
+            }
+            
+            // If we already applied a clean stream for THIS ad session, 
+            // only allow a swap if it's from a higher-quality source (optional, but keep it simple for now)
+            if (hasAppliedCleanStreamDuringAd && source != "embed") { 
+                Log.d("PlayerViewModel", "Lock active. Ignoring subsequent clean stream ($source): $url")
+                return
+            }
+        } else {
+            // NORMAL FLOW:
+            // Respect "main" stream found by VAFT immediately.
+            // For others (network sniffer, detector), apply a debounce to avoid stutter.
+            if (source != "main" && currentStreamUrl != null && now - lastUrlUpdateTime < 8000) {
+                return
+            }
+        }
+        
+        Log.d("PlayerViewModel", "Applying stream swap [$source] (isValidated=$isValidated, isAdActive=$isAdActive): $url")
         currentStreamUrl = url
+        lastUrlUpdateTime = now
+        
+        if (isAdActive && isValidated) {
+            hasAppliedCleanStreamDuringAd = true
+        }
         
         val controller = mediaController ?: run {
             Log.w("PlayerViewModel", "onStreamUrlFound: mediaController is null!")
@@ -161,7 +205,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         val channelName = channel ?: return
 
         viewModelScope.launch(Dispatchers.Main) {
-            Log.d("PlayerViewModel", "Setting new MediaItem with clean URL for $channelName")
+            Log.d("PlayerViewModel", "Setting new MediaItem ($source) for $channelName")
             val metadata = MediaMetadata.Builder()
                 .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
                 .setArtist(streamMetadata?.user?.displayName ?: channelName)
@@ -184,11 +228,15 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun onAdStatusChanged(isAd: Boolean, message: String) {
         if (isAdActive == isAd) return
-        isAdActive = isAd
-        Log.d("PlayerViewModel", "Ad status changed: isAd=$isAd, message=$message")
         
-        if (isAd) {
-            // Optional: Handle ad start (e.g. show overlay or lower volume)
+        Log.d("PlayerViewModel", "Ad status changed: isAd=$isAd, message=$message")
+        isAdActive = isAd
+        
+        if (!isAd) {
+            // Reset for next ad session
+            hasAppliedCleanStreamDuringAd = false
+            // Reset URL update time to allow immediate switch back to main stream
+            lastUrlUpdateTime = 0L 
         }
     }
 

@@ -9,7 +9,7 @@ class TwitchPlayerBridge(
     private val onPlaybackStartedCallback: () -> Unit = {},
     private val onLoadingStatusCallback: (String) -> Unit = {},
     private val onAdblockedCallback: (String) -> Unit = {},
-    private val onStreamUrlFoundCallback: (String) -> Unit = {},
+    private val onStreamUrlFoundCallback: (String, Boolean, String) -> Unit = { _, _, _ -> },
     private val onAdStatusChangedCallback: (Boolean, String) -> Unit = { _, _ -> }
 ) {
     @JavascriptInterface
@@ -44,7 +44,12 @@ class TwitchPlayerBridge(
 
     @JavascriptInterface
     fun onStreamUrlFound(url: String) {
-        onStreamUrlFoundCallback(url)
+        onStreamUrlFoundCallback(url, false, "unknown")
+    }
+
+    @JavascriptInterface
+    fun onStreamUrlFoundWithMetadata(url: String, isValidated: Boolean, source: String) {
+        onStreamUrlFoundCallback(url, isValidated, source)
     }
 
     @JavascriptInterface

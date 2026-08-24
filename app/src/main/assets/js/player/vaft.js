@@ -199,8 +199,16 @@
                     if (e.data.key == 'UpdateAdBlockBanner') {
                         updateAdblockBanner(e.data);
                     } else if (e.data.key == 'CleanStreamUrlFound') {
-                        if (typeof TwitchPlayerBridge !== 'undefined' && TwitchPlayerBridge.onStreamUrlFound) {
-                            TwitchPlayerBridge.onStreamUrlFound(e.data.value);
+                        if (typeof TwitchPlayerBridge !== 'undefined') {
+                            if (TwitchPlayerBridge.onStreamUrlFoundWithMetadata) {
+                                TwitchPlayerBridge.onStreamUrlFoundWithMetadata(
+                                    e.data.value,
+                                    e.data.isValidated || false,
+                                    e.data.playerType || (e.data.isMainStream ? "main" : "probing")
+                                );
+                            } else if (TwitchPlayerBridge.onStreamUrlFound) {
+                                TwitchPlayerBridge.onStreamUrlFound(e.data.value);
+                            }
                         }
                     } else if (e.data.key == 'PauseResumePlayer') {
                         doTwitchPlayerTask(true, false);
@@ -365,7 +373,8 @@
                                 if (!streamInfo.IsShowingAd) {
                                     postMessage({
                                         key: 'CleanStreamUrlFound',
-                                        value: url
+                                        value: url,
+                                        isMainStream: true
                                     });
                                 }
                             } else {
@@ -550,10 +559,6 @@
                                 const encodingsM3u8Response = await realFetch(urlInfo.href);
                                 if (encodingsM3u8Response.status === 200) {
                                     encodingsM3u8 = streamInfo.BackupEncodingsM3U8Cache[playerType] = await encodingsM3u8Response.text();
-                                    postMessage({
-                                        key: 'CleanStreamUrlFound',
-                                        value: urlInfo.href
-                                    });
                                 }
                             }
                         } catch (err) {}
@@ -571,6 +576,12 @@
                                     if ((!m3u8Text.includes(AdSignifier) && (SimulatedAdsDepth == 0 || playerTypeIndex >= SimulatedAdsDepth - 1)) || (!fallbackM3u8 && playerTypeIndex >= BackupPlayerTypes.length - 1)) {
                                         backupPlayerType = playerType;
                                         backupM3u8 = m3u8Text;
+                                        postMessage({
+                                            key: 'CleanStreamUrlFound',
+                                            value: streamM3u8Url,
+                                            isValidated: true,
+                                            playerType: playerType
+                                        });
                                         break;
                                     }
                                     if (isFullyCachedPlayerType) {
