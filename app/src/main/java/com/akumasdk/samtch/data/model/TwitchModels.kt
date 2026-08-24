@@ -16,6 +16,7 @@ data class TwitchUser(
     val description: String? = null,
     val profileImageUrl: String? = null,
     val createdAt: String? = null,
+    val followersTotal: Int = 0,
     val roles: TwitchRoles? = null,
     val stream: TwitchStream? = null
 )

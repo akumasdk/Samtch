@@ -112,9 +112,9 @@ fun StreamMetadataBar(
         border = if (isImmersiveActuallyEnabled) {
             BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f))
         } else {
-            BorderStroke(0.5.dp, SamtchTheme.colors.divider)
+            BorderStroke(0.5.dp, SamtchTheme.colors.divider.copy(alpha = 0.3f))
         },
-        tonalElevation = 0.dp
+        tonalElevation = if (isImmersiveActuallyEnabled) 0.dp else 2.dp
     ) {
         if (isImmersiveActuallyEnabled) {
             PlayerBackground(

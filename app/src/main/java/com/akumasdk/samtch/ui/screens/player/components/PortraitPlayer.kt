@@ -24,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.akumasdk.samtch.data.model.TwitchUser
 import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
@@ -44,6 +45,7 @@ fun PortraitPlayer(
     adblockText: String = "",
     streamStartedAt: String? = null,
     previewImageUrl: String? = null,
+    user: TwitchUser? = null,
     portraitMode: PortraitMode = PortraitMode.VIDEO_AND_CHAT,
     expandTrigger: Int = 0,
     forceSlimMetadata: Boolean = false,
@@ -65,6 +67,7 @@ fun PortraitPlayer(
             viewersCount = viewersCount,
             streamStartedAt = streamStartedAt,
             previewImageUrl = previewImageUrl,
+            user = user,
             onDismiss = { showInfoDialog = false }
         )
     }

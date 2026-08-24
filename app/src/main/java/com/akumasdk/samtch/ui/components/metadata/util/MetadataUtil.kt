@@ -2,6 +2,9 @@ package com.akumasdk.samtch.ui.components.metadata.util
 
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 fun formatViewerCount(count: Int): String {
@@ -30,5 +33,18 @@ fun formatStreamDuration(startedAt: String?): String {
         }
     } catch (_: Exception) {
         "Live"
+    }
+}
+
+fun formatDate(dateString: String?): String {
+    if (dateString == null) return ""
+    return try {
+        val instant = Instant.parse(dateString)
+        val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+        formatter.format(instant)
+    } catch (_: Exception) {
+        dateString
     }
 }

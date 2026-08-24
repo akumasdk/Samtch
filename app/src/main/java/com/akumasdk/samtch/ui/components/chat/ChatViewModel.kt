@@ -151,6 +151,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    private var lastLoadedRoomId: String? = null
     private var connectionJob: Job? = null
     private val messageHistory = Collections.synchronizedList(mutableListOf<ChatMessageUiState>())
     private val rawIrcMessages = Collections.synchronizedList(mutableListOf<IrcMessage>())
@@ -171,6 +172,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _currentChannel.value = channel
         _tabUpdateTrigger.value += 1
         _hasTriggeredEmoteLoad.value = forceRefresh
+        lastLoadedRoomId = null
         
         // 2. Wipe all state immediately to prevent "leakage" in UI
         rawIrcMessages.clear()
@@ -277,11 +279,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             chatClient.connect(channel)
             
-            // Emote and badge loading is now deferred until the emote menu is opened
-            // to improve initial chat "snappiness" and reduce startup overhead.
-            if (forceRefresh) {
-                refreshEmotes(channel)
-            }
+            // Always refresh emotes to ensure 3rd party emotes are available for chat parsing.
+            refreshEmotes(channel)
             
             // Welcome message once connected
             launch {
@@ -298,6 +297,24 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             chatClient.messages.collect { msg ->
                 launch(Dispatchers.Default) {
+                    // Extract room-id for guest users to load 3rd party emotes
+                    val roomId = msg.tags["room-id"]
+                    if (!roomId.isNullOrEmpty() && _currentChannel.value == channel) {
+                        val currentState = EmoteRepository.getChannelState(channel).value
+                        val needsLoad = !currentState.isLoaded || (currentState.seventvEmotes.isEmpty() && currentState.bttvEmotes.isEmpty())
+                        
+                        if (lastLoadedRoomId != roomId || needsLoad) {
+                            if (lastLoadedRoomId != roomId) {
+                                Log.d(TAG, "New room-id detected: $roomId, triggering emote load")
+                            }
+                            lastLoadedRoomId = roomId
+                            launch(Dispatchers.Main) {
+                                refreshEmotes(channel, roomId)
+                                _hasTriggeredEmoteLoad.value = true
+                            }
+                        }
+                    }
+
                     if (msg.command == "PRIVMSG") {
                         synchronized(rawIrcMessages) {
                             if (rawIrcMessages.none { it.id == msg.id }) {
@@ -341,19 +358,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _systemNotice.value = null
     }
 
-    private fun refreshEmotes(channel: String): Job {
+    private fun refreshEmotes(channel: String, userId: String? = null): Job {
         return viewModelScope.launch {
             val context = getApplication<Application>()
             val auth = TwitchAuthManager.getAuthState(context)
 
-            Log.d(TAG, "Refreshing emotes for channel: $channel (loggedIn=${auth.isLoggedIn})")
+            Log.d(TAG, "Refreshing emotes for channel: $channel (userId=$userId, loggedIn=${auth.isLoggedIn})")
             
             kotlinx.coroutines.supervisorScope {
-                val globalJob = launch { EmoteRepository.loadGlobalEmotes(context) }
-                val userJob = launch { EmoteRepository.loadUserEmotes(context) }
-                val badgeJob = launch { BadgeRepository.loadGlobalBadges(context) }
+                launch { EmoteRepository.loadGlobalEmotes(context) }
+                launch { EmoteRepository.loadUserEmotes(context) }
+                launch { BadgeRepository.loadGlobalBadges(context) }
 
-                val userId = if (auth.isLoggedIn && auth.userName.equals(channel, ignoreCase = true)) {
+                val resolvedUserId = userId ?: if (auth.isLoggedIn && auth.userName.equals(channel, ignoreCase = true)) {
                     auth.userId
                 } else {
                     val resolved = com.akumasdk.samtch.data.api.helix.HelixApiClient.getUserIdByName(context, channel).getOrNull()
@@ -361,16 +378,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     resolved
                 }
 
-                val channelJob = launch {
-                    if (userId != null) {
-                        EmoteRepository.loadChannelEmotes(context, channel, userId)
-                        BadgeRepository.loadChannelBadges(context, channel, userId)
-                    } else {
-                        EmoteRepository.loadChannelEmotes(context, channel)
-                    }
+                if (resolvedUserId != null) {
+                    launch { EmoteRepository.loadChannelEmotes(context, channel, resolvedUserId) }
+                    launch { BadgeRepository.loadChannelBadges(context, channel, resolvedUserId) }
+                } else {
+                    launch { EmoteRepository.loadChannelEmotes(context, channel) }
                 }
-                
-                kotlinx.coroutines.joinAll(globalJob, userJob, badgeJob, channelJob)
             }
             Log.d(TAG, "Refresh cycle complete, nudging UI")
             _tabUpdateTrigger.value += 1

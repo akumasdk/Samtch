@@ -127,6 +127,10 @@
     <string name="category_label">Category</string>
     <string name="viewers_label">Viewers</string>
     <string name="uptime_label">Uptime</string>
+    <string name="followers_label">Followers</string>
+    <string name="description_label">Description</string>
+    <string name="created_at_label">Account Created</string>
+    <string name="open_external_button">Open in Browser</string>
 
     <!-- Emote Info Dialog -->
     <string name="emote_info_source">Source</string>

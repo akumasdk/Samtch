@@ -1,12 +1,16 @@
 package com.akumasdk.samtch.ui.components.metadata
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SmartDisplay
@@ -19,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,12 +31,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.data.model.TwitchUser
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.ui.components.metadata.util.formatDate
 import com.akumasdk.samtch.ui.components.metadata.util.formatStreamDuration
 import com.akumasdk.samtch.ui.components.metadata.util.formatViewerCount
+import com.akumasdk.samtch.util.Constants
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
@@ -44,8 +53,10 @@ fun StreamInfoDialog(
     viewersCount: Int = 0,
     streamStartedAt: String? = null,
     previewImageUrl: String? = null,
+    user: TwitchUser? = null,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
 
     Dialog(
@@ -104,9 +115,10 @@ fun StreamInfoDialog(
                             modifier = Modifier.size(56.dp),
                             color = Color.Transparent
                         ) {
-                            if (!avatarUrl.isNullOrEmpty()) {
+                            val finalAvatarUrl = avatarUrl ?: user?.profileImageUrl
+                            if (!finalAvatarUrl.isNullOrEmpty()) {
                                 AsyncImage(
-                                    model = avatarUrl,
+                                    model = finalAvatarUrl,
                                     contentDescription = null,
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -119,7 +131,7 @@ fun StreamInfoDialog(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = (displayName ?: channel).take(1).uppercase(),
+                                        text = (displayName ?: user?.displayName ?: channel).take(1).uppercase(),
                                         color = Color.White,
                                         fontWeight = FontWeight.Black,
                                         fontSize = 24.sp
@@ -132,7 +144,7 @@ fun StreamInfoDialog(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = displayName ?: channel,
+                                text = displayName ?: user?.displayName ?: channel,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Black,
                                 color = SamtchTheme.colors.primaryText,
@@ -175,6 +187,16 @@ fun StreamInfoDialog(
                             )
                         }
 
+                        val description = user?.description?.trim()
+                        if (!description.isNullOrEmpty()) {
+                            InfoCard(
+                                label = stringResource(R.string.description_label),
+                                value = description,
+                                icon = Icons.Default.Person,
+                                isScrollable = true
+                            )
+                        }
+
                         // Stats Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -199,28 +221,84 @@ fun StreamInfoDialog(
                                 }
                             }
                         }
+
+                        // User Stats Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            if (user != null && user.followersTotal > 0) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    InfoCard(
+                                        label = stringResource(R.string.followers_label),
+                                        value = formatViewerCount(user.followersTotal),
+                                        icon = Icons.Default.Group
+                                    )
+                                }
+                            }
+
+                            val created = formatDate(user?.createdAt)
+                            if (created.isNotEmpty()) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    InfoCard(
+                                        label = stringResource(R.string.created_at_label),
+                                        value = created,
+                                        icon = Icons.Default.History
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Close Button - High emphasis
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = SamtchTheme.colors.twitchPurple,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.close_button),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                    // Action Buttons
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Open in External Browser
+                        Button(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, "${Constants.Twitch.BASE_URL}/$channel".toUri())
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SamtchTheme.colors.accentColor.copy(alpha = 0.1f),
+                                contentColor = SamtchTheme.colors.accentColor
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                            border = BorderStroke(1.dp, SamtchTheme.colors.accentColor.copy(alpha = 0.2f))
+                        ) {
+                            Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.open_external_button),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Close Button - High emphasis
+                        Button(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SamtchTheme.colors.twitchPurple,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.close_button),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }

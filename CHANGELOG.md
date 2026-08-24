@@ -1,5 +1,20 @@
 # Changelog
 
+## Samtch v1.1.3
+
+### What's New
+- **Enriched Streamer Insights**: Significantly expanded the Stream Info Dialog to include more detailed channel metadata, including the total **Follower Count**, **Channel Description**, and the localized **Account Creation Date**.
+- **External Integration**: Added a convenient \"Open in Browser\" button within the stream info dialog for quick access to full Twitch profiles and schedules.
+- **Enhanced Visual Accessibility**:
+    - **Robust Metadata Visibility**: Overhauled the metadata bar's background and mapping logic to ensure it remains clearly visible across all themes, with improved contrast in Light Mode.
+    - **Immersive Dialogs**: Added a sophisticated 150dp blur effect to the background of info dialogs for a more premium, focused feel.
+    - **Intelligent Dimming**: Refined the dynamic luminance system to more aggressively dim bright stream previews, preventing UI wash-out.
+- **Under-the-Hood Performance**:
+    - **Thread-Isolated Analysis**: Offloaded the CPU-intensive background luminance analysis to a dedicated worker thread, keeping the UI perfectly responsive during complex visual transitions.
+    - **Resilient Data Fetching**: Migrated to a more robust GQL mapping strategy that gracefully handles missing or optional Twitch API fields.
+
+---
+
 ## Samtch v1.1.2
 
 ### What's New

@@ -79,7 +79,7 @@ fun ChatInputBox(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             if (isLoggedIn) {
                 LoggedInChatInput(
@@ -399,12 +399,15 @@ private fun LoggedOutChatInput(
                 .clickable { onLoginRequested() }
         ) {
             Text(
-                text = stringResource(R.string.chat_login_prompt),
+                text = if (portraitMode == null) stringResource(R.string.chat_login_required) else stringResource(R.string.chat_login_prompt),
                 color = SamtchTheme.colors.primaryText.copy(alpha = 0.6f),
-                fontSize = 14.sp,
+                fontSize = if (portraitMode == null) 12.sp else 14.sp,
                 fontWeight = FontWeight.Medium,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.padding(12.dp)
+                modifier = Modifier.padding(
+                    vertical = if (portraitMode == null) 6.dp else 12.dp,
+                    horizontal = 12.dp
+                )
             )
         }
     }

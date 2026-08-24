@@ -121,40 +121,48 @@ object TwitchGqlService {
     suspend fun getUserId(channelName: String): String? = withContext(Dispatchers.IO) {
         try {
             val clientId = getDynamicClientId()
+            
+            // Try with integrity token first, then without if it fails
             val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
 
-            val payload = JSONObject().apply {
-                put("operationName", "GetUserId")
-                put("query", GET_USER_ID_QUERY.trimIndent())
-                put("variables", JSONObject().apply {
-                    put("login", channelName.lowercase())
-                })
+            val fetchId: suspend (String?) -> String? = { token ->
+                val payload = JSONObject().apply {
+                    put("operationName", "GetUserId")
+                    put("query", GET_USER_ID_QUERY.trimIndent())
+                    put("variables", JSONObject().apply {
+                        put("login", channelName.lowercase())
+                    })
+                }
+
+                val requestBuilder = Request.Builder()
+                    .url(Constants.Twitch.Api.GQL)
+                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                    .addCommonHeaders(clientId)
+
+                if (!token.isNullOrBlank()) {
+                    requestBuilder.header("Client-Integrity", token)
+                }
+
+                val response = client.newCall(requestBuilder.build()).execute()
+                val body = response.body.string()
+                if (response.isSuccessful) {
+                    val json = JSONObject(body)
+                    json.optJSONObject("data")?.optJSONObject("user")?.optString("id")?.takeIf { it.isNotEmpty() }
+                } else null
             }
 
-            val requestBuilder = Request.Builder()
-                .url(Constants.Twitch.Api.GQL)
-                .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                .addCommonHeaders(clientId)
-
-            if (!integrityToken.isNullOrBlank()) {
-                requestBuilder.header("Client-Integrity", integrityToken)
+            var id = fetchId(integrityToken)
+            if (id == null && integrityToken != null) {
+                // Try once more without integrity token if it failed
+                id = fetchId(null)
             }
-
-            val response = client.newCall(requestBuilder.build()).execute()
-            val body = response.body.string()
-            if (!response.isSuccessful) {
-                Log.e(TAG, "GQL getUserId failed: ${response.code} body=$body")
-                return@withContext null
-            }
-
-            val json = JSONObject(body)
-            val id = json.optJSONObject("data")?.optJSONObject("user")?.optString("id")
-            if (id.isNullOrEmpty()) {
-                Log.w(TAG, "GQL getUserId returned empty data for $channelName. Body=$body")
+            
+            if (id == null) {
+                Log.w(TAG, "GQL getUserId failed for $channelName after all attempts")
             }
             id
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching user ID", e)
+            Log.e(TAG, "Error fetching user ID for $channelName", e)
             null
         }
     }

@@ -16,22 +16,22 @@ object TwitchGqlMapper {
             val gameJson = streamJson?.optJSONObject("game")
 
             val user = TwitchUser(
-                id = userJson.getString("id").trim(),
-                login = userJson.getString("login").trim(),
-                displayName = userJson.getString("displayName").trim(),
+                id = userJson.optString("id").trim(),
+                login = userJson.optString("login").trim(),
+                displayName = userJson.optString("displayName").trim(),
                 description = userJson.optString("description").trim(),
                 profileImageUrl = userJson.optString("profileImageURL").trim(),
                 createdAt = userJson.optString("createdAt").trim(),
-                roles = rolesJson?.let { TwitchRoles(it.getBoolean("isPartner")) },
+                roles = rolesJson?.let { TwitchRoles(it.optBoolean("isPartner")) },
                 stream = streamJson?.let {
                     TwitchStream(
-                        id = it.getString("id").trim(),
-                        title = it.getString("title").trim(),
+                        id = it.optString("id").trim(),
+                        title = it.optString("title").trim(),
                         type = it.optString("type").trim(),
-                        viewersCount = it.getInt("viewersCount"),
+                        viewersCount = it.optInt("viewersCount"),
                         previewImageUrl = it.optString("previewImageURL").trim(),
                         createdAt = it.optString("createdAt").trim(),
-                        game = gameJson?.let { g -> TwitchGame(g.getString("name").trim()) }
+                        game = gameJson?.let { g -> TwitchGame(g.optString("name").trim()) }
                     )
                 }
             )
