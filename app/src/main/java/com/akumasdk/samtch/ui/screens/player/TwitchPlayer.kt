@@ -45,6 +45,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -71,6 +72,7 @@ import com.akumasdk.samtch.ui.screens.player.components.AudioOnlyPlayer
 import com.akumasdk.samtch.ui.screens.player.components.AudioServiceEffects
 import com.akumasdk.samtch.ui.screens.player.components.BrightnessManager
 import com.akumasdk.samtch.ui.screens.player.components.FullscreenChatToggle
+import com.akumasdk.samtch.ui.screens.player.components.NativePlayer
 import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureIndicators
 import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureOverlay
 import com.akumasdk.samtch.ui.screens.player.components.PlayerLifecycleEffects
@@ -151,7 +153,6 @@ fun TwitchPlayer(
         val isImeVisible = WindowInsets.isImeVisible
         val forceSlimMetadata = isEmoteMenuVisible || isImeVisible
 
-        val scope = rememberCoroutineScope()
         var currentLoadingSession by remember { mutableLongStateOf(0L) }
 
         val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
@@ -191,9 +192,12 @@ fun TwitchPlayer(
 
         var lastProcessedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
 
-        // Logic for using the background audio service
-        // Strictly tied to explicit Audio Only mode. Chat Only mode remains silent when minimized.
-        val shouldUseAudioService = isAudioOnly
+        // Logic for using the native player and background service
+        // We now use the native player for both Video and Audio Only modes.
+        val isVideoRequired = remember(isAudioOnly, portraitMode, isFullscreen, isMinimized) {
+            (!isAudioOnly) && (portraitMode != PortraitMode.CHAT_ONLY) && (isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
+        }
+        val shouldUseNativePlayer = isAudioOnly || isVideoRequired
 
         // Extracted Effects
         PlayerLifecycleEffects(
@@ -211,7 +215,7 @@ fun TwitchPlayer(
 
         AudioServiceEffects(
             channel = channel,
-            shouldUseAudioService = shouldUseAudioService,
+            shouldUseAudioService = shouldUseNativePlayer,
             isAudioOnlyBackgroundEnabled = isAudioOnlyBackgroundEnabled,
             playerViewModel = playerViewModel,
             context = context,
@@ -229,8 +233,8 @@ fun TwitchPlayer(
             onMetadataUpdated(avatarUrl, streamSubtitle)
         }
 
-        LaunchedEffect(shouldUseAudioService) {
-            onAudioOnlyModeChanged(shouldUseAudioService)
+        LaunchedEffect(isAudioOnly) {
+            onAudioOnlyModeChanged(isAudioOnly)
         }
 
         val state = rememberSaveableWebViewState("")
@@ -253,10 +257,6 @@ fun TwitchPlayer(
                     onBack?.invoke()
                 }
             }
-        }
-
-        val isVideoRequired = remember(isAudioOnly, portraitMode, isFullscreen, isMinimized) {
-            (!isAudioOnly) && (portraitMode != PortraitMode.CHAT_ONLY) && (isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
         }
 
         // Handle URL loading and refresh logic
@@ -382,13 +382,20 @@ fun TwitchPlayer(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        // Video mode (Minimized or Expanded): Actual WebView Player
+                        // Video mode: Native Player + Orchestrator WebView
                         PlayerBackground(
                             channel = channel,
                             previewUrl = previewImageUrl,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.FillBounds
                         ) {
+                            // Native Player
+                            NativePlayer(
+                                player = playerViewModel.mediaController,
+                                modifier = Modifier.fillMaxSize()
+                            )
+
+                            // Orchestrator WebView (Invisible)
                             PlayerWebView(
                                 state = state,
                                 navigator = navigator,
@@ -403,22 +410,30 @@ fun TwitchPlayer(
                                     isAudioOnly = true
                                     portraitMode = PortraitMode.AUDIO_AND_CHAT
                                 },
-                                onPlaybackStarted = {
-                                    val session = currentLoadingSession
-                                    scope.launch {
-                                        delay(300.milliseconds)
-                                        if (session == currentLoadingSession) {
-                                            isUiLoading = false
-                                        }
-                                    }
-                                },
                                 onLoadingStatus = { loadingMessage = it },
                                 onAdblocked = { text ->
                                     adblockText = text
                                     if (text.isNotEmpty() && isUiLoading) isUiLoading = false
                                 },
-                                onVideoBoundsChanged = onVideoBoundsChanged
+                                onVideoBoundsChanged = onVideoBoundsChanged,
+                                onStreamUrlFound = { url ->
+                                    playerViewModel.onStreamUrlFound(url)
+                                },
+                                onAdStatusChanged = { isAd, msg ->
+                                    playerViewModel.onAdStatusChanged(isAd, msg)
+                                },
+                                modifier = Modifier
+                                    .size(320.dp, 180.dp) // Maintain size for logic but hide
+                                    .alpha(0f) 
+                                    .offset(x = (-2000).dp)
                             )
+                            
+                            // Native player drives the loading screen now
+                            LaunchedEffect(playerViewModel.isPlaying) {
+                                if (playerViewModel.isPlaying) {
+                                    isUiLoading = false
+                                }
+                            }
                             
                             AnimatedVisibility(
                                 visible = isUiLoading,

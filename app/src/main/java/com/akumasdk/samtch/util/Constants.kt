@@ -11,6 +11,7 @@ object Constants {
     object UserAgents {
         const val DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         const val MOBILE = "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"
+        const val IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
     }
 
     object Twitch {
@@ -101,5 +102,6 @@ object Constants {
         const val PLAYER_VISIBILITY_MONITOR = "js/player/visibility_monitor.js"
         const val PLAYER_VAFT = "js/player/vaft.js"
         const val PLAYER_EARLY_HIDER = "js/player/early_hider.js"
+        const val PLAYER_STREAM_DETECTOR = "js/player/stream_detector.js"
     }
 }

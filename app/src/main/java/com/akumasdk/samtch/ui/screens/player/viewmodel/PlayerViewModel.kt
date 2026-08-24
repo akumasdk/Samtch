@@ -48,6 +48,11 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     var mediaController by mutableStateOf<MediaController?>(null)
         private set
     var isPlaying by mutableStateOf(false)
+
+    var currentStreamUrl by mutableStateOf<String?>(null)
+        private set
+    var isAdActive by mutableStateOf(false)
+        private set
         
     private var metadataJob: Job? = null
 
@@ -62,6 +67,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         if (isNewChannel) {
             hasBackgroundReloaded = false
             metadataRefreshTrigger = 0
+            currentStreamUrl = null
+            isAdActive = false
             
             // Always reset UI mode to standard when changing channels to avoid "breaking logic"
             portraitMode = PortraitMode.VIDEO_AND_CHAT
@@ -114,6 +121,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun updateMediaItem(channelName: String) {
         val controller = mediaController ?: return
         
+        // If we already have a clean URL, don't trigger the service resolution
+        if (currentStreamUrl != null) return
+
         viewModelScope.launch(Dispatchers.Default) {
             val metadata = MediaMetadata.Builder()
                 .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
@@ -128,10 +138,57 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 .build()
 
             withContext(Dispatchers.Main) {
-                controller.setMediaItem(mediaItem)
-                controller.prepare()
-                controller.play()
+                // Double check if clean URL wasn't found while we were building this
+                if (currentStreamUrl == null) {
+                    controller.setMediaItem(mediaItem)
+                    controller.prepare()
+                    controller.play()
+                }
             }
+        }
+    }
+
+    fun onStreamUrlFound(url: String) {
+        if (currentStreamUrl == url) return
+        
+        Log.d("PlayerViewModel", "Clean stream URL found: $url")
+        currentStreamUrl = url
+        
+        val controller = mediaController ?: run {
+            Log.w("PlayerViewModel", "onStreamUrlFound: mediaController is null!")
+            return
+        }
+        val channelName = channel ?: return
+
+        viewModelScope.launch(Dispatchers.Main) {
+            Log.d("PlayerViewModel", "Setting new MediaItem with clean URL for $channelName")
+            val metadata = MediaMetadata.Builder()
+                .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
+                .setArtist(streamMetadata?.user?.displayName ?: channelName)
+                .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
+                .setArtworkUri(avatarUrl?.toUri())
+                .build()
+                
+            val mediaItem = MediaItem.Builder()
+                .setMediaId(channelName)
+                .setUri(url.toUri())
+                .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+                .setMediaMetadata(metadata)
+                .build()
+
+            controller.setMediaItem(mediaItem)
+            controller.prepare()
+            controller.play()
+        }
+    }
+
+    fun onAdStatusChanged(isAd: Boolean, message: String) {
+        if (isAdActive == isAd) return
+        isAdActive = isAd
+        Log.d("PlayerViewModel", "Ad status changed: isAd=$isAd, message=$message")
+        
+        if (isAd) {
+            // Optional: Handle ad start (e.g. show overlay or lower volume)
         }
     }
 

@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebViewClient
 import android.webkit.WebView as NativeWebView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,9 +36,10 @@ fun WebViewContainer(
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit = {},
     onToggleAudioOnly: () -> Unit = {},
-    onPlaybackStarted: () -> Unit = {},
     onLoadingStatus: (String) -> Unit = {},
-    onAdblocked: (String) -> Unit = {}
+    onAdblocked: (String) -> Unit = {},
+    onStreamUrlFound: (String) -> Unit = {},
+    onAdStatusChanged: (Boolean, String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val resources = context.resources
@@ -85,9 +89,10 @@ fun WebViewContainer(
     val currentOnToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
     val currentOnToggleChat by rememberUpdatedState(onToggleChat)
     val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
-    val currentOnPlaybackStarted by rememberUpdatedState(onPlaybackStarted)
     val currentOnLoadingStatus by rememberUpdatedState(onLoadingStatus)
     val currentOnAdblocked by rememberUpdatedState(onAdblocked)
+    val currentOnStreamUrlFound by rememberUpdatedState(onStreamUrlFound)
+    val currentOnAdStatusChanged by rememberUpdatedState(onAdStatusChanged)
 
     // Script injection logic when page finishes loading
     LaunchedEffect(state.lastLoadedUrl, state.loadingState, adBlockMode) {
@@ -95,10 +100,12 @@ fun WebViewContainer(
             val url = state.lastLoadedUrl ?: ""
             if (!url.contains(Constants.Twitch.DOMAIN)) return@LaunchedEffect
 
+            // Minimal scripts for orchestrator mode
             val scripts = listOf(
-                Constants.Scripts.PLAYER_UI_CLEANER,
-                Constants.Scripts.PLAYER_CONTROLS_INJECTOR,
-                Constants.Scripts.PLAYER_PLAYBACK_MONITOR
+                Constants.Scripts.PLAYER_PLAYBACK_MONITOR,
+                Constants.Scripts.PLAYER_STREAM_DETECTOR,
+                // Include VAFT/VIDEO_SWAP here too just in case it didn't catch onPageStarted
+                if (adBlockMode == SettingsManager.AdBlockMode.VAFT) Constants.Scripts.PLAYER_VAFT else Constants.Scripts.PLAYER_VIDEO_SWAP
             ).mapNotNull { path ->
                 val script = ScriptLoader.getScript(context, path)
                 if (script.isNotEmpty()) script else null
@@ -110,17 +117,33 @@ fun WebViewContainer(
             // Wait for WebView to be ready
             delay(100.milliseconds)
 
-            // Initial tight polling for early hooks (catch hydration)
-            repeat(8) {
-                navigator.evaluateJavaScript(finalScripts)
-                delay(300.milliseconds)
-            }
-
-            // Steady polling for dynamic hydration (catch late UI elements)
-            repeat(10) {
-                navigator.evaluateJavaScript(finalScripts)
-                delay(1500.milliseconds)
-            }
+            // Inject orchestrator scripts
+            navigator.evaluateJavaScript(finalScripts)
+            
+            // Definitively mute and disable interactions
+            navigator.evaluateJavaScript("""
+                (function() {
+                    const setupOrchestrator = () => {
+                        const videos = document.getElementsByTagName('video');
+                        for (let v of videos) { 
+                            v.muted = true; 
+                            v.volume = 0; 
+                            v.removeAttribute('autoplay'); // Prevent it from fighting for focus
+                            v.style.pointerEvents = 'none';
+                        }
+                        // Stop Twitch from pausing when not visible
+                        if (window.Player && window.Player.prototype) {
+                            window.Player.prototype.pause = function() { console.log('Pause blocked by Samtch Orchestrator'); };
+                        }
+                    };
+                    setupOrchestrator();
+                    setInterval(setupOrchestrator, 1000);
+                    
+                    // Disable all touch/click interactions
+                    document.body.style.pointerEvents = 'none';
+                    document.body.style.userSelect = 'none';
+                })();
+            """.trimIndent())
         }
     }
 
@@ -133,9 +156,9 @@ fun WebViewContainer(
             NativeWebView(param.context)
         },
         onCreated = { webView ->
-            Log.d("TwitchPlayer", "WebView created for channel: $channel")
+            Log.d("TwitchPlayer", "Orchestrator WebView created for channel: $channel")
 
-            // Prevent the renderer process from being killed when hidden
+            // Lower priority for orchestrator
             webView.setRendererPriorityPolicy(NativeWebView.RENDERER_PRIORITY_BOUND, false)
 
             state.webSettings.apply {
@@ -143,7 +166,7 @@ fun WebViewContainer(
 
                 androidWebSettings.apply {
                     domStorageEnabled = true
-                    mediaPlaybackRequiresUserGesture = false
+                    mediaPlaybackRequiresUserGesture = false // Needed for extraction to start
                     allowFileAccess = true
                 }
             }
@@ -155,8 +178,28 @@ fun WebViewContainer(
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false
                 
+                // Disable all focus and interaction
+                isFocusable = false
+                isFocusableInTouchMode = false
+                isClickable = false
+                
                 // Prevent onViewTypeAvailable crash by disabling Autofill
                 importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+
+                // Web Video Caster style: Native network interception
+                webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: android.webkit.WebView?,
+                        request: WebResourceRequest?
+                    ): WebResourceResponse? {
+                        val url = request?.url?.toString() ?: ""
+                        if (url.contains(".m3u8", ignoreCase = true)) {
+                            Log.d("TwitchPlayer", "Orchestrator Intercepted M3U8: $url")
+                            post { currentOnStreamUrlFound(url) }
+                        }
+                        return super.shouldInterceptRequest(view, request)
+                    }
+                }
 
                 // Add bridge for fullscreen and chat using the dedicated class
                 addJavascriptInterface(
@@ -171,23 +214,33 @@ fun WebViewContainer(
                             post { currentOnToggleAudioOnly() }
                         },
                         onPlaybackStartedCallback = {
-                            post { currentOnPlaybackStarted() }
+                            // Orchestrator playback started, but we don't notify the UI anymore
+                            // to avoid hiding the loading screen too early for the NATIVE player.
+                            Log.d("TwitchPlayer", "Orchestrator playback started")
                         },
                         onLoadingStatusCallback = { message: String ->
+                            // Optional: Keep status updates if they are helpful
                             post { currentOnLoadingStatus(message) }
                         },
                         onAdblockedCallback = { text: String ->
                             post { currentOnAdblocked(text) }
+                        },
+                        onStreamUrlFoundCallback = { url: String ->
+                            post { currentOnStreamUrlFound(url) }
+                        },
+                        onAdStatusChangedCallback = { isAd: Boolean, message: String ->
+                            post { currentOnAdStatusChanged(isAd, message) }
                         }
                     ),
                     Constants.Bridges.PLAYER
                 )
 
-                // Enable fullscreen for videos
+                // Enable fullscreen for videos (not needed for orchestrator but keep for stability)
                 webChromeClient = WebChromeClient()
 
                 // Enable mixed content for Twitch
                 settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                settings.userAgentString = Constants.UserAgents.MOBILE
             }
         }
     )

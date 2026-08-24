@@ -198,6 +198,10 @@
                 this.addEventListener('message', (e) => {
                     if (e.data.key == 'UpdateAdBlockBanner') {
                         updateAdblockBanner(e.data);
+                    } else if (e.data.key == 'CleanStreamUrlFound') {
+                        if (typeof TwitchPlayerBridge !== 'undefined' && TwitchPlayerBridge.onStreamUrlFound) {
+                            TwitchPlayerBridge.onStreamUrlFound(e.data.value);
+                        }
                     } else if (e.data.key == 'PauseResumePlayer') {
                         doTwitchPlayerTask(true, false);
                     } else if (e.data.key == 'ReloadPlayer') {
@@ -358,6 +362,12 @@
                                 }
                                 streamInfo.LastPlayerReload = Date.now();
                                 resolve(new Response(replaceServerTimeInM3u8(streamInfo.IsUsingModifiedM3U8 ? streamInfo.ModifiedM3U8 : streamInfo.EncodingsM3U8, serverTime)));
+                                if (!streamInfo.IsShowingAd) {
+                                    postMessage({
+                                        key: 'CleanStreamUrlFound',
+                                        value: url
+                                    });
+                                }
                             } else {
                                 resolve(response);
                             }
@@ -540,6 +550,10 @@
                                 const encodingsM3u8Response = await realFetch(urlInfo.href);
                                 if (encodingsM3u8Response.status === 200) {
                                     encodingsM3u8 = streamInfo.BackupEncodingsM3U8Cache[playerType] = await encodingsM3u8Response.text();
+                                    postMessage({
+                                        key: 'CleanStreamUrlFound',
+                                        value: urlInfo.href
+                                    });
                                 }
                             }
                         } catch (err) {}
@@ -781,12 +795,17 @@
         setTimeout(monitorPlayerBuffering, PlayerBufferingDelay);
     }
     function updateAdblockBanner(data) {
-        if (typeof TwitchPlayerBridge !== 'undefined' && TwitchPlayerBridge.onAdblocked) {
-            let message = '';
-            if (data.hasAds) {
-                message = 'Blocking' + (data.isMidroll ? ' midroll' : '') + ' ads' + (data.isStrippingAdSegments ? ' (stripping)' : '');
+        if (typeof TwitchPlayerBridge !== 'undefined') {
+            if (TwitchPlayerBridge.onAdblocked) {
+                let message = '';
+                if (data.hasAds) {
+                    message = 'Blocking' + (data.isMidroll ? ' midroll' : '') + ' ads' + (data.isStrippingAdSegments ? ' (stripping)' : '');
+                }
+                TwitchPlayerBridge.onAdblocked(message);
             }
-            TwitchPlayerBridge.onAdblocked(message);
+            if (TwitchPlayerBridge.onAdStatusChanged) {
+                TwitchPlayerBridge.onAdStatusChanged(data.hasAds, data.hasAds ? (data.isMidroll ? 'midroll' : 'preroll') : '');
+            }
         }
     }
     function getPlayerAndState() {

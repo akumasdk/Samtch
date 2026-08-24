@@ -51,13 +51,21 @@ fun AudioServiceEffects(
             .setArtworkUri(stream.previewImageUrl?.toUri())
             .build()
             
-        controller.replaceMediaItem(
-            0,
-            androidx.media3.common.MediaItem.Builder()
-                .setMediaId(channel)
-                .setMediaMetadata(metadata)
-                .build()
-        )
+        // Update metadata of the current item without replacing it if possible, 
+        // to avoid clearing the stream URL set by the orchestrator.
+        val currentItem = controller.currentMediaItem
+        if (currentItem != null && currentItem.mediaId == channel) {
+            // Check if metadata is actually different to avoid redundant updates
+            if (currentItem.mediaMetadata.title != stream.title) {
+                // We preserve the URI by building upon the existing item
+                controller.replaceMediaItem(
+                    controller.currentMediaItemIndex,
+                    currentItem.buildUpon()
+                        .setMediaMetadata(metadata)
+                        .build()
+                )
+            }
+        }
     }
 }
 

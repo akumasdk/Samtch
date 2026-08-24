@@ -3,6 +3,7 @@ package com.akumasdk.samtch.service
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
@@ -31,7 +32,6 @@ import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
 import com.akumasdk.samtch.util.Constants
-import com.akumasdk.samtch.util.ExtM3UParser
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -41,7 +41,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.guava.asListenableFuture
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
@@ -60,21 +59,23 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
 
         val httpFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(Constants.UserAgents.DESKTOP)
+            .setUserAgent(Constants.UserAgents.MOBILE) // Align with Orchestrator
             .setAllowCrossProtocolRedirects(true)
+            .setDefaultRequestProperties(mapOf(
+                "Client-ID" to Constants.Twitch.CLIENT_ID,
+                "Referer" to "https://m.twitch.tv/",
+                "Origin" to "https://m.twitch.tv"
+            ))
 
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
-        val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(this)
+            .setDataSourceFactory(dataSourceFactory)
 
-        val trackSelector = DefaultTrackSelector(this).apply {
-            parameters = buildUponParameters()
-                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
-                .build()
-        }
+        val trackSelector = DefaultTrackSelector(this)
 
         val loadControl = DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
-            .setBufferDurationsMs(30_000, 120_000, 2_000, 5_000)
+            .setBufferDurationsMs(15_000, 60_000, 1_000, 2_000) // Lower latency for live
             .build()
 
         exoPlayer = ExoPlayer.Builder(this)
@@ -83,7 +84,7 @@ class PlaybackService : MediaSessionService() {
             .setLoadControl(loadControl)
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                     .setUsage(C.USAGE_MEDIA)
                     .build(),
                 true
@@ -91,18 +92,42 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
+            
+        exoPlayer?.addListener(object : Player.Listener {
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                Log.e("PlaybackService", "ExoPlayer Error: ${error.errorCodeName} (${error.errorCode}): ${error.message}", error)
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                val stateName = when(state) {
+                    Player.STATE_IDLE -> "IDLE"
+                    Player.STATE_BUFFERING -> "BUFFERING"
+                    Player.STATE_READY -> "READY"
+                    Player.STATE_ENDED -> "ENDED"
+                    else -> "UNKNOWN"
+                }
+                Log.d("PlaybackService", "Playback state changed: $stateName")
+            }
+
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                Log.d("PlaybackService", "Tracks changed: ${tracks.groups.size} groups")
+                tracks.groups.forEach { group ->
+                    Log.d("PlaybackService", "Track group type: ${group.type}, selected: ${group.isSelected}")
+                }
+            }
+        })
 
         // Wrap player to disable seeking for live streams
         val forwardingPlayer = object : ForwardingPlayer(exoPlayer!!) {
             override fun getAvailableCommands(): Player.Commands {
                 return super.getAvailableCommands().buildUpon()
-                    .remove(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-                    .remove(Player.COMMAND_SEEK_BACK)
-                    .remove(Player.COMMAND_SEEK_FORWARD)
-                    .remove(Player.COMMAND_SEEK_TO_NEXT)
-                    .remove(Player.COMMAND_SEEK_TO_PREVIOUS)
-                    .remove(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-                    .remove(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                    .remove(COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                    .remove(COMMAND_SEEK_BACK)
+                    .remove(COMMAND_SEEK_FORWARD)
+                    .remove(COMMAND_SEEK_TO_NEXT)
+                    .remove(COMMAND_SEEK_TO_PREVIOUS)
+                    .remove(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                    .remove(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
                     .build()
             }
         }
@@ -217,6 +242,7 @@ class PlaybackService : MediaSessionService() {
             
             // If it already has a URI, it's ready
             if (item.localConfiguration?.uri != null) {
+                Log.d("PlaybackService", "onAddMediaItems: Item has URI, returning immediately: ${item.localConfiguration?.uri}")
                 return Futures.immediateFuture(mediaItems)
             }
 
@@ -227,6 +253,7 @@ class PlaybackService : MediaSessionService() {
 
         private suspend fun resolveMediaItem(item: MediaItem): MutableList<MediaItem> {
             val channelName = item.mediaId
+            Log.d("PlaybackService", "Resolving media item for $channelName")
             
             val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(this@PlaybackService)
 
@@ -240,7 +267,7 @@ class PlaybackService : MediaSessionService() {
                         if (helixUser != null) {
                             return@async TwitchHelixMapper.mapHelixToMetadata(helixUser, helixStream)
                         }
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // Fallback to GQL
                     }
                 }
@@ -252,15 +279,12 @@ class PlaybackService : MediaSessionService() {
             
             return if (tokenPair != null) {
                 val hlsUrl = TwitchGqlService.buildHlsUrl(channelName, tokenPair.first, tokenPair.second)
-                val audioOnlyUrl = fetchAudioOnlyUrl(hlsUrl)
-                
-                val finalUrl = audioOnlyUrl ?: hlsUrl
                 
                 val user = detailedMetadata?.user
                 val stream = user?.stream
                 
                 val newItem = item.buildUpon()
-                    .setUri(finalUrl.toUri())
+                    .setUri(hlsUrl.toUri())
                     .setMediaMetadata(
                         item.mediaMetadata.buildUpon()
                             .setTitle(stream?.title ?: item.mediaMetadata.title ?: channelName)
@@ -269,7 +293,7 @@ class PlaybackService : MediaSessionService() {
                             .setArtworkUri(stream?.previewImageUrl?.toUri() ?: item.mediaMetadata.artworkUri)
                             .setIsBrowsable(false)
                             .setIsPlayable(true)
-                            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+                            .setMediaType(MediaMetadata.MEDIA_TYPE_VIDEO)
                             .build()
                     )
                     .build()
@@ -277,29 +301,6 @@ class PlaybackService : MediaSessionService() {
             } else {
                 mutableListOf(item)
             }
-        }
-    }
-
-    private fun fetchAudioOnlyUrl(masterUrl: String): String? {
-        return try {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.SECONDS)
-                .build()
-
-            val request = Request.Builder()
-                .url(masterUrl)
-                .header("User-Agent", Constants.UserAgents.DESKTOP)
-                .build()
-
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return null
-
-            val body = response.body.string()
-            val entries = ExtM3UParser().parse(body)
-            entries.firstOrNull { it.name == "audio_only" }?.playlistUrl
-        } catch (_: Exception) {
-            null
         }
     }
 }

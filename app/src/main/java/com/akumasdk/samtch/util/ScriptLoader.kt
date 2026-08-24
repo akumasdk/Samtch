@@ -25,7 +25,8 @@ object ScriptLoader {
             Scripts.PLAYER_LINK_DISABLER,
             Scripts.PLAYER_CONTROLS_INJECTOR,
             Scripts.PLAYER_VISIBILITY_MONITOR,
-            Scripts.PLAYER_VAFT
+            Scripts.PLAYER_VAFT,
+            Scripts.PLAYER_STREAM_DETECTOR
         )
 
         scripts.forEach { path ->

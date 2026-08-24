@@ -18,10 +18,11 @@ fun PlayerWebView(
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit,
     onToggleAudioOnly: () -> Unit,
-    onPlaybackStarted: () -> Unit,
     onLoadingStatus: (String) -> Unit,
     onAdblocked: (String) -> Unit,
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit,
+    onStreamUrlFound: (String) -> Unit = {},
+    onAdStatusChanged: (Boolean, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     WebViewContainer(
@@ -46,8 +47,9 @@ fun PlayerWebView(
         onToggleFullscreen = onToggleFullscreen,
         onToggleChat = onToggleChat,
         onToggleAudioOnly = onToggleAudioOnly,
-        onPlaybackStarted = onPlaybackStarted,
         onLoadingStatus = onLoadingStatus,
-        onAdblocked = onAdblocked
+        onAdblocked = onAdblocked,
+        onStreamUrlFound = onStreamUrlFound,
+        onAdStatusChanged = onAdStatusChanged
     )
 }
