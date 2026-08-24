@@ -3,6 +3,11 @@ package com.akumasdk.samtch.util
 object Constants {
     const val ABOUT_BLANK = "about:blank"
 
+    object Links {
+        const val GITHUB_REPO = "https://github.com/akumasdk/Samtch"
+        const val DONATION_KOFI = "https://ko-fi.com/akumasdk"
+    }
+
     object UserAgents {
         const val DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         const val MOBILE = "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"
