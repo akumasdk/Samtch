@@ -27,6 +27,7 @@ object Constants {
             const val GQL = "https://gql.twitch.tv/gql"
             const val AUTH_BASE = "https://id.twitch.tv/oauth2/authorize?response_type=token"
             const val HLS_BASE = "https://usher.ttvnw.net/api/channel/hls/"
+            const val HLS_BASE_V2 = "https://usher.ttvnw.net/api/v2/channel/hls/"
             const val INTEGRITY = "https://gql.twitch.tv/integrity"
             const val HELIX_VALIDATE = "https://id.twitch.tv/oauth2/validate"
             const val HELIX_USERS = "https://api.twitch.tv/helix/users"
@@ -93,15 +94,5 @@ object Constants {
         const val CHAT_BTTV = "js/chat/bttv.js"
         const val CHAT_UI_CLEANER = "js/chat/ui_cleaner.js"
         const val CHAT_LOADER_OBSERVER = "js/chat/chat_loader_observer.js"
-        
-        const val PLAYER_UI_CLEANER = "js/player/ui_cleaner.js"
-        const val PLAYER_PLAYBACK_MONITOR = "js/player/playback_monitor.js"
-        const val PLAYER_VIDEO_SWAP = "js/player/video_swap.js"
-        const val PLAYER_LINK_DISABLER = "js/player/link_disabler.js"
-        const val PLAYER_CONTROLS_INJECTOR = "js/player/controls_injector.js"
-        const val PLAYER_VISIBILITY_MONITOR = "js/player/visibility_monitor.js"
-        const val PLAYER_VAFT = "js/player/vaft.js"
-        const val PLAYER_EARLY_HIDER = "js/player/early_hider.js"
-        const val PLAYER_STREAM_DETECTOR = "js/player/stream_detector.js"
     }
 }

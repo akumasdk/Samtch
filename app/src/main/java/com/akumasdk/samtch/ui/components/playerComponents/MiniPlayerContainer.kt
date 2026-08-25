@@ -102,7 +102,7 @@ fun BoxScope.MiniPlayerContainer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp)
-                    .shadow(elevation, RoundedCornerShape(40.dp))
+                    .shadow(elevation.coerceAtLeast(0.dp), RoundedCornerShape(40.dp))
                     .clip(RoundedCornerShape(40.dp))
                     .clickable(onClick = onExpand),
                 color = SamtchTheme.colors.miniPlayerBackground.copy(alpha = 0.98f),

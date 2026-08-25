@@ -14,9 +14,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -39,20 +37,15 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -73,34 +66,27 @@ import com.akumasdk.samtch.ui.components.playerComponents.MiniPlayerOverlay
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerLoadingScreen
 import com.akumasdk.samtch.ui.components.playerComponents.TapTooltip
-import com.akumasdk.samtch.ui.components.playerComponents.createTwitchPlayerUrl
 import com.akumasdk.samtch.ui.screens.player.components.AudioOnlyPlayer
 import com.akumasdk.samtch.ui.screens.player.components.AudioServiceEffects
 import com.akumasdk.samtch.ui.screens.player.components.BrightnessManager
 import com.akumasdk.samtch.ui.screens.player.components.FullscreenChatToggle
 import com.akumasdk.samtch.ui.screens.player.components.NativePlayer
 import com.akumasdk.samtch.ui.screens.player.components.NativePlayerControls
-import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureIndicators
 import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureOverlay
 import com.akumasdk.samtch.ui.screens.player.components.QualitySelectorDialog
 import com.akumasdk.samtch.ui.screens.player.components.PlayerLifecycleEffects
 import com.akumasdk.samtch.ui.screens.player.components.PlayerOverlay
-import com.akumasdk.samtch.ui.screens.player.components.PlayerWebView
 import com.akumasdk.samtch.ui.screens.player.components.playerGestureHandler
 import com.akumasdk.samtch.ui.screens.player.components.playerInputHandler
 import com.akumasdk.samtch.ui.screens.player.components.rememberPlayerLayoutDimensions
 import com.akumasdk.samtch.ui.screens.player.models.ChatContentConfig
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
-import com.akumasdk.samtch.ui.screens.player.util.unloadWebView
 import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
 import com.akumasdk.samtch.ui.theme.LocalStreamPreview
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.ui.theme.StreamPreviewInfo
-import com.multiplatform.webview.web.rememberSaveableWebViewState
-import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -123,7 +109,6 @@ fun TwitchPlayer(
     onLoginRequested: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onAudioOnlyModeChanged: (Boolean) -> Unit = {},
-    onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {},
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
@@ -161,7 +146,6 @@ fun TwitchPlayer(
         var isUiLoading by remember { mutableStateOf(true) }
         val defaultLoadingMessage = stringResource(R.string.loading_stream)
         var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
-        var adblockText by remember { mutableStateOf("") }
 
         var showFullscreenControls by remember(isFullscreen) { mutableStateOf(!isFullscreen) }
 
@@ -171,8 +155,6 @@ fun TwitchPlayer(
         val isEmoteMenuVisible by chatViewModel.isEmoteMenuVisible.collectAsState()
         val isImeVisible = WindowInsets.isImeVisible
         val forceSlimMetadata = isEmoteMenuVisible || isImeVisible
-
-        var currentLoadingSession by remember { mutableLongStateOf(0L) }
 
         val hintShown by SettingsManager.isMiniPlayerHintShown(context).collectAsState(initial = true)
         val tooltipShowCount by SettingsManager.getPlayerTooltipShowCount(context).collectAsState(initial = 0)
@@ -262,9 +244,6 @@ fun TwitchPlayer(
             }
         }
 
-        val state = rememberSaveableWebViewState("")
-        val navigator = rememberWebViewNavigator()
-
         Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, isMinimized: $isMinimized)")
 
         // Handle back button behavior:
@@ -284,57 +263,11 @@ fun TwitchPlayer(
             }
         }
 
-        // Handle URL loading and refresh logic
-        LaunchedEffect(channel, refreshTrigger, isVideoRequired) {
-            if (!isVideoRequired) {
-                Log.d("TwitchPlayer", "Video not required (audio=$isAudioOnly, mode=$portraitMode). Unloading.")
-                // Invalidate current loading session and stop any active load immediately
-                currentLoadingSession = System.currentTimeMillis()
-                isUiLoading = false
-                unloadWebView(state, navigator)
-                return@LaunchedEffect
-            }
-            
-            // Resume WebView if it was paused
-            try {
-                state.nativeWebView.apply {
-                    onResume()
-                }
-            } catch (_: Exception) {}
-
-            // If we were on about:blank and now need video, or if it's a refresh/channel change
-            currentLoadingSession = System.currentTimeMillis()
-            isUiLoading = true
-            loadingMessage = defaultLoadingMessage
-
-            val baseUrl = createTwitchPlayerUrl(channel)
-            val finalUrl = if (refreshTrigger > 0) {
-                "$baseUrl&refresh=$refreshTrigger"
-            } else {
-                baseUrl
-            }
-            Log.d("TwitchPlayer", "Loading URL: $finalUrl (session: $currentLoadingSession)")
-            navigator.loadUrl(finalUrl)
-        }
-
         DisposableEffect(channel) {
             onDispose {
                 Log.d("TwitchPlayer", "Disposing player for channel: $channel")
                 playerViewModel.disconnectMediaController()
                 chatViewModel.disconnect()
-                // Clean up WebView resources aggressively
-                try {
-                    state.nativeWebView.apply {
-                        unloadWebView(state, navigator)
-                        clearCache(true)
-                        clearHistory()
-                        clearFormData()
-                        // Remove all views to prevent overlap
-                        removeAllViews()
-                    }
-                } catch (e: Exception) {
-                    Log.e("TwitchPlayer", "Error disposing WebView", e)
-                }
             }
         }
 
@@ -355,8 +288,7 @@ fun TwitchPlayer(
             }
         }
 
-        // Stable WebView content that won't be recreated when moving in the tree,
-        // but WILL be wiped out when entering Chat Only mode to save resources and ensure it stops playing.
+        // Stable content that won't be recreated when moving in the tree
         val playerContent = remember(channel) {
             movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
                 Box(modifier = modifier) {
@@ -407,7 +339,7 @@ fun TwitchPlayer(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        // Video mode: Native Player + Orchestrator WebView
+                        // Video mode: Native Player
                         PlayerBackground(
                             channel = channel,
                             previewUrl = previewImageUrl,
@@ -433,46 +365,9 @@ fun TwitchPlayer(
                                         lastProcessedRefreshTrigger-- // Force refresh
                                     },
                                     onSettingsClick = { showQualityMenu = true },
-                                    isSettingsEnabled = playerViewModel.availableQualities.isNotEmpty()
+                                    isSettingsEnabled = playerViewModel.availableQualities.isNotEmpty() && !playerViewModel.isAdActive
                                 )
                             }
-
-                            // Orchestrator WebView (Invisible)
-                            PlayerWebView(
-                                state = state,
-                                navigator = navigator,
-                                channel = channel,
-                                isMinimized = isMinimized,
-                                onToggleFullscreen = onToggleFullscreen,
-                                onToggleChat = onToggleChat,
-                                onToggleAudioOnly = {
-                                    if (isFullscreen) {
-                                        onToggleFullscreen()
-                                    }
-                                    isAudioOnly = true
-                                    portraitMode = PortraitMode.AUDIO_AND_CHAT
-                                },
-                                onLoadingStatus = { loadingMessage = it },
-                                onAdblocked = { text ->
-                                    adblockText = text
-                                    playerViewModel.onAdblocked(text)
-                                    // Don't auto-dismiss loader if we are holding it for autoplay ads
-                                    if (text.isNotEmpty() && isUiLoading && !playerViewModel.isHoldingLoader) {
-                                        isUiLoading = false
-                                    }
-                                },
-                                onVideoBoundsChanged = onVideoBoundsChanged,
-                                onStreamUrlFound = { url, validated, source ->
-                                    playerViewModel.onStreamUrlFound(url, validated, source)
-                                },
-                                onAdStatusChanged = { isAd, msg ->
-                                    playerViewModel.onAdStatusChanged(isAd, msg)
-                                },
-                                modifier = Modifier
-                                    .size(320.dp, 180.dp) // Maintain size for logic but hide
-                                    .alpha(0f) 
-                                    .offset(x = (-2000).dp)
-                            )
                             
                             // Native player drives the loading screen now
                             LaunchedEffect(playerViewModel.isPlaying, playerViewModel.isHoldingLoader) {
@@ -527,7 +422,7 @@ fun TwitchPlayer(
         // Auto-hide native controls in portrait
         LaunchedEffect(showNativeControls, isFullscreen) {
             if (!isFullscreen && showNativeControls) {
-                delay(5.seconds)
+                delay(8.seconds) // Increased from 5s
                 showNativeControls = false
             }
         }
@@ -535,7 +430,7 @@ fun TwitchPlayer(
         val bannerText = when {
             isAudioOnly -> stringResource(R.string.status_audio_only)
             portraitMode == PortraitMode.CHAT_ONLY -> stringResource(R.string.status_chat_only)
-            else -> adblockText
+            else -> playerViewModel.adblockMessage
         }
 
         // --- STABLE ANIMATION SYSTEM ---
@@ -569,6 +464,8 @@ fun TwitchPlayer(
             val dismissState = rememberSwipeToDismissBoxState(
                 confirmValueChange = {
                     if (it == SwipeToDismissBoxValue.StartToEnd || it == SwipeToDismissBoxValue.EndToStart) {
+                        Log.d("TwitchPlayer", "Miniplayer dismissed by swipe. Stopping playback.")
+                        playerViewModel.stopAndDisconnect()
                         onClose()
                         true
                     } else {
@@ -665,7 +562,7 @@ fun TwitchPlayer(
                                     width = layout.width.value.let { if (it.isSpecified) it.coerceAtLeast(0.dp) else 0.dp },
                                     height = layout.height.value.let { if (it.isSpecified) it.coerceAtLeast(0.dp) else 0.dp }
                                 )
-                                .clip(RoundedCornerShape(layout.cornerRadius.value))
+                                .clip(RoundedCornerShape(layout.cornerRadius.value.let { if (it.isSpecified) it.coerceAtLeast(0.dp) else 0.dp }))
                         }
                             .onSizeChanged { stablePlayerSize = it }
                             .playerGestureHandler(
@@ -691,6 +588,7 @@ fun TwitchPlayer(
                                     }
                                 },
                                 onSingleTap = {
+                                    Log.d("TwitchPlayer", "Single tap detected. Current showNativeControls: $showNativeControls")
                                     if (isFullscreen && !isAudioOnly) {
                                         showFullscreenControls = !showFullscreenControls
                                         showNativeControls = showFullscreenControls
@@ -745,7 +643,7 @@ fun TwitchPlayer(
                             playerContent(Modifier.fillMaxSize()) {
                                 Log.d(
                                     "TwitchPlayer",
-                                    "Toggle chat requested via bridge. isFullscreen: $isFullscreen"
+                                    "Toggle chat requested. isFullscreen: $isFullscreen"
                                 )
                                 if (isFullscreen) {
                                     isChatVisible = !isChatVisible
@@ -845,7 +743,11 @@ fun TwitchPlayer(
                     nudgeOffset = nudgeOffset.value,
                     dismissState = dismissState,
                     onExpand = onExpand,
-                    onClose = onClose,
+                    onClose = {
+                        Log.d("TwitchPlayer", "Miniplayer closed by button. Stopping playback.")
+                        playerViewModel.stopAndDisconnect()
+                        onClose()
+                    },
                     content = {
                         // This placeholder box will be filled by Point 2 (the shared player)
                     }

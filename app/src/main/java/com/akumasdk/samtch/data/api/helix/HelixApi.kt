@@ -5,6 +5,7 @@ import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.util.Constants
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.bearerAuth
@@ -38,6 +39,11 @@ object HelixApi {
     private val client = HttpClient {
         install(ContentNegotiation) {
             json(json)
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 20000
+            connectTimeoutMillis = 10000
+            socketTimeoutMillis = 10000
         }
     }
     

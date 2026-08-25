@@ -5,6 +5,7 @@ import com.akumasdk.samtch.data.emote.SevenTVUserResponse
 import com.akumasdk.samtch.util.Constants
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.serialization.kotlinx.json.json
@@ -18,6 +19,11 @@ object SevenTVApi {
                 coerceInputValues = true
                 explicitNulls = false
             })
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 15000
+            connectTimeoutMillis = 10000
+            socketTimeoutMillis = 10000
         }
     }
 

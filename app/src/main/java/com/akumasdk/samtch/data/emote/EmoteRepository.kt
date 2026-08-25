@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.milliseconds
 
 object EmoteRepository {
     private const val TAG = "EmoteRepository"
@@ -27,6 +28,26 @@ object EmoteRepository {
 
     private val _channelStates = ConcurrentHashMap<String, MutableStateFlow<ChannelEmoteState>>()
     private val aspectRatioCache = ConcurrentHashMap<String, Float>()
+
+    private suspend fun <T> retry(
+        times: Int = 3,
+        initialDelay: Long = 1000,
+        maxDelay: Long = 5000,
+        factor: Double = 2.0,
+        block: suspend () -> T
+    ): T {
+        var currentDelay = initialDelay
+        repeat(times - 1) {
+            try {
+                return block()
+            } catch (e: Exception) {
+                Log.w(TAG, "Operation failed, retrying in $currentDelay ms... (${e.message})")
+                kotlinx.coroutines.delay(currentDelay.milliseconds)
+                currentDelay = (currentDelay * factor).toLong().coerceAtMost(maxDelay)
+            }
+        }
+        return block() // Last attempt
+    }
 
     fun getAspectRatio(url: String): Float? = aspectRatioCache[url]
 
@@ -59,7 +80,7 @@ object EmoteRepository {
                 launch {
                     try {
                         val twitchMap = mutableMapOf<String, Emote>()
-                        HelixApiClient.getGlobalEmotes(context).getOrNull()?.forEach {
+                        retry { HelixApiClient.getGlobalEmotes(context).getOrThrow() }.forEach {
                             twitchMap[it.name] = mapHelixEmote(it)
                         }
                         _globalState.update { it.copy(twitchEmotes = it.twitchEmotes + twitchMap) }
@@ -71,7 +92,7 @@ object EmoteRepository {
             launch {
                 try {
                     val bttvMap = mutableMapOf<String, Emote>()
-                    BTTVApi.getGlobalEmotes().forEach {
+                    retry { BTTVApi.getGlobalEmotes() }.forEach {
                         bttvMap[it.code] = Emote(
                             it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
                             isZeroWidth = it.code in BTTV_ZERO_WIDTH
@@ -85,7 +106,7 @@ object EmoteRepository {
             launch {
                 try {
                     val seventvMap = mutableMapOf<String, Emote>()
-                    SevenTVApi.getGlobalEmotes().emotes.forEach { emote ->
+                    retry { SevenTVApi.getGlobalEmotes() }.emotes.forEach { emote ->
                         parseSevenTVEmote(emote)?.let { seventvMap[it.code] = it }
                     }
                     _globalState.update { it.copy(seventvEmotes = it.seventvEmotes + seventvMap) }
@@ -96,7 +117,7 @@ object EmoteRepository {
             launch {
                 try {
                     val ffzMap = mutableMapOf<String, Emote>()
-                    val ffzGlobal = FFZApi.getGlobalEmotes()
+                    val ffzGlobal = retry { FFZApi.getGlobalEmotes() }
                     ffzGlobal.default_sets.forEach { setId ->
                         ffzGlobal.sets[setId.toString()]?.emotes?.forEach { emote ->
                             val url = emote.animated?.get("4") ?: emote.animated?.get("2") ?: emote.animated?.get("1")
@@ -151,7 +172,7 @@ object EmoteRepository {
                 launch {
                     try {
                         val twitchMap = mutableMapOf<String, Emote>()
-                        HelixApiClient.getChannelEmotes(context, resolvedUserId).getOrNull()?.forEach {
+                        retry { HelixApiClient.getChannelEmotes(context, resolvedUserId).getOrThrow() }.forEach {
                             twitchMap[it.name] = mapHelixEmote(it)
                         }
                         stateFlow.update { it.copy(twitchEmotes = it.twitchEmotes + twitchMap) }
@@ -164,7 +185,7 @@ object EmoteRepository {
             launch {
                 try {
                     val bttvMap = mutableMapOf<String, Emote>()
-                    val bttvChannel = BTTVApi.getChannelEmotes(resolvedUserId)
+                    val bttvChannel = retry { BTTVApi.getChannelEmotes(resolvedUserId) }
                     (bttvChannel.channelEmotes + bttvChannel.sharedEmotes).forEach {
                         bttvMap[it.code] = Emote(
                             it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
@@ -179,7 +200,7 @@ object EmoteRepository {
             launch {
                 try {
                     val seventvMap = mutableMapOf<String, Emote>()
-                    val seventvUser = SevenTVApi.getChannelEmotes(resolvedUserId)
+                    val seventvUser = retry { SevenTVApi.getChannelEmotes(resolvedUserId) }
                     val activeSet = seventvUser.emoteSet ?: seventvUser.user?.emoteSet
                     activeSet?.emotes?.forEach { emote ->
                         parseSevenTVEmote(emote)?.let { seventvMap[it.code] = it }
@@ -192,7 +213,7 @@ object EmoteRepository {
             launch {
                 try {
                     val ffzMap = mutableMapOf<String, Emote>()
-                    val ffzRoom = FFZApi.getChannelEmotes(resolvedUserId)
+                    val ffzRoom = retry { FFZApi.getChannelEmotes(resolvedUserId) }
                     ffzRoom.sets.values.forEach { set ->
                         set.emotes.forEach { emote ->
                             val url = emote.animated?.get("4") ?: emote.animated?.get("2") ?: emote.animated?.get("1")

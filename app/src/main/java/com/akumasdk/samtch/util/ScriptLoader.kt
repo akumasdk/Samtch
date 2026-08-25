@@ -18,15 +18,7 @@ object ScriptLoader {
             Scripts.COMMON_APP_BANNERS_REMOVER,
             Scripts.CHAT_BTTV,
             Scripts.CHAT_UI_CLEANER,
-            Scripts.CHAT_LOADER_OBSERVER,
-            Scripts.PLAYER_UI_CLEANER,
-            Scripts.PLAYER_PLAYBACK_MONITOR,
-            Scripts.PLAYER_VIDEO_SWAP,
-            Scripts.PLAYER_LINK_DISABLER,
-            Scripts.PLAYER_CONTROLS_INJECTOR,
-            Scripts.PLAYER_VISIBILITY_MONITOR,
-            Scripts.PLAYER_VAFT,
-            Scripts.PLAYER_STREAM_DETECTOR
+            Scripts.CHAT_LOADER_OBSERVER
         )
 
         scripts.forEach { path ->

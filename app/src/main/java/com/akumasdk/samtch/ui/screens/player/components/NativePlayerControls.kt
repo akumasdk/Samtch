@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -34,6 +33,8 @@ fun NativePlayerControls(
     modifier: Modifier = Modifier,
     isSettingsEnabled: Boolean = true
 ) {
+    android.util.Log.d("NativePlayerControls", "Rendering controls: visible=$isVisible, settingsEnabled=$isSettingsEnabled")
+    
     AnimatedVisibility(
         visible = isVisible,
         enter = fadeIn(),
@@ -43,15 +44,7 @@ fun NativePlayerControls(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.5f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.5f)
-                        )
-                    )
-                )
+                .background(Color.Black.copy(alpha = 0.4f)) // Darken whole screen when controls are visible
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -59,20 +52,17 @@ fun NativePlayerControls(
                 )
         ) {
             // Top Bar
-            Row(
+            Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(16.dp) // Normalized padding
             ) {
-                if (isSettingsEnabled) {
-                    ControlIconButton(
-                        icon = Icons.Default.Settings,
-                        onClick = onSettingsClick
-                    )
-                }
+                ControlIconButton(
+                    icon = Icons.Default.Settings,
+                    onClick = onSettingsClick,
+                    enabled = isSettingsEnabled,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
             }
 
             // Bottom Bar
@@ -80,7 +70,8 @@ fun NativePlayerControls(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .navigationBarsPadding(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -116,14 +107,15 @@ fun NativePlayerControls(
 private fun ControlIconButton(
     icon: ImageVector,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Surface(
-        onClick = onClick,
+        onClick = if (enabled) onClick else ({}),
         shape = CircleShape,
-        color = Color.Black.copy(alpha = 0.3f),
-        contentColor = Color.White,
-        modifier = modifier.size(40.dp)
+        color = Color.Black.copy(alpha = if (enabled) 0.35f else 0.1f),
+        contentColor = if (enabled) Color.White else Color.Gray.copy(alpha = 0.5f),
+        modifier = modifier.size(44.dp) // Normalized size
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(

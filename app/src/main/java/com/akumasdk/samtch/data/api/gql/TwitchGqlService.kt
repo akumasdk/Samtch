@@ -171,7 +171,7 @@ object TwitchGqlService {
     private val deviceId: String = UUID.randomUUID().toString().replace("-", "")
 
     private const val PLAYBACK_ACCESS_TOKEN_QUERY = """
-        query PlaybackAccessToken(${"$"}login: String!, ${"$"}playerType: String!) {
+        query PlaybackAccessToken(${"$"}login: String!, ${"$"}isLive: Boolean!, ${"$"}login_login: String!, ${"$"}isVod: Boolean!, ${"$"}vodID: ID!, ${"$"}playerType: String!) {
           streamPlaybackAccessToken(
             channelName: ${"$"}login,
             params: { platform: "web", playerBackend: "mediaplayer", playerType: ${"$"}playerType }
@@ -264,37 +264,61 @@ object TwitchGqlService {
      * Fetch playback access token and signature for a channel
      */
     suspend fun getPlaybackAccessToken(
-        channelName: String
+        channelName: String,
+        playerType: String = "site"
     ): Pair<String, String>? = withContext(Dispatchers.IO) {
         val clientId = getDynamicClientId()
 
         val firstIntegrity = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
-        val first = getPlaybackAccessTokenOnce(channelName, clientId, firstIntegrity)
+        val first = getPlaybackAccessTokenOnce(channelName, clientId, firstIntegrity, playerType)
         if (first != null) return@withContext first
 
         cachedIntegrityToken = null
         val secondIntegrity = fetchIntegrityToken(clientId)
-        return@withContext getPlaybackAccessTokenOnce(channelName, clientId, secondIntegrity)
+        return@withContext getPlaybackAccessTokenOnce(channelName, clientId, secondIntegrity, playerType)
+    }
+
+    /**
+     * Replicates the exact GQL request from vaft.js including the persisted query hash.
+     */
+    private fun createPlaybackAccessTokenPayload(channelName: String, playerType: String): String {
+        val platform = if (playerType == "autoplay") "android" else "web"
+        
+        val variables = JSONObject().apply {
+            put("isLive", true)
+            put("login", channelName.lowercase())
+            put("isVod", false)
+            put("vodID", "")
+            put("playerType", playerType)
+            put("platform", platform)
+        }
+
+        val extensions = JSONObject().apply {
+            put("persistedQuery", JSONObject().apply {
+                put("version", 1)
+                put("sha256Hash", "ed230aa1e33e07eebb8928504583da78a5173989fadfb1ac94be06a04f3cdbe9")
+            })
+        }
+
+        return JSONObject().apply {
+            put("operationName", "PlaybackAccessToken")
+            put("variables", variables)
+            put("extensions", extensions)
+        }.toString()
     }
 
     private fun getPlaybackAccessTokenOnce(
         channelName: String,
         clientId: String,
-        integrityToken: String?
+        integrityToken: String?,
+        playerType: String
     ): Pair<String, String>? {
         return try {
-            val payload = JSONObject().apply {
-                put("operationName", "PlaybackAccessToken")
-                put("query", PLAYBACK_ACCESS_TOKEN_QUERY.trimIndent())
-                put("variables", JSONObject().apply {
-                    put("login", channelName.lowercase())
-                    put("playerType", "site")
-                })
-            }
+            val payload = createPlaybackAccessTokenPayload(channelName, playerType)
 
             val requestBuilder = Request.Builder()
                 .url(Constants.Twitch.Api.GQL)
-                .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                .post(payload.toRequestBody("application/json".toMediaType()))
                 .addCommonHeaders(clientId)
 
             if (!integrityToken.isNullOrBlank()) {
@@ -304,20 +328,44 @@ object TwitchGqlService {
             val response = client.newCall(requestBuilder.build()).execute()
             val responseBody = response.body.string()
 
-            if (!response.isSuccessful) return null
+            if (!response.isSuccessful) {
+                Log.e(TAG, "GQL Error: ${response.code} body=$responseBody")
+                return null
+            }
 
             TwitchGqlMapper.mapPlaybackAccessToken(responseBody)
         } catch (e: Exception) {
-            Log.e(TAG, "Playback token request exception", e)
+            Log.e(TAG, "Playback token request exception ($playerType)", e)
             null
         }
     }
 
-    fun buildHlsUrl(channelName: String, token: String, signature: String): String {
+    fun buildHlsUrl(
+        channelName: String, 
+        token: String, 
+        signature: String,
+        baseParams: String? = null
+    ): String {
         val encodedToken = URLEncoder.encode(token, "UTF-8")
-        val random = (Math.random() * 999999).toInt()
+        
+        // If we have base params from the sniffer, use them but update sig/token
+        if (!baseParams.isNullOrEmpty()) {
+            val paramsMap = mutableMapOf<String, String>()
+            baseParams.split("&").forEach { pair ->
+                val parts = pair.split("=", limit = 2)
+                if (parts.size == 2) paramsMap[parts[0]] = parts[1]
+            }
+            paramsMap["sig"] = signature
+            paramsMap["token"] = encodedToken
+            // Remove parent_domains to mimic popout/vaft behavior
+            paramsMap.remove("parent_domains")
+            
+            val queryString = paramsMap.entries.joinToString("&") { "${it.key}=${it.value}" }
+            return "${Constants.Twitch.Api.HLS_BASE_V2}${channelName.lowercase()}.m3u8?$queryString"
+        }
 
-        return "${Constants.Twitch.Api.HLS_BASE}${channelName.lowercase()}.m3u8" +
+        val random = (Math.random() * 999999).toInt()
+        return "${Constants.Twitch.Api.HLS_BASE_V2}${channelName.lowercase()}.m3u8" +
                 "?sig=$signature" +
                 "&token=$encodedToken" +
                 "&allow_source=true" +

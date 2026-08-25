@@ -339,8 +339,7 @@ class MainActivity : ComponentActivity() {
                                         onAudioOnlyModeChanged = { isAudioOnly ->
                                             viewModel.isAudioOnlyMode = isAudioOnly
                                             updatePipParams(isPipEnabled)
-                                        },
-                                        onVideoBoundsChanged = { rect -> viewModel.pipRect = rect }
+                                        }
                                     )
                                 }
                             }
