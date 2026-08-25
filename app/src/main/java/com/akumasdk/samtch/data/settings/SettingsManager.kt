@@ -18,7 +18,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 object SettingsManager {
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
     private val AUDIO_ONLY_BACKGROUND_ENABLED = booleanPreferencesKey("audio_background_v2")
-    private val AD_BLOCK_MODE = booleanPreferencesKey("ad_block_mode_is_vaft") // true = VAFT, false = VideoSwap
+    private val AD_BLOCK_ENABLED = booleanPreferencesKey("ad_block_enabled_v2") 
     private val CHAT_MODE = booleanPreferencesKey("chat_mode_is_native") // true = NATIVE, false = LEGACY
     private val MINI_PLAYER_HINT_SHOWN = booleanPreferencesKey("mini_player_hint_shown")
     private val PLAYER_TOOLTIP_SHOW_COUNT = intPreferencesKey("player_tooltip_show_count")
@@ -37,10 +37,6 @@ object SettingsManager {
     private val AUTH_USER_NAME = stringPreferencesKey("auth_user_name")
     private val AUTH_USER_ID = stringPreferencesKey("auth_user_id")
     private val AUTH_IS_LOGGED_IN = booleanPreferencesKey("auth_is_logged_in")
-
-    enum class AdBlockMode {
-        VAFT, VIDEO_SWAP
-    }
 
     enum class ChatMode {
         NATIVE, LEGACY
@@ -74,15 +70,15 @@ object SettingsManager {
         }
     }
 
-    fun getAdBlockMode(context: Context): Flow<AdBlockMode> {
+    fun isAdBlockEnabled(context: Context): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
-            if (preferences[AD_BLOCK_MODE] ?: true) AdBlockMode.VAFT else AdBlockMode.VIDEO_SWAP
+            preferences[AD_BLOCK_ENABLED] ?: true
         }
     }
 
-    suspend fun setAdBlockMode(context: Context, mode: AdBlockMode) {
+    suspend fun setAdBlockEnabled(context: Context, enabled: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[AD_BLOCK_MODE] = mode == AdBlockMode.VAFT
+            preferences[AD_BLOCK_ENABLED] = enabled
         }
     }
 

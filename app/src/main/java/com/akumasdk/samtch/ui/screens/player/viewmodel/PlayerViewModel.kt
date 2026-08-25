@@ -16,11 +16,11 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.akumasdk.samtch.data.api.adblock.AdBlockConfig
+import com.akumasdk.samtch.data.api.adblock.AdBlockOrchestrator
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
-import com.akumasdk.samtch.data.api.vaft.NativeVaftOrchestrator
-import com.akumasdk.samtch.data.api.vaft.VaftConfig
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
@@ -41,7 +41,7 @@ import kotlin.time.Duration.Companion.seconds
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
     private val httpClient = OkHttpClient()
     private val m3u8Parser = ExtM3UParser()
-    private val vaftOrchestrator = NativeVaftOrchestrator(httpClient, m3u8Parser) { adStatus ->
+    private val adBlockOrchestrator = AdBlockOrchestrator(httpClient, m3u8Parser) { adStatus ->
         viewModelScope.launch(Dispatchers.Main) {
             val message = if (adStatus.hasAds) {
                 val type = adStatus.playerType ?: if (adStatus.isStrippingAdSegments) "stripping" else "unknown"
@@ -91,7 +91,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private var lastUrlUpdateTime = 0L
     private var metadataJob: Job? = null
     private var loaderHoldJob: Job? = null
-    private var vaftJob: Job? = null
+    private var adBlockJob: Job? = null
 
     fun updateChannel(newChannel: String?, forceRefresh: Boolean = false) {
         val isNewChannel = channel != newChannel
@@ -112,7 +112,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         channel = newChannel
         
         if (isNewChannel || forceRefresh) {
-            newChannel?.let { vaftOrchestrator.resetChannel(it) }
+            newChannel?.let { adBlockOrchestrator.resetChannel(it) }
             hasBackgroundReloaded = false
             metadataRefreshTrigger = 0
             isAdActive = false
@@ -121,13 +121,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             lastUrlUpdateTime = 0L
             metadataJob?.cancel()
             loaderHoldJob?.cancel()
-            vaftJob?.cancel()
+            adBlockJob?.cancel()
             
             if (isNewChannel) {
                 // Always reset UI mode to standard when changing channels to avoid "breaking logic"
                 portraitMode = PortraitMode.VIDEO_AND_CHAT
                 isAudioOnly = false
-                
+
                 // Clear metadata for new channel
                 streamMetadata = null
                 avatarUrl = null
@@ -139,10 +139,10 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         
         if (newChannel != null) {
             startMetadataFetch(newChannel)
-            startNativeVaft(newChannel)
+            startAdBlockOrchestrator(newChannel)
         } else {
             stopMetadataFetch()
-            vaftJob?.cancel()
+            adBlockJob?.cancel()
         }
     }
 
@@ -169,18 +169,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         channel = null
     }
 
-    private fun startNativeVaft(channelName: String) {
-        vaftJob?.cancel()
-        vaftJob = viewModelScope.launch {
+    private fun startAdBlockOrchestrator(channelName: String) {
+        adBlockJob?.cancel()
+        adBlockJob = viewModelScope.launch {
             while (true) {
-                val updateUrl = vaftOrchestrator.getCleanStreamUrl(
-                    channelName = channelName, 
+                val updateUrl = adBlockOrchestrator.getCleanStreamUrl(
+                    channelName = channelName,
                     targetResolution = selectedQuality?.resolution
                 )
                 if (updateUrl != null) {
-                    Log.d(VaftConfig.LOG_TAG, "Native VAFT found state change: $updateUrl")
+                    Log.d(AdBlockConfig.LOG_TAG, "AdBlock state change detected: $updateUrl")
                     withContext(Dispatchers.Main) {
-                        onStreamUrlFound(updateUrl, isValidated = true, source = "native_vaft")
+                        onStreamUrlFound(updateUrl, isValidated = true, source = "adblock_sync")
                     }
                 }
                 delay(4.seconds) // Check every 4 seconds for ad changes (High precision)
@@ -248,16 +248,16 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateMediaItem(channelName: String) {
         val controller = mediaController ?: return
-        
-        Log.d(VaftConfig.LOG_TAG, "updateMediaItem: Triggering Native VAFT resolution for $channelName")
+
+        Log.d(AdBlockConfig.LOG_TAG, "updateMediaItem: Triggering AdBlock resolution for $channelName")
         viewModelScope.launch(Dispatchers.Default) {
-            val cleanUrl = vaftOrchestrator.getCleanStreamUrl(channelName, selectedQuality?.resolution)
+            val cleanUrl = adBlockOrchestrator.getCleanStreamUrl(channelName, selectedQuality?.resolution)
             
             withContext(Dispatchers.Main) {
                 if (cleanUrl != null) {
-                    onStreamUrlFound(cleanUrl, isValidated = true, source = "native_vaft_init")
+                    onStreamUrlFound(cleanUrl, isValidated = true, source = "adblock_init")
                 } else {
-                    // Fallback to service resolution if VAFT fails for some reason
+                    // Fallback to service resolution if AdBlock fails for some reason
                     triggerServiceResolution(channelName, controller)
                 }
             }
@@ -290,7 +290,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun onStreamUrlFound(url: String, isValidated: Boolean = false, source: String = "unknown") {
         // If we already have this URL as our master or current source, ignore unless it's a manual override
-        // EXCEPTION: If availableQualities is empty, we proceed to parse it.
         if (availableQualities.isNotEmpty() && (currentStreamUrl == url || masterStreamUrl == url) && 
             source != "manual_selection" && source != "mode_change") {
             return
@@ -298,15 +297,15 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         
         val now = System.currentTimeMillis()
         
-        // ORCHESTRATION LOGIC (Mimic VAFT Swap)
+        // ORCHESTRATION LOGIC
         if (isAdActive) {
             if (!isValidated) {
-                Log.d(VaftConfig.LOG_TAG, "Ignoring unvalidated stream during ad block: source=$source -> $url")
+                Log.d(AdBlockConfig.LOG_TAG, "Ignoring unvalidated stream during ad block: source=$source -> $url")
                 return
             }
             
             if (hasAppliedCleanStreamDuringAd) { 
-                Log.d(VaftConfig.LOG_TAG, "Lock active. Ignoring subsequent clean stream (source=$source, current=$currentStreamUrl): $url")
+                Log.d(AdBlockConfig.LOG_TAG, "Lock active. Ignoring subsequent clean stream (source=$source, current=$currentStreamUrl): $url")
                 return
             }
         } else {
@@ -323,7 +322,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         // Cache the master URL
-        if (url.contains("usher.ttvnw.net") || source.contains("vaft")) {
+        if (url.contains("usher.ttvnw.net") || source.contains("adblock")) {
             masterStreamUrl = url
         }
 
@@ -390,7 +389,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectQuality(entry: ExtMediaEntry) {
         if (isAdActive) {
-            Log.d(VaftConfig.LOG_TAG, "Manual quality selection ignored during active ad session.")
+            Log.d(AdBlockConfig.LOG_TAG, "Manual quality selection ignored during active ad session.")
             return
         }
         val url = entry.playlistUrl ?: return
@@ -411,7 +410,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         val channelName = channel ?: return
 
         val isSafeBuffer = isAd || currentStreamUrl == null
-        Log.d(VaftConfig.LOG_TAG, "Applying stream swap [$source] (isAd=$isAd, isSafeBuffer=$isSafeBuffer): $url")
+        Log.d(AdBlockConfig.LOG_TAG, "Applying stream swap [$source] (isAd=$isAd, isSafeBuffer=$isSafeBuffer): $url")
         
         val metadata = MediaMetadata.Builder()
             .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
@@ -425,7 +424,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         val minOffset = if (isSafeBuffer) 2000L else 1500L
         val maxOffset = if (isSafeBuffer) 15000L else 10000L
 
-        Log.d("PlayerViewModel", "Configuring Live Latency: target=${targetOffset}ms, min=${minOffset}ms")
+        Log.d(AdBlockConfig.LOG_TAG, "Configuring Live Latency: target=${targetOffset}ms, min=${minOffset}ms")
 
         val liveConfig = MediaItem.LiveConfiguration.Builder()
             .setTargetOffsetMs(targetOffset)
@@ -466,7 +465,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         
-        Log.d(VaftConfig.LOG_TAG, "Ad status changed: isAd=$isAd, type=$message. RESETTING LOCKS.")
+        Log.d(AdBlockConfig.LOG_TAG, "Ad status changed: isAd=$isAd, type=$message. RESETTING LOCKS.")
         isAdActive = isAd
         adblockMessage = message
         
@@ -481,7 +480,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun onAdblocked(text: String) {
         adblockMessage = text
         if (text.contains("autoplay", ignoreCase = true) && isAdActive) {
-            Log.d(VaftConfig.LOG_TAG, "Autoplay ad detected, holding loader.")
+            Log.d(AdBlockConfig.LOG_TAG, "Autoplay ad detected, holding loader.")
             isHoldingLoader = true
             loaderHoldJob?.cancel()
             loaderHoldJob = viewModelScope.launch {
@@ -526,7 +525,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun fetchMetadata(channel: String): TwitchStreamMetadata? {
         val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(getApplication())
-        
+
         if (auth.isLoggedIn) {
             try {
                 val helixStream = HelixApiClient.getStreamMetadata(getApplication(), channel).getOrNull()

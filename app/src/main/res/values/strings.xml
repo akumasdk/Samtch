@@ -65,11 +65,10 @@
     <string name="pip_enabled_summary">Automatically enter PiP mode when app is minimized</string>
 
     <!-- Ad Block Settings -->
-    <string name="ad_block_mode_title">Ad-Blocking Method</string>
-    <string name="ad_block_mode_summary">Choose the script used to block Twitch ads</string>
-    <string name="ad_block_mode_vaft">VAFT (Stable/slower in medium-lower range devices)</string>
-    <string name="ad_block_mode_video_swap">Video Swap (Faster in lower end devices)</string>
-    <string name="ad_block_mode_notice">Note: Changes to the ad-blocking method will take effect when you play the next stream.</string>
+    <string name="ad_block_mode_title">Enable Ad-Blocking</string>
+    <string name="ad_block_mode_summary">Native ad-blocking system for Twitch streams</string>
+    <string name="ad_block_mode_vaft">Standard (Native)</string>
+    <string name="ad_block_mode_notice">Note: Changes to the ad-blocking will take effect when you play the next stream.</string>
 
     <!-- Chat Settings -->
     <string name="chat_mode_title">Chat Experience</string>

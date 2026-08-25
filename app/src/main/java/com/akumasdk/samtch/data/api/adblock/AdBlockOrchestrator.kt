@@ -1,20 +1,21 @@
-package com.akumasdk.samtch.data.api.vaft
+package com.akumasdk.samtch.data.api.adblock
 
 import android.util.Log
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.util.ExtM3UParser
 import com.akumasdk.samtch.util.ExtMediaEntry
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.ConcurrentHashMap
 
-class NativeVaftOrchestrator(
+class AdBlockOrchestrator(
     private val httpClient: OkHttpClient = OkHttpClient(),
     private val m3u8Parser: ExtM3UParser = ExtM3UParser(),
     private val onAdStatusChanged: (AdStatus) -> Unit = {}
 ) {
-    private val TAG = VaftConfig.LOG_TAG
+    private val TAG = AdBlockConfig.LOG_TAG
     private val streamInfos = ConcurrentHashMap<String, StreamInfo>()
     
     // Cache for access tokens to avoid spamming GQL
@@ -22,7 +23,7 @@ class NativeVaftOrchestrator(
     private val TOKEN_EXPIRY = 15 * 60 * 1000 // 15 minutes
 
     suspend fun getCleanStreamUrl(
-        channelName: String, 
+        channelName: String,
         targetResolution: String? = null
     ): String? = withContext(Dispatchers.IO) {
         val info = streamInfos.getOrPut(channelName) { 
@@ -59,11 +60,11 @@ class NativeVaftOrchestrator(
             return@withContext null
         }
         
-        if (VaftStripper.containsAds(variantManifest)) {
+        if (AdBlockStripper.containsAds(variantManifest)) {
             // AD DETECTED
             val wasAlreadyShowingAd = info.isShowingAd
             info.isShowingAd = true
-            info.isMidroll = VaftStripper.isMidroll(variantManifest)
+            info.isMidroll = AdBlockStripper.isMidroll(variantManifest)
             info.cleanManifestStreak = 0 // Reset streak immediately
             info.isInitialized = true
             
@@ -79,12 +80,12 @@ class NativeVaftOrchestrator(
             Log.d(TAG, "Searching for ad-free backup source...")
             
             // 5. Backup Discovery Loop (Mimic vaft.js)
-            for (playerType in VaftConfig.BACKUP_PLAYER_TYPES) {
+            for (playerType in AdBlockConfig.BACKUP_PLAYER_TYPES) {
                 Log.d(TAG, "Attempting ad-free token for type: $playerType")
                 val backupUrl = tryGetBackupUrl(channelName, playerType, targetVariant)
                 if (backupUrl != null) {
                     val backupManifest = fetchManifest(backupUrl)
-                    if (backupManifest != null && !VaftStripper.containsAds(backupManifest)) {
+                    if (backupManifest != null && !AdBlockStripper.containsAds(backupManifest)) {
                         Log.d(TAG, "SUCCESS: Discovered clean backup ($playerType): $backupUrl")
                         info.activeBackupPlayerType = playerType
                         
@@ -101,8 +102,8 @@ class NativeVaftOrchestrator(
                 }
             }
             
-            // If no clean backup found, use main stream with stripping
-            Log.w(TAG, "No clean backup found for $channelName. Falling back to main stream with stripping.")
+            // If no clean backup found, use main stream (it will show ads, but we have no choice)
+            Log.w(TAG, "No clean backup found for $channelName. Falling back to main stream.")
             onAdStatusChanged(AdStatus(hasAds = true, isMidroll = info.isMidroll, isStrippingAdSegments = true))
             return@withContext variantUrl
         } else {
@@ -110,7 +111,7 @@ class NativeVaftOrchestrator(
             
             if (info.isShowingAd) {
                 // HYSTERESIS: Wait for 2 clean checks OR a clean manifest with a discontinuity
-                val hasDisc = VaftStripper.hasDiscontinuity(variantManifest)
+                val hasDisc = AdBlockStripper.hasDiscontinuity(variantManifest)
                 val isTrulyClean = info.cleanManifestStreak >= 2 || hasDisc
                 
                 if (isTrulyClean) {
@@ -121,7 +122,6 @@ class NativeVaftOrchestrator(
                     info.cleanManifestStreak = 0
                     info.isInitialized = true
                     onAdStatusChanged(AdStatus(hasAds = false))
-                    // Return the master URL so the ViewModel can restore high-quality selection
                     return@withContext masterUrl
                 } else {
                     Log.d(TAG, "Main stream clean but waiting for sync (streak=${info.cleanManifestStreak}) for $channelName")
@@ -159,7 +159,7 @@ class NativeVaftOrchestrator(
     }
 
     private suspend fun tryGetBackupUrl(
-        channelName: String, 
+        channelName: String,
         playerType: String, 
         targetVariant: ExtMediaEntry
     ): String? {

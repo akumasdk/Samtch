@@ -32,7 +32,6 @@ fun SettingsScreen(
     onLogout: () -> Unit = {}
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
-    var showAdBlockDialog by remember { mutableStateOf(false) }
     var showChatModeDialog by remember { mutableStateOf(false) }
     var showChatFontSizeDialog by remember { mutableStateOf(false) }
     var showChatEmoteSizeDialog by remember { mutableStateOf(false) }
@@ -53,7 +52,7 @@ fun SettingsScreen(
     val chatEmoteSize by remember(context) { SettingsManager.getChatEmoteSize(context) }.collectAsState(initial = 28)
     val chatBadgeSize by remember(context) { SettingsManager.getChatBadgeSize(context) }.collectAsState(initial = 18)
     val themeMode by remember(context) { SettingsManager.getThemeMode(context) }.collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
-    val adBlockMode by remember(context) { SettingsManager.getAdBlockMode(context) }.collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
+    val isAdBlockEnabled by remember(context) { SettingsManager.isAdBlockEnabled(context) }.collectAsState(initial = true)
     val isPipEnabled by remember(context) { SettingsManager.isPipEnabled(context) }.collectAsState(initial = true)
     val isAudioBackgroundEnabled by remember(context) { SettingsManager.isAudioOnlyBackgroundEnabled(context) }.collectAsState(initial = false)
     val isImmersiveBackgroundEnabled by remember(context) { SettingsManager.isImmersiveBackgroundEnabled(context) }.collectAsState(initial = true)
@@ -122,10 +121,9 @@ fun SettingsScreen(
             playerSection(
                 isPipEnabled = isPipEnabled,
                 isAudioEnabled = isAudioBackgroundEnabled,
-                adBlockMode = adBlockMode,
+                isAdBlockEnabled = isAdBlockEnabled,
                 scope = scope,
-                context = context,
-                onAdBlockClick = { showAdBlockDialog = true }
+                context = context
             )
 
             chatSection(
@@ -162,7 +160,6 @@ fun SettingsScreen(
 
     SettingsDialogs(
         showThemeDialog = showThemeModeDialog,
-        showAdBlockDialog = showAdBlockDialog,
         showChatModeDialog = showChatModeDialog,
         showChatFontSizeDialog = showChatFontSizeDialog,
         showChatEmoteSizeDialog = showChatEmoteSizeDialog,
@@ -170,13 +167,11 @@ fun SettingsScreen(
         showLogoutDialog = showLogoutDialog,
         showAboutDialog = showAboutDialog,
         themeMode = themeMode,
-        adBlockMode = adBlockMode,
         chatMode = chatMode,
         chatFontSize = chatFontSize,
         chatEmoteSize = chatEmoteSize,
         chatBadgeSize = chatBadgeSize,
         onDismissTheme = { showThemeModeDialog = false },
-        onDismissAdBlock = { showAdBlockDialog = false },
         onDismissChatMode = { showChatModeDialog = false },
         onDismissFontSize = { showChatFontSizeDialog = false },
         onDismissEmoteSize = { showChatEmoteSizeDialog = false },
@@ -226,10 +221,9 @@ private fun LazyListScope.appearanceSection(
 private fun LazyListScope.playerSection(
     isPipEnabled: Boolean,
     isAudioEnabled: Boolean,
-    adBlockMode: SettingsManager.AdBlockMode,
+    isAdBlockEnabled: Boolean,
     scope: CoroutineScope,
-    context: android.content.Context,
-    onAdBlockClick: () -> Unit
+    context: android.content.Context
 ) {
     item { SettingSectionHeader(stringResource(R.string.settings_category_player)) }
     item { 
@@ -247,10 +241,10 @@ private fun LazyListScope.playerSection(
         ) 
     }
     item { 
-        AdBlockModeItem(
-            adBlockMode, 
-            onClick = onAdBlockClick,
-            onReset = { scope.launch { SettingsManager.setAdBlockMode(context, SettingsManager.AdBlockMode.VAFT) } }
+        AdBlockToggleItem(
+            isAdBlockEnabled, 
+            onToggle = { scope.launch { SettingsManager.setAdBlockEnabled(context, it) } },
+            onReset = { scope.launch { SettingsManager.setAdBlockEnabled(context, true) } }
         ) 
     }
     item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }

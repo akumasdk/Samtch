@@ -121,7 +121,7 @@ object TwitchGqlService {
     suspend fun getUserId(channelName: String): String? = withContext(Dispatchers.IO) {
         try {
             val clientId = getDynamicClientId()
-            
+
             // Try with integrity token first, then without if it fails
             val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
 
@@ -169,18 +169,6 @@ object TwitchGqlService {
 
     // Stable per app-process run
     private val deviceId: String = UUID.randomUUID().toString().replace("-", "")
-
-    private const val PLAYBACK_ACCESS_TOKEN_QUERY = """
-        query PlaybackAccessToken(${"$"}login: String!, ${"$"}isLive: Boolean!, ${"$"}login_login: String!, ${"$"}isVod: Boolean!, ${"$"}vodID: ID!, ${"$"}playerType: String!) {
-          streamPlaybackAccessToken(
-            channelName: ${"$"}login,
-            params: { platform: "web", playerBackend: "mediaplayer", playerType: ${"$"}playerType }
-          ) {
-            value
-            signature
-          }
-        }
-    """
 
     private const val STREAM_METADATA_QUERY = """
         query StreamMetadata(${"$"}login: String!) {
@@ -279,11 +267,11 @@ object TwitchGqlService {
     }
 
     /**
-     * Replicates the exact GQL request from vaft.js including the persisted query hash.
+     * Replicates the exact GQL request from adblock solutions including the persisted query hash.
      */
     private fun createPlaybackAccessTokenPayload(channelName: String, playerType: String): String {
         val platform = if (playerType == "autoplay") "android" else "web"
-        
+
         val variables = JSONObject().apply {
             put("isLive", true)
             put("login", channelName.lowercase())
@@ -343,28 +331,11 @@ object TwitchGqlService {
     fun buildHlsUrl(
         channelName: String, 
         token: String, 
-        signature: String,
-        baseParams: String? = null
+        signature: String
     ): String {
         val encodedToken = URLEncoder.encode(token, "UTF-8")
-        
-        // If we have base params from the sniffer, use them but update sig/token
-        if (!baseParams.isNullOrEmpty()) {
-            val paramsMap = mutableMapOf<String, String>()
-            baseParams.split("&").forEach { pair ->
-                val parts = pair.split("=", limit = 2)
-                if (parts.size == 2) paramsMap[parts[0]] = parts[1]
-            }
-            paramsMap["sig"] = signature
-            paramsMap["token"] = encodedToken
-            // Remove parent_domains to mimic popout/vaft behavior
-            paramsMap.remove("parent_domains")
-            
-            val queryString = paramsMap.entries.joinToString("&") { "${it.key}=${it.value}" }
-            return "${Constants.Twitch.Api.HLS_BASE_V2}${channelName.lowercase()}.m3u8?$queryString"
-        }
-
         val random = (Math.random() * 999999).toInt()
+        
         return "${Constants.Twitch.Api.HLS_BASE_V2}${channelName.lowercase()}.m3u8" +
                 "?sig=$signature" +
                 "&token=$encodedToken" +

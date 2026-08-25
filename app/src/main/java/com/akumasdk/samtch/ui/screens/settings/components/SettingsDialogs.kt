@@ -24,7 +24,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsDialogs(
     showThemeDialog: Boolean,
-    showAdBlockDialog: Boolean,
     showChatModeDialog: Boolean,
     showChatFontSizeDialog: Boolean,
     showChatEmoteSizeDialog: Boolean,
@@ -32,13 +31,11 @@ fun SettingsDialogs(
     showLogoutDialog: Boolean,
     showAboutDialog: Boolean,
     themeMode: SettingsManager.ThemeMode,
-    adBlockMode: SettingsManager.AdBlockMode,
     chatMode: SettingsManager.ChatMode,
     chatFontSize: Int,
     chatEmoteSize: Int,
     chatBadgeSize: Int,
     onDismissTheme: () -> Unit,
-    onDismissAdBlock: () -> Unit,
     onDismissChatMode: () -> Unit,
     onDismissFontSize: () -> Unit,
     onDismissEmoteSize: () -> Unit,
@@ -63,22 +60,6 @@ fun SettingsDialogs(
             selectedIndex = SettingsManager.ThemeMode.entries.indexOf(themeMode),
             onReset = { scope.launch { SettingsManager.setThemeMode(context, SettingsManager.ThemeMode.SYSTEM) } },
             onDismiss = onDismissTheme
-        )
-    }
-
-    if (showAdBlockDialog) {
-        SelectionDialog(
-            title = stringResource(R.string.ad_block_mode_title),
-            options = SettingsManager.AdBlockMode.entries.map { mode ->
-                val label = when (mode) {
-                    SettingsManager.AdBlockMode.VAFT -> stringResource(R.string.ad_block_mode_vaft)
-                    SettingsManager.AdBlockMode.VIDEO_SWAP -> stringResource(R.string.ad_block_mode_video_swap)
-                }
-                label to { scope.launch { SettingsManager.setAdBlockMode(context, mode) } }
-            },
-            selectedIndex = SettingsManager.AdBlockMode.entries.indexOf(adBlockMode),
-            onReset = { scope.launch { SettingsManager.setAdBlockMode(context, SettingsManager.AdBlockMode.VAFT) } },
-            onDismiss = onDismissAdBlock
         )
     }
 

@@ -86,19 +86,13 @@ fun AudioBackgroundToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onR
 }
 
 @Composable
-fun AdBlockModeItem(mode: SettingsManager.AdBlockMode, onClick: () -> Unit, onReset: () -> Unit) {
+fun AdBlockToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.ad_block_mode_title)) },
-        supportingContent = {
-            Text(
-                when (mode) {
-                    SettingsManager.AdBlockMode.VAFT -> stringResource(R.string.ad_block_mode_vaft)
-                    SettingsManager.AdBlockMode.VIDEO_SWAP -> stringResource(R.string.ad_block_mode_video_swap)
-                }
-            )
-        },
+        supportingContent = { Text(stringResource(R.string.ad_block_mode_summary)) },
         leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_ad_block), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onReset)
+        trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
+        modifier = Modifier.combinedClickable(onClick = { onToggle(!enabled) }, onLongClick = onReset)
     )
 }
 
