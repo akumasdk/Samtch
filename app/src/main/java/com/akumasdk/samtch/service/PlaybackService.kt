@@ -75,7 +75,13 @@ class PlaybackService : MediaSessionService() {
 
         val loadControl = DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
-            .setBufferDurationsMs(15_000, 60_000, 1_000, 2_000) // Lower latency for live
+            .setBufferDurationsMs(
+                6_000,  // minBufferMs (increased for stability)
+                20_000, // maxBufferMs
+                2_500,  // bufferForPlaybackMs
+                4_000   // bufferForPlaybackAfterRebufferMs
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         exoPlayer = ExoPlayer.Builder(this)

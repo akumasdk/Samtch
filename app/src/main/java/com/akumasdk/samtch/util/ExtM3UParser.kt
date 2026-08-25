@@ -9,15 +9,17 @@ class ExtM3UParser {
 
         for (line in lines) {
             when {
-                line.startsWith("#EXT-X-MEDIA") -> {
-                    currentEntry = parseExtMedia(line)?.also {
-                        entries.add(it)
-                    }
-                }
                 line.startsWith("#EXT-X-STREAM-INF") -> {
-                    currentEntry?.let {
-                        parseStreamInf(line, it)
+                    currentEntry = ExtMediaEntry(type = "VIDEO")
+                    parseStreamInf(line, currentEntry)
+                    entries.add(currentEntry)
+                }
+                line.startsWith("#EXT-X-MEDIA") -> {
+                    val entry = parseExtMedia(line)
+                    if (entry != null) {
+                        entries.add(entry)
                     }
+                    currentEntry = null
                 }
                 line.startsWith("http") || line.startsWith("https") -> {
                     currentEntry?.apply {
@@ -32,31 +34,17 @@ class ExtM3UParser {
     }
 
     private fun parseExtMedia(line: String): ExtMediaEntry? {
-        val parts = line.split(',').map { it.trim() }
-
-        if (parts.isEmpty()) return null
-
         val entry = ExtMediaEntry()
-
-        // Extract TYPE from first part (e.g., "#EXT-X-MEDIA:TYPE=VIDEO")
-        val firstPart = parts[0]
-        if (firstPart.contains("TYPE=")) {
-            entry.type = firstPart.substringAfter("TYPE=").trim()
-        }
-
-        // Parse remaining key-value pairs
-        parts.drop(1).forEach { part ->
-            val keyValue = part.split('=', limit = 2)
-            if (keyValue.size == 2) {
-                val key = keyValue[0].trim()
-                val value = keyValue[1].trim().trim('"')
-
-                when (key) {
-                    "GROUP-ID" -> entry.groupId = value
-                    "NAME" -> entry.name = value
-                    "AUTOSELECT" -> entry.autoSelect = value.equals("YES", ignoreCase = true)
-                    "DEFAULT" -> entry.default = value.equals("YES", ignoreCase = true)
-                }
+        val content = line.substringAfter(":")
+        
+        parseAttributes(content).forEach { (key, value) ->
+            when (key) {
+                "TYPE" -> entry.type = value
+                "GROUP-ID" -> entry.groupId = value
+                "NAME" -> entry.name = value
+                "AUTOSELECT" -> entry.autoSelect = value.equals("YES", ignoreCase = true)
+                "DEFAULT" -> entry.default = value.equals("YES", ignoreCase = true)
+                "URI" -> entry.playlistUrl = value
             }
         }
 
@@ -64,22 +52,27 @@ class ExtM3UParser {
     }
 
     private fun parseStreamInf(line: String, entry: ExtMediaEntry) {
-        val parts = line.split(',').map { it.trim() }
-        parts.forEach { part ->
-            val keyValue = part.split('=', limit = 2)
-            if (keyValue.size == 2) {
-                val key = keyValue[0].trim()
-                val value = keyValue[1].trim().trim('"')
-
-                when (key) {
-                    "BANDWIDTH" -> entry.bandwidth = value.toLongOrNull()
-                    "RESOLUTION" -> entry.resolution = value
-                    "CODECS" -> entry.codecs = value
-                    "VIDEO" -> entry.video = value
-                    "FRAME-RATE" -> entry.frameRate = value.toDoubleOrNull()
-                }
+        val content = line.substringAfter(":")
+        parseAttributes(content).forEach { (key, value) ->
+            when (key) {
+                "BANDWIDTH" -> entry.bandwidth = value.toLongOrNull()
+                "RESOLUTION" -> entry.resolution = value
+                "CODECS" -> entry.codecs = value
+                "VIDEO" -> entry.video = value
+                "FRAME-RATE" -> entry.frameRate = value.toDoubleOrNull()
             }
         }
+    }
+
+    private fun parseAttributes(content: String): Map<String, String> {
+        val attributes = mutableMapOf<String, String>()
+        val regex = "([A-Z0-9-]+)=([^, \"]+|\"[^\"]*\")".toRegex()
+        regex.findAll(content).forEach { match ->
+            val key = match.groupValues[1]
+            val value = match.groupValues[2].trim('"')
+            attributes[key] = value
+        }
+        return attributes
     }
 }
 

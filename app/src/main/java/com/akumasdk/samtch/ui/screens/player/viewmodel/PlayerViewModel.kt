@@ -21,22 +21,33 @@ import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
+import com.akumasdk.samtch.util.ExtM3UParser
+import com.akumasdk.samtch.util.ExtMediaEntry
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
+    private val httpClient = OkHttpClient()
+    private val m3u8Parser = ExtM3UParser()
+    
     var channel by mutableStateOf<String?>(null)
         private set
         
     var portraitMode by mutableStateOf(PortraitMode.VIDEO_AND_CHAT)
     var isAudioOnly by mutableStateOf(false)
     
+    var masterStreamUrl: String? = null
+        private set
+
     var streamMetadata by mutableStateOf<TwitchStreamMetadata?>(null)
     var avatarUrl by mutableStateOf<String?>(null)
     var streamSubtitle by mutableStateOf<String?>(null)
@@ -51,9 +62,15 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     var currentStreamUrl by mutableStateOf<String?>(null)
         private set
+    var availableQualities by mutableStateOf<List<ExtMediaEntry>>(emptyList())
+        private set
+    var selectedQuality by mutableStateOf<ExtMediaEntry?>(null)
+        private set
     var isAdActive by mutableStateOf(false)
         private set
     var isHoldingLoader by mutableStateOf(false)
+        private set
+    var isQualityChanging by mutableStateOf(false)
         private set
         
     private var hasAppliedCleanStreamDuringAd = false
@@ -73,6 +90,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             hasBackgroundReloaded = false
             metadataRefreshTrigger = 0
             currentStreamUrl = null
+            masterStreamUrl = null
             isAdActive = false
             isHoldingLoader = false
             hasAppliedCleanStreamDuringAd = false
@@ -109,6 +127,25 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             controller.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) {
                     isPlaying = playing
+                }
+                
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Player.STATE_READY) {
+                        // When transitioning to READY for a new stream, 
+                        // ensure we are as close to the live edge as possible
+                        if (currentStreamUrl != null) {
+                            controller.seekToDefaultPosition()
+                            
+                            if (isQualityChanging) {
+                                Log.d("PlayerViewModel", "Quality change catch-up: performing secondary live seek")
+                                viewModelScope.launch {
+                                    delay(600.milliseconds)
+                                    controller.seekToDefaultPosition()
+                                    isQualityChanging = false
+                                }
+                            }
+                        }
+                    }
                 }
                 
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -183,65 +220,150 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         val now = System.currentTimeMillis()
         
         // ORCHESTRATION LOGIC (Mimic VAFT Swap)
-        // 1. If an ad is active, we PRIORITIZE "validated" streams from VAFT logic.
         if (isAdActive) {
-            // Ignore non-validated streams (probing/network noise) during ad blocking
             if (!isValidated && source != "main") {
                 Log.d("PlayerViewModel", "Ignoring unvalidated stream during ad block: source=$source, validated=$isValidated -> $url")
                 return
             }
             
-            // If we already applied a clean stream for THIS ad session, 
-            // only allow a swap if it's from a higher-priority source.
-            // vaft priority: main > embed > popout > autoplay
             if (hasAppliedCleanStreamDuringAd) { 
                 Log.d("PlayerViewModel", "Lock active. Ignoring subsequent clean stream (source=$source, current=$currentStreamUrl): $url")
                 return
             }
         } else {
-            // NORMAL FLOW:
-            // Respect "main" stream found by VAFT immediately.
-            // For others (network sniffer, detector), apply a debounce to avoid stutter.
             if (source != "main" && currentStreamUrl != null && now - lastUrlUpdateTime < 8000) {
                 return
             }
         }
         
-        Log.d("PlayerViewModel", "Applying stream swap [$source] (isValidated=$isValidated, isAdActive=$isAdActive): $url")
         currentStreamUrl = url
         lastUrlUpdateTime = now
         
         if (isAdActive && isValidated) {
             hasAppliedCleanStreamDuringAd = true
         }
+
+        // Cache the master URL if it's main or from usher
+        if (url.contains("usher.ttvnw.net") || source == "main") {
+            masterStreamUrl = url
+        }
+
+        // If it's the master playlist, fetch and select best quality
+        if (url.contains("usher.ttvnw.net") || url.contains("m3u8")) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val request = Request.Builder().url(url).build()
+                    val response = httpClient.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        val body = response.body.string()
+                        val entries = m3u8Parser.parse(body)
+                        
+                        // Only update available qualities if we are not in an active ad session
+                        // or if this is the first time we get them for this channel.
+                        if (!isAdActive || availableQualities.isEmpty()) {
+                            availableQualities = entries.filter { !it.playlistUrl.isNullOrEmpty() }
+                        }
+                        
+                        // Filter for video variants and sort by bandwidth/resolution
+                        val variants = entries.filter { !it.playlistUrl.isNullOrEmpty() }
+                        
+                        val bestEntry = if (isAudioOnly) {
+                            variants.find { it.name?.contains("audio", ignoreCase = true) == true || it.resolution == null }
+                                ?: variants.minByOrNull { it.bandwidth ?: Long.MAX_VALUE }
+                        } else {
+                            variants.filter { it.resolution != null }
+                                .maxByOrNull { (it.bandwidth ?: 0L) + (parseResolution(it.resolution) * 1000L) }
+                        }
+
+                        val finalUrl = bestEntry?.playlistUrl ?: url
+                        selectedQuality = bestEntry
+                        Log.d("PlayerViewModel", "Best quality found (isAudioOnly=$isAudioOnly): ${bestEntry?.resolution ?: bestEntry?.name ?: "original"} -> $finalUrl")
+                        
+                        withContext(Dispatchers.Main) {
+                            applyStreamToController(finalUrl, source)
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            applyStreamToController(url, source)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("PlayerViewModel", "Error fetching/parsing M3U8", e)
+                    withContext(Dispatchers.Main) {
+                        applyStreamToController(url, source)
+                    }
+                }
+            }
+        } else {
+            applyStreamToController(url, source)
+        }
+    }
+
+    private fun parseResolution(resolution: String?): Int {
+        if (resolution == null) return 0
+        return try {
+            val parts = resolution.split('x')
+            if (parts.size == 2) parts[0].toInt() * parts[1].toInt() else 0
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    fun selectQuality(entry: ExtMediaEntry) {
+        val url = entry.playlistUrl ?: return
+        if (currentStreamUrl == url) return
         
+        Log.d("PlayerViewModel", "Manual quality selection: ${entry.resolution ?: entry.name}")
+        selectedQuality = entry
+        isQualityChanging = true
+        
+        // Smart catch up: show a brief loader to cover the buffer swap
+        isHoldingLoader = true
+        loaderHoldJob?.cancel()
+        loaderHoldJob = viewModelScope.launch {
+            delay(2.seconds) // Increased delay to ensure stable playback before showing video
+            isHoldingLoader = false
+        }
+        
+        applyStreamToController(url, "manual_selection")
+    }
+
+    private fun applyStreamToController(url: String, source: String) {
         val controller = mediaController ?: run {
-            Log.w("PlayerViewModel", "onStreamUrlFound: mediaController is null!")
+            Log.w("PlayerViewModel", "applyStreamToController: mediaController is null!")
             return
         }
         val channelName = channel ?: return
 
-        viewModelScope.launch(Dispatchers.Main) {
-            Log.d("PlayerViewModel", "Setting new MediaItem ($source) for $channelName")
-            val metadata = MediaMetadata.Builder()
-                .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
-                .setArtist(streamMetadata?.user?.displayName ?: channelName)
-                .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
-                .setArtworkUri(avatarUrl?.toUri())
-                .build()
-                
-            val mediaItem = MediaItem.Builder()
-                .setMediaId(channelName)
-                .setUri(url.toUri())
-                .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
-                .setMediaMetadata(metadata)
-                .build()
+        Log.d("PlayerViewModel", "Applying stream swap [$source]: $url")
+        val metadata = MediaMetadata.Builder()
+            .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
+            .setArtist(streamMetadata?.user?.displayName ?: channelName)
+            .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
+            .setArtworkUri(avatarUrl?.toUri())
+            .build()
+            
+        // Use a balanced live configuration to minimize delay without causing stutters
+        val liveConfig = MediaItem.LiveConfiguration.Builder()
+            .setTargetOffsetMs(3000) // Aim for 3 seconds latency (balanced)
+            .setMaxOffsetMs(10000)
+            .setMinOffsetMs(1500)
+            .build()
 
-            controller.setMediaItem(mediaItem)
-            controller.prepare()
-            controller.play()
-            Log.d("PlayerViewModel", "MediaItem applied to controller: $url")
-        }
+        val mediaItem = MediaItem.Builder()
+            .setMediaId(channelName)
+            .setUri(url.toUri())
+            .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+            .setMediaMetadata(metadata)
+            .setLiveConfiguration(liveConfig)
+            .build()
+
+        controller.setMediaItem(mediaItem)
+        controller.prepare()
+        // Explicitly seek to the very end (live edge) to remove any initial buffer delay
+        controller.seekToDefaultPosition()
+        controller.play()
+        Log.d("PlayerViewModel", "MediaItem applied to controller (seeking to live): $url")
     }
 
     fun onAdStatusChanged(isAd: Boolean, message: String) {

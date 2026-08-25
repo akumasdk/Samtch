@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.R
@@ -81,6 +82,7 @@ import com.akumasdk.samtch.ui.screens.player.components.NativePlayer
 import com.akumasdk.samtch.ui.screens.player.components.NativePlayerControls
 import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureIndicators
 import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureOverlay
+import com.akumasdk.samtch.ui.screens.player.components.QualitySelectorDialog
 import com.akumasdk.samtch.ui.screens.player.components.PlayerLifecycleEffects
 import com.akumasdk.samtch.ui.screens.player.components.PlayerOverlay
 import com.akumasdk.samtch.ui.screens.player.components.PlayerWebView
@@ -177,6 +179,7 @@ fun TwitchPlayer(
 
         var isChatVisible by remember { mutableStateOf(true) }
         var showNativeControls by remember { mutableStateOf(false) }
+        var showQualityMenu by remember { mutableStateOf(false) }
         var metadataExpandTrigger by remember { mutableIntStateOf(0) }
 
         val lifecycleOwner = LocalLifecycleOwner.current
@@ -253,6 +256,10 @@ fun TwitchPlayer(
 
         LaunchedEffect(isAudioOnly) {
             onAudioOnlyModeChanged(isAudioOnly)
+            // Re-evaluate stream quality when switching to/from audio only if we have the master URL
+            playerViewModel.masterStreamUrl?.let { masterUrl ->
+                playerViewModel.onStreamUrlFound(masterUrl, source = "mode_change")
+            }
         }
 
         val state = rememberSaveableWebViewState("")
@@ -424,7 +431,9 @@ fun TwitchPlayer(
                                     onRefresh = { 
                                         playerViewModel.updateMediaItem(channel)
                                         lastProcessedRefreshTrigger-- // Force refresh
-                                    }
+                                    },
+                                    onSettingsClick = { showQualityMenu = true },
+                                    isSettingsEnabled = playerViewModel.availableQualities.isNotEmpty()
                                 )
                             }
 
@@ -638,9 +647,9 @@ fun TwitchPlayer(
                                 .align(if (isMinimized) Alignment.BottomStart else Alignment.TopStart)
                                 .then(if (isMinimized) Modifier.navigationBarsPadding() else Modifier)
                                 .padding(
-                                    start = layout.paddingStart.value,
-                                    bottom = layout.paddingBottom.value,
-                                    top = if (!isMinimized && !isFullscreen) animatedTopPadding else 0.dp
+                                    start = layout.paddingStart.value.let { if (it.isSpecified) it.coerceAtLeast(0.dp) else 0.dp },
+                                    bottom = layout.paddingBottom.value.let { if (it.isSpecified) it.coerceAtLeast(0.dp) else 0.dp },
+                                    top = (if (!isMinimized && !isFullscreen) animatedTopPadding else 0.dp).let { if (it.isSpecified) it.coerceAtLeast(0.dp) else 0.dp }
                                 )
                                 .offset {
                                     if (isMinimized) {
@@ -652,7 +661,10 @@ fun TwitchPlayer(
                                         IntOffset.Zero
                                     }
                                 }
-                                .size(layout.width.value, layout.height.value)
+                                .size(
+                                    width = layout.width.value.let { if (it.isSpecified) it.coerceAtLeast(0.dp) else 0.dp },
+                                    height = layout.height.value.let { if (it.isSpecified) it.coerceAtLeast(0.dp) else 0.dp }
+                                )
                                 .clip(RoundedCornerShape(layout.cornerRadius.value))
                         }
                             .onSizeChanged { stablePlayerSize = it }
@@ -837,6 +849,15 @@ fun TwitchPlayer(
                     content = {
                         // This placeholder box will be filled by Point 2 (the shared player)
                     }
+                )
+            }
+
+            if (showQualityMenu) {
+                QualitySelectorDialog(
+                    availableQualities = playerViewModel.availableQualities,
+                    selectedQuality = playerViewModel.selectedQuality,
+                    onQualitySelected = { playerViewModel.selectQuality(it) },
+                    onDismiss = { showQualityMenu = false }
                 )
             }
         }

@@ -30,7 +30,9 @@ fun NativePlayerControls(
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit,
     onRefresh: () -> Unit,
-    modifier: Modifier = Modifier
+    onSettingsClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isSettingsEnabled: Boolean = true
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -56,6 +58,23 @@ fun NativePlayerControls(
                     onClick = { /* Consume to avoid accidental taps */ }
                 )
         ) {
+            // Top Bar
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSettingsEnabled) {
+                    ControlIconButton(
+                        icon = Icons.Default.Settings,
+                        onClick = onSettingsClick
+                    )
+                }
+            }
+
             // Bottom Bar
             Row(
                 modifier = Modifier
