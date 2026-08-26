@@ -27,6 +27,7 @@ import com.akumasdk.samtch.ui.theme.SamtchTheme
 fun NativePlayerControls(
     isVisible: Boolean,
     isPlaying: Boolean,
+    isBuffering: Boolean,
     isAudioOnly: Boolean,
     isFullscreen: Boolean,
     onTogglePlayback: () -> Unit,
@@ -109,7 +110,8 @@ fun NativePlayerControls(
                             ControlIconButton(
                                 icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 onClick = onTogglePlayback,
-                                size = 48.dp, // Slightly larger
+                                isBuffering = isBuffering,
+                                size = if (isEffectivelyFullscreen) 56.dp else 48.dp,
                                 backgroundColor = SamtchTheme.colors.twitchPurple.copy(alpha = 0.7f),
                                 contentDescription = if (isPlaying) "Pause" else "Play"
                             )
@@ -117,7 +119,7 @@ fun NativePlayerControls(
                             ControlIconButton(
                                 icon = Icons.Default.Refresh,
                                 onClick = onRefresh,
-                                size = 44.dp,
+                                size = if (isEffectivelyFullscreen) 52.dp else 44.dp,
                                 backgroundColor = Color.Transparent,
                                 contentDescription = "Refresh Stream"
                             )
@@ -134,7 +136,7 @@ fun NativePlayerControls(
                                 ControlIconButton(
                                     icon = Icons.AutoMirrored.Filled.Chat,
                                     onClick = onToggleChat,
-                                    size = 40.dp,
+                                    size = 56.dp, // Bigger for fullscreen
                                     backgroundColor = Color.Transparent,
                                     contentDescription = "Toggle Chat"
                                 )
@@ -157,7 +159,7 @@ fun NativePlayerControls(
                             ControlIconButton(
                                 icon = if (isEffectivelyFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
                                 onClick = onToggleFullscreen,
-                                size = 40.dp,
+                                size = if (isEffectivelyFullscreen) 56.dp else 40.dp, // Bigger for fullscreen
                                 backgroundColor = Color.Transparent,
                                 contentDescription = if (isEffectivelyFullscreen) "Exit Fullscreen" else "Toggle Fullscreen"
                             )
@@ -193,6 +195,7 @@ private fun ControlIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isBuffering: Boolean = false,
     size: androidx.compose.ui.unit.Dp = 44.dp,
     backgroundColor: Color = Color.White.copy(alpha = 0.12f),
     contentDescription: String? = null
@@ -217,11 +220,19 @@ private fun ControlIconButton(
         tonalElevation = if (enabled) 2.dp else 0.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                modifier = Modifier.size(size * 0.55f)
-            )
+            if (isBuffering) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(size * 0.5f),
+                    color = Color.White,
+                    strokeWidth = 2.5.dp
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.size(size * 0.55f)
+                )
+            }
         }
     }
 }

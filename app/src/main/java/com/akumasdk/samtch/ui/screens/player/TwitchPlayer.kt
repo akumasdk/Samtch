@@ -55,6 +55,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
+import androidx.media3.common.Player
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.R
@@ -134,6 +135,7 @@ fun TwitchPlayer(
         val streamMetadata = playerViewModel.streamMetadata
         val avatarUrl = playerViewModel.avatarUrl
         val streamSubtitle = playerViewModel.streamSubtitle
+        val isBuffering = playerViewModel.playbackState == Player.STATE_BUFFERING
 
         // Gesture Overlay State
         var isDraggingVolume by remember { mutableStateOf(false) }
@@ -147,7 +149,7 @@ fun TwitchPlayer(
         val defaultLoadingMessage = stringResource(R.string.loading_stream)
         var loadingMessage by remember(defaultLoadingMessage) { mutableStateOf(defaultLoadingMessage) }
 
-        var showFullscreenControls by remember(isFullscreen) { mutableStateOf(!isFullscreen) }
+        var showFullscreenControls by remember(isFullscreen) { mutableStateOf(false) }
 
         val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
 
@@ -161,6 +163,16 @@ fun TwitchPlayer(
 
         var isChatVisible by remember { mutableStateOf(true) }
         var showNativeControls by remember { mutableStateOf(false) }
+        var controlsInteractionTrigger by remember { mutableIntStateOf(0) }
+
+        // Force show controls when buffering starts (but not on initial stream load)
+        LaunchedEffect(isBuffering) {
+            if (isBuffering && !isUiLoading) {
+                showNativeControls = true
+                if (isFullscreen) showFullscreenControls = true
+            }
+        }
+
         var showQualityMenu by remember { mutableStateOf(false) }
         var metadataExpandTrigger by remember { mutableIntStateOf(0) }
 
@@ -181,13 +193,12 @@ fun TwitchPlayer(
             }
         }
 
-        // Toggle chat off by default when entering fullscreen and delay controls
+        // Toggle chat off by default when entering fullscreen
         LaunchedEffect(isFullscreen) {
             if (isFullscreen) {
                 isChatVisible = false
-                delay(1.seconds) 
-                showFullscreenControls = true
                 if (tooltipShowCount < 2) {
+                    delay(1.seconds)
                     SettingsManager.incrementPlayerTooltipShowCount(context)
                 }
             }
@@ -354,17 +365,34 @@ fun TwitchPlayer(
                         NativePlayerControls(
                             isVisible = showNativeControls,
                             isPlaying = liveIsPlaying,
+                            isBuffering = isBuffering,
                             isAudioOnly = isAudioOnlyMode,
                             isFullscreen = isFullscreen,
-                            onTogglePlayback = { playerViewModel.togglePlayback() },
-                            onToggleFullscreen = onToggleFullscreen,
-                            onToggleChat = onToggleChat,
-                            onToggleAudioOnly = { playerViewModel.toggleAudioOnly() },
+                            onTogglePlayback = { 
+                                controlsInteractionTrigger++
+                                playerViewModel.togglePlayback() 
+                            },
+                            onToggleFullscreen = {
+                                controlsInteractionTrigger++
+                                onToggleFullscreen()
+                            },
+                            onToggleChat = {
+                                controlsInteractionTrigger++
+                                onToggleChat()
+                            },
+                            onToggleAudioOnly = { 
+                                controlsInteractionTrigger++
+                                playerViewModel.toggleAudioOnly() 
+                            },
                             onRefresh = { 
+                                controlsInteractionTrigger++
                                 playerViewModel.updateMediaItem(channel, force = true)
                                 playerViewModel.updateChannel(channel, forceRefresh = true)
                             },
-                            onSettingsClick = { showQualityMenu = true },
+                            onSettingsClick = { 
+                                controlsInteractionTrigger++
+                                showQualityMenu = true 
+                            },
                             isSettingsEnabled = playerViewModel.availableQualities.isNotEmpty() && !playerViewModel.isAdActive,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -397,18 +425,18 @@ fun TwitchPlayer(
         }
 
         // Auto-hide controls in fullscreen
-        LaunchedEffect(showFullscreenControls, isFullscreen) {
-            if (isFullscreen && showFullscreenControls) {
-                delay(5.seconds)
+        LaunchedEffect(showFullscreenControls, isFullscreen, isBuffering, controlsInteractionTrigger) {
+            if (isFullscreen && showFullscreenControls && !isBuffering) {
+                delay(2.seconds)
                 showFullscreenControls = false
                 showNativeControls = false
             }
         }
 
         // Auto-hide native controls in portrait
-        LaunchedEffect(showNativeControls, isFullscreen) {
-            if (!isFullscreen && showNativeControls) {
-                delay(8.seconds) // Increased from 5s
+        LaunchedEffect(showNativeControls, isFullscreen, isBuffering, controlsInteractionTrigger) {
+            if (!isFullscreen && showNativeControls && !isBuffering) {
+                delay(2.seconds)
                 showNativeControls = false
             }
         }
@@ -475,7 +503,7 @@ fun TwitchPlayer(
                         refreshKey = playerViewModel.metadataRefreshTrigger,
                         modifier = Modifier.fillMaxSize(),
                         alpha = bgAlpha,
-                        blurRadius = if (isFullscreen) 150.dp else 0.dp,
+                        blurRadius = 150.dp,
                         contentScale = ContentScale.FillBounds
                     ) {
                         // Immersive gradient overlay

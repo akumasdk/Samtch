@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
@@ -72,6 +73,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     var mediaController by mutableStateOf<MediaController?>(null)
         private set
     var isPlaying by mutableStateOf(false)
+    var playbackState by mutableIntStateOf(Player.STATE_IDLE)
+        private set
 
     var currentStreamUrl by mutableStateOf<String?>(null)
         private set
@@ -224,12 +227,14 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             val controller = controllerFuture.get()
             mediaController = controller
             isPlaying = controller.isPlaying
+            playbackState = controller.playbackState
             controller.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) {
                     isPlaying = playing
                 }
                 
                 override fun onPlaybackStateChanged(state: Int) {
+                    playbackState = state
                     if (state == Player.STATE_READY) {
                         // Quality change catch-up: 
                         // Only perform an explicit sync seek if we are manually changing quality.
