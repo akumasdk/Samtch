@@ -334,14 +334,41 @@ object TwitchGqlService {
         signature: String
     ): String {
         val encodedToken = URLEncoder.encode(token, "UTF-8")
-        val random = (Math.random() * 999999).toInt()
+        val random = (Math.random() * 9999999).toInt()
+        val playSessionId = UUID.randomUUID().toString().replace("-", "")
         
+        // Base64 encoded ACMB header used by Twitch web player for feature flags/telemetry
+        // {"AppVersion":"1.0.0","ClientApp":"twilight","URL":"https://www.twitch.tv/channel"}
+        val acmbJson = JSONObject().apply {
+            put("AppVersion", "8faed90d-c8f5-46a7-9d7c-4934daaba821") // Current Twitch web build hash
+            put("ClientApp", "twilight")
+            put("URL", "${Constants.Twitch.BASE_URL}/${channelName.lowercase()}")
+        }
+        val acmb = android.util.Base64.encodeToString(
+            acmbJson.toString().toByteArray(), 
+            android.util.Base64.NO_WRAP
+        )
+
         return "${Constants.Twitch.Api.HLS_BASE_V2}${channelName.lowercase()}.m3u8" +
                 "?sig=$signature" +
                 "&token=$encodedToken" +
                 "&allow_source=true" +
                 "&allow_audio_only=true" +
-                "&fast_bread=false" +
+                "&low_latency=true" +
+                "&fast_bread=true" +
+                "&acmb=${URLEncoder.encode(acmb, "UTF-8")}" +
+                "&browser_family=chrome" +
+                "&browser_version=151.0" +
+                "&platform=web" +
+                "&play_session_id=$playSessionId" +
+                "&player_backend=mediaplayer" +
+                "&playlist_include_framerate=true" +
+                "&reassignments_supported=true" +
+                "&supported_codecs=av1,h265,h264" +
+                "&transcode_mode=cbr_v1" +
+                "&cdm=wv" +
+                "&enable_score=true" +
+                "&include_unavailable=true" +
                 "&p=$random"
     }
 }

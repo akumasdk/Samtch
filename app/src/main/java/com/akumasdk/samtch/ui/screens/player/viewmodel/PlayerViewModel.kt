@@ -24,6 +24,7 @@ import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
+import com.akumasdk.samtch.util.BufferingManager
 import com.akumasdk.samtch.util.ExtM3UParser
 import com.akumasdk.samtch.util.ExtMediaEntry
 import com.google.common.util.concurrent.MoreExecutors
@@ -92,6 +93,10 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private var metadataJob: Job? = null
     private var loaderHoldJob: Job? = null
     private var adBlockJob: Job? = null
+    private var watchdogJob: Job? = null
+
+    private var lastPosition = -1L
+    private var lastPositionUpdateTime = 0L
 
     fun updateChannel(newChannel: String?, forceRefresh: Boolean = false) {
         val isNewChannel = channel != newChannel
@@ -119,9 +124,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             isHoldingLoader = false
             hasAppliedCleanStreamDuringAd = false
             lastUrlUpdateTime = 0L
+            lastPosition = -1L
+            lastPositionUpdateTime = 0L
             metadataJob?.cancel()
             loaderHoldJob?.cancel()
             adBlockJob?.cancel()
+            watchdogJob?.cancel()
             
             if (isNewChannel) {
                 // Always reset UI mode to standard when changing channels to avoid "breaking logic"
@@ -148,6 +156,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun stopAndDisconnect() {
         Log.d("PlayerViewModel", "Force stopping player and disconnecting controller.")
+        watchdogJob?.cancel()
         
         // 1. Tell the service to stop immediately
         val context = getApplication<Application>().applicationContext
@@ -226,10 +235,80 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             
             // Sync current channel if already playing
             channel?.let { updateMediaItem(it) }
+            
+            startWatchdog(controller)
         }, MoreExecutors.directExecutor())
     }
 
+    private fun startWatchdog(controller: Player) {
+        watchdogJob?.cancel()
+        watchdogJob = viewModelScope.launch {
+            while (true) {
+                delay(3.seconds)
+                val state = controller.playbackState
+                val isActuallyPlaying = controller.isPlaying
+                val now = System.currentTimeMillis()
+                
+                if (!isHoldingLoader && !isQualityChanging) {
+                    val currentPos = controller.currentPosition
+                    
+                    // Live Window Recovery: If we are more than 8 seconds behind the live edge, seek forward
+                    val liveOffset = controller.currentLiveOffset
+                    if (liveOffset > 8000 && isActuallyPlaying) {
+                        Log.w("PlayerViewModel", "Watchdog: Detected delay ($liveOffset ms). Seeking to live edge.")
+                        withContext(Dispatchers.Main) {
+                            controller.seekToDefaultPosition()
+                        }
+                    }
+
+                    when (state) {
+                        Player.STATE_BUFFERING -> {
+                            // Detect infinite buffering (stuck at 0% or segment fetch loop)
+                            if (lastPositionUpdateTime != 0L && now - lastPositionUpdateTime > 12000) {
+                                Log.w("PlayerViewModel", "Watchdog: Infinite buffering detected (>12s). Force reloading.")
+                                withContext(Dispatchers.Main) {
+                                    channel?.let { updateMediaItem(it, force = true) }
+                                }
+                                lastPositionUpdateTime = now
+                            }
+                        }
+                        Player.STATE_READY -> {
+                            if (isActuallyPlaying) {
+                                if (currentPos == lastPosition && lastPosition != -1L) {
+                                    // Position hasn't moved for 10 seconds while "ready and playing"
+                                    if (now - lastPositionUpdateTime > 10000) {
+                                        Log.w("PlayerViewModel", "Watchdog: Frozen position at $currentPos. Force reloading.")
+                                        withContext(Dispatchers.Main) {
+                                            channel?.let { updateMediaItem(it, force = true) }
+                                        }
+                                        lastPosition = -1L
+                                        lastPositionUpdateTime = now
+                                    }
+                                } else {
+                                    lastPosition = currentPos
+                                    lastPositionUpdateTime = now
+                                }
+                            } else {
+                                // Paused state: track time but reset frozen position check
+                                lastPosition = -1L
+                                lastPositionUpdateTime = now
+                            }
+                        }
+                        else -> {
+                            lastPosition = -1L
+                            lastPositionUpdateTime = now
+                        }
+                    }
+                } else {
+                    lastPosition = -1L
+                    lastPositionUpdateTime = now
+                }
+            }
+        }
+    }
+
     fun disconnectMediaController() {
+        watchdogJob?.cancel()
         mediaController?.release()
         mediaController = null
         isPlaying = false
@@ -246,25 +325,25 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun updateMediaItem(channelName: String) {
+    fun updateMediaItem(channelName: String, force: Boolean = false) {
         val controller = mediaController ?: return
 
-        Log.d(AdBlockConfig.LOG_TAG, "updateMediaItem: Triggering AdBlock resolution for $channelName")
+        Log.d(AdBlockConfig.LOG_TAG, "updateMediaItem: Triggering AdBlock resolution for $channelName (force=$force)")
         viewModelScope.launch(Dispatchers.Default) {
             val cleanUrl = adBlockOrchestrator.getCleanStreamUrl(channelName, selectedQuality?.resolution)
             
             withContext(Dispatchers.Main) {
                 if (cleanUrl != null) {
-                    onStreamUrlFound(cleanUrl, isValidated = true, source = "adblock_init")
+                    onStreamUrlFound(cleanUrl, isValidated = true, source = "adblock_init", force = force)
                 } else {
                     // Fallback to service resolution if AdBlock fails for some reason
-                    triggerServiceResolution(channelName, controller)
+                    triggerServiceResolution(channelName, controller, force = force)
                 }
             }
         }
     }
 
-    private fun triggerServiceResolution(channelName: String, controller: MediaController) {
+    private fun triggerServiceResolution(channelName: String, controller: MediaController, force: Boolean = false) {
         viewModelScope.launch(Dispatchers.Default) {
             val metadata = MediaMetadata.Builder()
                 .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
@@ -279,7 +358,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 .build()
 
             withContext(Dispatchers.Main) {
-                if (currentStreamUrl == null) {
+                if (force || currentStreamUrl == null) {
                     controller.setMediaItem(mediaItem)
                     controller.prepare()
                     controller.play()
@@ -288,9 +367,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun onStreamUrlFound(url: String, isValidated: Boolean = false, source: String = "unknown") {
+    fun onStreamUrlFound(url: String, isValidated: Boolean = false, source: String = "unknown", force: Boolean = false) {
         // If we already have this URL as our master or current source, ignore unless it's a manual override
-        if (availableQualities.isNotEmpty() && (currentStreamUrl == url || masterStreamUrl == url) && 
+        if (!force && availableQualities.isNotEmpty() && (currentStreamUrl == url || masterStreamUrl == url) && 
             source != "manual_selection" && source != "mode_change") {
             return
         }
@@ -309,7 +388,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 return
             }
         } else {
-            if (currentStreamUrl != null && now - lastUrlUpdateTime < 8000) {
+            if (!force && currentStreamUrl != null && now - lastUrlUpdateTime < 8000) {
                 return
             }
         }
@@ -419,18 +498,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             .setArtworkUri(avatarUrl?.toUri())
             .build()
             
-        // "Safe Buffer" vs "Low Latency" Live Configuration:
-        val targetOffset = if (isSafeBuffer) 5000L else 3000L
-        val minOffset = if (isSafeBuffer) 2000L else 1500L
-        val maxOffset = if (isSafeBuffer) 15000L else 10000L
-
-        Log.d(AdBlockConfig.LOG_TAG, "Configuring Live Latency: target=${targetOffset}ms, min=${minOffset}ms")
-
-        val liveConfig = MediaItem.LiveConfiguration.Builder()
-            .setTargetOffsetMs(targetOffset)
-            .setMaxOffsetMs(maxOffset)
-            .setMinOffsetMs(minOffset)
-            .build()
+        // Use BufferingManager for optimized live configuration
+        val liveConfig = BufferingManager.getLiveConfiguration(isLowLatencyEnabled = !isSafeBuffer)
+        Log.d(AdBlockConfig.LOG_TAG, "Configuring Live Latency (isLowLatency=${!isSafeBuffer}): target=${liveConfig.targetOffsetMs}ms")
 
         val mediaItem = MediaItem.Builder()
             .setMediaId(channelName)

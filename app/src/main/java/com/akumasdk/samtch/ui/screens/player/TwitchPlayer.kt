@@ -361,8 +361,8 @@ fun TwitchPlayer(
                                     onToggleFullscreen = onToggleFullscreen,
                                     onToggleChat = onToggleChat,
                                     onRefresh = { 
-                                        playerViewModel.updateMediaItem(channel)
-                                        lastProcessedRefreshTrigger-- // Force refresh
+                                        channel?.let { playerViewModel.updateMediaItem(it, force = true) }
+                                        lastProcessedRefreshTrigger-- // Force refresh metadata
                                     },
                                     onSettingsClick = { showQualityMenu = true },
                                     isSettingsEnabled = playerViewModel.availableQualities.isNotEmpty() && !playerViewModel.isAdActive

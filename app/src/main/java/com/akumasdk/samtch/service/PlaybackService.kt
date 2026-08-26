@@ -17,9 +17,15 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.upstream.DefaultAllocator
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.common.PlaybackException
+import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
@@ -54,12 +60,17 @@ class PlaybackService : MediaSessionService() {
         const val ACTION_REFRESH = "com.akumasdk.samtch.ACTION_REFRESH"
     }
 
+    private var errorRetryCount = 0
+    private var lastErrorTime = 0L
+
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
 
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(Constants.UserAgents.MOBILE) // Align with Orchestrator
+            .setConnectTimeoutMs(5000)
+            .setReadTimeoutMs(5000)
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(mapOf(
                 "Client-ID" to Constants.Twitch.CLIENT_ID,
@@ -68,26 +79,38 @@ class PlaybackService : MediaSessionService() {
             ))
 
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
-        val mediaSourceFactory = DefaultMediaSourceFactory(this)
-            .setDataSourceFactory(dataSourceFactory)
+        
+        val loadErrorHandlingPolicy = object : DefaultLoadErrorHandlingPolicy() {
+            override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+                val exception = loadErrorInfo.exception
+                if (exception is HttpDataSource.InvalidResponseCodeException) {
+                    if (exception.responseCode == 403 || exception.responseCode == 404 || exception.responseCode == 410) {
+                        return 0 // Trigger immediate retry which should lead to a refresh if handled
+                    }
+                }
+                return super.getRetryDelayMsFor(loadErrorInfo)
+            }
+        }
+
+        val hlsFactory = HlsMediaSource.Factory(dataSourceFactory)
+            .setAllowChunklessPreparation(true)
+            .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
 
         val trackSelector = DefaultTrackSelector(this)
 
-        val loadControl = DefaultLoadControl.Builder()
-            .setAllocator(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
-            .setBufferDurationsMs(
-                15_000, // minBufferMs: Increase base buffer to 15s for high stability
-                50_000, // maxBufferMs
-                3_500,  // bufferForPlaybackMs: Wait for 3.5s of data before starting
-                5_000   // bufferForPlaybackAfterRebufferMs: Wait for 5s after a stutter
-            )
-            .setPrioritizeTimeOverSizeThresholds(true)
+        val loadControl = com.akumasdk.samtch.util.BufferingManager.createLoadControl()
+        
+        val speedControl = DefaultLivePlaybackSpeedControl.Builder()
+            .setFallbackMaxPlaybackSpeed(1.1f) // Capped at 1.1x for stability
+            .setFallbackMinPlaybackSpeed(0.96f)
+            .setTargetLiveOffsetIncrementOnRebufferMs(500)
             .build()
 
         exoPlayer = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(mediaSourceFactory)
+            .setMediaSourceFactory(hlsFactory)
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
+            .setLivePlaybackSpeedControl(speedControl)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
@@ -100,8 +123,37 @@ class PlaybackService : MediaSessionService() {
             .build()
             
         exoPlayer?.addListener(object : Player.Listener {
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            override fun onPlayerError(error: PlaybackException) {
                 Log.e("PlaybackService", "ExoPlayer Error: ${error.errorCodeName} (${error.errorCode}): ${error.message}", error)
+                
+                if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+                    Log.w("PlaybackService", "Behind live window, seeking to default and re-preparing")
+                    exoPlayer?.seekToDefaultPosition()
+                    exoPlayer?.prepare()
+                    return
+                }
+
+                val now = System.currentTimeMillis()
+                if (now - lastErrorTime > 30000) {
+                    errorRetryCount = 0
+                }
+                lastErrorTime = now
+                
+                // Automatic Recovery for network/timeout errors
+                if (errorRetryCount < 3 && (
+                    error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+                    error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
+                    error.errorCode == PlaybackException.ERROR_CODE_IO_CLEARTEXT_NOT_PERMITTED ||
+                    error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ||
+                    error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS)) {
+                    
+                    errorRetryCount++
+                    Log.d("PlaybackService", "Attempting automatic recovery (retry $errorRetryCount)...")
+                    exoPlayer?.let {
+                        it.prepare()
+                        it.play()
+                    }
+                }
             }
 
             override fun onPlaybackStateChanged(state: Int) {
@@ -291,6 +343,7 @@ class PlaybackService : MediaSessionService() {
                 
                 val newItem = item.buildUpon()
                     .setUri(hlsUrl.toUri())
+                    .setLiveConfiguration(com.akumasdk.samtch.util.BufferingManager.getLiveConfiguration())
                     .setMediaMetadata(
                         item.mediaMetadata.buildUpon()
                             .setTitle(stream?.title ?: item.mediaMetadata.title ?: channelName)

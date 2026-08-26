@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,14 +28,34 @@ fun QualitySelectorDialog(
     onQualitySelected: (ExtMediaEntry) -> Unit,
     onDismiss: () -> Unit
 ) {
+    // Filter out invalid entries and sort them properly
+    val filteredQualities = remember(availableQualities) {
+        val result = availableQualities
+            .filter { 
+                val hasIdentifier = !it.name.isNullOrBlank() || !it.resolution.isNullOrBlank()
+                val isNotUnknown = it.name?.contains("Unknown", ignoreCase = true) != true
+                val hasUrl = !it.playlistUrl.isNullOrBlank()
+                hasIdentifier && isNotUnknown && hasUrl
+            }
+            .sortedByDescending { it.bandwidth ?: 0L }
+            .distinctBy { it.playlistUrl }
+
+        // Fallback: If filtering is too aggressive, show all entries with URLs
+        if (result.isEmpty() && availableQualities.isNotEmpty()) {
+            availableQualities.filter { !it.playlistUrl.isNullOrBlank() }
+        } else {
+            result
+        }
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = SamtchTheme.colors.dialogBackground,
-            tonalElevation = 8.dp,
+            tonalElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 24.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -43,17 +64,18 @@ fun QualitySelectorDialog(
             ) {
                 Text(
                     text = "Stream Quality",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     color = SamtchTheme.colors.primaryText,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(bottom = 20.dp)
                 )
 
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.heightIn(max = 400.dp)
                 ) {
-                    items(availableQualities.sortedByDescending { it.bandwidth ?: 0L }) { quality ->
-                        val isSelected = quality == selectedQuality
+                    items(filteredQualities) { quality ->
+                        val isSelected = quality.playlistUrl == selectedQuality?.playlistUrl
                         
                         QualityItem(
                             quality = quality,
@@ -66,13 +88,18 @@ fun QualitySelectorDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                TextButton(
+                Button(
                     onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SamtchTheme.colors.twitchPurple,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.align(Alignment.End)
                 ) {
-                    Text("Close", color = SamtchTheme.colors.twitchPurpleLight)
+                    Text("Close", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -85,31 +112,55 @@ private fun QualityItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val displayName = remember(quality) {
+        val name = quality.name ?: ""
+        val resolution = quality.resolution ?: ""
+        
+        when {
+            name.contains("source", ignoreCase = true) -> name
+            resolution.isNotBlank() -> {
+                val height = resolution.split('x').lastOrNull()
+                if (height != null) "${height}p" else resolution
+            }
+            name.isNotBlank() -> name
+            else -> "Unknown"
+        }
+    }
+
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) SamtchTheme.colors.twitchPurple.copy(alpha = 0.15f) 
-                else Color.Transparent,
-        contentColor = if (isSelected) SamtchTheme.colors.twitchPurpleLight 
-                      else SamtchTheme.colors.primaryText,
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) SamtchTheme.colors.twitchPurple.copy(alpha = 0.2f) 
+                else SamtchTheme.colors.cardBackground.copy(alpha = 0.05f),
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, SamtchTheme.colors.twitchPurple) else null,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(horizontal = 20.dp, vertical = 14.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = quality.name ?: quality.resolution ?: "Unknown",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    text = displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isSelected) SamtchTheme.colors.twitchPurpleLight else SamtchTheme.colors.primaryText,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
                 )
-                if (quality.resolution != null && quality.name != quality.resolution) {
+                
+                val detailText = mutableListOf<String>()
+                if (quality.resolution != null && !displayName.contains(quality.resolution!!)) {
+                    detailText.add(quality.resolution!!)
+                }
+                if (quality.frameRate != null && quality.frameRate!! > 0) {
+                    detailText.add("${quality.frameRate!!.toInt()} fps")
+                }
+                
+                if (detailText.isNotEmpty()) {
                     Text(
-                        text = quality.resolution!!,
+                        text = detailText.joinToString(" • "),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (isSelected) SamtchTheme.colors.twitchPurpleLight.copy(alpha = 0.7f)
                                 else SamtchTheme.colors.secondaryText
@@ -120,8 +171,8 @@ private fun QualityItem(
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                    contentDescription = "Selected",
+                    modifier = Modifier.size(24.dp),
                     tint = SamtchTheme.colors.twitchPurpleLight
                 )
             }
