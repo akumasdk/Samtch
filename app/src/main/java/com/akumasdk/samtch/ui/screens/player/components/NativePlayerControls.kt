@@ -1,25 +1,27 @@
 package com.akumasdk.samtch.ui.screens.player.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @Composable
 fun NativePlayerControls(
@@ -33,73 +35,137 @@ fun NativePlayerControls(
     modifier: Modifier = Modifier,
     isSettingsEnabled: Boolean = true
 ) {
-    android.util.Log.d("NativePlayerControls", "Rendering controls: visible=$isVisible, settingsEnabled=$isSettingsEnabled")
-    
     AnimatedVisibility(
         visible = isVisible,
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = fadeIn(animationSpec = SamtchAnimation.StandardTween) + 
+                expandVertically(animationSpec = androidx.compose.animation.core.tween(SamtchAnimation.StandardDuration)),
+        exit = fadeOut(animationSpec = SamtchAnimation.FastTween) + 
+               shrinkVertically(animationSpec = androidx.compose.animation.core.tween(SamtchAnimation.FastDuration)),
         modifier = modifier.fillMaxSize()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f)) // Darken whole screen when controls are visible
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.5f),
+                            Color.Transparent,
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.5f)
+                        )
+                    )
+                )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = { /* Consume to avoid accidental taps */ }
                 )
         ) {
-            // Top Bar
-            Box(
+            // --- TOP BAR ---
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp) // Normalized padding
+                    .padding(horizontal = 20.dp, vertical = 24.dp)
+                    .statusBarsPadding(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.Top
             ) {
                 ControlIconButton(
                     icon = Icons.Default.Settings,
                     onClick = onSettingsClick,
                     enabled = isSettingsEnabled,
-                    modifier = Modifier.align(Alignment.TopEnd)
+                    contentDescription = "Settings"
                 )
             }
 
-            // Bottom Bar
-            Row(
+            // --- BOTTOM CONTROL BAR ---
+            Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .navigationBarsPadding(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 20.dp, vertical = 32.dp)
+                    .navigationBarsPadding()
+                    .fillMaxWidth(),
+                color = Color.Transparent
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ControlIconButton(
-                        icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        onClick = onTogglePlayback
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    ControlIconButton(
-                        icon = Icons.Default.Refresh,
-                        onClick = onRefresh
-                    )
-                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left Group: Play/Pause & Refresh
+                    GlassPillContainer {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 2.dp)
+                        ) {
+                            ControlIconButton(
+                                icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                onClick = onTogglePlayback,
+                                size = 48.dp, // Slightly larger
+                                backgroundColor = SamtchTheme.colors.twitchPurple.copy(alpha = 0.7f),
+                                contentDescription = if (isPlaying) "Pause" else "Play"
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            ControlIconButton(
+                                icon = Icons.Default.Refresh,
+                                onClick = onRefresh,
+                                size = 44.dp,
+                                backgroundColor = Color.Transparent,
+                                contentDescription = "Refresh Stream"
+                            )
+                        }
+                    }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ControlIconButton(
-                        icon = Icons.AutoMirrored.Filled.Chat,
-                        onClick = onToggleChat
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    ControlIconButton(
-                        icon = Icons.Default.Fullscreen,
-                        onClick = onToggleFullscreen
-                    )
+                    // Right Group: Chat & Fullscreen
+                    GlassPillContainer {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        ) {
+                            ControlIconButton(
+                                icon = Icons.AutoMirrored.Filled.Chat,
+                                onClick = onToggleChat,
+                                size = 40.dp,
+                                backgroundColor = Color.Transparent,
+                                contentDescription = "Toggle Chat"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(20.dp)
+                                    .background(Color.White.copy(alpha = 0.15f))
+                            )
+                            ControlIconButton(
+                                icon = Icons.Default.Fullscreen,
+                                onClick = onToggleFullscreen,
+                                size = 40.dp,
+                                backgroundColor = Color.Transparent,
+                                contentDescription = "Toggle Fullscreen"
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GlassPillContainer(
+    content: @Composable () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White.copy(alpha = 0.08f),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = Color.White.copy(alpha = 0.12f)
+        ),
+        modifier = Modifier.wrapContentSize(),
+        tonalElevation = 2.dp
+    ) {
+        content()
     }
 }
 
@@ -108,20 +174,35 @@ private fun ControlIconButton(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    size: androidx.compose.ui.unit.Dp = 44.dp,
+    backgroundColor: Color = Color.White.copy(alpha = 0.12f),
+    contentDescription: String? = null
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.88f else 1.0f,
+        animationSpec = SamtchAnimation.springInteractive(),
+        label = "ButtonScale"
+    )
+
     Surface(
         onClick = if (enabled) onClick else ({}),
+        interactionSource = interactionSource,
         shape = CircleShape,
-        color = Color.Black.copy(alpha = if (enabled) 0.35f else 0.1f),
-        contentColor = if (enabled) Color.White else Color.Gray.copy(alpha = 0.5f),
-        modifier = modifier.size(44.dp) // Normalized size
+        color = if (enabled) backgroundColor else Color.Transparent,
+        contentColor = if (enabled) Color.White else Color.White.copy(alpha = 0.3f),
+        modifier = modifier
+            .size(size)
+            .scale(scale),
+        tonalElevation = if (enabled) 2.dp else 0.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
+                contentDescription = contentDescription,
+                modifier = Modifier.size(size * 0.55f)
             )
         }
     }

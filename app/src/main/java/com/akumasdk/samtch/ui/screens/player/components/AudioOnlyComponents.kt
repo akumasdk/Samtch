@@ -1,23 +1,11 @@
 package com.akumasdk.samtch.ui.screens.player.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.*
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,15 +13,15 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -222,33 +210,118 @@ fun AudioOnlyExpandedView(
         }
 
         // RIGHT: Controls
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconButton(onClick = onCloseAudioOnly, modifier = Modifier.size(if (availableHeight < 200.dp) 32.dp else 40.dp)) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Return to Video",
-                    tint = SamtchTheme.colors.primaryText.copy(alpha = 0.7f),
-                    modifier = Modifier.size(if (availableHeight < 200.dp) 20.dp else 24.dp)
-                )
-            }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ControlIconButton(
+                icon = Icons.Default.Close,
+                onClick = onCloseAudioOnly,
+                size = if (availableHeight < 200.dp) 32.dp else 40.dp,
+                backgroundColor = Color.White.copy(alpha = 0.08f),
+                contentDescription = "Return to Video"
+            )
 
-            IconButton(onClick = onTogglePlayback, modifier = Modifier.size(if (availableHeight < 200.dp) 56.dp else 64.dp)) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                    tint = SamtchTheme.colors.primaryText,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+            LargePlaybackButton(
+                isPlaying = isPlaying,
+                onToggle = onTogglePlayback,
+                size = if (availableHeight < 200.dp) 56.dp else 72.dp,
+                iconSize = if (availableHeight < 200.dp) 28.dp else 36.dp
+            )
             
-            IconButton(onClick = onRefresh, modifier = Modifier.size(if (availableHeight < 200.dp) 32.dp else 40.dp)) {
+            ControlIconButton(
+                icon = Icons.Default.Refresh,
+                onClick = onRefresh,
+                size = if (availableHeight < 200.dp) 32.dp else 40.dp,
+                backgroundColor = Color.White.copy(alpha = 0.08f),
+                contentDescription = "Refresh Stream"
+            )
+        }
+    }
+}
+
+@Composable
+private fun LargePlaybackButton(
+    isPlaying: Boolean,
+    onToggle: () -> Unit,
+    size: androidx.compose.ui.unit.Dp = 72.dp,
+    iconSize: androidx.compose.ui.unit.Dp = 36.dp
+) {
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1.0f,
+        animationSpec = SamtchAnimation.springInteractive(),
+        label = "PlaybackButtonScale"
+    )
+
+    Surface(
+        onClick = onToggle,
+        interactionSource = interactionSource,
+        shape = CircleShape,
+        color = SamtchTheme.colors.twitchPurple.copy(alpha = 0.85f),
+        modifier = Modifier
+            .size(size)
+            .scale(scale)
+            .shadow(12.dp, CircleShape),
+        contentColor = Color.White
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            AnimatedContent(
+                targetState = isPlaying,
+                transitionSpec = {
+                    fadeIn(animationSpec = SamtchAnimation.StandardTween) + 
+                    scaleIn(initialScale = 0.8f) togetherWith
+                    fadeOut(animationSpec = SamtchAnimation.FastTween) + 
+                    scaleOut(targetScale = 0.8f)
+                },
+                label = "PlayPauseAnimation"
+            ) { playing ->
                 Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refresh",
-                    tint = SamtchTheme.colors.primaryText.copy(alpha = 0.7f),
-                    modifier = Modifier.size(if (availableHeight < 200.dp) 18.dp else 22.dp)
+                    imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (playing) "Pause" else "Play",
+                    modifier = Modifier.size(iconSize)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ControlIconButton(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    size: androidx.compose.ui.unit.Dp = 44.dp,
+    backgroundColor: Color = Color.White.copy(alpha = 0.12f),
+    contentDescription: String? = null
+) {
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.88f else 1.0f,
+        animationSpec = SamtchAnimation.springInteractive(),
+        label = "ButtonScale"
+    )
+
+    Surface(
+        onClick = if (enabled) onClick else ({}),
+        interactionSource = interactionSource,
+        shape = CircleShape,
+        color = if (enabled) backgroundColor else Color.Transparent,
+        contentColor = if (enabled) Color.White else Color.White.copy(alpha = 0.3f),
+        modifier = modifier
+            .size(size)
+            .scale(scale),
+        tonalElevation = if (enabled) 2.dp else 0.dp
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(size * 0.55f)
+            )
         }
     }
 }
