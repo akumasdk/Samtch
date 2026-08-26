@@ -475,7 +475,7 @@ fun TwitchPlayer(
                         refreshKey = playerViewModel.metadataRefreshTrigger,
                         modifier = Modifier.fillMaxSize(),
                         alpha = bgAlpha,
-                        blurRadius = if (isFullscreen) 30.dp else 0.dp,
+                        blurRadius = if (isFullscreen) 150.dp else 0.dp,
                         contentScale = ContentScale.FillBounds
                     ) {
                         // Immersive gradient overlay
@@ -613,7 +613,7 @@ fun TwitchPlayer(
                     ) {
                         if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
                             val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
-                            val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
+                            val bgBlur = if (isImmersiveEnabled) 150.dp else 0.dp
                             val surfaceAlpha = if (isImmersiveEnabled) {
                                 if (SamtchTheme.colors.dialogBackground.luminance() > 0.5f) 0.94f else 0.82f
                             } else 1.0f

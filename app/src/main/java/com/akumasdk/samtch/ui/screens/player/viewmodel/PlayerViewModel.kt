@@ -352,7 +352,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 lastVideoQuality = selectedQuality
             }
 
-            portraitMode = PortraitMode.VIDEO_AND_CHAT
+            portraitMode = PortraitMode.AUDIO_AND_CHAT
             // Use existing qualities to instantly switch to the lowest resolution
             val lowest = availableQualities
                 .filter { it.resolution != null }
@@ -364,6 +364,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 return
             }
         } else {
+            portraitMode = PortraitMode.VIDEO_AND_CHAT
             // Reverting to video: try to restore last saved video quality, otherwise find the highest
             val targetQuality = lastVideoQuality ?: availableQualities.filter { it.resolution != null }
                 .maxByOrNull { (it.bandwidth ?: 0L) + (parseResolution(it.resolution) * 1000L) }

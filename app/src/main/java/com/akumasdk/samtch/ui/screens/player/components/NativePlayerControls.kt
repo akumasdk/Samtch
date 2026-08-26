@@ -38,6 +38,10 @@ fun NativePlayerControls(
     modifier: Modifier = Modifier,
     isSettingsEnabled: Boolean = true
 ) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isEffectivelyFullscreen = isFullscreen || isLandscape
+
     AnimatedVisibility(
         visible = isVisible,
         enter = fadeIn(animationSpec = SamtchAnimation.StandardTween) + 
@@ -126,7 +130,7 @@ fun NativePlayerControls(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
-                            if (isFullscreen) {
+                            if (isEffectivelyFullscreen) {
                                 ControlIconButton(
                                     icon = Icons.AutoMirrored.Filled.Chat,
                                     onClick = onToggleChat,
@@ -151,11 +155,11 @@ fun NativePlayerControls(
                                     .background(Color.White.copy(alpha = 0.15f))
                             )
                             ControlIconButton(
-                                icon = Icons.Default.Fullscreen,
+                                icon = if (isEffectivelyFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
                                 onClick = onToggleFullscreen,
                                 size = 40.dp,
                                 backgroundColor = Color.Transparent,
-                                contentDescription = "Toggle Fullscreen"
+                                contentDescription = if (isEffectivelyFullscreen) "Exit Fullscreen" else "Toggle Fullscreen"
                             )
                         }
                     }

@@ -103,6 +103,19 @@ fun FullscreenPlayer(
                     .systemBarsPadding()
                     .displayCutoutPadding()
             ) {
+                if (isImmersiveEnabled) {
+                    val isLightMode = !isActuallyDark
+                    val imageAlpha = if (isLightMode) 0.7f else 0.65f
+                    PlayerBackground(
+                        channel = channel,
+                        previewUrl = previewImageUrl,
+                        alpha = imageAlpha,
+                        blurRadius = 150.dp,
+                        contentScale = ContentScale.FillBounds,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
                 // 1. Chat area (Background layer)
                 Box(modifier = Modifier.fillMaxSize()) {
                     chatContent(
