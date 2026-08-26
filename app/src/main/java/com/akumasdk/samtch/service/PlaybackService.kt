@@ -67,18 +67,7 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        val httpFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(Constants.UserAgents.MOBILE) // Align with Orchestrator
-            .setConnectTimeoutMs(5000)
-            .setReadTimeoutMs(5000)
-            .setAllowCrossProtocolRedirects(true)
-            .setDefaultRequestProperties(mapOf(
-                "Client-ID" to Constants.Twitch.CLIENT_ID,
-                "Referer" to "https://m.twitch.tv/",
-                "Origin" to "https://m.twitch.tv"
-            ))
-
-        val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
+        val dataSourceFactory = com.akumasdk.samtch.util.StreamingPlayerFactory.getDataSourceFactory()
         
         val loadErrorHandlingPolicy = object : DefaultLoadErrorHandlingPolicy() {
             override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
@@ -98,18 +87,15 @@ class PlaybackService : MediaSessionService() {
 
         val trackSelector = DefaultTrackSelector(this)
 
-        val loadControl = com.akumasdk.samtch.util.BufferingManager.createLoadControl()
-        
         val speedControl = DefaultLivePlaybackSpeedControl.Builder()
             .setFallbackMaxPlaybackSpeed(1.1f) // Capped at 1.1x for stability
             .setFallbackMinPlaybackSpeed(0.96f)
             .setTargetLiveOffsetIncrementOnRebufferMs(500)
             .build()
 
-        exoPlayer = ExoPlayer.Builder(this)
+        exoPlayer = com.akumasdk.samtch.util.StreamingPlayerFactory.createLowLatencyPlayerBuilder(this)
             .setMediaSourceFactory(hlsFactory)
             .setTrackSelector(trackSelector)
-            .setLoadControl(loadControl)
             .setLivePlaybackSpeedControl(speedControl)
             .setAudioAttributes(
                 AudioAttributes.Builder()

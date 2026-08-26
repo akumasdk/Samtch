@@ -23,10 +23,10 @@ object BufferingManager {
         return DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                /* minBufferMs = */ 10_000, // Increased to 10s to prevent starvation rewinds
-                /* maxBufferMs = */ 20_000, 
-                /* bufferForPlaybackMs = */ 1_000, 
-                /* bufferForPlaybackAfterRebufferMs = */ 2_500 
+                /* minBufferMs = */ 2_700, // Calibrated to 1.35 segments (2.7s) for 2s fragment streams
+                /* maxBufferMs = */ 15_000, 
+                /* bufferForPlaybackMs = */ 1_200, 
+                /* bufferForPlaybackAfterRebufferMs = */ 2_700 
             )
             .setBackBuffer(
                 /* backBufferDurationMs = */ 5_000,
@@ -44,8 +44,8 @@ object BufferingManager {
         val builder = MediaItem.LiveConfiguration.Builder()
         
         if (isLowLatencyEnabled) {
-            builder.setTargetOffsetMs(2_500) // Stabilized at 2.5s to avoid edge collisions
-                .setMinOffsetMs(1_500) // Minimum 1.5s to prevent rewinds
+            builder.setTargetOffsetMs(2_150) // Stabilized at 2.15s to balance latency and stability
+                .setMinOffsetMs(1_650) // Minimum 1.65s to prevent rewinds
                 .setMaxOffsetMs(8_000)
                 .setMaxPlaybackSpeed(1.10f) // Smoother catch-up
                 .setMinPlaybackSpeed(0.95f) 
