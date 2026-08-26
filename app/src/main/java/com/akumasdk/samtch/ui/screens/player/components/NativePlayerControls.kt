@@ -37,6 +37,7 @@ fun NativePlayerControls(
     onRefresh: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onInteraction: () -> Unit = {},
     isSettingsEnabled: Boolean = true
 ) {
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -47,8 +48,8 @@ fun NativePlayerControls(
         visible = isVisible,
         enter = fadeIn(animationSpec = SamtchAnimation.StandardTween) + 
                 expandVertically(animationSpec = androidx.compose.animation.core.tween(SamtchAnimation.StandardDuration)),
-        exit = fadeOut(animationSpec = SamtchAnimation.FastTween) + 
-               shrinkVertically(animationSpec = androidx.compose.animation.core.tween(SamtchAnimation.FastDuration)),
+        exit = fadeOut(animationSpec = SamtchAnimation.StandardTween) + 
+               shrinkVertically(animationSpec = androidx.compose.animation.core.tween(SamtchAnimation.StandardDuration)),
         modifier = modifier.fillMaxSize()
     ) {
         Box(
@@ -67,15 +68,21 @@ fun NativePlayerControls(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = { /* Consume to avoid accidental taps */ }
+                    onClick = { 
+                        // Consume to avoid accidental taps and reset timer
+                        onInteraction()
+                    }
                 )
         ) {
             // --- TOP BAR ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp)
-                    .statusBarsPadding(),
+                    .padding(
+                        horizontal = if (isEffectivelyFullscreen) 20.dp else 12.dp,
+                        vertical = if (isEffectivelyFullscreen) 24.dp else 12.dp
+                    )
+                    .then(if (isEffectivelyFullscreen) Modifier.statusBarsPadding() else Modifier),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.Top
             ) {
@@ -91,8 +98,11 @@ fun NativePlayerControls(
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 20.dp, vertical = 32.dp)
-                    .navigationBarsPadding()
+                    .padding(
+                        horizontal = if (isEffectivelyFullscreen) 20.dp else 12.dp,
+                        vertical = if (isEffectivelyFullscreen) 32.dp else 16.dp
+                    )
+                    .then(if (isEffectivelyFullscreen) Modifier.navigationBarsPadding() else Modifier)
                     .fillMaxWidth(),
                 color = Color.Transparent
             ) {

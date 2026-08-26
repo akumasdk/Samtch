@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.data.api.PreviewImageService
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @Composable
@@ -50,9 +52,13 @@ fun AudioOnlyPlayer(
             ),
         contentAlignment = Alignment.Center
     ) {
+        val finalUrl = remember(previewImageUrl, channel) {
+            PreviewImageService.getProcessedUrl(previewImageUrl, channel)
+        }
+        
         // Background Image with Crossfade animation on refresh
         Crossfade(
-            targetState = previewImageUrl,
+            targetState = finalUrl,
             animationSpec = tween(durationMillis = 1000),
             label = "AudioOnlyBackgroundFade"
         ) { url ->

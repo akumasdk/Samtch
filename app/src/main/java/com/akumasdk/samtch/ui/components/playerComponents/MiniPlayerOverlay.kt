@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
+import com.akumasdk.samtch.data.api.PreviewImageService
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 /**
@@ -38,10 +39,14 @@ fun MiniPlayerOverlay(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(SamtchTheme.colors.rootBackground),
         contentAlignment = Alignment.Center
     ) {
-        val displayUrl = if (usePreview && !previewImageUrl.isNullOrEmpty()) previewImageUrl else avatarUrl
+        val displayUrl = if (usePreview) {
+            PreviewImageService.getProcessedUrl(previewImageUrl, channel)
+        } else {
+            avatarUrl
+        }
         
         if (!displayUrl.isNullOrEmpty()) {
             SubcomposeAsyncImage(

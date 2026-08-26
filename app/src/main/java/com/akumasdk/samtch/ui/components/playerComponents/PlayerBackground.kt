@@ -22,6 +22,7 @@ import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
+import com.akumasdk.samtch.data.api.PreviewImageService
 import com.akumasdk.samtch.ui.theme.LocalStreamPreview
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
@@ -45,10 +46,14 @@ fun PlayerBackground(
     val previewInfo = LocalStreamPreview.current
     
     val targetChannel = channel.ifEmpty { previewInfo.channel }
-    val targetUrl = previewUrl ?: previewInfo.previewUrl 
+    val targetUrl = if (!previewUrl.isNullOrBlank()) previewUrl else previewInfo.previewUrl
     val targetRefreshKey = refreshKey ?: previewInfo.refreshKey
     
-    val baseUrl = targetUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(targetChannel.lowercase())
+    val baseUrl = remember(targetUrl, targetChannel) {
+        val url = PreviewImageService.getProcessedUrl(targetUrl, targetChannel)
+        Log.d("PlayerBackground", "Processing Base URL: $url (Source: $targetUrl, Channel: $targetChannel)")
+        url
+    }
     
     val finalUrl = remember(baseUrl, targetRefreshKey) {
         val url = if (targetRefreshKey != null) {
@@ -68,74 +73,39 @@ fun PlayerBackground(
             Crossfade(
                 targetState = finalUrl,
                 animationSpec = tween(
-                    durationMillis = 1600,
-                    easing = SamtchAnimation.EmphasizedEasing
+                    durationMillis = 1000,
+                    easing = SamtchAnimation.StandardEasing
                 ),
                 label = "PlayerBackgroundCrossfade"
             ) { url ->
                 var isLoaded by remember { mutableStateOf(false) }
-                var imageLuminance by remember { mutableFloatStateOf(0f) }
-                var successState by remember { mutableStateOf<AsyncImagePainter.State.Success?>(null) }
-                
-                // Offload CPU-intensive luminance analysis to a background thread
-                LaunchedEffect(successState) {
-                    val state = successState ?: return@LaunchedEffect
-                    withContext(Dispatchers.Default) {
-                        try {
-                            // toBitmap() and Palette generation are heavy operations
-                            val bitmap = state.result.drawable.toBitmap()
-                            val palette = Palette.from(bitmap).generate()
-                            
-                            val dom = Color(palette.getDominantColor(0)).luminance()
-                            val muted = Color(palette.getMutedColor(0)).luminance()
-                            
-                            // Return to main thread to update UI state
-                            imageLuminance = (dom + muted) / 2f
-                            isLoaded = true
-                            Log.d("PlayerBackground", "Luminance Analyzed: $imageLuminance")
-                        } catch (e: Exception) {
-                            Log.e("PlayerBackground", "Background Palette analysis failed", e)
-                            isLoaded = true // Still show the image even if analysis fails
-                        }
-                    }
-                }
-
-                val animatedAlpha by animateFloatAsState(
-                    targetValue = if (isLoaded) alpha else 0f,
-                    animationSpec = tween(
-                        durationMillis = 1200,
-                        easing = SamtchAnimation.StandardEasing
-                    ),
-                    label = "ImageFadeAnimation"
-                )
 
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(url)
                         .crossfade(true)
-                        .allowHardware(false) // Required for Palette to read the bitmap
                         .build(),
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
                         .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
                     contentScale = contentScale,
-                    alpha = animatedAlpha,
+                    alpha = alpha,
                     onState = { state ->
                         if (state is AsyncImagePainter.State.Success) {
-                            successState = state
+                            isLoaded = true
                         }
                     }
                 )
 
                 // Dynamic dark wash: apply more darkness if the image is bright
                 // This ensures content readability regardless of image brightness.
-                if (isLoaded && imageLuminance > 0.25f) {
-                    val washAlpha = ((imageLuminance - 0.25f) * 0.95f).coerceIn(0f, 0.75f)
+                // Note: Simplified logic as luminance analysis was removed for stability
+                if (isLoaded) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = washAlpha))
+                            .background(Color.Black.copy(alpha = 0.2f))
                     )
                 }
             }

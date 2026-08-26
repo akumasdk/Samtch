@@ -301,7 +301,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     val roomId = msg.tags["room-id"]
                     if (!roomId.isNullOrEmpty() && _currentChannel.value == channel) {
                         val currentState = EmoteRepository.getChannelState(channel).value
-                        val needsLoad = !currentState.isLoaded || (currentState.seventvEmotes.isEmpty() && currentState.bttvEmotes.isEmpty())
+                        
+                        // Only load if not loaded yet. If it was loaded and is empty, 
+                        // it means the channel simply has no 3rd party emotes.
+                        val needsLoad = !currentState.isLoaded
                         
                         if (lastLoadedRoomId != roomId || needsLoad) {
                             if (lastLoadedRoomId != roomId) {

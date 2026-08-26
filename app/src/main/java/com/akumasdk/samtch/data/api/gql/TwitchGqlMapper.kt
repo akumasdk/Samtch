@@ -29,7 +29,7 @@ object TwitchGqlMapper {
                         title = it.optString("title").trim(),
                         type = it.optString("type").trim(),
                         viewersCount = it.optInt("viewersCount"),
-                        previewImageUrl = it.optString("previewImageURL").trim(),
+                        previewImageUrl = it.optString("previewImageURL").trim().takeIf { s -> s.isNotEmpty() },
                         createdAt = it.optString("createdAt").trim(),
                         game = gameJson?.let { g -> TwitchGame(g.optString("name").trim()) }
                     )

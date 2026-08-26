@@ -143,9 +143,9 @@ object EmoteRepository {
         val stateFlow = _channelStates.getOrPut(channelLower) { MutableStateFlow(ChannelEmoteState()) }
         val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
         
-        // If already loaded with a valid ID and same auth state, skip.
+        // If already loaded with the same auth state, skip.
         val currentState = stateFlow.value
-        if (currentState.isLoaded && currentState.loadedWithAuth == auth.isLoggedIn && (userId == null || currentState.twitchEmotes.isNotEmpty() || currentState.seventvEmotes.isNotEmpty())) {
+        if (currentState.isLoaded && currentState.loadedWithAuth == auth.isLoggedIn) {
              return@withContext
         }
 

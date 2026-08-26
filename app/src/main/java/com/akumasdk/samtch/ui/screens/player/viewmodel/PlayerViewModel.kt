@@ -104,10 +104,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateChannel(newChannel: String?, forceRefresh: Boolean = false) {
         val isNewChannel = channel != newChannel
+        val isSameActiveStream = mediaController?.currentMediaItem?.mediaId == newChannel
+
         if (!isNewChannel && !forceRefresh) return
         
         // STOP CURRENT PLAYBACK IMMEDIATELY on channel change
-        if (isNewChannel) {
+        if (isNewChannel && !isSameActiveStream) {
             Log.d("PlayerViewModel", "Channel changing to $newChannel. Stopping current playback.")
             mediaController?.let {
                 it.stop()
@@ -120,11 +122,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         // Reset state for the new channel or forced refresh
         channel = newChannel
         
-        if (isNewChannel || forceRefresh) {
+        if ((isNewChannel && !isSameActiveStream) || forceRefresh) {
             newChannel?.let { adBlockOrchestrator.resetChannel(it) }
             hasBackgroundReloaded = false
             metadataRefreshTrigger = 0
             isAdActive = false
+            isPlaying = false
             isHoldingLoader = false
             hasAppliedCleanStreamDuringAd = false
             lastUrlUpdateTime = 0L
@@ -228,6 +231,23 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             mediaController = controller
             isPlaying = controller.isPlaying
             playbackState = controller.playbackState
+            
+            // Sync current URL if controller already has one to prevent re-resolution on resume
+            controller.currentMediaItem?.localConfiguration?.uri?.toString()?.let { uri ->
+                if (currentStreamUrl == null) {
+                    Log.d("PlayerViewModel", "Syncing currentStreamUrl from connected controller: $uri")
+                    currentStreamUrl = uri
+                }
+            }
+
+            // Sync audio-only state from controller constraints if applicable
+            val currentBitrate = controller.trackSelectionParameters.maxVideoBitrate
+            if (currentBitrate <= 250_000 && !isAudioOnly) {
+                Log.d("PlayerViewModel", "Detected audio-only constraints on controller. Syncing state.")
+                isAudioOnly = true
+                portraitMode = PortraitMode.AUDIO_AND_CHAT
+            }
+
             controller.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) {
                     isPlaying = playing
@@ -334,7 +354,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         watchdogJob?.cancel()
         mediaController?.release()
         mediaController = null
-        isPlaying = false
+        // We do NOT reset isPlaying or currentStreamUrl here 
+        // to allow for smooth UI transitions when re-connecting.
     }
 
     fun togglePlayback() {
@@ -350,7 +371,10 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun toggleAudioOnly() {
         val nextMode = !isAudioOnly
         isAudioOnly = nextMode
-        
+
+        // Apply hardware-level track selection constraints
+        updateTrackSelectionForAudioMode(nextMode)
+
         if (nextMode) {
             // Save current quality if it's a video quality before switching to audio
             if (selectedQuality?.resolution != null) {
@@ -386,8 +410,44 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         channel?.let { updateMediaItem(it, force = true) }
     }
 
+    private fun updateTrackSelectionForAudioMode(audioOnly: Boolean) {
+        val controller = mediaController ?: return
+        val currentParams = controller.trackSelectionParameters
+        val newParams = currentParams.buildUpon().apply {
+            if (audioOnly) {
+                // Force lowest possible bandwidth and size to ensure "Audio Only" behavior
+                // regardless of what manifest updates or re-resolutions occur.
+                setMaxVideoBitrate(250_000)
+                setMaxVideoSize(160, 120)
+            } else {
+                // Restore defaults for normal video playback
+                setMaxVideoBitrate(Int.MAX_VALUE)
+                setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
+            }
+        }.build()
+        
+        if (currentParams != newParams) {
+            Log.d("PlayerViewModel", "Updating track selection parameters: isAudioOnly=$audioOnly")
+            controller.trackSelectionParameters = newParams
+        }
+    }
+
     fun updateMediaItem(channelName: String, force: Boolean = false) {
         val controller = mediaController ?: return
+
+        // 1. PROACTIVE REUSE: If the controller is already playing the right channel,
+        // don't even start the AdBlock resolution unless forced.
+        val currentItem = controller.currentMediaItem
+        if (!force && currentItem?.mediaId == channelName && 
+            (controller.playbackState == Player.STATE_READY || controller.playbackState == Player.STATE_BUFFERING)) {
+            Log.d(AdBlockConfig.LOG_TAG, "updateMediaItem: Controller already has active item for $channelName. Reusing.")
+            
+            // Sync local URL if missing
+            if (currentStreamUrl == null) {
+                currentStreamUrl = currentItem.localConfiguration?.uri?.toString()
+            }
+            return
+        }
 
         Log.d(AdBlockConfig.LOG_TAG, "updateMediaItem: Triggering AdBlock resolution for $channelName (force=$force)")
         viewModelScope.launch(Dispatchers.Default) {
@@ -430,7 +490,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun onStreamUrlFound(url: String, isValidated: Boolean = false, source: String = "unknown", force: Boolean = false) {
         // If we already have this URL as our master or current source, ignore unless it's a manual override
-        if (!force && availableQualities.isNotEmpty() && (currentStreamUrl == url || masterStreamUrl == url) && 
+        if (!force && (currentStreamUrl == url || masterStreamUrl == url) && 
             source != "manual_selection" && source != "mode_change") {
             return
         }
@@ -555,6 +615,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         val channelName = channel ?: return
+
+        // Prevent redundant reloads if the URL is already set and playing
+        if (controller.currentMediaItem?.localConfiguration?.uri?.toString() == url && 
+            controller.playbackState != Player.STATE_IDLE && controller.playbackState != Player.STATE_ENDED) {
+            Log.d(AdBlockConfig.LOG_TAG, "applyStreamToController: URL $url is already playing. Skipping reset.")
+            return
+        }
 
         val isSafeBuffer = isAd || currentStreamUrl == null
         Log.d(AdBlockConfig.LOG_TAG, "Applying stream swap [$source] (isAd=$isAd, isSafeBuffer=$isSafeBuffer): $url")
