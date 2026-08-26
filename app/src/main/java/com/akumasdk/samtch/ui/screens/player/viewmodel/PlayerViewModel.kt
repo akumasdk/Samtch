@@ -182,16 +182,31 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         adBlockJob?.cancel()
         adBlockJob = viewModelScope.launch {
             while (true) {
-                val updateUrl = adBlockOrchestrator.getCleanStreamUrl(
-                    channelName = channelName,
-                    targetResolution = selectedQuality?.resolution
-                )
-                if (updateUrl != null) {
-                    Log.d(AdBlockConfig.LOG_TAG, "AdBlock state change detected: $updateUrl")
-                    withContext(Dispatchers.Main) {
-                        onStreamUrlFound(updateUrl, isValidated = true, source = "adblock_sync")
+                val controller = mediaController
+                
+                // Only probe if we have a controller AND we are either:
+                // 1. Actually playing (to detect mid-rolls)
+                // 2. Buffering (to recover from a freeze/ad shift)
+                // 3. Haven't found a URL yet (initial load)
+                val isControllerActive = controller != null && 
+                    (isPlaying || controller.playbackState == Player.STATE_BUFFERING || currentStreamUrl == null)
+
+                if (isControllerActive) {
+                    val updateUrl = adBlockOrchestrator.getCleanStreamUrl(
+                        channelName = channelName,
+                        targetResolution = selectedQuality?.resolution
+                    )
+                    if (updateUrl != null) {
+                        Log.d(AdBlockConfig.LOG_TAG, "AdBlock state change detected: $updateUrl")
+                        withContext(Dispatchers.Main) {
+                            onStreamUrlFound(updateUrl, isValidated = true, source = "adblock_sync")
+                        }
                     }
+                } else {
+                    // If inactive, we can afford to wait longer to save battery/bandwidth
+                    // but we keep the loop alive so it resumes instantly when play is pressed.
                 }
+                
                 delay(4.seconds) // Check every 4 seconds for ad changes (High precision)
             }
         }
@@ -319,9 +334,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         if (controller.isPlaying) {
             controller.pause()
         } else {
-            // Catch up to live edge when resuming
-            controller.seekToDefaultPosition()
-            controller.play()
+            // "Play" button now triggers a full refresh to get back to live edge
+            channel?.let { updateMediaItem(it, force = true) }
         }
     }
 

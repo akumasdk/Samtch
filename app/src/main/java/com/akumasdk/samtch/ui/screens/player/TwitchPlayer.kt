@@ -330,10 +330,11 @@ fun TwitchPlayer(
                             onCloseAudioOnly = {
                                 isAudioOnly = false
                                 portraitMode = PortraitMode.VIDEO_AND_CHAT
-                                playerViewModel.disconnectMediaController()
+                                playerViewModel.updateMediaItem(channel, force = true)
                             },
                             onRefresh = {
-                                playerViewModel.updateMediaItem(channel)
+                                playerViewModel.updateMediaItem(channel, force = true)
+                                playerViewModel.updateChannel(channel, forceRefresh = true)
                             },
                             previewImageUrl = previewImageUrl,
                             modifier = Modifier.fillMaxSize()
@@ -360,13 +361,13 @@ fun TwitchPlayer(
                                     onTogglePlayback = { playerViewModel.togglePlayback() },
                                     onToggleFullscreen = onToggleFullscreen,
                                     onToggleChat = onToggleChat,
-                                    onRefresh = { 
-                                        channel?.let { playerViewModel.updateMediaItem(it, force = true) }
-                                        lastProcessedRefreshTrigger-- // Force refresh metadata
-                                    },
-                                    onSettingsClick = { showQualityMenu = true },
-                                    isSettingsEnabled = playerViewModel.availableQualities.isNotEmpty() && !playerViewModel.isAdActive
-                                )
+                                onRefresh = { 
+                                    playerViewModel.updateMediaItem(channel, force = true)
+                                    playerViewModel.updateChannel(channel, forceRefresh = true)
+                                },
+                                onSettingsClick = { showQualityMenu = true },
+                                isSettingsEnabled = playerViewModel.availableQualities.isNotEmpty() && !playerViewModel.isAdActive
+                            )
                             }
                             
                             // Native player drives the loading screen now
@@ -676,6 +677,8 @@ fun TwitchPlayer(
                                     if (portraitMode == PortraitMode.CHAT_ONLY) {
                                         portraitMode = PortraitMode.VIDEO_AND_CHAT
                                         isAudioOnly = false
+                                        // Refresh stream when returning to video mode
+                                        playerViewModel.updateMediaItem(channel, force = true)
                                     } else {
                                         portraitMode = PortraitMode.CHAT_ONLY
                                     }
@@ -745,6 +748,8 @@ fun TwitchPlayer(
                             if (portraitMode == PortraitMode.CHAT_ONLY) {
                                 portraitMode = PortraitMode.VIDEO_AND_CHAT
                                 isAudioOnly = false
+                                // Refresh stream when returning to video mode
+                                playerViewModel.updateMediaItem(channel, force = true)
                             } else {
                                 portraitMode = PortraitMode.CHAT_ONLY
                             }

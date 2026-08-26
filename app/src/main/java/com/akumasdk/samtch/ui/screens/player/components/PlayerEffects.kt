@@ -35,8 +35,13 @@ fun AudioServiceEffects(
     }
 
     LaunchedEffect(playerViewModel.mediaController, shouldUseAudioService) {
-        if (shouldUseAudioService && playerViewModel.mediaController != null && !isPlaying) {
-            playerViewModel.updateMediaItem(channel)
+        val controller = playerViewModel.mediaController
+        if (shouldUseAudioService && controller != null) {
+            // If the controller was just reconnected or we are not playing, trigger resolution.
+            // We use a small delay to ensure the service is fully ready to receive commands.
+            if (!isPlaying || controller.currentMediaItem == null) {
+                playerViewModel.updateMediaItem(channel, force = true)
+            }
         }
     }
 
