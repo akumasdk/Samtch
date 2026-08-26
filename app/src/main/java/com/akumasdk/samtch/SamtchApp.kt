@@ -7,8 +7,15 @@ import coil.ImageLoaderFactory
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import coil.decode.SvgDecoder
+import com.akumasdk.samtch.util.StreamingPlayerFactory
 
 class SamtchApp : Application(), ImageLoaderFactory {
+    override fun onCreate() {
+        super.onCreate()
+        // Prewarm network and player resources early
+        StreamingPlayerFactory.prewarm()
+    }
+
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)
             .components {

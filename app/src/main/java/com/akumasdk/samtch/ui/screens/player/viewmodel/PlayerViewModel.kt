@@ -287,7 +287,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         watchdogJob?.cancel()
         watchdogJob = viewModelScope.launch {
             while (true) {
-                delay(3.seconds)
+                delay(2.seconds) // Check more frequently for rewinds
                 val state = controller.playbackState
                 val isActuallyPlaying = controller.isPlaying
                 val now = System.currentTimeMillis()
@@ -295,20 +295,30 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 if (!isHoldingLoader && !isQualityChanging) {
                     val currentPos = controller.currentPosition
                     
-                    // Live Window Recovery: If we are more than 8 seconds behind the live edge, seek forward
+                    // Live Window Recovery: If we are more than 6 seconds behind the live edge, seek forward
                     val liveOffset = controller.currentLiveOffset
-                    if (liveOffset > 8000 && isActuallyPlaying) {
-                        Log.w("PlayerViewModel", "Watchdog: Detected delay ($liveOffset ms). Seeking to live edge.")
+                    if (liveOffset > 6000 && isActuallyPlaying) {
+                        Log.w("PlayerViewModel", "Watchdog: Detected excessive delay ($liveOffset ms). Seeking to live edge.")
                         withContext(Dispatchers.Main) {
                             controller.seekToDefaultPosition()
                         }
                     }
 
+                    // REWIND DETECTION: If position jumped back by more than 1s without manual action
+                    if (lastPosition != -1L && currentPos < lastPosition - 1000 && isActuallyPlaying) {
+                        Log.w("PlayerViewModel", "Watchdog: Detected rewind ($lastPosition -> $currentPos). Forcing recovery.")
+                        withContext(Dispatchers.Main) {
+                            channel?.let { updateMediaItem(it, force = true) }
+                        }
+                        lastPosition = -1L
+                        continue
+                    }
+
                     when (state) {
                         Player.STATE_BUFFERING -> {
                             // Detect infinite buffering (stuck at 0% or segment fetch loop)
-                            if (lastPositionUpdateTime != 0L && now - lastPositionUpdateTime > 12000) {
-                                Log.w("PlayerViewModel", "Watchdog: Infinite buffering detected (>12s). Force reloading.")
+                            if (lastPositionUpdateTime != 0L && now - lastPositionUpdateTime > 10000) {
+                                Log.w("PlayerViewModel", "Watchdog: Infinite buffering detected (>10s). Force reloading.")
                                 withContext(Dispatchers.Main) {
                                     channel?.let { updateMediaItem(it, force = true) }
                                 }
@@ -318,8 +328,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                         Player.STATE_READY -> {
                             if (isActuallyPlaying) {
                                 if (currentPos == lastPosition && lastPosition != -1L) {
-                                    // Position hasn't moved for 10 seconds while "ready and playing"
-                                    if (now - lastPositionUpdateTime > 10000) {
+                                    // Position hasn't moved for 8 seconds while "ready and playing"
+                                    if (now - lastPositionUpdateTime > 8000) {
                                         Log.w("PlayerViewModel", "Watchdog: Frozen position at $currentPos. Force reloading.")
                                         withContext(Dispatchers.Main) {
                                             channel?.let { updateMediaItem(it, force = true) }

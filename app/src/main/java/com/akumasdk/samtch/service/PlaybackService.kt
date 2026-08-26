@@ -113,9 +113,9 @@ class PlaybackService : MediaSessionService() {
         // 3. Player Configuration
         val trackSelector = DefaultTrackSelector(this)
         val speedControl = DefaultLivePlaybackSpeedControl.Builder()
-            .setFallbackMaxPlaybackSpeed(1.1f)
-            .setFallbackMinPlaybackSpeed(0.96f)
-            .setTargetLiveOffsetIncrementOnRebufferMs(500)
+            .setFallbackMaxPlaybackSpeed(1.10f) // Matches BufferingManager max speed
+            .setFallbackMinPlaybackSpeed(0.95f)
+            .setTargetLiveOffsetIncrementOnRebufferMs(1000) // Increase offset more significantly on rebuffer to find stability
             .build()
 
         exoPlayer = com.akumasdk.samtch.util.StreamingPlayerFactory.createLowLatencyPlayerBuilder(this)
@@ -409,6 +409,7 @@ class PlaybackService : MediaSessionService() {
             mediaItems: MutableList<MediaItem>
         ): ListenableFuture<MutableList<MediaItem>> {
             val item = mediaItems.firstOrNull() ?: return super.onAddMediaItems(mediaSession, controller, mediaItems)
+            
             if (item.localConfiguration?.uri != null) return Futures.immediateFuture(mediaItems)
 
             return serviceScope.async(Dispatchers.IO) {

@@ -17,19 +17,19 @@ object BufferingManager {
 
     /**
      * Creates a fine-tuned [LoadControl] for live streaming.
-     * Starts playback faster while maintaining a healthy background buffer to prevent stutters.
+     * Calibrated for aggressive low latency (Streamlink style).
      */
     fun createLoadControl(): LoadControl {
         return DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                /* minBufferMs = */ 2_700, // Calibrated to 1.35 segments (2.7s) for 2s fragment streams
+                /* minBufferMs = */ 8_000, // Increased to 8s for high stability
                 /* maxBufferMs = */ 15_000, 
-                /* bufferForPlaybackMs = */ 1_200, 
-                /* bufferForPlaybackAfterRebufferMs = */ 2_700 
+                /* bufferForPlaybackMs = */ 4_000, // Increased to 4s (2 segments) before starting playback
+                /* bufferForPlaybackAfterRebufferMs = */ 4_000 
             )
             .setBackBuffer(
-                /* backBufferDurationMs = */ 5_000,
+                /* backBufferDurationMs = */ 6_000, // Larger back-buffer
                 /* retainBackBufferFromKeyframe = */ true
             )
             .setPrioritizeTimeOverSizeThresholds(true)
@@ -38,21 +38,23 @@ object BufferingManager {
 
     /**
      * Provides an optimized [MediaItem.LiveConfiguration] for Twitch live streams.
-     * Uses adaptive playback speed to maintain low latency without constant buffering.
+     * Replicates Streamlink's --twitch-low-latency behavior.
      */
-    fun getLiveConfiguration(isLowLatencyEnabled: Boolean = true): MediaItem.LiveConfiguration {
+    fun getLiveConfiguration(
+        isLowLatencyEnabled: Boolean = true
+    ): MediaItem.LiveConfiguration {
         val builder = MediaItem.LiveConfiguration.Builder()
         
         if (isLowLatencyEnabled) {
-            builder.setTargetOffsetMs(2_150) // Stabilized at 2.15s to balance latency and stability
-                .setMinOffsetMs(1_650) // Minimum 1.65s to prevent rewinds
-                .setMaxOffsetMs(8_000)
-                .setMaxPlaybackSpeed(1.10f) // Smoother catch-up
+            builder.setTargetOffsetMs(6_000L) // Aim for ~6s delay (3 segments) for high stability
+                .setMinOffsetMs(3_000L) 
+                .setMaxOffsetMs(12_000L)
+                .setMaxPlaybackSpeed(1.10f) 
                 .setMinPlaybackSpeed(0.95f) 
         } else {
-            builder.setTargetOffsetMs(5_000) 
-                .setMinOffsetMs(2_500)
-                .setMaxOffsetMs(15_000)
+            builder.setTargetOffsetMs(5_000L) 
+                .setMinOffsetMs(2_500L)
+                .setMaxOffsetMs(15_000L)
                 .setMaxPlaybackSpeed(1.05f)
                 .setMinPlaybackSpeed(0.97f)
         }
