@@ -533,7 +533,28 @@ fun TwitchPlayer(
                     }
                 }
 
-                // 2. THE STABLE PLAYER (Middle Layer)
+                // 2. MINI PLAYER SHELL & DISMISS LOGIC
+                // Rendered below the stable player so the shared video appears on top of the shell's placeholder
+                MiniPlayerContainer(
+                    visible = isMinimized,
+                    channel = channel,
+                    displayName = streamMetadata?.user?.displayName,
+                    streamTitle = streamMetadata?.user?.stream?.title,
+                    elevation = layout.elevation.value,
+                    nudgeOffset = nudgeOffset.value,
+                    dismissState = dismissState,
+                    onExpand = onExpand,
+                    onClose = {
+                        Log.d("TwitchPlayer", "Miniplayer closed by button. Stopping playback.")
+                        playerViewModel.stopAndDisconnect()
+                        onClose()
+                    },
+                    content = {
+                        // This placeholder box will be filled by Point 3 (the shared player)
+                    }
+                )
+
+                // 3. THE STABLE PLAYER (Middle Layer)
                 // Unified modifier system for perfectly smooth transitions
                 key(channel) {
                     Box(
@@ -588,8 +609,10 @@ fun TwitchPlayer(
                                     }
                                 },
                                 onSingleTap = {
-                                    Log.d("TwitchPlayer", "Single tap detected. Current showNativeControls: $showNativeControls")
-                                    if (isFullscreen && !isAudioOnly) {
+                                    Log.d("TwitchPlayer", "Single tap detected. isMinimized: $isMinimized")
+                                    if (isMinimized) {
+                                        onExpand()
+                                    } else if (isFullscreen && !isAudioOnly) {
                                         showFullscreenControls = !showFullscreenControls
                                         showNativeControls = showFullscreenControls
                                     } else {
@@ -691,7 +714,7 @@ fun TwitchPlayer(
                     }
                 }
 
-                // 3. FULL PLAYER OVERLAY (Chat, Metadata) - Top-most layer
+                // 4. FULL PLAYER OVERLAY (Chat, Metadata) - Top-most layer
                 CompositionLocalProvider(
                     LocalStreamPreview provides StreamPreviewInfo(
                         channel = channel,
@@ -732,26 +755,6 @@ fun TwitchPlayer(
                         }
                     )
                 }
-
-                // 4. MINI PLAYER SHELL & DISMISS LOGIC
-                MiniPlayerContainer(
-                    visible = isMinimized,
-                    channel = channel,
-                    displayName = streamMetadata?.user?.displayName,
-                    streamTitle = streamMetadata?.user?.stream?.title,
-                    elevation = layout.elevation.value,
-                    nudgeOffset = nudgeOffset.value,
-                    dismissState = dismissState,
-                    onExpand = onExpand,
-                    onClose = {
-                        Log.d("TwitchPlayer", "Miniplayer closed by button. Stopping playback.")
-                        playerViewModel.stopAndDisconnect()
-                        onClose()
-                    },
-                    content = {
-                        // This placeholder box will be filled by Point 2 (the shared player)
-                    }
-                )
             }
 
             if (showQualityMenu) {
