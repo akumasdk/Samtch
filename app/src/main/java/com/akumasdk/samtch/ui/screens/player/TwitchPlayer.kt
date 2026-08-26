@@ -238,10 +238,6 @@ fun TwitchPlayer(
 
         LaunchedEffect(isAudioOnly) {
             onAudioOnlyModeChanged(isAudioOnly)
-            // Re-evaluate stream quality when switching to/from audio only if we have the master URL
-            playerViewModel.masterStreamUrl?.let { masterUrl ->
-                playerViewModel.onStreamUrlFound(masterUrl, source = "mode_change")
-            }
         }
 
         Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, isMinimized: $isMinimized)")
@@ -292,29 +288,49 @@ fun TwitchPlayer(
         val playerContent = remember(channel) {
             movableContentOf { modifier: Modifier, onToggleChat: () -> Unit ->
                 Box(modifier = modifier) {
-                    // Read metadata and state inside the lambda to ensure reactivity 
-                    // even if the lambda is remembered and moved in the tree.
                     val liveMetadata = playerViewModel.streamMetadata
                     val liveAvatarUrl = playerViewModel.avatarUrl
                     val liveSubtitle = playerViewModel.streamSubtitle
                     val liveIsPlaying = playerViewModel.isPlaying
                     
                     // Mode logic
-                    val isAudioOrChatMode = playerViewModel.isAudioOnly || playerViewModel.portraitMode == PortraitMode.CHAT_ONLY
+                    val isAudioOnlyMode = playerViewModel.isAudioOnly
+                    val isChatOnlyMode = playerViewModel.portraitMode == PortraitMode.CHAT_ONLY
                     val previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
 
-                    if (isMinimized && isAudioOrChatMode) {
-                        // Use the dedicated overlay for minimized non-video modes
+                    // 1. BASE LAYER: Native Video Player
+                    if (playerViewModel.mediaController != null) {
+                        NativePlayer(
+                            player = playerViewModel.mediaController,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    // 2. LOADING LAYER
+                    AnimatedVisibility(
+                        visible = isUiLoading,
+                        enter = fadeIn(animationSpec = SamtchAnimation.StandardTween),
+                        exit = fadeOut(animationSpec = SamtchAnimation.StandardTween),
+                        modifier = Modifier.matchParentSize()
+                    ) {
+                        PlayerLoadingScreen(
+                            channel = channel,
+                            previewUrl = previewImageUrl,
+                            loadingMessage = loadingMessage
+                        )
+                    }
+
+                    // 3. OVERLAY LAYER (Audio Only or Chat Only)
+                    if (isMinimized && (isAudioOnlyMode || isChatOnlyMode)) {
                         MiniPlayerOverlay(
                             channel = channel,
                             avatarUrl = liveAvatarUrl,
                             previewImageUrl = previewImageUrl,
-                            badgeText = if (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY) "CHAT ONLY" else "AUDIO ONLY",
-                            usePreview = playerViewModel.portraitMode == PortraitMode.CHAT_ONLY,
-                            showLoading = isUiLoading && !playerViewModel.isAudioOnly
+                            badgeText = if (isChatOnlyMode) "CHAT ONLY" else "AUDIO ONLY",
+                            usePreview = isChatOnlyMode,
+                            showLoading = isUiLoading && !isAudioOnlyMode
                         )
-                    } else if (isAudioOrChatMode) {
-                        // Expanded non-video modes: AudioOnlyPlayer (with its own background preview)
+                    } else if (isAudioOnlyMode || isChatOnlyMode) {
                         AudioOnlyPlayer(
                             channel = channel,
                             avatarUrl = liveAvatarUrl,
@@ -324,71 +340,40 @@ fun TwitchPlayer(
                             gameName = liveMetadata?.user?.stream?.game?.name,
                             viewersCount = liveMetadata?.user?.stream?.viewersCount ?: 0,
                             isPlaying = liveIsPlaying,
-                            onTogglePlayback = {
-                                playerViewModel.togglePlayback()
-                            },
-                            onCloseAudioOnly = {
-                                isAudioOnly = false
-                                portraitMode = PortraitMode.VIDEO_AND_CHAT
-                                playerViewModel.updateMediaItem(channel, force = true)
-                            },
-                            onRefresh = {
+                            onTogglePlayback = { playerViewModel.togglePlayback() },
+                            onCloseAudioOnly = { playerViewModel.toggleAudioOnly() },
+                            onRefresh = { 
                                 playerViewModel.updateMediaItem(channel, force = true)
                                 playerViewModel.updateChannel(channel, forceRefresh = true)
                             },
                             previewImageUrl = previewImageUrl,
                             modifier = Modifier.fillMaxSize()
                         )
-                    } else {
-                        // Video mode: Native Player
-                        PlayerBackground(
-                            channel = channel,
-                            previewUrl = previewImageUrl,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.FillBounds
-                        ) {
-                            // Native Player
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                NativePlayer(
-                                    player = playerViewModel.mediaController,
-                                    modifier = Modifier.fillMaxSize()
-                                )
+                    } else if (!isMinimized && !isPip) {
+                        // 4. VIDEO CONTROLS LAYER
+                        NativePlayerControls(
+                            isVisible = showNativeControls,
+                            isPlaying = liveIsPlaying,
+                            isAudioOnly = isAudioOnlyMode,
+                            isFullscreen = isFullscreen,
+                            onTogglePlayback = { playerViewModel.togglePlayback() },
+                            onToggleFullscreen = onToggleFullscreen,
+                            onToggleChat = onToggleChat,
+                            onToggleAudioOnly = { playerViewModel.toggleAudioOnly() },
+                            onRefresh = { 
+                                playerViewModel.updateMediaItem(channel, force = true)
+                                playerViewModel.updateChannel(channel, forceRefresh = true)
+                            },
+                            onSettingsClick = { showQualityMenu = true },
+                            isSettingsEnabled = playerViewModel.availableQualities.isNotEmpty() && !playerViewModel.isAdActive,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
-                                // Custom Native Controls
-                                NativePlayerControls(
-                                    isVisible = showNativeControls && !isMinimized && !isPip,
-                                    isPlaying = liveIsPlaying,
-                                    onTogglePlayback = { playerViewModel.togglePlayback() },
-                                    onToggleFullscreen = onToggleFullscreen,
-                                    onToggleChat = onToggleChat,
-                                onRefresh = { 
-                                    playerViewModel.updateMediaItem(channel, force = true)
-                                    playerViewModel.updateChannel(channel, forceRefresh = true)
-                                },
-                                onSettingsClick = { showQualityMenu = true },
-                                isSettingsEnabled = playerViewModel.availableQualities.isNotEmpty() && !playerViewModel.isAdActive
-                            )
-                            }
-                            
-                            // Native player drives the loading screen now
-                            LaunchedEffect(playerViewModel.isPlaying, playerViewModel.isHoldingLoader) {
-                                if (playerViewModel.isPlaying && !playerViewModel.isHoldingLoader) {
-                                    isUiLoading = false
-                                }
-                            }
-                            
-                            AnimatedVisibility(
-                                visible = isUiLoading,
-                                enter = fadeIn(animationSpec = SamtchAnimation.StandardTween),
-                                exit = fadeOut(animationSpec = SamtchAnimation.StandardTween),
-                                modifier = Modifier.matchParentSize()
-                            ) {
-                                PlayerLoadingScreen(
-                                    channel = channel,
-                                    previewUrl = previewImageUrl,
-                                    loadingMessage = loadingMessage
-                                )
-                            }
+                    // Update loading state
+                    LaunchedEffect(liveIsPlaying, playerViewModel.isHoldingLoader) {
+                        if (liveIsPlaying && !playerViewModel.isHoldingLoader) {
+                            isUiLoading = false
                         }
                     }
                 }

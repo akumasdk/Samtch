@@ -27,9 +27,12 @@ import com.akumasdk.samtch.ui.theme.SamtchTheme
 fun NativePlayerControls(
     isVisible: Boolean,
     isPlaying: Boolean,
+    isAudioOnly: Boolean,
+    isFullscreen: Boolean,
     onTogglePlayback: () -> Unit,
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit,
+    onToggleAudioOnly: () -> Unit,
     onRefresh: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -123,13 +126,24 @@ fun NativePlayerControls(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
-                            ControlIconButton(
-                                icon = Icons.AutoMirrored.Filled.Chat,
-                                onClick = onToggleChat,
-                                size = 40.dp,
-                                backgroundColor = Color.Transparent,
-                                contentDescription = "Toggle Chat"
-                            )
+                            if (isFullscreen) {
+                                ControlIconButton(
+                                    icon = Icons.AutoMirrored.Filled.Chat,
+                                    onClick = onToggleChat,
+                                    size = 40.dp,
+                                    backgroundColor = Color.Transparent,
+                                    contentDescription = "Toggle Chat"
+                                )
+                            } else {
+                                ControlIconButton(
+                                    icon = if (isAudioOnly) Icons.Default.Videocam else Icons.Default.Headset,
+                                    onClick = onToggleAudioOnly,
+                                    size = 40.dp,
+                                    backgroundColor = if (isAudioOnly) SamtchTheme.colors.twitchPurple.copy(alpha = 0.5f) else Color.Transparent,
+                                    contentDescription = if (isAudioOnly) "Switch to Video" else "Switch to Audio"
+                                )
+                            }
+                            
                             Box(
                                 modifier = Modifier
                                     .width(1.dp)

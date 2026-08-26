@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,12 @@ fun QualitySelectorDialog(
     onQualitySelected: (ExtMediaEntry) -> Unit,
     onDismiss: () -> Unit
 ) {
+    LaunchedEffect(availableQualities) {
+        availableQualities.forEachIndexed { index, quality ->
+            android.util.Log.d("QualitySelector", "Quality [$index]: name=${quality.name}, res=${quality.resolution}, bw=${quality.bandwidth}, fps=${quality.frameRate}, url=${quality.playlistUrl}")
+        }
+    }
+
     // Filter out invalid entries and sort them properly
     val filteredQualities = remember(availableQualities) {
         val result = availableQualities

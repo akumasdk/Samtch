@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -215,7 +215,7 @@ fun AudioOnlyExpandedView(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             ControlIconButton(
-                icon = Icons.Default.Close,
+                icon = Icons.Default.Videocam,
                 onClick = onCloseAudioOnly,
                 size = if (availableHeight < 200.dp) 32.dp else 40.dp,
                 backgroundColor = Color.White.copy(alpha = 0.08f),

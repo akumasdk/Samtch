@@ -90,6 +90,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         
     private var hasAppliedCleanStreamDuringAd = false
     private var lastUrlUpdateTime = 0L
+    private var lastVideoQuality: ExtMediaEntry? = null
     private var metadataJob: Job? = null
     private var loaderHoldJob: Job? = null
     private var adBlockJob: Job? = null
@@ -142,6 +143,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 streamSubtitle = null
                 availableQualities = emptyList()
                 selectedQuality = null
+                lastVideoQuality = null
             }
         }
         
@@ -176,6 +178,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         currentStreamUrl = null
         masterStreamUrl = null
         channel = null
+        lastVideoQuality = null
     }
 
     private fun startAdBlockOrchestrator(channelName: String) {
@@ -194,7 +197,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 if (isControllerActive) {
                     val updateUrl = adBlockOrchestrator.getCleanStreamUrl(
                         channelName = channelName,
-                        targetResolution = selectedQuality?.resolution
+                        targetResolution = selectedQuality?.resolution,
                     )
                     if (updateUrl != null) {
                         Log.d(AdBlockConfig.LOG_TAG, "AdBlock state change detected: $updateUrl")
@@ -339,6 +342,44 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun toggleAudioOnly() {
+        val nextMode = !isAudioOnly
+        isAudioOnly = nextMode
+        
+        if (nextMode) {
+            // Save current quality if it's a video quality before switching to audio
+            if (selectedQuality?.resolution != null) {
+                lastVideoQuality = selectedQuality
+            }
+
+            portraitMode = PortraitMode.VIDEO_AND_CHAT
+            // Use existing qualities to instantly switch to the lowest resolution
+            val lowest = availableQualities
+                .filter { it.resolution != null }
+                .minByOrNull { it.bandwidth ?: Long.MAX_VALUE }
+            
+            if (lowest != null) {
+                Log.d("PlayerViewModel", "toggleAudioOnly: Switching to lowest quality: ${lowest.name ?: lowest.resolution}")
+                selectQuality(lowest, isManual = false)
+                return
+            }
+        } else {
+            // Reverting to video: try to restore last saved video quality, otherwise find the highest
+            val targetQuality = lastVideoQuality ?: availableQualities.filter { it.resolution != null }
+                .maxByOrNull { (it.bandwidth ?: 0L) + (parseResolution(it.resolution) * 1000L) }
+            
+            if (targetQuality != null) {
+                Log.d("PlayerViewModel", "toggleAudioOnly: Restoring quality: ${targetQuality.name ?: targetQuality.resolution}")
+                selectQuality(targetQuality, isManual = false)
+                lastVideoQuality = null // Clear after restore
+                return
+            }
+        }
+        
+        // Fallback: If qualities aren't loaded yet, trigger a full resolution refresh
+        channel?.let { updateMediaItem(it, force = true) }
+    }
+
     fun updateMediaItem(channelName: String, force: Boolean = false) {
         val controller = mediaController ?: return
 
@@ -480,7 +521,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun selectQuality(entry: ExtMediaEntry) {
+    fun selectQuality(entry: ExtMediaEntry, isManual: Boolean = true) {
         if (isAdActive) {
             Log.d(AdBlockConfig.LOG_TAG, "Manual quality selection ignored during active ad session.")
             return
@@ -490,6 +531,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         
         Log.d("PlayerViewModel", "Manual quality selection: ${entry.resolution ?: entry.name}")
         selectedQuality = entry
+        
+        // Auto-disable audio-only mode if a video quality is manually selected
+        if (isManual && isAudioOnly && entry.resolution != null) {
+            Log.d("PlayerViewModel", "Video quality selected manually, disabling audio-only mode.")
+            isAudioOnly = false
+        }
+
         isQualityChanging = true
         
         applyStreamToController(url, "manual_selection", isAd = false)
