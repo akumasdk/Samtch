@@ -139,6 +139,7 @@ fun SelectionDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
+            com.akumasdk.samtch.util.MaintainFullscreenEffect()
             LazyColumn {
                 itemsIndexed(options) { index, (label, onClick) ->
                     Row(
@@ -182,7 +183,10 @@ fun LogoutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.logout_dialog_title), fontWeight = FontWeight.Bold) },
-        text = { Text(stringResource(R.string.logout_dialog_message)) },
+        text = {
+            com.akumasdk.samtch.util.MaintainFullscreenEffect()
+            Text(stringResource(R.string.logout_dialog_message)) 
+        },
         confirmButton = {
             Button(
                 onClick = {
@@ -210,6 +214,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.about_dialog_title), fontWeight = FontWeight.Bold) },
         text = {
+            com.akumasdk.samtch.util.MaintainFullscreenEffect()
             Column {
                 Column(modifier = Modifier.padding(horizontal = 8.dp)) {
                     Text("Samtch", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)

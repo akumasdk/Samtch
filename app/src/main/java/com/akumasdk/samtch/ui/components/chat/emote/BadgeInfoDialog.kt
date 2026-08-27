@@ -32,6 +32,7 @@ fun BadgeInfoDialog(
         contentColor = SamtchTheme.colors.primaryText,
         dragHandle = { BottomSheetDefaults.DragHandle(color = SamtchTheme.colors.secondaryText) }
     ) {
+        com.akumasdk.samtch.util.MaintainFullscreenEffect()
         Column(
             modifier = Modifier
                 .fillMaxWidth()

@@ -364,7 +364,10 @@ fun TwitchBrowser(
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = { Text(stringResource(R.string.exit_dialog_title)) },
-            text = { Text(stringResource(R.string.exit_dialog_message)) },
+            text = { 
+                com.akumasdk.samtch.util.MaintainFullscreenEffect()
+                Text(stringResource(R.string.exit_dialog_message)) 
+            },
             confirmButton = {
                 TextButton(onClick = { activity?.finish() }) {
                     Text(stringResource(R.string.exit_button))

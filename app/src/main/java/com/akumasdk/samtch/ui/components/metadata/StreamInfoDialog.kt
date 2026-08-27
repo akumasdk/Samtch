@@ -63,6 +63,7 @@ fun StreamInfoDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        com.akumasdk.samtch.util.MaintainFullscreenEffect()
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.92f)

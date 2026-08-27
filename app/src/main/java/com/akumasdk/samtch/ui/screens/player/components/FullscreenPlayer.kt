@@ -92,7 +92,10 @@ fun FullscreenPlayer(
             exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
         ) {
             val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
-            val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.45f else 1.0f
+            // If immersive is on, use transparency even in light mode for the side-panel "glass" effect
+            val surfaceAlpha = if (isImmersiveEnabled) {
+                if (isActuallyDark) 0.45f else 0.72f
+            } else 1.0f
 
             Box(
                 modifier = Modifier

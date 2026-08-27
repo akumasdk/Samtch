@@ -84,7 +84,7 @@ fun StreamMetadataBar(
     }
 
     val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
-    // Immersive mode is disabled for metadata bar in light mode as per request
+    // Even if immersive is enabled globally, we force standard colors for the metadata bar in light theme
     val isImmersiveActuallyEnabled = isImmersiveEnabled && !isLightMode
 
     val surfaceAlpha = if (isImmersiveActuallyEnabled) 0.82f else 1.0f

@@ -56,6 +56,7 @@ fun QualitySelectorDialog(
     }
 
     Dialog(onDismissRequest = onDismiss) {
+        com.akumasdk.samtch.util.MaintainFullscreenEffect()
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = SamtchTheme.colors.dialogBackground,

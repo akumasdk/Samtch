@@ -134,7 +134,8 @@ fun TwitchPlayer(
         
         val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
         val isImmersiveBackgroundEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
-        val isImmersiveEnabled = isImmersiveBackgroundEnabled && isActuallyDark
+        // Immersive background is dark-only in portrait, but available in both themes for fullscreen
+        val isImmersiveEnabled = isImmersiveBackgroundEnabled && (isActuallyDark || isFullscreen)
 
         val streamMetadata = playerViewModel.streamMetadata
         val avatarUrl = playerViewModel.avatarUrl

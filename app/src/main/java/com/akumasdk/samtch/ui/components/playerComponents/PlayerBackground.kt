@@ -34,7 +34,7 @@ fun PlayerBackground(
     previewUrl: String? = null,
     refreshKey: Any? = null,
     modifier: Modifier = Modifier,
-    alpha: Float = 0.55f,
+    alpha: Float = 0.65f, // Increased default alpha
     blurRadius: Dp = 0.dp,
     contentScale: ContentScale = ContentScale.Crop,
     containerColor: Color = SamtchTheme.colors.rootBackground,
@@ -97,11 +97,12 @@ fun PlayerBackground(
                     }
                 )
 
+                // Very subtle wash to ensure text readability on light images
                 if (isLoaded) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.2f))
+                            .background(Color.Black.copy(alpha = 0.12f))
                     )
                 }
             }
@@ -129,28 +130,28 @@ fun ImmersivePlayerBackground(
         previewUrl = previewUrl,
         refreshKey = refreshKey,
         modifier = modifier,
-        alpha = 0.65f,
-        blurRadius = 150.dp,
-        contentScale = ContentScale.FillBounds
+        alpha = 0.9f, // High alpha to ensure the preview image is the dominant visual element
+        blurRadius = 40.dp, // Balanced blur: hides UI details but preserves large color masses and shapes
+        contentScale = ContentScale.Crop // Use Crop to maintain aspect ratio and fill the screen naturally
     ) {
-        // Immersive gradient overlay
+        // Immersive gradient overlay - very subtle to avoid washing out the image colors
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.5f),
+                            Color.Black.copy(alpha = 0.25f),
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.6f)
+                            Color.Black.copy(alpha = 0.4f)
                         )
                     )
                 )
         )
         
-        // Dynamic radial glow that moves or scales slightly in fullscreen
+        // Dynamic ambient glow
         val glowScale by animateFloatAsState(
-            targetValue = if (isChatVisible) 1.2f else 1.0f,
+            targetValue = if (isChatVisible) 1.6f else 1.0f,
             animationSpec = SamtchAnimation.StandardTween,
             label = "GlowScale"
         )
@@ -161,11 +162,11 @@ fun ImmersivePlayerBackground(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            SamtchTheme.colors.twitchPurple.copy(alpha = 0.2f),
+                            SamtchTheme.colors.twitchPurple.copy(alpha = 0.12f),
                             Color.Transparent
                         ),
-                        center = Offset(0f, 0f),
-                        radius = 800f * glowScale
+                        center = Offset.Unspecified,
+                        radius = 1500f * glowScale
                     )
                 )
         )
