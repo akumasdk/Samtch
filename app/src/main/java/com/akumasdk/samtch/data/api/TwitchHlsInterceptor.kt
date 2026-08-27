@@ -15,6 +15,7 @@ class TwitchHlsInterceptor : Interceptor {
     companion object {
         private const val TAG = "TwitchHlsInterceptor"
         private val PREFETCH_REGEX = Pattern.compile("#EXT-X-TWITCH-PREFETCH:(.*)")
+        private val EXTINF_REGEX = Pattern.compile("#EXTINF:([0-9.]+),(.*)")
         private val DATERANGE_REGEX = Pattern.compile("#EXT-X-DATERANGE:.*CLASS=\"twitch-stitched-ad\".*")
     }
 
@@ -46,8 +47,22 @@ class TwitchHlsInterceptor : Interceptor {
     private fun processPlaylist(input: String): String {
         val lines = input.lines()
         
+        var lastDuration = 2.0
+        
+        // Find the last valid segment duration to use for prefetch conversion
+        for (line in lines.reversed()) {
+            val matcher = EXTINF_REGEX.matcher(line)
+            if (matcher.find()) {
+                lastDuration = matcher.group(1)?.toDoubleOrNull() ?: 2.0
+                break
+            }
+        }
+        
+        val formattedDuration = "%.3f".format(java.util.Locale.US, lastDuration)
+
         var i = 0
         val tempOutput = mutableListOf<String>()
+        var prefetchCount = 0
 
         while (i < lines.size) {
             val line = lines[i]
@@ -59,11 +74,18 @@ class TwitchHlsInterceptor : Interceptor {
                 continue
             }
 
-            // 2. Filter out Prefetch Segments
-            // Prefetch segments can be unstable and cause "rewinds" or jumps 
-            // when Twitch's server-side cache is out of sync. 
-            // Relying purely on stable manifest segments for high stability.
-            if (PREFETCH_REGEX.matcher(line).find()) {
+            // 2. Convert Prefetch Segments to regular EXTINF
+            // Re-enabling full conversion for ultra-low latency.
+            // This replicates Twitch web player behavior by requesting segments while they are still being uploaded.
+            val prefetchMatcher = PREFETCH_REGEX.matcher(line)
+            if (prefetchMatcher.find()) {
+                val segmentUrl = prefetchMatcher.group(1)
+                if (!segmentUrl.isNullOrBlank()) {
+                    tempOutput.add("#EXTINF:$formattedDuration,")
+                    tempOutput.add(segmentUrl)
+                    Log.v(TAG, "Converted prefetch segment for ultra-low latency: $segmentUrl")
+                    prefetchCount++
+                }
                 i++
                 continue
             }

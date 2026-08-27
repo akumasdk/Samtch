@@ -298,13 +298,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     val currentPos = controller.currentPosition
                     
                     // Live Window Recovery: 
-                    // Removed aggressive seek-forward logic. 
-                    // We now rely on DefaultLivePlaybackSpeedControl (1.15x) for catch-up,
-                    // which is much smoother than hard seeks.
+                    // If the delay exceeds 6s, perform a manual seek to the live edge.
+                    // Adjusted for ultra-low latency (3s target).
+                    val liveOffset = controller.currentLiveOffset
+                    if (liveOffset > 6000 && isActuallyPlaying && !isAdActive) {
+                        Log.w("PlayerViewModel", "Watchdog: Detected excessive delay ($liveOffset ms). Seeking to live edge.")
+                        withContext(Dispatchers.Main) {
+                            controller.seekToDefaultPosition()
+                        }
+                    }
 
-                    // REWIND DETECTION: If position jumped back by more than 6s without manual action
-                    // Very conservative threshold to avoid false positives on manifest jitters.
-                    if (lastPosition != -1L && currentPos < lastPosition - 6000 && isActuallyPlaying && !isAdActive) {
+                    // REWIND DETECTION: If position jumped back by more than 4s without manual action
+                    if (lastPosition != -1L && currentPos < lastPosition - 4000 && isActuallyPlaying && !isAdActive) {
                         Log.w("PlayerViewModel", "Watchdog: Detected major rewind ($lastPosition -> $currentPos). Attempting recovery.")
                         withContext(Dispatchers.Main) {
                             controller.seekToDefaultPosition()
@@ -663,8 +668,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         isHoldingLoader = true
         loaderHoldJob?.cancel()
         loaderHoldJob = viewModelScope.launch {
-            // Wait for buffer to stabilize - increased delays for better stability
-            delay(if (isAd) 4500.milliseconds else 3000.milliseconds) 
+            // Reduced delays for ultra-low latency snappiness
+            delay(if (isAd) 2500.milliseconds else 1000.milliseconds) 
             isHoldingLoader = false
         }
 
