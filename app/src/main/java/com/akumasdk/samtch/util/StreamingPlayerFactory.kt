@@ -19,7 +19,7 @@ object StreamingPlayerFactory {
     private const val TAG = "StreamingPlayerFactory"
 
     // 1. Reusable Network Client with HTTP/2, Instant Retries, and Streamlink HLS Logic
-    private val okHttpClient: OkHttpClient by lazy {
+    internal val okHttpClient: OkHttpClient by lazy {
         Log.d(TAG, "Initializing shared OkHttpClient with TwitchHlsInterceptor...")
         OkHttpClient.Builder()
             .connectionPool(ConnectionPool(10, 5, TimeUnit.MINUTES)) // Socket persistence

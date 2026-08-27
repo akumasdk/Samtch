@@ -34,16 +34,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
-    private val httpClient = OkHttpClient()
+    private val httpClient = com.akumasdk.samtch.util.StreamingPlayerFactory.okHttpClient
     private val m3u8Parser = ExtM3UParser()
-    private val adBlockOrchestrator = AdBlockOrchestrator(httpClient, m3u8Parser) { adStatus ->
+    private val adBlockOrchestrator = AdBlockOrchestrator(
+        httpClient = httpClient, 
+        m3u8Parser = m3u8Parser
+    ) { adStatus ->
         viewModelScope.launch(Dispatchers.Main) {
             val message = if (adStatus.hasAds) {
                 val type = adStatus.playerType ?: if (adStatus.isStrippingAdSegments) "stripping" else "unknown"
@@ -287,7 +289,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         watchdogJob?.cancel()
         watchdogJob = viewModelScope.launch {
             while (true) {
-                delay(2.seconds) // Check more frequently for rewinds
+                delay(2.seconds)
                 val state = controller.playbackState
                 val isActuallyPlaying = controller.isPlaying
                 val now = System.currentTimeMillis()
@@ -295,20 +297,17 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 if (!isHoldingLoader && !isQualityChanging) {
                     val currentPos = controller.currentPosition
                     
-                    // Live Window Recovery: If we are more than 6 seconds behind the live edge, seek forward
-                    val liveOffset = controller.currentLiveOffset
-                    if (liveOffset > 6000 && isActuallyPlaying) {
-                        Log.w("PlayerViewModel", "Watchdog: Detected excessive delay ($liveOffset ms). Seeking to live edge.")
+                    // Live Window Recovery: 
+                    // Removed aggressive seek-forward logic. 
+                    // We now rely on DefaultLivePlaybackSpeedControl (1.15x) for catch-up,
+                    // which is much smoother than hard seeks.
+
+                    // REWIND DETECTION: If position jumped back by more than 6s without manual action
+                    // Very conservative threshold to avoid false positives on manifest jitters.
+                    if (lastPosition != -1L && currentPos < lastPosition - 6000 && isActuallyPlaying && !isAdActive) {
+                        Log.w("PlayerViewModel", "Watchdog: Detected major rewind ($lastPosition -> $currentPos). Attempting recovery.")
                         withContext(Dispatchers.Main) {
                             controller.seekToDefaultPosition()
-                        }
-                    }
-
-                    // REWIND DETECTION: If position jumped back by more than 1s without manual action
-                    if (lastPosition != -1L && currentPos < lastPosition - 1000 && isActuallyPlaying) {
-                        Log.w("PlayerViewModel", "Watchdog: Detected rewind ($lastPosition -> $currentPos). Forcing recovery.")
-                        withContext(Dispatchers.Main) {
-                            channel?.let { updateMediaItem(it, force = true) }
                         }
                         lastPosition = -1L
                         continue
@@ -317,8 +316,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     when (state) {
                         Player.STATE_BUFFERING -> {
                             // Detect infinite buffering (stuck at 0% or segment fetch loop)
-                            if (lastPositionUpdateTime != 0L && now - lastPositionUpdateTime > 10000) {
-                                Log.w("PlayerViewModel", "Watchdog: Infinite buffering detected (>10s). Force reloading.")
+                            // Extended to 15s for slower connections
+                            if (lastPositionUpdateTime != 0L && now - lastPositionUpdateTime > 15000) {
+                                Log.w("PlayerViewModel", "Watchdog: Infinite buffering detected (>15s). Force reloading.")
                                 withContext(Dispatchers.Main) {
                                     channel?.let { updateMediaItem(it, force = true) }
                                 }
@@ -328,8 +328,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                         Player.STATE_READY -> {
                             if (isActuallyPlaying) {
                                 if (currentPos == lastPosition && lastPosition != -1L) {
-                                    // Position hasn't moved for 8 seconds while "ready and playing"
-                                    if (now - lastPositionUpdateTime > 8000) {
+                                    // Position hasn't moved for 10 seconds while "ready and playing"
+                                    if (now - lastPositionUpdateTime > 10000) {
                                         Log.w("PlayerViewModel", "Watchdog: Frozen position at $currentPos. Force reloading.")
                                         withContext(Dispatchers.Main) {
                                             channel?.let { updateMediaItem(it, force = true) }
@@ -655,12 +655,16 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             .setLiveConfiguration(liveConfig)
             .build()
 
+        // Reset watchdog state to prevent false positives during transition
+        lastPosition = -1L
+        lastPositionUpdateTime = System.currentTimeMillis()
+        
         // Mask the transition during the buffer build-up
         isHoldingLoader = true
         loaderHoldJob?.cancel()
         loaderHoldJob = viewModelScope.launch {
-            // Wait for buffer to stabilize
-            delay(if (isAd) 2500.milliseconds else 1500.milliseconds) 
+            // Wait for buffer to stabilize - increased delays for better stability
+            delay(if (isAd) 4500.milliseconds else 3000.milliseconds) 
             isHoldingLoader = false
         }
 

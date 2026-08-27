@@ -23,13 +23,13 @@ object BufferingManager {
         return DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                /* minBufferMs = */ 8_000, // Increased to 8s for high stability
-                /* maxBufferMs = */ 15_000, 
-                /* bufferForPlaybackMs = */ 4_000, // Increased to 4s (2 segments) before starting playback
+                /* minBufferMs = */ 6_000, // Reduced to 6s (3 segments) to avoid "starving" in small manifest windows
+                /* maxBufferMs = */ 30_000, 
+                /* bufferForPlaybackMs = */ 2_000, // Faster startup (1 segment)
                 /* bufferForPlaybackAfterRebufferMs = */ 4_000 
             )
             .setBackBuffer(
-                /* backBufferDurationMs = */ 6_000, // Larger back-buffer
+                /* backBufferDurationMs = */ 10_000, 
                 /* retainBackBufferFromKeyframe = */ true
             )
             .setPrioritizeTimeOverSizeThresholds(true)
@@ -38,7 +38,7 @@ object BufferingManager {
 
     /**
      * Provides an optimized [MediaItem.LiveConfiguration] for Twitch live streams.
-     * Replicates Streamlink's --twitch-low-latency behavior.
+     * Balanced for stability and relatively low latency.
      */
     fun getLiveConfiguration(
         isLowLatencyEnabled: Boolean = true
@@ -46,17 +46,17 @@ object BufferingManager {
         val builder = MediaItem.LiveConfiguration.Builder()
         
         if (isLowLatencyEnabled) {
-            builder.setTargetOffsetMs(6_000L) // Aim for ~6s delay (3 segments) for high stability
-                .setMinOffsetMs(3_000L) 
-                .setMaxOffsetMs(12_000L)
-                .setMaxPlaybackSpeed(1.10f) 
-                .setMinPlaybackSpeed(0.95f) 
+            builder.setTargetOffsetMs(10_000L) // 10s target is stable for Twitch
+                .setMinOffsetMs(4_000L) // Allow closer to live during catch-up
+                .setMaxOffsetMs(30_000L)
+                .setMaxPlaybackSpeed(1.15f) 
+                .setMinPlaybackSpeed(0.90f) 
         } else {
-            builder.setTargetOffsetMs(5_000L) 
-                .setMinOffsetMs(2_500L)
-                .setMaxOffsetMs(15_000L)
+            builder.setTargetOffsetMs(15_000L) 
+                .setMinOffsetMs(6_000L)
+                .setMaxOffsetMs(60_000L)
                 .setMaxPlaybackSpeed(1.05f)
-                .setMinPlaybackSpeed(0.97f)
+                .setMinPlaybackSpeed(0.95f)
         }
         
         return builder.build()

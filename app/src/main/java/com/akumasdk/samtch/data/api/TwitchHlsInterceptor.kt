@@ -15,8 +15,6 @@ class TwitchHlsInterceptor : Interceptor {
     companion object {
         private const val TAG = "TwitchHlsInterceptor"
         private val PREFETCH_REGEX = Pattern.compile("#EXT-X-TWITCH-PREFETCH:(.*)")
-        private val EXTINF_REGEX = Pattern.compile("#EXTINF:([0-9.]+),(.*)")
-        private val SEQUENCE_REGEX = Pattern.compile("#EXT-X-MEDIA-SEQUENCE:(\\d+)")
         private val DATERANGE_REGEX = Pattern.compile("#EXT-X-DATERANGE:.*CLASS=\"twitch-stitched-ad\".*")
     }
 
@@ -48,98 +46,29 @@ class TwitchHlsInterceptor : Interceptor {
     private fun processPlaylist(input: String): String {
         val lines = input.lines()
         
-        var totalDuration = 0.0
-        var segmentCount = 0
-        var adRemovedCount = 0
-        
-        // First pass: Calculate average duration
-        lines.forEach { line ->
-            val extinfMatcher = EXTINF_REGEX.matcher(line)
-            if (extinfMatcher.find()) {
-                extinfMatcher.group(1)?.toDoubleOrNull()?.let {
-                    totalDuration += it
-                    segmentCount++
-                }
-            }
-        }
-        
-        val avgDuration = if (segmentCount > 0) totalDuration / segmentCount else 2.0
-        val formattedAvg = "%.3f".format(avgDuration)
-
-        // Second pass: Filter ads and rewrite prefetch
         var i = 0
         val tempOutput = mutableListOf<String>()
-        var foundFirstSegment = false
 
         while (i < lines.size) {
             val line = lines[i]
             
-            // 1. Detect Ad Segments via EXTINF title (Streamlink style)
-            val extinfMatcher = EXTINF_REGEX.matcher(line)
-            if (extinfMatcher.find()) {
-                val title = extinfMatcher.group(2) ?: ""
-                if (title.contains("Amazon", ignoreCase = true)) {
-                    // This is an ad segment. Skip this line and the following URL line.
-                    Log.d(TAG, "Stripping ad segment (Amazon title detected)")
-                    i += 2 // Skip EXTINF and URL
-                    
-                    // Increment the sequence ONLY if we haven't found a valid segment yet.
-                    // This means the ad was at the TOP of the playlist.
-                    if (!foundFirstSegment) {
-                        adRemovedCount++
-                    }
-                    continue
-                }
-                foundFirstSegment = true
-            }
-
-            // 2. Detect Ad Tags (DATERANGE)
+            // 1. Detect Ad Tags (DATERANGE) and strip them
             if (DATERANGE_REGEX.matcher(line).find()) {
                 Log.d(TAG, "Stripping ad daterange tag")
                 i++
                 continue
             }
 
-            // 3. Convert Prefetch
-            val prefetchMatcher = PREFETCH_REGEX.matcher(line)
-            if (prefetchMatcher.find()) {
-                val segmentUrl = prefetchMatcher.group(1)
-                if (!segmentUrl.isNullOrBlank()) {
-                    tempOutput.add("#EXTINF:$formattedAvg,")
-                    tempOutput.add(segmentUrl)
-                    Log.v(TAG, "Converted prefetch segment to regular EXTINF")
-                    foundFirstSegment = true
-                }
+            // 2. Filter out Prefetch Segments
+            // Prefetch segments can be unstable and cause "rewinds" or jumps 
+            // when Twitch's server-side cache is out of sync. 
+            // Relying purely on stable manifest segments for high stability.
+            if (PREFETCH_REGEX.matcher(line).find()) {
                 i++
                 continue
             }
 
-            // 4. Sequence Number handling
-            if (line.startsWith("#EXT-X-MEDIA-SEQUENCE:")) {
-                if (adRemovedCount > 0) {
-                    val seqMatcher = SEQUENCE_REGEX.matcher(line)
-                    if (seqMatcher.find()) {
-                        val originalSeq = seqMatcher.group(1)?.toLongOrNull() ?: 0L
-                        val newSeq = originalSeq + adRemovedCount
-                        tempOutput.add("#EXT-X-MEDIA-SEQUENCE:$newSeq")
-                        Log.d(TAG, "Updated MEDIA-SEQUENCE: $originalSeq -> $newSeq (ads removed from top: $adRemovedCount)")
-                    } else {
-                        tempOutput.add(line)
-                    }
-                } else {
-                    tempOutput.add(line)
-                }
-                i++
-                continue
-            }
-
-            // Standard line
             if (line.isNotBlank()) {
-                if (!line.startsWith("#EXTINF") && !line.startsWith("http") && !line.startsWith("/")) {
-                    // Not a segment line, just add it
-                } else {
-                    foundFirstSegment = true
-                }
                 tempOutput.add(line)
             }
             i++
