@@ -17,8 +17,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import com.akumasdk.samtch.data.api.adblock.AdBlockConfig
-import com.akumasdk.samtch.data.api.adblock.AdBlockOrchestrator
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
@@ -34,6 +32,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -42,18 +41,6 @@ import kotlin.time.Duration.Companion.seconds
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
     private val httpClient = com.akumasdk.samtch.util.StreamingPlayerFactory.okHttpClient
     private val m3u8Parser = ExtM3UParser()
-    private val adBlockOrchestrator = AdBlockOrchestrator(
-        httpClient = httpClient, 
-        m3u8Parser = m3u8Parser
-    ) { adStatus ->
-        viewModelScope.launch(Dispatchers.Main) {
-            val message = if (adStatus.hasAds) {
-                val type = adStatus.playerType ?: if (adStatus.isStrippingAdSegments) "stripping" else "unknown"
-                if (adStatus.isMidroll) "midroll ($type)" else "preroll ($type)"
-            } else ""
-            onAdStatusChanged(adStatus.hasAds, message)
-        }
-    }
     
     var channel by mutableStateOf<String?>(null)
         private set
@@ -98,11 +85,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private var lastVideoQuality: ExtMediaEntry? = null
     private var metadataJob: Job? = null
     private var loaderHoldJob: Job? = null
-    private var adBlockJob: Job? = null
     private var watchdogJob: Job? = null
 
-    private var lastPosition = -1L
-    private var lastPositionUpdateTime = 0L
+    private var zeroFpsCount = 0
 
     fun updateChannel(newChannel: String?, forceRefresh: Boolean = false) {
         val isNewChannel = channel != newChannel
@@ -125,7 +110,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         channel = newChannel
         
         if ((isNewChannel && !isSameActiveStream) || forceRefresh) {
-            newChannel?.let { adBlockOrchestrator.resetChannel(it) }
             hasBackgroundReloaded = false
             metadataRefreshTrigger = 0
             isAdActive = false
@@ -133,12 +117,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             isHoldingLoader = false
             hasAppliedCleanStreamDuringAd = false
             lastUrlUpdateTime = 0L
-            lastPosition = -1L
-            lastPositionUpdateTime = 0L
+            zeroFpsCount = 0
             metadataJob?.cancel()
             loaderHoldJob?.cancel()
-            adBlockJob?.cancel()
-            watchdogJob?.cancel()
             
             if (isNewChannel) {
                 // Always reset UI mode to standard when changing channels to avoid "breaking logic"
@@ -157,16 +138,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         
         if (newChannel != null) {
             startMetadataFetch(newChannel)
-            startAdBlockOrchestrator(newChannel)
         } else {
             stopMetadataFetch()
-            adBlockJob?.cancel()
         }
     }
 
     fun stopAndDisconnect() {
         Log.d("PlayerViewModel", "Force stopping player and disconnecting controller.")
-        watchdogJob?.cancel()
         
         // 1. Tell the service to stop immediately
         val context = getApplication<Application>().applicationContext
@@ -187,40 +165,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         masterStreamUrl = null
         channel = null
         lastVideoQuality = null
-    }
-
-    private fun startAdBlockOrchestrator(channelName: String) {
-        adBlockJob?.cancel()
-        adBlockJob = viewModelScope.launch {
-            while (true) {
-                val controller = mediaController
-                
-                // Only probe if we have a controller AND we are either:
-                // 1. Actually playing (to detect mid-rolls)
-                // 2. Buffering (to recover from a freeze/ad shift)
-                // 3. Haven't found a URL yet (initial load)
-                val isControllerActive = controller != null && 
-                    (isPlaying || controller.playbackState == Player.STATE_BUFFERING || currentStreamUrl == null)
-
-                if (isControllerActive) {
-                    val updateUrl = adBlockOrchestrator.getCleanStreamUrl(
-                        channelName = channelName,
-                        targetResolution = selectedQuality?.resolution,
-                    )
-                    if (updateUrl != null) {
-                        Log.d(AdBlockConfig.LOG_TAG, "AdBlock state change detected: $updateUrl")
-                        withContext(Dispatchers.Main) {
-                            onStreamUrlFound(updateUrl, isValidated = true, source = "adblock_sync")
-                        }
-                    }
-                } else {
-                    // If inactive, we can afford to wait longer to save battery/bandwidth
-                    // but we keep the loop alive so it resumes instantly when play is pressed.
-                }
-                
-                delay(4.seconds) // Check every 4 seconds for ad changes (High precision)
-            }
-        }
     }
 
     fun connectMediaController(context: Context) {
@@ -252,10 +196,20 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
             controller.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) {
+                    Log.d("PlayerViewModel", "Player isPlaying changed: $playing")
                     isPlaying = playing
                 }
                 
                 override fun onPlaybackStateChanged(state: Int) {
+                    val stateName = when (state) {
+                        Player.STATE_IDLE -> "IDLE"
+                        Player.STATE_BUFFERING -> "BUFFERING"
+                        Player.STATE_READY -> "READY"
+                        Player.STATE_ENDED -> "ENDED"
+                        else -> "UNKNOWN ($state)"
+                    }
+                    Log.d("PlayerViewModel", "Player playbackState changed: $stateName")
+                    
                     playbackState = state
                     if (state == Player.STATE_READY) {
                         // Quality change catch-up: 
@@ -271,7 +225,15 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     // Sync our local stream URL if it was changed by the service or elsewhere
                     val newUri = mediaItem?.localConfiguration?.uri?.toString()
-                    Log.d("PlayerViewModel", "MediaItem Transition: $newUri (reason=$reason)")
+                    val reasonName = when (reason) {
+                        Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> "AUTO"
+                        Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> "PLAYLIST_CHANGED"
+                        Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> "REPEAT"
+                        Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> "SEEK"
+                        else -> "UNKNOWN ($reason)"
+                    }
+                    Log.d("PlayerViewModel", "MediaItem Transition: $newUri (reason=$reasonName)")
+                    
                     if (newUri != null && currentStreamUrl != newUri) {
                         currentStreamUrl = newUri
                     }
@@ -289,84 +251,53 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         watchdogJob?.cancel()
         watchdogJob = viewModelScope.launch {
             while (true) {
-                delay(2.seconds)
-                val state = controller.playbackState
-                val isActuallyPlaying = controller.isPlaying
-                val now = System.currentTimeMillis()
+                delay(1.seconds) // Frequent health checks
                 
                 if (!isHoldingLoader && !isQualityChanging) {
-                    val currentPos = controller.currentPosition
-                    
-                    // Live Window Recovery: 
-                    // If the delay exceeds 6s, perform a manual seek to the live edge.
-                    // Adjusted for ultra-low latency (3s target).
-                    val liveOffset = controller.currentLiveOffset
-                    if (liveOffset > 6000 && isActuallyPlaying && !isAdActive) {
-                        Log.w("PlayerViewModel", "Watchdog: Detected excessive delay ($liveOffset ms). Seeking to live edge.")
-                        withContext(Dispatchers.Main) {
-                            controller.seekToDefaultPosition()
-                        }
-                    }
+                    val currentFps = com.akumasdk.samtch.util.FpsMonitor.currentFps.value
+                    val state = controller.playbackState
+                    val isActuallyPlaying = controller.isPlaying
 
-                    // REWIND DETECTION: If position jumped back by more than 4s without manual action
-                    if (lastPosition != -1L && currentPos < lastPosition - 4000 && isActuallyPlaying && !isAdActive) {
-                        Log.w("PlayerViewModel", "Watchdog: Detected major rewind ($lastPosition -> $currentPos). Attempting recovery.")
-                        withContext(Dispatchers.Main) {
-                            controller.seekToDefaultPosition()
-                        }
-                        lastPosition = -1L
-                        continue
-                    }
-
-                    when (state) {
-                        Player.STATE_BUFFERING -> {
-                            // Detect infinite buffering (stuck at 0% or segment fetch loop)
-                            // Extended to 15s for slower connections
-                            if (lastPositionUpdateTime != 0L && now - lastPositionUpdateTime > 15000) {
-                                Log.w("PlayerViewModel", "Watchdog: Infinite buffering detected (>15s). Force reloading.")
-                                withContext(Dispatchers.Main) {
-                                    channel?.let { updateMediaItem(it, force = true) }
-                                }
-                                lastPositionUpdateTime = now
+                    if (isActuallyPlaying && state == Player.STATE_READY) {
+                        if (currentFps <= 0f) {
+                            zeroFpsCount++
+                            // If FPS is 0 for 2 seconds while playing, force refresh
+                            if (zeroFpsCount >= 2) {
+                                Log.w("PlayerViewModel", "Watchdog: Zero FPS detected for 2s. Refreshing.")
+                                triggerRefresh()
+                                zeroFpsCount = 0
+                                continue
                             }
+                        } else {
+                            zeroFpsCount = 0
                         }
-                        Player.STATE_READY -> {
-                            if (isActuallyPlaying) {
-                                if (currentPos == lastPosition && lastPosition != -1L) {
-                                    // Position hasn't moved for 10 seconds while "ready and playing"
-                                    if (now - lastPositionUpdateTime > 10000) {
-                                        Log.w("PlayerViewModel", "Watchdog: Frozen position at $currentPos. Force reloading.")
-                                        withContext(Dispatchers.Main) {
-                                            channel?.let { updateMediaItem(it, force = true) }
-                                        }
-                                        lastPosition = -1L
-                                        lastPositionUpdateTime = now
-                                    }
-                                } else {
-                                    lastPosition = currentPos
-                                    lastPositionUpdateTime = now
-                                }
-                            } else {
-                                // Paused state: track time but reset frozen position check
-                                lastPosition = -1L
-                                lastPositionUpdateTime = now
-                            }
+                    } else if (state == Player.STATE_BUFFERING) {
+                        // Keep counting if buffering for too long too
+                        zeroFpsCount++
+                        if (zeroFpsCount >= 10) {
+                            Log.w("PlayerViewModel", "Watchdog: Infinite buffering (>10s). Refreshing.")
+                            triggerRefresh()
+                            zeroFpsCount = 0
+                            continue
                         }
-                        else -> {
-                            lastPosition = -1L
-                            lastPositionUpdateTime = now
-                        }
+                    } else {
+                        zeroFpsCount = 0
                     }
                 } else {
-                    lastPosition = -1L
-                    lastPositionUpdateTime = now
+                    zeroFpsCount = 0
                 }
             }
         }
     }
 
+    private fun triggerRefresh() {
+        viewModelScope.launch(Dispatchers.Main) {
+            channel?.let { updateMediaItem(it, force = true) }
+        }
+        zeroFpsCount = 0
+    }
+
     fun disconnectMediaController() {
-        watchdogJob?.cancel()
         mediaController?.release()
         mediaController = null
         // We do NOT reset isPlaying or currentStreamUrl here 
@@ -451,11 +382,11 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         val controller = mediaController ?: return
 
         // 1. PROACTIVE REUSE: If the controller is already playing the right channel,
-        // don't even start the AdBlock resolution unless forced.
+        // don't even start the resolution unless forced.
         val currentItem = controller.currentMediaItem
         if (!force && currentItem?.mediaId == channelName && 
             (controller.playbackState == Player.STATE_READY || controller.playbackState == Player.STATE_BUFFERING)) {
-            Log.d(AdBlockConfig.LOG_TAG, "updateMediaItem: Controller already has active item for $channelName. Reusing.")
+            Log.d("PlayerViewModel", "updateMediaItem: Controller already has active item for $channelName. Reusing.")
             
             // Sync local URL if missing
             if (currentStreamUrl == null) {
@@ -464,102 +395,35 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
 
-        Log.d(AdBlockConfig.LOG_TAG, "updateMediaItem: Triggering AdBlock resolution for $channelName (force=$force)")
-        viewModelScope.launch(Dispatchers.Default) {
-            val cleanUrl = adBlockOrchestrator.getCleanStreamUrl(channelName, selectedQuality?.resolution)
-            
-            withContext(Dispatchers.Main) {
-                if (cleanUrl != null) {
-                    onStreamUrlFound(cleanUrl, isValidated = true, source = "adblock_init", force = force)
-                } else {
-                    // Fallback to service resolution if AdBlock fails for some reason
-                    triggerServiceResolution(channelName, controller, force = force)
-                }
-            }
-        }
+        Log.d("PlayerViewModel", "updateMediaItem: Triggering resolution for $channelName (force=$force)")
+        triggerServiceResolution(channelName, force = force)
     }
 
-    private fun triggerServiceResolution(channelName: String, controller: MediaController, force: Boolean = false) {
-        viewModelScope.launch(Dispatchers.Default) {
-            val metadata = MediaMetadata.Builder()
-                .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
-                .setArtist(streamMetadata?.user?.displayName ?: channelName)
-                .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
-                .setArtworkUri(avatarUrl?.toUri())
-                .build()
-                
-            val mediaItem = MediaItem.Builder()
-                .setMediaId(channelName)
-                .setMediaMetadata(metadata)
-                .build()
-
-            withContext(Dispatchers.Main) {
-                if (force || currentStreamUrl == null) {
-                    controller.setMediaItem(mediaItem)
-                    controller.prepare()
-                    controller.play()
-                }
+    private fun triggerServiceResolution(channelName: String, force: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val tokenPair = TwitchGqlService.getPlaybackAccessToken(channelName)
+            if (tokenPair == null) {
+                Log.e("PlayerViewModel", "Failed to get playback access token for $channelName")
+                return@launch
             }
-        }
-    }
 
-    fun onStreamUrlFound(url: String, isValidated: Boolean = false, source: String = "unknown", force: Boolean = false) {
-        // If we already have this URL as our master or current source, ignore unless it's a manual override
-        if (!force && (currentStreamUrl == url || masterStreamUrl == url) && 
-            source != "manual_selection" && source != "mode_change") {
-            return
-        }
-        
-        val now = System.currentTimeMillis()
-        
-        // ORCHESTRATION LOGIC
-        if (isAdActive) {
-            if (!isValidated) {
-                Log.d(AdBlockConfig.LOG_TAG, "Ignoring unvalidated stream during ad block: source=$source -> $url")
-                return
-            }
-            
-            if (hasAppliedCleanStreamDuringAd) { 
-                Log.d(AdBlockConfig.LOG_TAG, "Lock active. Ignoring subsequent clean stream (source=$source, current=$currentStreamUrl): $url")
-                return
-            }
-        } else {
-            if (!force && currentStreamUrl != null && now - lastUrlUpdateTime < 8000) {
-                return
-            }
-        }
-        
-        currentStreamUrl = url
-        lastUrlUpdateTime = now
-        
-        if (isAdActive && isValidated) {
-            hasAppliedCleanStreamDuringAd = true
-        }
+            val masterUrl = TwitchGqlService.buildHlsUrl(channelName, tokenPair.first, tokenPair.second)
+            masterStreamUrl = masterUrl
 
-        // Cache the master URL
-        if (url.contains("usher.ttvnw.net") || source.contains("adblock")) {
-            masterStreamUrl = url
-        }
-
-        // If it's the master playlist, fetch and select best quality
-        if (url.contains("usher.ttvnw.net") || url.contains("m3u8")) {
-            viewModelScope.launch(Dispatchers.IO) {
-                try {
-                    val request = Request.Builder().url(url).build()
-                    val response = httpClient.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        val body = response.body.string()
-                        val entries = m3u8Parser.parse(body)
-                        val variants = entries.filter { !it.playlistUrl.isNullOrEmpty() }
-                        
-                        // Only update available qualities if we found variant stream info (master manifest)
-                        if (variants.any { it.resolution != null || it.bandwidth != null }) {
-                            if (!isAdActive || availableQualities.isEmpty()) {
-                                availableQualities = variants
-                                Log.d("PlayerViewModel", "Populated available qualities from master: ${variants.size} options")
-                            }
+            try {
+                val request = Request.Builder().url(masterUrl).build()
+                val response = httpClient.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val body = response.body.string()
+                    val entries = m3u8Parser.parse(body)
+                    val variants = entries.filter { !it.playlistUrl.isNullOrEmpty() }
+                    
+                    if (variants.isNotEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            availableQualities = variants
+                            Log.d("PlayerViewModel", "Populated ${variants.size} qualities for $channelName")
                         }
-                        
+
                         val bestEntry = if (isAudioOnly) {
                             variants.find { it.name?.contains("audio", ignoreCase = true) == true || it.resolution == null }
                                 ?: variants.minByOrNull { it.bandwidth ?: Long.MAX_VALUE }
@@ -568,27 +432,27 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                                 .maxByOrNull { (it.bandwidth ?: 0L) + (parseResolution(it.resolution) * 1000L) }
                         }
 
-                        val finalUrl = bestEntry?.playlistUrl ?: url
+                        val finalUrl = bestEntry?.playlistUrl ?: masterUrl
                         selectedQuality = bestEntry
-                        Log.d("PlayerViewModel", "Best quality found (isAudioOnly=$isAudioOnly): ${bestEntry?.resolution ?: bestEntry?.name ?: "original"} -> $finalUrl")
-                        
+
                         withContext(Dispatchers.Main) {
-                            applyStreamToController(finalUrl, source, isAd = isAdActive)
+                            if (force || currentStreamUrl == null) {
+                                applyStreamToController(finalUrl, "service_resolution", isAd = false)
+                            }
                         }
                     } else {
+                        // Fallback to master URL if no variants found
                         withContext(Dispatchers.Main) {
-                            applyStreamToController(url, source, isAd = isAdActive)
+                            applyStreamToController(masterUrl, "service_resolution_fallback", isAd = false)
                         }
                     }
-                } catch (e: Exception) {
-                    Log.e("PlayerViewModel", "Error fetching/parsing M3U8", e)
-                    withContext(Dispatchers.Main) {
-                        applyStreamToController(url, source, isAd = isAdActive)
-                    }
+                }
+            } catch (e: Exception) {
+                Log.e("PlayerViewModel", "Error resolving master manifest", e)
+                withContext(Dispatchers.Main) {
+                    applyStreamToController(masterUrl, "service_resolution_error", isAd = false)
                 }
             }
-        } else {
-            applyStreamToController(url, source, isAd = isAdActive)
         }
     }
 
@@ -604,7 +468,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectQuality(entry: ExtMediaEntry, isManual: Boolean = true) {
         if (isAdActive) {
-            Log.d(AdBlockConfig.LOG_TAG, "Manual quality selection ignored during active ad session.")
+            Log.d("PlayerViewModel", "Manual quality selection ignored during active ad session.")
             return
         }
         val url = entry.playlistUrl ?: return
@@ -634,12 +498,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         // Prevent redundant reloads if the URL is already set and playing
         if (controller.currentMediaItem?.localConfiguration?.uri?.toString() == url && 
             controller.playbackState != Player.STATE_IDLE && controller.playbackState != Player.STATE_ENDED) {
-            Log.d(AdBlockConfig.LOG_TAG, "applyStreamToController: URL $url is already playing. Skipping reset.")
+            Log.d("PlayerViewModel", "applyStreamToController: URL $url is already playing. Skipping reset.")
             return
         }
 
         val isSafeBuffer = isAd || currentStreamUrl == null
-        Log.d(AdBlockConfig.LOG_TAG, "Applying stream swap [$source] (isAd=$isAd, isSafeBuffer=$isSafeBuffer): $url")
+        Log.d("PlayerViewModel", "Applying stream swap [$source] (isAd=$isAd, isSafeBuffer=$isSafeBuffer): $url")
         
         val metadata = MediaMetadata.Builder()
             .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
@@ -650,7 +514,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             
         // Use BufferingManager for optimized live configuration
         val liveConfig = BufferingManager.getLiveConfiguration(isLowLatencyEnabled = !isSafeBuffer)
-        Log.d(AdBlockConfig.LOG_TAG, "Configuring Live Latency (isLowLatency=${!isSafeBuffer}): target=${liveConfig.targetOffsetMs}ms")
+        Log.d("PlayerViewModel", "Configuring Live Latency (isLowLatency=${!isSafeBuffer}): target=${liveConfig.targetOffsetMs}ms")
 
         val mediaItem = MediaItem.Builder()
             .setMediaId(channelName)
@@ -661,15 +525,14 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             .build()
 
         // Reset watchdog state to prevent false positives during transition
-        lastPosition = -1L
-        lastPositionUpdateTime = System.currentTimeMillis()
+        zeroFpsCount = 0
         
         // Mask the transition during the buffer build-up
         isHoldingLoader = true
         loaderHoldJob?.cancel()
         loaderHoldJob = viewModelScope.launch {
-            // Reduced delays for ultra-low latency snappiness
-            delay(if (isAd) 2500.milliseconds else 1000.milliseconds) 
+            // Bleeding edge snappiness
+            delay(if (isAd) 1000.milliseconds else 200.milliseconds) 
             isHoldingLoader = false
         }
 
@@ -682,36 +545,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         controller.prepare()
         controller.seekToDefaultPosition()
         controller.play()
-    }
-
-    fun onAdStatusChanged(isAd: Boolean, message: String) {
-        if (isAdActive == isAd && adblockMessage == message) {
-            return
-        }
-        
-        Log.d(AdBlockConfig.LOG_TAG, "Ad status changed: isAd=$isAd, type=$message. RESETTING LOCKS.")
-        isAdActive = isAd
-        adblockMessage = message
-        
-        if (!isAd) {
-            // Reset for next ad session
-            hasAppliedCleanStreamDuringAd = false
-            // Reset URL update time to allow immediate switch back to main stream
-            lastUrlUpdateTime = 0L 
-        }
-    }
-
-    fun onAdblocked(text: String) {
-        adblockMessage = text
-        if (text.contains("autoplay", ignoreCase = true) && isAdActive) {
-            Log.d(AdBlockConfig.LOG_TAG, "Autoplay ad detected, holding loader.")
-            isHoldingLoader = true
-            loaderHoldJob?.cancel()
-            loaderHoldJob = viewModelScope.launch {
-                delay(3.5.seconds) // Hold for 3.5 seconds to ensure clean stream swap
-                isHoldingLoader = false
-            }
-        }
     }
 
     private fun startMetadataFetch(channel: String) {

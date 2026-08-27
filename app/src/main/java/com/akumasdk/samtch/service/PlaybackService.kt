@@ -113,9 +113,9 @@ class PlaybackService : MediaSessionService() {
         // 3. Player Configuration
         val trackSelector = DefaultTrackSelector(this)
         val speedControl = DefaultLivePlaybackSpeedControl.Builder()
-            .setFallbackMaxPlaybackSpeed(1.20f) // Matches aggressive catch-up
-            .setFallbackMinPlaybackSpeed(0.90f) 
-            .setTargetLiveOffsetIncrementOnRebufferMs(800) // Smaller increments for lower latency
+            .setFallbackMaxPlaybackSpeed(1.50f) // Matches bleeding-edge catch-up
+            .setFallbackMinPlaybackSpeed(0.80f) 
+            .setTargetLiveOffsetIncrementOnRebufferMs(200) // Minimal growth to keep latency low
             .build()
 
         exoPlayer = com.akumasdk.samtch.util.StreamingPlayerFactory.createLowLatencyPlayerBuilder(this)
@@ -132,6 +132,9 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
+
+        // Start FPS Monitoring
+        com.akumasdk.samtch.util.FpsMonitor.start(exoPlayer!!)
 
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
@@ -345,6 +348,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        com.akumasdk.samtch.util.FpsMonitor.stop()
         try { unregisterReceiver(stopReceiver) } catch (_: Exception) {}
         mediaSession?.run {
             player.release()

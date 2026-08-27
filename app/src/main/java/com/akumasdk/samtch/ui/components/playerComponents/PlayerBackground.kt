@@ -12,13 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
-import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
@@ -26,9 +26,7 @@ import com.akumasdk.samtch.data.api.PreviewImageService
 import com.akumasdk.samtch.ui.theme.LocalStreamPreview
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
-import com.akumasdk.samtch.util.Constants
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import coil.request.CachePolicy
 
 @Composable
 fun PlayerBackground(
@@ -84,6 +82,7 @@ fun PlayerBackground(
                     model = ImageRequest.Builder(context)
                         .data(url)
                         .crossfade(true)
+                        .diskCachePolicy(CachePolicy.ENABLED)
                         .build(),
                     contentDescription = null,
                     modifier = Modifier
@@ -98,9 +97,6 @@ fun PlayerBackground(
                     }
                 )
 
-                // Dynamic dark wash: apply more darkness if the image is bright
-                // This ensures content readability regardless of image brightness.
-                // Note: Simplified logic as luminance analysis was removed for stability
                 if (isLoaded) {
                     Box(
                         modifier = Modifier
@@ -110,6 +106,69 @@ fun PlayerBackground(
                 }
             }
         }
+        
+        content()
+    }
+}
+
+/**
+ * The official immersive background implementation for the player.
+ * Includes sophisticated gradients and dynamic radial glow.
+ */
+@Composable
+fun ImmersivePlayerBackground(
+    channel: String = "",
+    previewUrl: String? = null,
+    refreshKey: Any? = null,
+    modifier: Modifier = Modifier,
+    isChatVisible: Boolean = false,
+    content: @Composable BoxScope.() -> Unit = {}
+) {
+    PlayerBackground(
+        channel = channel,
+        previewUrl = previewUrl,
+        refreshKey = refreshKey,
+        modifier = modifier,
+        alpha = 0.65f,
+        blurRadius = 150.dp,
+        contentScale = ContentScale.FillBounds
+    ) {
+        // Immersive gradient overlay
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.5f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.6f)
+                        )
+                    )
+                )
+        )
+        
+        // Dynamic radial glow that moves or scales slightly in fullscreen
+        val glowScale by animateFloatAsState(
+            targetValue = if (isChatVisible) 1.2f else 1.0f,
+            animationSpec = SamtchAnimation.StandardTween,
+            label = "GlowScale"
+        )
+        
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            SamtchTheme.colors.twitchPurple.copy(alpha = 0.2f),
+                            Color.Transparent
+                        ),
+                        center = Offset(0f, 0f),
+                        radius = 800f * glowScale
+                    )
+                )
+        )
         
         content()
     }

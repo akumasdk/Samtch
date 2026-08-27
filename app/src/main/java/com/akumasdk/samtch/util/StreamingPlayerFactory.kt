@@ -22,11 +22,11 @@ object StreamingPlayerFactory {
     internal val okHttpClient: OkHttpClient by lazy {
         Log.d(TAG, "Initializing shared OkHttpClient with TwitchHlsInterceptor...")
         OkHttpClient.Builder()
-            .connectionPool(ConnectionPool(10, 5, TimeUnit.MINUTES)) // Socket persistence
-            .addInterceptor(TwitchHlsInterceptor()) // Port of Streamlink prefetch logic
-            .retryOnConnectionFailure(true) // Automatic retries on micro-interruptions
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(5, TimeUnit.SECONDS)
+            .connectionPool(ConnectionPool(20, 5, TimeUnit.MINUTES)) // More persistent connections
+            .addInterceptor(TwitchHlsInterceptor()) 
+            .retryOnConnectionFailure(true) 
+            .connectTimeout(3, TimeUnit.SECONDS) // Faster timeouts
+            .readTimeout(3, TimeUnit.SECONDS)
             .build()
     }
 

@@ -23,13 +23,13 @@ object BufferingManager {
         return DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                /* minBufferMs = */ 2_000, // Minimal buffer for ultra-low latency
+                /* minBufferMs = */ 500, // Absolute minimum
                 /* maxBufferMs = */ 30_000, 
-                /* bufferForPlaybackMs = */ 500, // Near-instant start
-                /* bufferForPlaybackAfterRebufferMs = */ 1_500 
+                /* bufferForPlaybackMs = */ 100, 
+                /* bufferForPlaybackAfterRebufferMs = */ 500 
             )
             .setBackBuffer(
-                /* backBufferDurationMs = */ 8_000, 
+                /* backBufferDurationMs = */ 2_000, // Reduced to minimize memory overhead
                 /* retainBackBufferFromKeyframe = */ true
             )
             .setPrioritizeTimeOverSizeThresholds(true)
@@ -38,7 +38,7 @@ object BufferingManager {
 
     /**
      * Provides an optimized [MediaItem.LiveConfiguration] for Twitch live streams.
-     * Calibrated for ultra-low latency matching the Twitch web player (~2-4s).
+     * Pushed to the absolute limit for zero-delay experience (~1s).
      */
     fun getLiveConfiguration(
         isLowLatencyEnabled: Boolean = true
@@ -46,15 +46,15 @@ object BufferingManager {
         val builder = MediaItem.LiveConfiguration.Builder()
         
         if (isLowLatencyEnabled) {
-            builder.setTargetOffsetMs(3_000L) // 3s target - Aggressive low latency
-                .setMinOffsetMs(1_500L) // Allow sitting very close to the edge
-                .setMaxOffsetMs(10_000L)
-                .setMaxPlaybackSpeed(1.20f) // Faster catch-up
-                .setMinPlaybackSpeed(0.90f) 
+            builder.setTargetOffsetMs(1_000L) // 1s target - Absolute bleeding edge
+                .setMinOffsetMs(200L) // Allow sitting at the absolute edge
+                .setMaxOffsetMs(3_000L)
+                .setMaxPlaybackSpeed(1.50f) // Very aggressive catch-up
+                .setMinPlaybackSpeed(0.80f) 
         } else {
-            builder.setTargetOffsetMs(8_000L) 
-                .setMinOffsetMs(4_000L)
-                .setMaxOffsetMs(30_000L)
+            builder.setTargetOffsetMs(4_000L) 
+                .setMinOffsetMs(1_000L)
+                .setMaxOffsetMs(15_000L)
                 .setMaxPlaybackSpeed(1.10f)
                 .setMinPlaybackSpeed(0.95f)
         }

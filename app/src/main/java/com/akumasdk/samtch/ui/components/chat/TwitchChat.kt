@@ -182,10 +182,6 @@ private fun NativeChatContainer(
     }
     
     Box(modifier = modifier.fillMaxSize()) {
-        if (isImmersiveEnabled) {
-            ChatImmersiveBackground(channel, previewImageUrl)
-        }
-
         Column(modifier = Modifier.fillMaxSize()) {
             NativeTwitchChat(
                 channel = channel,
@@ -243,20 +239,6 @@ private fun NativeChatContainer(
 
         ChatDialogs(viewModel)
     }
-}
-
-@Composable
-private fun ChatImmersiveBackground(channel: String, previewImageUrl: String?) {
-    val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
-    val imageAlpha = if (isLightMode) 0.7f else 0.65f
-    PlayerBackground(
-        channel = channel,
-        previewUrl = previewImageUrl,
-        alpha = imageAlpha,
-        blurRadius = 150.dp,
-        contentScale = ContentScale.FillBounds,
-        modifier = Modifier.fillMaxSize()
-    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)

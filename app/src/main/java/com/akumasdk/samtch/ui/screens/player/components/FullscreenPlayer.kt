@@ -24,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -103,19 +102,6 @@ fun FullscreenPlayer(
                     .systemBarsPadding()
                     .displayCutoutPadding()
             ) {
-                if (isImmersiveEnabled) {
-                    val isLightMode = !isActuallyDark
-                    val imageAlpha = if (isLightMode) 0.7f else 0.65f
-                    PlayerBackground(
-                        channel = channel,
-                        previewUrl = previewImageUrl,
-                        alpha = imageAlpha,
-                        blurRadius = 150.dp,
-                        contentScale = ContentScale.FillBounds,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
                 // 1. Chat area (Background layer)
                 Box(modifier = Modifier.fillMaxSize()) {
                     chatContent(

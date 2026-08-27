@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -65,6 +66,7 @@ import com.akumasdk.samtch.ui.components.chat.TwitchChat
 import com.akumasdk.samtch.ui.components.playerComponents.MiniPlayerContainer
 import com.akumasdk.samtch.ui.components.playerComponents.MiniPlayerOverlay
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
+import com.akumasdk.samtch.ui.components.playerComponents.ImmersivePlayerBackground
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerLoadingScreen
 import com.akumasdk.samtch.ui.components.playerComponents.TapTooltip
 import com.akumasdk.samtch.ui.screens.player.components.AudioOnlyPlayer
@@ -130,7 +132,9 @@ fun TwitchPlayer(
             }
         }
         
-        val isImmersiveEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
+        val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
+        val isImmersiveBackgroundEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
+        val isImmersiveEnabled = isImmersiveBackgroundEnabled && isActuallyDark
 
         val streamMetadata = playerViewModel.streamMetadata
         val avatarUrl = playerViewModel.avatarUrl
@@ -165,9 +169,10 @@ fun TwitchPlayer(
         var showNativeControls by remember { mutableStateOf(false) }
         var controlsInteractionTrigger by remember { mutableIntStateOf(0) }
 
-        // Force show controls when buffering starts (but not on initial stream load)
+        // Force show controls when buffering starts only if it lasts more than 4 seconds
         LaunchedEffect(isBuffering) {
             if (isBuffering && !isUiLoading) {
+                delay(4.seconds) // Debounce buffering UI to avoid flickering on micro-buffers
                 showNativeControls = true
                 if (isFullscreen) showFullscreenControls = true
             }
@@ -500,56 +505,27 @@ fun TwitchPlayer(
                     }
                 )
 
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // 1. Fullscreen Background (Bottom-most)
-                    // Always show in fullscreen if immersive is enabled to provide the "glass" effect for side chat
-                    if (isFullscreen && !isMinimized && isImmersiveEnabled) {
-                        PlayerBackground(
+                val animatedRootBgAlpha by animateFloatAsState(
+                    targetValue = if (isMinimized) 0f else 1f,
+                    animationSpec = SamtchAnimation.StandardTween,
+                    label = "RootBgAlpha"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(SamtchTheme.colors.rootBackground.copy(alpha = animatedRootBgAlpha))
+                ) {
+                    // 1. Immersive Background Layer (Bottom-most)
+                    // Always show if immersive is enabled to provide the "glass" effect for side chat and portrait elements
+                    if (!isMinimized && isImmersiveEnabled) {
+                        ImmersivePlayerBackground(
                             channel = channel,
                             previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
                             refreshKey = playerViewModel.metadataRefreshTrigger,
-                            modifier = Modifier.fillMaxSize(),
-                            alpha = 0.65f,
-                            blurRadius = 150.dp,
-                            contentScale = ContentScale.FillBounds
-                        ) {
-                            // Immersive gradient overlay
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color.Black.copy(alpha = 0.5f),
-                                                Color.Transparent,
-                                                Color.Black.copy(alpha = 0.6f)
-                                            )
-                                        )
-                                    )
-                            )
-                            
-                            // Dynamic radial glow that moves or scales slightly in fullscreen
-                            val glowScale by androidx.compose.animation.core.animateFloatAsState(
-                                targetValue = if (isChatVisible) 1.2f else 1.0f,
-                                animationSpec = SamtchAnimation.StandardTween,
-                                label = "GlowScale"
-                            )
-                            
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.radialGradient(
-                                            colors = listOf(
-                                                SamtchTheme.colors.twitchPurple.copy(alpha = 0.2f),
-                                                Color.Transparent
-                                            ),
-                                            center = Offset(0f, 0f),
-                                            radius = 800f * glowScale
-                                        )
-                                    )
-                            )
-                        }
+                            isChatVisible = isChatVisible,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
 
                     // 2. MINI PLAYER SHELL & DISMISS LOGIC
