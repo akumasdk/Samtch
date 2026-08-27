@@ -323,9 +323,7 @@ class MainActivity : ComponentActivity() {
                                         onExpand = { viewModel.isMinimized = false },
                                         onClose = {
                                             viewModel.updateChannel(null)
-                                            playerViewModel.updateChannel(null)
-                                            val stopIntent = Intent(this@MainActivity, PlaybackService::class.java)
-                                            stopService(stopIntent)
+                                            playerViewModel.stopAndDisconnect()
                                         },
                                         onMetadataUpdated = { avatar, subtitle ->
                                             viewModel.lastAvatarUrl = avatar
@@ -405,25 +403,14 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         lifecycleScope.launch {
-            val audioOnlyBackgroundEnabled = SettingsManager.isAudioOnlyBackgroundEnabled(applicationContext).first()
-            val isAudioOnlyPlayerActive = viewModel.isAudioOnlyMode
+            // Cleanup any temporary background controller
+            backgroundController?.release()
+            backgroundController = null
             
-            if (isAudioOnlyPlayerActive && audioOnlyBackgroundEnabled) {
-                backgroundController?.release()
-                backgroundController = null
-            } else {
-                backgroundController?.release()
-                backgroundController = null
-                try {
-                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                    stopService(stopIntent)
-                } catch (_: Exception) {}
-                
-                if (viewModel.selectedChannel != null && !viewModel.wasInPip) {
-                    viewModel.incrementRefreshTrigger()
-                }
-                viewModel.wasInPip = false
-            }
+            // Note: We no longer stop the PlaybackService here. 
+            // The PlayerViewModel will re-connect its controller automatically.
+            
+            viewModel.wasInPip = false
         }
     }
 
@@ -436,33 +423,29 @@ class MainActivity : ComponentActivity() {
         super.onStop()
         orientationManager.disable()
         lifecycleScope.launch {
-            val audioOnlyEnabled = SettingsManager.isAudioOnlyBackgroundEnabled(applicationContext).first()
-            val isAudioOnlyPlayerActive = viewModel.isAudioOnlyMode
-            if (viewModel.selectedChannel != null && !viewModel.isInPipMode && audioOnlyEnabled) {
-                if (!isAudioOnlyPlayerActive) {
-                    val sessionToken = SessionToken(this@MainActivity, ComponentName(this@MainActivity, PlaybackService::class.java))
-                    val controllerFuture = MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
-                    controllerFuture.addListener({
-                        val controller = controllerFuture.get()
-                        backgroundController = controller
-                        val metadata = MediaMetadata.Builder()
-                            .setTitle(viewModel.selectedChannel)
-                            .setArtist(viewModel.lastSubtitle)
-                            .setArtworkUri(viewModel.lastAvatarUrl?.toUri())
-                            .build()
-                        controller.setMediaItem(MediaItem.Builder().setMediaId(viewModel.selectedChannel!!).setMediaMetadata(metadata).build())
-                        controller.prepare()
-                        controller.play()
-                    }, MoreExecutors.directExecutor())
-                }
-            } else {
-                backgroundController?.release()
-                backgroundController = null
+            val audioBackgroundSetting = SettingsManager.isAudioOnlyBackgroundEnabled(applicationContext).first()
+            val isAudioOnlyMode = viewModel.isAudioOnlyMode
+            
+            // Respect background audio setting with the exception of audio only mode 
+            // OR if we are currently in Picture-in-Picture mode.
+            val shouldContinue = viewModel.selectedChannel != null && 
+                                (viewModel.isInPipMode || audioBackgroundSetting || isAudioOnlyMode)
+
+            if (!shouldContinue) {
+                Log.d("MainActivity", "Background audio not allowed. Stopping service.")
                 try {
-                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                    stopService(stopIntent)
+                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { 
+                        action = Constants.Actions.STOP 
+                    }
+                    // Use startService to ensure the STOP action is processed by onStartCommand
+                    startService(stopIntent)
                 } catch (_: Exception) {}
+            } else {
+                Log.d("MainActivity", "Allowing background playback (isInPip=${viewModel.isInPipMode}, setting=$audioBackgroundSetting, isAudioOnly=$isAudioOnlyMode)")
             }
+            
+            backgroundController?.release()
+            backgroundController = null
         }
     }
 
@@ -471,8 +454,10 @@ class MainActivity : ComponentActivity() {
         backgroundController?.release()
         backgroundController = null
         try {
-            val stopIntent = Intent(this, PlaybackService::class.java).apply { action = "STOP" }
-            stopService(stopIntent)
+            val stopIntent = Intent(this, PlaybackService::class.java).apply { 
+                action = Constants.Actions.STOP 
+            }
+            startService(stopIntent)
         } catch (_: Exception) {}
         try {
             unregisterReceiver(pipReceiver)

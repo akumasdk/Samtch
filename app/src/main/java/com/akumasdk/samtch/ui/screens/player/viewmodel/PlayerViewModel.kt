@@ -247,13 +247,15 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }, MoreExecutors.directExecutor())
     }
 
+    private var watchdogCooldownUntil = 0L
+
     private fun startWatchdog(controller: Player) {
         watchdogJob?.cancel()
         watchdogJob = viewModelScope.launch {
             while (true) {
                 delay(1.seconds) // Frequent health checks
                 
-                if (!isHoldingLoader && !isQualityChanging) {
+                if (!isHoldingLoader && !isQualityChanging && System.currentTimeMillis() > watchdogCooldownUntil) {
                     val currentFps = com.akumasdk.samtch.util.FpsMonitor.currentFps.value
                     val state = controller.playbackState
                     val isActuallyPlaying = controller.isPlaying
@@ -266,7 +268,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                             if (zeroFpsCount >= 1) {
                                 Log.w("PlayerViewModel", "Watchdog: FLAT ZERO FPS detected. Refreshing.")
                                 triggerRefresh()
-                                zeroFpsCount = 0
                                 continue
                             }
                         } else {
@@ -277,7 +278,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                         if (zeroFpsCount >= 8) { // Tightened to 8s
                             Log.w("PlayerViewModel", "Watchdog: Infinite buffering (>8s). Refreshing.")
                             triggerRefresh()
-                            zeroFpsCount = 0
                             continue
                         }
                     } else {
@@ -291,10 +291,14 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun triggerRefresh() {
+        Log.d("PlayerViewModel", "Watchdog: Triggering stream refresh and setting 5s stabilization cooldown.")
+        // Set a 5s cooldown to let the player/decoder stabilize after refresh
+        watchdogCooldownUntil = System.currentTimeMillis() + 5000
+        zeroFpsCount = 0
+        
         viewModelScope.launch(Dispatchers.Main) {
             channel?.let { updateMediaItem(it, force = true) }
         }
-        zeroFpsCount = 0
     }
 
     fun disconnectMediaController() {
@@ -526,6 +530,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
         // Reset watchdog state to prevent false positives during transition
         zeroFpsCount = 0
+        watchdogCooldownUntil = System.currentTimeMillis() + 5000 // 5s stabilization period
         
         // Mask the transition during the buffer build-up
         isHoldingLoader = true

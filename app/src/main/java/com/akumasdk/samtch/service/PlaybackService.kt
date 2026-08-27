@@ -272,8 +272,11 @@ class PlaybackService : MediaSessionService() {
         sendBroadcast(stopIntent)
 
         // 2. Stop Service and Release
-        mediaSession?.player?.stop()
-        mediaSession?.release()
+        mediaSession?.run {
+            player.stop()
+            player.release()
+            release()
+        }
         mediaSession = null
         exoPlayer = null
         stopSelf()
