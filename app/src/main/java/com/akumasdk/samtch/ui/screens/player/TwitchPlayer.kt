@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -473,7 +474,7 @@ fun TwitchPlayer(
         )
 
         val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        val animatedTopPadding by androidx.compose.animation.core.animateDpAsState(
+        val animatedTopPadding by animateDpAsState(
             targetValue = if (isFullscreen && !isAudioOnly) 0.dp else statusBarHeight,
             animationSpec = SamtchAnimation.DpSpring,
             label = "PlayerTopPadding"
@@ -518,8 +519,12 @@ fun TwitchPlayer(
                         .background(SamtchTheme.colors.rootBackground.copy(alpha = animatedRootBgAlpha))
                 ) {
                     // 1. Immersive Background Layer (Bottom-most)
-                    // Always show if immersive is enabled to provide the "glass" effect for side chat and portrait elements
-                    if (!isMinimized && isImmersiveEnabled) {
+                    // We use AnimatedVisibility to prevent flickering during fullscreen/portrait transitions
+                    AnimatedVisibility(
+                        visible = !isMinimized && isImmersiveEnabled,
+                        enter = fadeIn(animationSpec = SamtchAnimation.StandardTween),
+                        exit = fadeOut(animationSpec = SamtchAnimation.StandardTween)
+                    ) {
                         ImmersivePlayerBackground(
                             channel = channel,
                             previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
@@ -622,11 +627,15 @@ fun TwitchPlayer(
                                 )
                         ) {
                             if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
-                                val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
-                                val bgBlur = if (isImmersiveEnabled) 150.dp else 0.dp
-                                val surfaceAlpha = if (isImmersiveEnabled) {
+                                val targetBgAlpha = if (isImmersiveEnabled) 0.3f else 0f
+                                val targetBgBlur = if (isImmersiveEnabled) 150.dp else 0.dp
+                                val targetSurfaceAlpha = if (isImmersiveEnabled) {
                                     if (SamtchTheme.colors.dialogBackground.luminance() > 0.5f) 0.94f else 0.82f
                                 } else 1.0f
+
+                                val bgAlpha by animateFloatAsState(targetValue = targetBgAlpha, label = "PipBgAlpha")
+                                val bgBlur by animateDpAsState(targetValue = targetBgBlur, label = "PipBgBlur")
+                                val surfaceAlpha by animateFloatAsState(targetValue = targetSurfaceAlpha, label = "PipSurfaceAlpha")
 
                                 PlayerBackground(
                                     channel = channel,

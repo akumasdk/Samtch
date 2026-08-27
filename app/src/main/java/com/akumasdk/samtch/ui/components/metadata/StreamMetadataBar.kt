@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.components.metadata
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -87,7 +88,12 @@ fun StreamMetadataBar(
     // Even if immersive is enabled globally, we force standard colors for the metadata bar in light theme
     val isImmersiveActuallyEnabled = isImmersiveEnabled && !isLightMode
 
-    val surfaceAlpha = if (isImmersiveActuallyEnabled) 0.82f else 1.0f
+    val targetAlpha = if (isImmersiveActuallyEnabled) 0.82f else 1.0f
+    val surfaceAlpha by animateFloatAsState(
+        targetValue = targetAlpha,
+        animationSpec = SamtchAnimation.StandardTween,
+        label = "MetadataSurfaceAlpha"
+    )
     
     // Minimal image alpha for very subtle color accents
     val imageAlpha = 0.7f

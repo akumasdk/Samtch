@@ -259,11 +259,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     val isActuallyPlaying = controller.isPlaying
 
                     if (isActuallyPlaying && state == Player.STATE_READY) {
-                        if (currentFps <= 0f) {
+                        // Check for FLAT ZERO FPS only
+                        if (currentFps == 0.0f) {
                             zeroFpsCount++
-                            // If FPS is 0 for 2 seconds while playing, force refresh
-                            if (zeroFpsCount >= 2) {
-                                Log.w("PlayerViewModel", "Watchdog: Zero FPS detected for 2s. Refreshing.")
+                            // 1s tolerance (triggered on the first second of flat zero)
+                            if (zeroFpsCount >= 1) {
+                                Log.w("PlayerViewModel", "Watchdog: FLAT ZERO FPS detected. Refreshing.")
                                 triggerRefresh()
                                 zeroFpsCount = 0
                                 continue
@@ -272,10 +273,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                             zeroFpsCount = 0
                         }
                     } else if (state == Player.STATE_BUFFERING) {
-                        // Keep counting if buffering for too long too
                         zeroFpsCount++
-                        if (zeroFpsCount >= 10) {
-                            Log.w("PlayerViewModel", "Watchdog: Infinite buffering (>10s). Refreshing.")
+                        if (zeroFpsCount >= 8) { // Tightened to 8s
+                            Log.w("PlayerViewModel", "Watchdog: Infinite buffering (>8s). Refreshing.")
                             triggerRefresh()
                             zeroFpsCount = 0
                             continue

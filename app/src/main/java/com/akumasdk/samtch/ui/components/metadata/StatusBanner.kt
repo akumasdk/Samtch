@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.components.metadata
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 /**
@@ -42,13 +45,17 @@ fun StatusBanner(
         exit = shrinkVertically(),
         modifier = modifier.fillMaxWidth()
     ) {
+        val backgroundColor by animateColorAsState(
+            targetValue = if (isImmersiveEnabled) SamtchTheme.colors.twitchPurple.copy(alpha = 0.75f)
+                          else SamtchTheme.colors.twitchPurple,
+            animationSpec = SamtchAnimation.ColorTween,
+            label = "StatusBannerBgColor"
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    if (isImmersiveEnabled) SamtchTheme.colors.twitchPurple.copy(alpha = 0.75f)
-                    else SamtchTheme.colors.twitchPurple
-                )
+                .background(backgroundColor)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,

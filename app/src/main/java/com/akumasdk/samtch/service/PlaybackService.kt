@@ -113,9 +113,9 @@ class PlaybackService : MediaSessionService() {
         // 3. Player Configuration
         val trackSelector = DefaultTrackSelector(this)
         val speedControl = DefaultLivePlaybackSpeedControl.Builder()
-            .setFallbackMaxPlaybackSpeed(1.50f) // Matches bleeding-edge catch-up
-            .setFallbackMinPlaybackSpeed(0.80f) 
-            .setTargetLiveOffsetIncrementOnRebufferMs(200) // Minimal growth to keep latency low
+            .setFallbackMaxPlaybackSpeed(1.25f) // Matches balanced catch-up
+            .setFallbackMinPlaybackSpeed(0.85f) 
+            .setTargetLiveOffsetIncrementOnRebufferMs(500) // Moderate growth
             .build()
 
         exoPlayer = com.akumasdk.samtch.util.StreamingPlayerFactory.createLowLatencyPlayerBuilder(this)
