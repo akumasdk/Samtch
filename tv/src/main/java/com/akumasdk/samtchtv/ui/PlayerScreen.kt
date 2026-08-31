@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -50,10 +52,12 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.BufferingManager
 import com.akumasdk.samtch.util.FpsMonitor
 import com.akumasdk.samtch.util.PlaybackWatchdog
 import com.akumasdk.samtch.util.StreamingPlayerFactory
+import com.akumasdk.samtch.data.api.PreviewImageService
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.service.TwitchChatClient
 import com.akumasdk.samtch.data.irc.IrcMessage
@@ -134,6 +138,7 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
                     if (response.isSuccessful) {
                         val parsed = ExtM3UParser().parse(body)
                         val filteredQualities = parsed.filter { !it.playlistUrl.isNullOrEmpty() }
+                            .sortedByDescending { it.bandwidth ?: 0L }
                         qualities = filteredQualities
                         
                         // Set highest quality on start if not already selected
@@ -183,14 +188,14 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
     }
 
     LaunchedEffect(channel) {
+        // Fetch metadata to get the most accurate preview URL
         val metadata = TwitchGqlService.getStreamMetadata(channel)
-        val rawUrl = metadata?.user?.stream?.previewImageUrl 
-            ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
-        
-        // Ensure high resolution for TV (replace placeholders or existing dimensions)
-        previewUrl = rawUrl
-            .replace("{width}", "1280").replace("{height}", "720")
-            .replace("853x480", "1280x720")
+        previewUrl = PreviewImageService.getProcessedUrl(
+            metadata?.user?.stream?.previewImageUrl,
+            channel,
+            width = 1280,
+            height = 720
+        )
             
         EmoteRepository.loadGlobalEmotes(context)
         EmoteRepository.loadChannelEmotes(context, channel)
@@ -224,25 +229,36 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
         }
     }
 
-    // Handle Back button to close menu first
-    BackHandler(enabled = showMenu || showQualityDialog) {
+    // Handle Back button: prioritize closing menus/dialogs, then exit to landing
+    BackHandler {
         if (showQualityDialog) {
             showQualityDialog = false
         } else if (showMenu) {
             showMenu = false
+        } else {
+            onBack()
         }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(SamtchTheme.colors.rootBackground)
             .onKeyEvent { keyEvent ->
-                // Only intercept keys to show menu if it's hidden
+                // Only show menu on specific interaction keys (Center/OK, Directional keys)
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
-                    if (!showMenu && !showQualityDialog) {
-                        showMenu = true
-                        return@onKeyEvent true
+                    when (keyEvent.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_DPAD_CENTER,
+                        KeyEvent.KEYCODE_ENTER,
+                        KeyEvent.KEYCODE_DPAD_UP,
+                        KeyEvent.KEYCODE_DPAD_DOWN,
+                        KeyEvent.KEYCODE_DPAD_LEFT,
+                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            if (!showMenu && !showQualityDialog) {
+                                showMenu = true
+                                return@onKeyEvent true
+                            }
+                        }
                     }
                 }
                 false
@@ -272,7 +288,7 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
                             .align(Alignment.CenterEnd)
                             .fillMaxWidth(0.3f)
                             .fillMaxHeight()
-                            .background(Color.Black.copy(alpha = 0.7f))
+                            .background(SamtchTheme.colors.chatBackground.copy(alpha = 0.7f))
                     )
                 }
             }
@@ -284,7 +300,7 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
                     modifier = Modifier
                         .weight(0.2f)
                         .fillMaxHeight()
-                        .background(Color(0xFF121212))
+                        .background(SamtchTheme.colors.chatBackground)
                 )
             }
         }
@@ -292,7 +308,7 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
         // Loading Animation
         if (playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE) {
             Box(
-                modifier = Modifier.fillMaxSize().background(Color.Black),
+                modifier = Modifier.fillMaxSize().background(SamtchTheme.colors.rootBackground),
                 contentAlignment = Alignment.Center
             ) {
                 previewUrl?.let { url ->
@@ -300,23 +316,29 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
                         model = url,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                        alpha = 0.6f
+                        contentScale = ContentScale.Crop
+                    )
+                    // Dark overlay for readability
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.7f))
                     )
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(
-                        color = Color.Magenta,
+                        color = SamtchTheme.colors.accentColor,
                         strokeWidth = 4.dp,
                         modifier = Modifier.size(64.dp)
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = if (playbackState == Player.STATE_IDLE) "Preparing Stream..." else "Buffering...",
+                        text = if (playbackState == Player.STATE_IDLE) "PREPARING STREAM" else "BUFFERING",
                         color = Color.White,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                        letterSpacing = 2.sp
                     )
                 }
             }
@@ -379,7 +401,7 @@ fun PlayerMenu(
     ) {
         Row(
             modifier = Modifier
-                .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(40.dp))
+                .background(SamtchTheme.colors.miniPlayerBackground.copy(alpha = 0.85f), RoundedCornerShape(40.dp))
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -408,8 +430,8 @@ fun PlayerMenu(
                     ChatMode.SIDE -> "Side Chat"
                     ChatMode.OVERLAY -> "Overlay Chat"
                 },
-                containerColor = if (chatMode != ChatMode.OFF) Color.Magenta else Color(0xFF333333),
-                contentColor = Color.White
+                containerColor = if (chatMode != ChatMode.OFF) SamtchTheme.colors.accentColor else SamtchTheme.colors.tabButtonBackground,
+                contentColor = SamtchTheme.colors.primaryText
             )
         }
     }
@@ -424,8 +446,8 @@ fun QualityDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Quality", color = Color.White) },
-        containerColor = Color(0xFF1A1A1A),
+        title = { Text("Select Quality", color = SamtchTheme.colors.primaryText) },
+        containerColor = SamtchTheme.colors.dialogBackground,
         text = {
             LazyColumn {
                 item {
@@ -457,13 +479,13 @@ fun QualityItem(label: String, isSelected: Boolean, onClick: () -> Unit) {
             .fillMaxWidth()
             .clickable { onClick() }
             .padding(vertical = 4.dp),
-        color = if (isSelected) Color.Magenta.copy(alpha = 0.1f) else Color.Transparent,
+        color = if (isSelected) SamtchTheme.colors.accentColor.copy(alpha = 0.1f) else Color.Transparent,
         shape = RoundedCornerShape(8.dp)
     ) {
         Text(
             text = label,
             modifier = Modifier.padding(16.dp),
-            color = if (isSelected) Color.Magenta else Color.White,
+            color = if (isSelected) SamtchTheme.colors.accentColor else SamtchTheme.colors.primaryText,
             style = MaterialTheme.typography.bodyLarge
         )
     }
@@ -475,8 +497,8 @@ fun MenuButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     modifier: Modifier = Modifier,
-    containerColor: Color = Color(0xFF333333),
-    contentColor: Color = Color.White
+    containerColor: Color = SamtchTheme.colors.tabButtonBackground,
+    contentColor: Color = SamtchTheme.colors.primaryText
 ) {
     Button(
         onClick = onClick,
@@ -527,7 +549,7 @@ fun ChatOverlay(messages: List<IrcMessage>, channel: String, modifier: Modifier 
 fun ChatMessageItem(msg: IrcMessage, channel: String) {
     val displayName = msg.tags["display-name"] ?: msg.prefix?.split("!")?.get(0) ?: "Unknown"
     val colorHex = msg.tags["color"] ?: "#FFFFFF"
-    val userColor = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { Color.White }
+    val userColor = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { SamtchTheme.colors.defaultUserColor }
 
     Column(modifier = Modifier.padding(vertical = 2.dp)) {
         Text(
@@ -542,21 +564,37 @@ fun ChatMessageItem(msg: IrcMessage, channel: String) {
             parts.forEach { part ->
                 val emote = EmoteRepository.getEmote(channel, part)
                 if (emote != null) {
-                    AsyncImage(
-                        model = emote.url,
-                        contentDescription = part,
-                        modifier = Modifier.size(24.dp).padding(horizontal = 2.dp)
-                    )
+                    EmoteImage(emote = emote, part = part)
                 } else {
                     Text(
                         text = "$part ",
-                        color = Color.White,
+                        color = SamtchTheme.colors.primaryText,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+fun EmoteImage(emote: com.akumasdk.samtch.data.emote.Emote, part: String) {
+    var aspectRatio by remember { mutableFloatStateOf(1f) }
+    AsyncImage(
+        model = emote.url,
+        contentDescription = part,
+        modifier = Modifier
+            .height(28.dp)
+            .aspectRatio(aspectRatio)
+            .padding(horizontal = 2.dp),
+        contentScale = ContentScale.Fit,
+        onSuccess = { state ->
+            val size = state.painter.intrinsicSize
+            if (size.width > 0 && size.height > 0) {
+                aspectRatio = size.width / size.height
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)

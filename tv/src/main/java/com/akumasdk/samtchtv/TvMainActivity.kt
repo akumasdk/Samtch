@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtchtv.ui.LandingScreen
 import com.akumasdk.samtchtv.ui.PlayerScreen
 
@@ -16,26 +17,28 @@ class TvMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var currentChannel by remember { mutableStateOf<String?>(null) }
+            SamtchTheme(darkTheme = true) { // TV is always dark
+                var currentChannel by remember { mutableStateOf<String?>(null) }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
-            ) {
-                if (currentChannel == null) {
-                    LandingScreen(
-                        onChannelSelected = { channel ->
-                            currentChannel = channel
-                        }
-                    )
-                } else {
-                    PlayerScreen(
-                        channel = currentChannel!!,
-                        onBack = {
-                            currentChannel = null
-                        }
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(SamtchTheme.colors.rootBackground)
+                ) {
+                    if (currentChannel == null) {
+                        LandingScreen(
+                            onChannelSelected = { channel ->
+                                currentChannel = channel
+                            }
+                        )
+                    } else {
+                        PlayerScreen(
+                            channel = currentChannel!!,
+                            onBack = {
+                                currentChannel = null
+                            }
+                        )
+                    }
                 }
             }
         }

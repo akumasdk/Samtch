@@ -1,5 +1,6 @@
 package com.akumasdk.samtchtv.ui
 
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -10,10 +11,13 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -34,11 +38,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.painter.ColorPainter
 import coil.compose.AsyncImage
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.data.settings.SettingsManager
 import kotlinx.coroutines.launch
+import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.metadata.formatStreamDuration
 import com.akumasdk.samtch.util.metadata.formatViewerCount
 
@@ -48,8 +56,36 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
     var streamerName by remember { mutableStateOf("") }
+    var isCheckingStreamer by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    
     val recentStreamers by SettingsManager.getRecentStreamers(context).collectAsState(initial = emptyList())
     val focusRequester = remember { FocusRequester() }
+
+    val startWatching = {
+        val sanitized = streamerName.trim()
+        if (sanitized.isNotBlank() && !isCheckingStreamer) {
+            keyboardController?.hide()
+            scope.launch {
+                isCheckingStreamer = true
+                val metadata = TwitchGqlService.getStreamMetadata(sanitized)
+                val user = metadata?.user
+                if (user?.stream != null) {
+                    // Stream is live, start playing
+                    SettingsManager.addRecentStreamer(context, sanitized)
+                    onChannelSelected(sanitized)
+                } else if (user != null) {
+                    // Streamer exists but offline
+                    SettingsManager.addRecentStreamer(context, sanitized)
+                    errorMessage = "${user.displayName} is currently offline"
+                } else {
+                    // GQL returned null user or error
+                    errorMessage = "Streamer not found or GQL error"
+                }
+                isCheckingStreamer = false
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -60,7 +96,7 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFF0F0F0F), Color(0xFF050505))
+                    colors = listOf(SamtchTheme.colors.audioPlayerBackgroundStart, SamtchTheme.colors.rootBackground)
                 )
             )
     ) {
@@ -76,7 +112,7 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
                 Text(
                     text = "Samtch TV",
                     style = MaterialTheme.typography.displayMedium,
-                    color = Color.Magenta,
+                    color = SamtchTheme.colors.accentColor,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-2).sp
                 )
@@ -84,45 +120,46 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
 
                 OutlinedTextField(
                     value = streamerName,
-                    onValueChange = { streamerName = it.replace(" ", "") },
+                    onValueChange = { 
+                        streamerName = it.replace(" ", "")
+                        errorMessage = null 
+                    },
                     label = { Text("Streamer Name") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
                     singleLine = true,
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    isError = errorMessage != null,
+                    supportingText = errorMessage?.let { { Text(it) } },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                    keyboardActions = KeyboardActions(onGo = { startWatching() }),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color.Magenta,
-                        unfocusedBorderColor = Color.DarkGray,
-                        focusedLabelColor = Color.Magenta,
-                        unfocusedLabelColor = Color.Gray,
-                        focusedContainerColor = Color.White.copy(alpha = 0.05f)
+                        focusedTextColor = SamtchTheme.colors.primaryText,
+                        unfocusedTextColor = SamtchTheme.colors.primaryText,
+                        focusedBorderColor = SamtchTheme.colors.accentColor,
+                        unfocusedBorderColor = SamtchTheme.colors.divider,
+                        focusedLabelColor = SamtchTheme.colors.accentColor,
+                        unfocusedLabelColor = SamtchTheme.colors.secondaryText,
+                        focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                        errorBorderColor = SamtchTheme.colors.error,
+                        errorLabelColor = SamtchTheme.colors.error,
+                        errorSupportingTextColor = SamtchTheme.colors.error
                     )
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = {
-                        val sanitized = streamerName.trim()
-                        if (sanitized.isNotBlank()) {
-                            keyboardController?.hide()
-                            scope.launch {
-                                SettingsManager.addRecentStreamer(context, sanitized)
-                                onChannelSelected(sanitized)
-                            }
-                        }
-                    },
+                    onClick = startWatching,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
+                    enabled = !isCheckingStreamer,
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Magenta,
+                        containerColor = SamtchTheme.colors.accentColor,
                         contentColor = Color.White
                     ),
                     elevation = ButtonDefaults.buttonElevation(
@@ -130,7 +167,11 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
                         focusedElevation = 16.dp
                     )
                 ) {
-                    Text("Start Watching", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    if (isCheckingStreamer) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Text("Start Watching", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
@@ -163,16 +204,25 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
                 } else {
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 32.dp)
+                        contentPadding = PaddingValues(bottom = 32.dp),
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         items(recentStreamers) { streamer ->
-                            HistoryItem(streamer = streamer, onClick = {
-                                keyboardController?.hide()
-                                scope.launch {
-                                    SettingsManager.addRecentStreamer(context, streamer)
-                                    onChannelSelected(streamer)
+                            HistoryItem(
+                                streamer = streamer, 
+                                onClick = {
+                                    keyboardController?.hide()
+                                    scope.launch {
+                                        SettingsManager.addRecentStreamer(context, streamer)
+                                        onChannelSelected(streamer)
+                                    }
+                                },
+                                onRemove = {
+                                    scope.launch {
+                                        SettingsManager.removeRecentStreamer(context, streamer)
+                                    }
                                 }
-                            })
+                            )
                         }
                     }
                 }
@@ -182,109 +232,166 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
 }
 
 @Composable
-fun HistoryItem(streamer: String, onClick: () -> Unit) {
+fun HistoryItem(streamer: String, onClick: () -> Unit, onRemove: () -> Unit) {
     var metadata by remember { mutableStateOf<TwitchStreamMetadata?>(null) }
-    var isFocused by remember { mutableStateOf(false) }
+    var isPillFocused by remember { mutableStateOf(false) }
+    var isRemoveFocused by remember { mutableStateOf(false) }
+    var hasLoaded by remember { mutableStateOf(false) }
 
     LaunchedEffect(streamer) {
-        metadata = TwitchGqlService.getStreamMetadata(streamer)
+        val result = TwitchGqlService.getStreamMetadata(streamer)
+        if (result != null) {
+            metadata = result
+        }
+        hasLoaded = true
     }
 
     val stream = metadata?.user?.stream
     val isLive = stream != null
 
-    val scale by animateFloatAsState(if (isFocused) 1.05f else 1f)
-    val borderAlpha by animateFloatAsState(if (isFocused) 1f else 0f)
-    val containerColor by animateColorAsState(
-        if (isFocused) Color(0xFF3D3D3D) 
-        else if (isLive) Color(0xFF252525) 
-        else Color(0xFF181818)
+    val pillScale by animateFloatAsState(if (isPillFocused) 1.03f else 1f, label = "PillScale")
+    val removeScale by animateFloatAsState(if (isRemoveFocused) 1.1f else 1f, label = "RemoveScale")
+    
+    val pillContainerColor by animateColorAsState(
+        if (isPillFocused) SamtchTheme.colors.accentColor.copy(alpha = 0.15f) 
+        else if (isLive) SamtchTheme.colors.cardBackground.copy(alpha = 0.8f)
+        else SamtchTheme.colors.miniPlayerBackground.copy(alpha = 0.1f), // Dim for offline
+        label = "PillColor"
     )
 
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .onFocusChanged { isFocused = it.isFocused }
-            .scale(scale)
-            .clickable { onClick() }
-            .focusable(),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(2.dp, Color.Magenta.copy(alpha = borderAlpha))
+            .height(72.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
+        // Main Info Pill
+        Surface(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+                .weight(1f)
+                .fillMaxHeight()
+                .scale(pillScale)
+                .onFocusChanged { isPillFocused = it.isFocused }
+                .clickable { onClick() }
+                .focusable(),
+            shape = RoundedCornerShape(36.dp), // Full pill shape
+            color = pillContainerColor,
+            border = if (isPillFocused) BorderStroke(2.dp, SamtchTheme.colors.accentColor) else null
         ) {
-            // Avatar with Glow if Live
-            Box(contentAlignment = Alignment.Center) {
-                if (isLive) {
-                    Surface(
-                        modifier = Modifier.size(56.dp),
-                        shape = CircleShape,
-                        color = Color.Red.copy(alpha = 0.2f),
-                        border = BorderStroke(2.dp, Color.Red)
-                    ) {}
-                }
-                AsyncImage(
-                    model = metadata?.user?.profileImageUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color.DarkGray)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(20.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = metadata?.user?.displayName ?: streamer,
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                if (isLive) {
-                    Text(
-                        text = stream?.game?.name ?: "Streaming",
-                        color = Color.Magenta.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Avatar
+                Box(contentAlignment = Alignment.Center) {
+                    AsyncImage(
+                        model = metadata?.user?.profileImageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(SamtchTheme.colors.cardBackground),
+                        contentScale = ContentScale.Crop
                     )
-                } else {
-                    Text(
-                        text = "Offline",
-                        color = Color.Gray,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-            }
-
-            if (isLive) {
-                Column(horizontalAlignment = Alignment.End) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isLive) {
                         Surface(
-                            modifier = Modifier.size(6.dp),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(12.dp),
                             shape = CircleShape,
-                            color = Color.Red
+                            color = SamtchTheme.colors.liveDot,
+                            border = BorderStroke(2.dp, Color.White)
                         ) {}
-                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = metadata?.user?.displayName ?: streamer,
+                        color = if (isPillFocused) Color.White else SamtchTheme.colors.primaryText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    val gameName = stream?.game?.name
+                    if (gameName != null) {
+                        Text(
+                            text = gameName,
+                            color = if (isLive) SamtchTheme.colors.accentColor else SamtchTheme.colors.secondaryText,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    } else if (!hasLoaded) {
+                        Text(
+                            text = "Loading...",
+                            color = SamtchTheme.colors.secondaryText,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    } else if (metadata == null) {
+                        Text(
+                            text = "GQL Error",
+                            color = SamtchTheme.colors.error,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    } else if (!isLive) {
+                        Text(
+                            text = "Offline",
+                            color = SamtchTheme.colors.secondaryText,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+
+                if (isLive) {
+                    Column(
+                        horizontalAlignment = Alignment.End, 
+                        modifier = Modifier.padding(end = 12.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
                         Text(
                             text = formatViewerCount(stream?.viewersCount ?: 0),
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelLarge,
+                            color = SamtchTheme.colors.primaryText,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = formatStreamDuration(stream?.createdAt),
+                            color = SamtchTheme.colors.accentColor,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Text(
-                        text = formatStreamDuration(stream?.createdAt),
-                        color = Color.Gray,
-                        style = MaterialTheme.typography.labelSmall
-                    )
                 }
+            }
+        }
+
+        // Side Remove Button
+        Surface(
+            modifier = Modifier
+                .size(72.dp)
+                .scale(removeScale)
+                .onFocusChanged { isRemoveFocused = it.isFocused }
+                .clickable { onRemove() }
+                .focusable(),
+            shape = CircleShape,
+            color = if (isRemoveFocused) SamtchTheme.colors.error.copy(alpha = 0.2f) else SamtchTheme.colors.tabButtonBackground,
+            border = if (isRemoveFocused) BorderStroke(2.dp, SamtchTheme.colors.error) else null
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove",
+                    tint = if (isRemoveFocused) SamtchTheme.colors.error else SamtchTheme.colors.primaryText.copy(alpha = 0.6f),
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }

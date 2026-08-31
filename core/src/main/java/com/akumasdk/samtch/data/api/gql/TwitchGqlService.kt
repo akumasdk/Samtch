@@ -3,18 +3,20 @@ package com.akumasdk.samtch.data.api.gql
 import android.util.Log
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.util.Constants
+import com.akumasdk.samtch.util.NetworkUtil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLHandshakeException
 
 /**
  * Service for fetching Twitch stream access tokens via GraphQL
@@ -25,11 +27,6 @@ import java.util.concurrent.TimeUnit
 object TwitchGqlService {
 
     private const val TAG = "TwitchGqlService"
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
 
     @Volatile
     private var cachedIntegrityToken: String? = null
@@ -49,33 +46,41 @@ object TwitchGqlService {
             cachedDynamicClientId?.let { return@withLock it }
 
             withContext(Dispatchers.IO) {
-                try {
-                    val request = Request.Builder()
-                        .url(Constants.Twitch.BASE_URL)
-                        .header("User-Agent", Constants.UserAgents.DESKTOP)
-                        .build()
+                suspend fun tryFetch(useRelaxed: Boolean): String? {
+                    try {
+                        val request = Request.Builder()
+                            .url(Constants.Twitch.BASE_URL)
+                            .header("User-Agent", Constants.UserAgents.DESKTOP)
+                            .build()
 
-                    val response = client.newCall(request).execute()
-                    val body = response.body.string()
+                        val response = NetworkUtil.getClient(useRelaxed).newCall(request).execute()
+                        val body = response.body.string()
 
-                    if (response.isSuccessful && body.isNotEmpty()) {
-                        val regex =
-                            """clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["']""".toRegex()
-                        val match = regex.find(body)
-                        val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }
-                            ?: match?.groupValues?.get(2)
+                        if (response.isSuccessful && body.isNotEmpty()) {
+                            val regex =
+                                """clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["']""".toRegex()
+                            val match = regex.find(body)
+                            val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }
+                                ?: match?.groupValues?.get(2)
 
-                        if (!scrapedId.isNullOrBlank()) {
-                            Log.d(TAG, "Successfully scraped dynamic Client-ID: $scrapedId")
-                            cachedDynamicClientId = scrapedId
-                            return@withContext scrapedId
+                            if (!scrapedId.isNullOrBlank()) {
+                                Log.d(TAG, "Successfully scraped dynamic Client-ID: $scrapedId (Relaxed: $useRelaxed)")
+                                cachedDynamicClientId = scrapedId
+                                return scrapedId
+                            }
                         }
+                    } catch (e: Exception) {
+                        val isSslError = e is SSLHandshakeException || e.message?.contains("Handshake", ignoreCase = true) == true || e.cause is SSLHandshakeException
+                        if (isSslError && !useRelaxed) {
+                            Log.w(TAG, "SSL Handshake failed for Client-ID, retrying with relaxed client...")
+                            return tryFetch(true)
+                        }
+                        Log.e(TAG, "Exception while scraping dynamic Client-ID (Relaxed: $useRelaxed)", e)
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Exception while scraping dynamic Client-ID", e)
+                    return null
                 }
 
-                Constants.Twitch.CLIENT_ID
+                tryFetch(false) ?: Constants.Twitch.CLIENT_ID
             }
         }
     }
@@ -87,33 +92,60 @@ object TwitchGqlService {
         withContext(Dispatchers.IO) {
             try {
                 val clientId = getDynamicClientId()
-                val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
                 
-                val payload = JSONObject().apply {
-                    put("operationName", "StreamMetadata")
-                    put("query", STREAM_METADATA_QUERY.trimIndent())
-                    put("variables", JSONObject().apply {
-                        put("login", channelName.lowercase())
-                    })
+                suspend fun fetchMetadata(token: String?, useRelaxed: Boolean): TwitchStreamMetadata? {
+                    return try {
+                        val payload = JSONObject().apply {
+                            put("operationName", "StreamMetadata")
+                            put("query", STREAM_METADATA_QUERY.trimIndent())
+                            put("variables", JSONObject().apply {
+                                put("login", channelName.lowercase())
+                            })
+                        }
+
+                        val requestBuilder = Request.Builder()
+                            .url(Constants.Twitch.Api.GQL)
+                            .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                            .addCommonHeaders(clientId)
+
+                        if (!token.isNullOrBlank()) {
+                            requestBuilder.header("Client-Integrity", token)
+                        }
+
+                        val response = NetworkUtil.getClient(useRelaxed).newCall(requestBuilder.build()).execute()
+                        val body = response.body.string()
+
+                        if (response.isSuccessful) {
+                            TwitchGqlMapper.mapStreamMetadata(body)
+                        } else {
+                            Log.e(TAG, "GQL Error for $channelName: ${response.code} body=$body")
+                            null
+                        }
+                    } catch (e: Exception) {
+                        val isSslError = e is SSLHandshakeException || e.message?.contains("Handshake", ignoreCase = true) == true || e.cause is SSLHandshakeException
+                        if (isSslError && !useRelaxed) {
+                            Log.w(TAG, "SSL Handshake failed for StreamMetadata, retrying with relaxed client...")
+                            return fetchMetadata(token, true)
+                        }
+                        Log.e(TAG, "Exception in fetchMetadata for $channelName (Relaxed: $useRelaxed)", e)
+                        null
+                    }
                 }
 
-                val requestBuilder = Request.Builder()
-                    .url(Constants.Twitch.Api.GQL)
-                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                    .addCommonHeaders(clientId)
+                // 1. Try without token
+                Log.d(TAG, "Fetching metadata for $channelName (Attempt 1: No Token)")
+                var metadata = fetchMetadata(null, false)
                 
-                if (!integrityToken.isNullOrBlank()) {
-                    requestBuilder.header("Client-Integrity", integrityToken)
+                // 2. Try with token if failed
+                if (metadata == null) {
+                    val token = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
+                    Log.d(TAG, "Fetching metadata for $channelName (Attempt 2: Token present: ${token != null})")
+                    metadata = fetchMetadata(token, false)
                 }
-
-                val response = client.newCall(requestBuilder.build()).execute()
-                val body = response.body.string()
-
-                if (!response.isSuccessful) return@withContext null
-
-                TwitchGqlMapper.mapStreamMetadata(body)
+                
+                metadata
             } catch (e: Exception) {
-                Log.e(TAG, "Error fetching stream metadata", e)
+                Log.e(TAG, "Exception in getStreamMetadata for $channelName", e)
                 null
             }
         }
@@ -121,40 +153,58 @@ object TwitchGqlService {
     suspend fun getUserId(channelName: String): String? = withContext(Dispatchers.IO) {
         try {
             val clientId = getDynamicClientId()
-
-            // Try with integrity token first, then without if it fails
             val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
 
-            val fetchId: suspend (String?) -> String? = { token ->
-                val payload = JSONObject().apply {
-                    put("operationName", "GetUserId")
-                    put("query", GET_USER_ID_QUERY.trimIndent())
-                    put("variables", JSONObject().apply {
-                        put("login", channelName.lowercase())
-                    })
+            suspend fun fetchId(token: String?, useRelaxed: Boolean): String? {
+                return try {
+                    val payload = JSONObject().apply {
+                        put("operationName", "GetUserId")
+                        val variables = JSONObject().apply {
+                            put("login", channelName.lowercase())
+                        }
+                        val extensions = JSONObject().apply {
+                            put("persistedQuery", JSONObject().apply {
+                                put("version", 1)
+                                put("sha256Hash", "e1ed0c80679e44906f47c09a9f4a39039e31d49110196715396d3bb2d48997fd")
+                            })
+                        }
+                        put("variables", variables)
+                        put("extensions", extensions)
+                    }
+
+                    val requestBuilder = Request.Builder()
+                        .url(Constants.Twitch.Api.GQL)
+                        .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                        .addCommonHeaders(clientId)
+
+                    if (!token.isNullOrBlank()) {
+                        requestBuilder.header("Client-Integrity", token)
+                    }
+
+                    val response = NetworkUtil.getClient(useRelaxed).newCall(requestBuilder.build()).execute()
+                    val body = response.body.string()
+                    if (response.isSuccessful) {
+                        val json = JSONObject(body)
+                        json.optJSONObject("data")?.optJSONObject("user")?.optString("id")?.takeIf { it.isNotEmpty() }
+                    } else {
+                        Log.e(TAG, "GQL GetUserId Error for $channelName: ${response.code} body=$body")
+                        null
+                    }
+                } catch (e: Exception) {
+                    val isSslError = e is SSLHandshakeException || e.message?.contains("Handshake", ignoreCase = true) == true || e.cause is SSLHandshakeException
+                    if (isSslError && !useRelaxed) {
+                        Log.w(TAG, "SSL Handshake failed for GetUserId, retrying with relaxed client...")
+                        return fetchId(token, true)
+                    }
+                    Log.e(TAG, "Error fetching user ID for $channelName (Relaxed: $useRelaxed)", e)
+                    null
                 }
-
-                val requestBuilder = Request.Builder()
-                    .url(Constants.Twitch.Api.GQL)
-                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                    .addCommonHeaders(clientId)
-
-                if (!token.isNullOrBlank()) {
-                    requestBuilder.header("Client-Integrity", token)
-                }
-
-                val response = client.newCall(requestBuilder.build()).execute()
-                val body = response.body.string()
-                if (response.isSuccessful) {
-                    val json = JSONObject(body)
-                    json.optJSONObject("data")?.optJSONObject("user")?.optString("id")?.takeIf { it.isNotEmpty() }
-                } else null
             }
 
-            var id = fetchId(integrityToken)
-            if (id == null && integrityToken != null) {
-                // Try once more without integrity token if it failed
-                id = fetchId(null)
+            var id = fetchId(integrityToken, false)
+            if (id == null) {
+                delay(500)
+                id = fetchId(null, false)
             }
             
             if (id == null) {
@@ -178,29 +228,18 @@ object TwitchGqlService {
             displayName
             description
             profileImageURL(width: 300)
-            createdAt
-            roles {
-              isPartner
-            }
             stream {
               id
               title
               type
               viewersCount
-              previewImageURL(height: 480, width: 853)
               createdAt
+              previewImageURL(width: 1280, height: 720)
               game {
+                id
                 name
               }
             }
-          }
-        }
-    """
-
-    private const val GET_USER_ID_QUERY = """
-        query GetUserId(${"$"}login: String!) {
-          user(login: ${"$"}login) {
-            id
           }
         }
     """
@@ -218,7 +257,7 @@ object TwitchGqlService {
     /**
      * Fetches a new Integrity Token from Twitch.
      */
-    private suspend fun fetchIntegrityToken(clientId: String): String? =
+    private suspend fun fetchIntegrityToken(clientId: String, useRelaxed: Boolean = false): String? =
         withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
@@ -227,7 +266,7 @@ object TwitchGqlService {
                     .addCommonHeaders(clientId)
                     .build()
 
-                val response = client.newCall(request).execute()
+                val response = NetworkUtil.getClient(useRelaxed).newCall(request).execute()
                 val body = response.body.string()
 
                 if (!response.isSuccessful) {
@@ -243,7 +282,12 @@ object TwitchGqlService {
                     return@withContext token
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to fetch integrity token", e)
+                val isSslError = e is SSLHandshakeException || e.message?.contains("Handshake", ignoreCase = true) == true || e.cause is SSLHandshakeException
+                if (isSslError && !useRelaxed) {
+                    Log.w(TAG, "SSL Handshake failed for integrity token, retrying relaxed...")
+                    return@withContext fetchIntegrityToken(clientId, true)
+                }
+                Log.e(TAG, "Failed to fetch integrity token (Relaxed: $useRelaxed)", e)
             }
             null
         }
@@ -299,7 +343,8 @@ object TwitchGqlService {
         channelName: String,
         clientId: String,
         integrityToken: String?,
-        playerType: String
+        playerType: String,
+        useRelaxed: Boolean = false
     ): Pair<String, String>? {
         return try {
             val payload = createPlaybackAccessTokenPayload(channelName, playerType)
@@ -313,7 +358,7 @@ object TwitchGqlService {
                 requestBuilder.header("Client-Integrity", integrityToken)
             }
 
-            val response = client.newCall(requestBuilder.build()).execute()
+            val response = NetworkUtil.getClient(useRelaxed).newCall(requestBuilder.build()).execute()
             val responseBody = response.body.string()
 
             if (!response.isSuccessful) {
@@ -323,7 +368,12 @@ object TwitchGqlService {
 
             TwitchGqlMapper.mapPlaybackAccessToken(responseBody)
         } catch (e: Exception) {
-            Log.e(TAG, "Playback token request exception ($playerType)", e)
+            val isSslError = e is SSLHandshakeException || e.message?.contains("Handshake", ignoreCase = true) == true || e.cause is SSLHandshakeException
+            if (isSslError && !useRelaxed) {
+                Log.w(TAG, "SSL Handshake failed for PlaybackToken, retrying relaxed...")
+                return getPlaybackAccessTokenOnce(channelName, clientId, integrityToken, playerType, true)
+            }
+            Log.e(TAG, "Playback token request exception ($playerType, Relaxed: $useRelaxed)", e)
             null
         }
     }

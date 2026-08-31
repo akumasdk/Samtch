@@ -288,6 +288,21 @@ object SettingsManager {
         }
     }
 
+    suspend fun removeRecentStreamer(context: Context, streamer: String) {
+        context.dataStore.edit { preferences ->
+            val currentJson = preferences[RECENT_STREAMERS] ?: return@edit
+            val currentList = try {
+                Json.decodeFromString<List<String>>(currentJson).toMutableList()
+            } catch (_: Exception) {
+                mutableListOf()
+            }
+
+            if (currentList.removeAll { it.equals(streamer, ignoreCase = true) }) {
+                preferences[RECENT_STREAMERS] = Json.encodeToString(currentList)
+            }
+        }
+    }
+
     // Auth methods
     fun getAuthToken(context: Context): Flow<String?> = context.dataStore.data.map { it[AUTH_TOKEN] }
     fun getAuthClientId(context: Context): Flow<String?> = context.dataStore.data.map { it[AUTH_CLIENT_ID] }
