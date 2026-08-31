@@ -96,6 +96,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core"))
     api(libs.compose.webview.multiplatform)
     implementation(libs.androidx.compose.material3)
     implementation(libs.google.material)

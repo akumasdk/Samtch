@@ -1,0 +1,4 @@
+<resources>
+    <string name="pip_action_refresh">Refresh</string>
+    <string name="pip_action_refresh_description">Refresh player</string>
+</resources>

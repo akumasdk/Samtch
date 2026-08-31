@@ -424,16 +424,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val authState = TwitchAuthManager.getAuthState(getApplication())
         
         // 1. Manually inject the message for immediate feedback
-        if (authState.isLoggedIn && !authState.userName.isNullOrEmpty()) {
+        val userName = authState.userName
+        if (authState.isLoggedIn && !userName.isNullOrEmpty()) {
             val tags = userTags.toMutableMap()
             if (!tags.containsKey("display-name")) {
-                tags["display-name"] = authState.userName
+                tags["display-name"] = userName
             }
 
             val syntheticMsg = IrcMessage(
                 id = UUID.randomUUID().toString(),
                 raw = "", // Raw isn't needed for mapping
-                prefix = "${authState.userName}!${authState.userName}@${authState.userName}.tmi.twitch.tv",
+                prefix = "$userName!$userName@$userName.tmi.twitch.tv",
                 command = "PRIVMSG",
                 params = listOf("#$channel", message),
                 tags = tags

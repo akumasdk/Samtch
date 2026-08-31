@@ -24,4 +24,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Samtch"
 include(":app")
+include(":core")
+include(":tv")
  
