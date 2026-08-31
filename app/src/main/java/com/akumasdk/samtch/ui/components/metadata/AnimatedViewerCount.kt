@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.ui.theme.SamtchTheme
-import com.akumasdk.samtch.ui.components.metadata.util.formatViewerCount
+import com.akumasdk.samtch.util.metadata.formatViewerCount
 
 @Composable
 fun AnimatedViewerCount(

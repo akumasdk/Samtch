@@ -37,9 +37,9 @@ import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.model.TwitchUser
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchTheme
-import com.akumasdk.samtch.ui.components.metadata.util.formatDate
-import com.akumasdk.samtch.ui.components.metadata.util.formatStreamDuration
-import com.akumasdk.samtch.ui.components.metadata.util.formatViewerCount
+import com.akumasdk.samtch.util.metadata.formatDate
+import com.akumasdk.samtch.util.metadata.formatStreamDuration
+import com.akumasdk.samtch.util.metadata.formatViewerCount
 import com.akumasdk.samtch.util.Constants
 
 @SuppressLint("ConfigurationScreenWidthHeight")

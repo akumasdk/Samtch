@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.ui.components.metadata.util
+package com.akumasdk.samtch.util.metadata
 
 import java.time.Duration
 import java.time.Instant

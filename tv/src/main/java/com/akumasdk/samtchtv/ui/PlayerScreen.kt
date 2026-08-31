@@ -1,6 +1,12 @@
 package com.akumasdk.samtchtv.ui
 
 import android.util.Log
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.ui.platform.LocalView
+import android.app.Activity
+import android.view.WindowManager
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
@@ -18,6 +24,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.blur
+import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ExtM3UParser
 import com.akumasdk.samtch.util.ExtMediaEntry
 import okhttp3.OkHttpClient
@@ -62,6 +70,15 @@ enum class ChatMode {
 @Composable
 fun PlayerScreen(channel: String, onBack: () -> Unit) {
     val context = LocalContext.current
+    val view = LocalView.current
+    
+    // Completely hide and block the keyboard
+    LaunchedEffect(Unit) {
+        val window = (context as? Activity)?.window ?: return@LaunchedEffect
+        val controller = WindowInsetsControllerCompat(window, view)
+        controller.hide(WindowInsetsCompat.Type.ime())
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+    }
     
     val exoPlayer = remember {
         val dataSourceFactory = StreamingPlayerFactory.getDataSourceFactory()
@@ -87,6 +104,7 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
     var selectedQualityUrl by remember { mutableStateOf<String?>(null) }
     var showQualityDialog by remember { mutableStateOf(false) }
     
+    var previewUrl by remember { mutableStateOf<String?>(null) }
     var playbackState by remember { mutableIntStateOf(Player.STATE_IDLE) }
     
     DisposableEffect(exoPlayer) {
@@ -165,6 +183,15 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
     }
 
     LaunchedEffect(channel) {
+        val metadata = TwitchGqlService.getStreamMetadata(channel)
+        val rawUrl = metadata?.user?.stream?.previewImageUrl 
+            ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
+        
+        // Ensure high resolution for TV (replace placeholders or existing dimensions)
+        previewUrl = rawUrl
+            .replace("{width}", "1280").replace("{height}", "720")
+            .replace("853x480", "1280x720")
+            
         EmoteRepository.loadGlobalEmotes(context)
         EmoteRepository.loadChannelEmotes(context, channel)
     }
@@ -183,6 +210,9 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
             chatClient.disconnect()
             FpsMonitor.stop()
             PlaybackWatchdog.stop()
+            
+            // Re-allow keyboard when leaving player
+            (context as? Activity)?.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED)
         }
     }
 
@@ -262,9 +292,19 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
         // Loading Animation
         if (playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
+                previewUrl?.let { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.6f
+                    )
+                }
+
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(
                         color = Color.Magenta,

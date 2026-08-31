@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -38,14 +39,13 @@ import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.data.settings.SettingsManager
 import kotlinx.coroutines.launch
-import java.time.Duration
-import java.time.Instant
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import com.akumasdk.samtch.util.metadata.formatStreamDuration
+import com.akumasdk.samtch.util.metadata.formatViewerCount
 
 @Composable
 fun LandingScreen(onChannelSelected: (String) -> Unit) {
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
     var streamerName by remember { mutableStateOf("") }
     val recentStreamers by SettingsManager.getRecentStreamers(context).collectAsState(initial = emptyList())
@@ -110,6 +110,7 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
                     onClick = {
                         val sanitized = streamerName.trim()
                         if (sanitized.isNotBlank()) {
+                            keyboardController?.hide()
                             scope.launch {
                                 SettingsManager.addRecentStreamer(context, sanitized)
                                 onChannelSelected(sanitized)
@@ -166,6 +167,7 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
                     ) {
                         items(recentStreamers) { streamer ->
                             HistoryItem(streamer = streamer, onClick = {
+                                keyboardController?.hide()
                                 scope.launch {
                                     SettingsManager.addRecentStreamer(context, streamer)
                                     onChannelSelected(streamer)
@@ -271,14 +273,14 @@ fun HistoryItem(streamer: String, onClick: () -> Unit) {
                         ) {}
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = formatViewers(stream?.viewersCount ?: 0),
+                            text = formatViewerCount(stream?.viewersCount ?: 0),
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Text(
-                        text = formatUptime(stream?.createdAt),
+                        text = formatStreamDuration(stream?.createdAt),
                         color = Color.Gray,
                         style = MaterialTheme.typography.labelSmall
                     )
@@ -288,28 +290,4 @@ fun HistoryItem(streamer: String, onClick: () -> Unit) {
     }
 }
 
-private fun formatViewers(count: Int): String {
-    return when {
-        count >= 1_000_000 -> "%.1fM".format(count / 1_000_000f)
-        count >= 1_000 -> "%.1fK".format(count / 1_000f)
-        else -> count.toString()
-    }
-}
-
-private fun formatUptime(createdAt: String?): String {
-    if (createdAt == null) return "00:00"
-    return try {
-        val start = Instant.parse(createdAt)
-        val now = Instant.now()
-        val duration = Duration.between(start, now)
-        val hours = duration.toHours()
-        val minutes = duration.toMinutes() % 60
-        if (hours > 0) {
-            "%dh %dm".format(hours, minutes)
-        } else {
-            "%dm".format(minutes)
-        }
-    } catch (e: Exception) {
-        "0m"
-    }
-}
+/* Shared metadata utils used instead */

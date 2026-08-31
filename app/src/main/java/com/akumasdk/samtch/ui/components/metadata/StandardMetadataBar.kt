@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import com.akumasdk.samtch.ui.theme.SamtchTheme
-import com.akumasdk.samtch.ui.components.metadata.util.formatStreamDuration
+import com.akumasdk.samtch.util.metadata.formatStreamDuration
 
 @Composable
 internal fun StandardMetadataBar(
