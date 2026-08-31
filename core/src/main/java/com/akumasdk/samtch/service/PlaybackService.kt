@@ -135,6 +135,21 @@ class PlaybackService : MediaSessionService() {
 
         // Start FPS Monitoring
         com.akumasdk.samtch.util.FpsMonitor.start(exoPlayer!!)
+        com.akumasdk.samtch.util.PlaybackWatchdog.start(exoPlayer!!) {
+            Log.e("PlaybackService", "Watchdog triggered recovery! Refreshing stream.")
+            val currentItem = exoPlayer?.currentMediaItem
+            if (currentItem != null) {
+                serviceScope.launch {
+                    val resolvedItems = resolveMediaItem(currentItem)
+                    val resolvedItem = resolvedItems.firstOrNull()
+                    if (resolvedItem != null) {
+                        exoPlayer?.setMediaItem(resolvedItem)
+                        exoPlayer?.prepare()
+                        exoPlayer?.play()
+                    }
+                }
+            }
+        }
 
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
@@ -353,6 +368,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         com.akumasdk.samtch.util.FpsMonitor.stop()
+        com.akumasdk.samtch.util.PlaybackWatchdog.stop()
         try { unregisterReceiver(stopReceiver) } catch (_: Exception) {}
         mediaSession?.run {
             player.release()
@@ -426,57 +442,61 @@ class PlaybackService : MediaSessionService() {
         }
 
         private suspend fun resolveMediaItem(item: MediaItem): MutableList<MediaItem> {
-            val channelName = item.mediaId
-            val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(this@PlaybackService)
+            return this@PlaybackService.resolveMediaItem(item)
+        }
+    }
 
-            val tokenPairDeferred = serviceScope.async { TwitchGqlService.getPlaybackAccessToken(channelName) }
-            val metadataDeferred = serviceScope.async { 
-                if (auth.isLoggedIn) {
-                    try {
-                        val helixUser = HelixApiClient.getUsers(this@PlaybackService, logins = listOf(channelName)).getOrNull()?.firstOrNull()
-                        val helixStream = HelixApiClient.getStreamMetadata(this@PlaybackService, channelName).getOrNull()
-                        if (helixUser != null) {
-                            return@async TwitchHelixMapper.mapHelixToMetadata(helixUser, helixStream)
-                        }
-                    } catch (_: Exception) {}
-                }
-                TwitchGqlService.getStreamMetadata(channelName)
+    private suspend fun resolveMediaItem(item: MediaItem): MutableList<MediaItem> {
+        val channelName = item.mediaId
+        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(this@PlaybackService)
+
+        val tokenPairDeferred = serviceScope.async { TwitchGqlService.getPlaybackAccessToken(channelName) }
+        val metadataDeferred = serviceScope.async { 
+            if (auth.isLoggedIn) {
+                try {
+                    val helixUser = HelixApiClient.getUsers(this@PlaybackService, logins = listOf(channelName)).getOrNull()?.firstOrNull()
+                    val helixStream = HelixApiClient.getStreamMetadata(this@PlaybackService, channelName).getOrNull()
+                    if (helixUser != null) {
+                        return@async TwitchHelixMapper.mapHelixToMetadata(helixUser, helixStream)
+                    }
+                } catch (_: Exception) {}
             }
+            TwitchGqlService.getStreamMetadata(channelName)
+        }
+        
+        val tokenPair = tokenPairDeferred.await()
+        val detailedMetadata = metadataDeferred.await()
+        
+        return if (tokenPair != null) {
+            val hlsUrl = TwitchGqlService.buildHlsUrl(channelName, tokenPair.first, tokenPair.second)
+            val user = detailedMetadata?.user
+            val stream = user?.stream
             
-            val tokenPair = tokenPairDeferred.await()
-            val detailedMetadata = metadataDeferred.await()
+            val previewUri = PreviewImageService.getProcessedUrl(
+                stream?.previewImageUrl, 
+                channelName,
+                PreviewImageService.NOTIFICATION_WIDTH,
+                PreviewImageService.NOTIFICATION_HEIGHT
+            ).toUri()
             
-            return if (tokenPair != null) {
-                val hlsUrl = TwitchGqlService.buildHlsUrl(channelName, tokenPair.first, tokenPair.second)
-                val user = detailedMetadata?.user
-                val stream = user?.stream
-                
-                val previewUri = PreviewImageService.getProcessedUrl(
-                    stream?.previewImageUrl, 
-                    channelName,
-                    PreviewImageService.NOTIFICATION_WIDTH,
-                    PreviewImageService.NOTIFICATION_HEIGHT
-                ).toUri()
-                
-                val newItem = item.buildUpon()
-                    .setUri(hlsUrl.toUri())
-                    .setLiveConfiguration(com.akumasdk.samtch.util.BufferingManager.getLiveConfiguration())
-                    .setMediaMetadata(
-                        item.mediaMetadata.buildUpon()
-                            .setTitle(stream?.title ?: item.mediaMetadata.title ?: channelName)
-                            .setArtist(user?.displayName ?: item.mediaMetadata.artist ?: channelName)
-                            .setAlbumTitle(stream?.game?.name)
-                            .setArtworkUri(previewUri)
-                            .setIsBrowsable(false)
-                            .setIsPlayable(true)
-                            .setMediaType(MediaMetadata.MEDIA_TYPE_VIDEO)
-                            .build()
-                    )
-                    .build()
-                mutableListOf(newItem)
-            } else {
-                mutableListOf(item)
-            }
+            val newItem = item.buildUpon()
+                .setUri(hlsUrl.toUri())
+                .setLiveConfiguration(com.akumasdk.samtch.util.BufferingManager.getLiveConfiguration())
+                .setMediaMetadata(
+                    item.mediaMetadata.buildUpon()
+                        .setTitle(stream?.title ?: item.mediaMetadata.title ?: channelName)
+                        .setArtist(user?.displayName ?: item.mediaMetadata.artist ?: channelName)
+                        .setAlbumTitle(stream?.game?.name)
+                        .setArtworkUri(previewUri)
+                        .setIsBrowsable(false)
+                        .setIsPlayable(true)
+                        .setMediaType(MediaMetadata.MEDIA_TYPE_VIDEO)
+                        .build()
+                )
+                .build()
+            mutableListOf(newItem)
+        } else {
+            mutableListOf(item)
         }
     }
 }

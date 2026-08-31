@@ -61,6 +61,8 @@ import androidx.media3.common.Player
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.R
+import com.akumasdk.samtch.util.FpsMonitor
+import com.akumasdk.samtch.util.PlaybackWatchdog
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.components.chat.TwitchChat
@@ -284,6 +286,19 @@ fun TwitchPlayer(
                 Log.d("TwitchPlayer", "Disposing player for channel: $channel")
                 playerViewModel.disconnectMediaController()
                 chatViewModel.disconnect()
+                FpsMonitor.stop()
+                PlaybackWatchdog.stop()
+            }
+        }
+
+        LaunchedEffect(playerViewModel.mediaController) {
+            val controller = playerViewModel.mediaController
+            if (controller != null) {
+                FpsMonitor.start(controller)
+                PlaybackWatchdog.start(controller) {
+                    Log.e("TwitchPlayer", "Watchdog triggered recovery for $channel")
+                    playerViewModel.updateMediaItem(channel, force = true)
+                }
             }
         }
 

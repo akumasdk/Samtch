@@ -1,29 +1,46 @@
+# Build artifacts
+**/build/
+**/bin/
+**/gen/
+**/out/
+.gradle/
+.navigation/
+.externalNativeBuild/
+.cxx/
+captures/
+
+# IDE files
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+Thumbs.db
+
+# Android Specific
 local.properties
+*.apk
+*.ap_
+*.dex
+*.class
 
-.idea
-
-# Keystore files
+# Keystore / Secrets
 *.jks
 *.keystore
 keystore.properties
-
-# Release notes
-release-notes.txt
-
-# Base64 encoded keystores (for GitHub Secrets setup)
 *.base64.txt
 
+# Artifacts & Documentation
+.artifacts/
+release-notes.txt
+
+# Log files
+*.log
+
+# Gradle
+.gradle
+gradle-app.setting
+!gradle-wrapper.jar

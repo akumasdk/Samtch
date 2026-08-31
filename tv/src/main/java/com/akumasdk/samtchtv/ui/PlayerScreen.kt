@@ -1,5 +1,6 @@
 package com.akumasdk.samtchtv.ui
 
+import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
@@ -42,6 +43,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
 import com.akumasdk.samtch.util.BufferingManager
+import com.akumasdk.samtch.util.FpsMonitor
+import com.akumasdk.samtch.util.PlaybackWatchdog
 import com.akumasdk.samtch.util.StreamingPlayerFactory
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.service.TwitchChatClient
@@ -59,7 +62,6 @@ enum class ChatMode {
 @Composable
 fun PlayerScreen(channel: String, onBack: () -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     
     val exoPlayer = remember {
         val dataSourceFactory = StreamingPlayerFactory.getDataSourceFactory()
@@ -166,11 +168,21 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
         EmoteRepository.loadGlobalEmotes(context)
         EmoteRepository.loadChannelEmotes(context, channel)
     }
+    
+    LaunchedEffect(exoPlayer) {
+        FpsMonitor.start(exoPlayer)
+        PlaybackWatchdog.start(exoPlayer) {
+            Log.e("PlayerScreen", "Watchdog triggered recovery!")
+            refreshTrigger++
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
             chatClient.disconnect()
+            FpsMonitor.stop()
+            PlaybackWatchdog.stop()
         }
     }
 
