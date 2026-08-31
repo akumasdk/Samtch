@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Centered group with scaling and translation -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.75"
+        android:scaleY="0.75"
+        android:translateY="2">
+
+        <!-- Twitch-style Chat Bubble Shape with Rounded Corners -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M31,25 h46 a6,6 0 0 1 6,6 v28 a6,6 0 0 1 -6,6 h-9 l-10,10 v-10 h-27 a6,6 0 0 1 -6,-6 v-28 a6,6 0 0 1 6,-6 z" />
+
+        <!-- Main Play Arrow inside bubble -->
+        <path
+            android:fillColor="#000000"
+            android:pathData="M50,36 L69,45 L50,54 Z" />
+
+        <!-- Secondary decorative arrow -->
+        <path
+            android:fillColor="#000000"
+            android:fillAlpha="0.6"
+            android:pathData="M40,36 L69,45 L50,54 Z"  />
+
+        <path
+            android:fillColor="#000000"
+            android:fillAlpha="0.6"
+            android:pathData="M29,36 L69,45 L50,54 Z"  />
+    </group>
+
+</vector>
