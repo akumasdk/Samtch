@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.tv
+package com.akumasdk.samtchtv
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.akumasdk.samtch.tv.ui.LandingScreen
-import com.akumasdk.samtch.tv.ui.PlayerScreen
+import com.akumasdk.samtchtv.ui.LandingScreen
+import com.akumasdk.samtchtv.ui.PlayerScreen
 
 class TvMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

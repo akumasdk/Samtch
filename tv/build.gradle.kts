@@ -13,11 +13,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.akumasdk.samtch.tv"
+    namespace = "com.akumasdk.samtchtv"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.magumboi.samtch.tv"
+        applicationId = "com.magumboi.samtchtv"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

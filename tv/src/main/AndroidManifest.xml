@@ -12,7 +12,7 @@
         android:theme="@style/Theme.SamtchTV">
 
         <activity
-            android:name=".TvMainActivity"
+            android:name="com.akumasdk.samtchtv.TvMainActivity"
             android:exported="true"
             android:theme="@style/Theme.SamtchTV">
             <intent-filter>

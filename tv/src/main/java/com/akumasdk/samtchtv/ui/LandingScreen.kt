@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.tv.ui
+package com.akumasdk.samtchtv.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -74,18 +74,13 @@ fun LandingScreen(onChannelSelected: (String) -> Unit) {
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Samtch",
+                    text = "Samtch TV",
                     style = MaterialTheme.typography.displayMedium,
                     color = Color.Magenta,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-2).sp
                 )
-                Text(
-                    text = "TV EDITION",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 48.dp)
-                )
+                Spacer(modifier = Modifier.height(48.dp))
 
                 OutlinedTextField(
                     value = streamerName,

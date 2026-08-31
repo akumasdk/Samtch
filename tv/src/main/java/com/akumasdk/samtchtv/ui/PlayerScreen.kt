@@ -1,4 +1,4 @@
-package com.akumasdk.samtch.tv.ui
+package com.akumasdk.samtchtv.ui
 
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
