@@ -21,6 +21,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.akumasdk.samtch.ui.theme.LocalStreamPreview
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
@@ -113,6 +114,8 @@ fun PlayerBackground(
                     model = ImageRequest.Builder(context)
                         .data(url)
                         .crossfade(true)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
                         .allowHardware(false) // Required for Palette to read the bitmap
                         .build(),
                     contentDescription = null,

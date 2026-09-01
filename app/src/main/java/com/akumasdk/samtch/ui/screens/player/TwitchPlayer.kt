@@ -116,9 +116,7 @@ fun TwitchPlayer(
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {},
 ) {
     BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SamtchTheme.colors.twitchPurple.copy(alpha = 0.05f)) // Subtlest hint of color
+        modifier = Modifier.fillMaxSize()
     ) {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
@@ -133,8 +131,9 @@ fun TwitchPlayer(
         val avatarUrl = playerViewModel.avatarUrl
         val streamSubtitle = playerViewModel.streamSubtitle
 
-        // 0. ABSOLUTE BASE BACKGROUND (Lives outside animation scopes)
-        // High opacity and blur to fill any gaps during layout morphing
+        // 0. ABSOLUTE MASTER BACKGROUND
+        // This background is the foundation for all player states (Full, Portrait).
+        // It is hidden when minimized to avoid covering the browser.
         if (!isMinimized) {
             PlayerBackground(
                 channel = channel,
@@ -144,7 +143,7 @@ fun TwitchPlayer(
                 contentScale = ContentScale.FillBounds,
                 alpha = if (SamtchTheme.colors.dialogBackground.luminance() < 0.5f) 0.6f else 0.15f,
                 blurRadius = 120.dp,
-                containerColor = Color.Transparent
+                containerColor = SamtchTheme.colors.rootBackground
             )
         }
 
@@ -714,39 +713,28 @@ fun TwitchPlayer(
                                 )
                         ) {
                             if (isPip && portraitMode == PortraitMode.CHAT_ONLY) {
-                                val bgAlpha = if (isImmersiveEnabled) 0.3f else 0f
-                                val bgBlur = if (isImmersiveEnabled) 60.dp else 0.dp
                                 val surfaceAlpha = if (isImmersiveEnabled) {
                                     if (SamtchTheme.colors.dialogBackground.luminance() > 0.5f) 0.94f else 0.82f
                                 } else 1.0f
 
-                                PlayerBackground(
-                                    channel = channel,
-                                    previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                                    modifier = Modifier.fillMaxSize(),
-                                    alpha = bgAlpha,
-                                    blurRadius = bgBlur,
-                                    contentScale = ContentScale.FillBounds
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(
-                                                SamtchTheme.colors.chatBackground.copy(
-                                                    alpha = surfaceAlpha
-                                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            SamtchTheme.colors.chatBackground.copy(
+                                                alpha = surfaceAlpha
                                             )
-                                    ) {
-                                        chatContent(
-                                            ChatContentConfig(
-                                                isCompact = true,
-                                                showInput = false,
-                                                refreshTrigger = refreshTrigger,
-                                                isFullscreen = isFullscreen
-                                            ),
-                                            Modifier.fillMaxSize()
                                         )
-                                    }
+                                ) {
+                                    chatContent(
+                                        ChatContentConfig(
+                                            isCompact = true,
+                                            showInput = false,
+                                            refreshTrigger = refreshTrigger,
+                                            isFullscreen = isFullscreen
+                                        ),
+                                        Modifier.fillMaxSize()
+                                    )
                                 }
                             } else {
                                 playerContent(Modifier.fillMaxSize()) {

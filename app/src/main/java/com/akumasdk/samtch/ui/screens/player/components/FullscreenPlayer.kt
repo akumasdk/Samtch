@@ -97,28 +97,21 @@ fun FullscreenPlayer(
                    fadeOut(animationSpec = tween(300))
         ) {
             val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
-            val bgAlpha = if (isImmersiveEnabled && isActuallyDark) 0.35f else 0f
-            val bgBlur = if (isImmersiveEnabled && isActuallyDark) 60.dp else 0.dp
-            val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.4f else 1.0f
+            val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.65f else 1.0f
 
-            PlayerBackground(
-                channel = channel,
-                previewUrl = previewImageUrl,
+            Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(chatRatio),
-                alpha = if (isActuallyDark) bgAlpha else 0f,
-                blurRadius = bgBlur,
-                contentScale = ContentScale.FillBounds
+                    .fillMaxWidth(chatRatio)
+                    .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
                         .systemBarsPadding()
                         .displayCutoutPadding()
                 ) {
-                    // 1. Chat area (Background layer)
+                    // 1. Chat area
                     Box(modifier = Modifier.fillMaxSize()) {
                         chatContent(
                             ChatContentConfig(

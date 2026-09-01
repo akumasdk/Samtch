@@ -2,8 +2,8 @@ package com.akumasdk.samtch.ui.screens.player.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,10 +75,12 @@ fun PortraitPlayer(
     }
 
     val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
-    val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.4f else 1.0f
+    val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.15f else 0f
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SamtchTheme.colors.rootBackground.copy(alpha = surfaceAlpha))
     ) {
         Column(
             modifier = Modifier
