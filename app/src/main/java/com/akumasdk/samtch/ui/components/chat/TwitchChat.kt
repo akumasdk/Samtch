@@ -41,12 +41,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -56,7 +54,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.components.chat.emote.EmoteInfoDialog
 import com.akumasdk.samtch.ui.components.chat.emote.BadgeInfoDialog
 import com.akumasdk.samtch.ui.components.chat.user.UserInfoDialog
@@ -85,6 +82,7 @@ fun TwitchChat(
     viewModel: ChatViewModel,
     portraitMode: PortraitMode? = null,
     onToggleMode: (() -> Unit)? = null,
+    onInteraction: () -> Unit = {},
     onLoginRequested: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     previewImageUrl: String? = null,
@@ -102,6 +100,7 @@ fun TwitchChat(
             viewModel = viewModel,
             portraitMode = portraitMode,
             onToggleMode = onToggleMode,
+            onInteraction = onInteraction,
             onLoginRequested = onLoginRequested,
             onSettingsClick = onSettingsClick,
             previewImageUrl = previewImageUrl
@@ -126,6 +125,7 @@ private fun NativeChatContainer(
     viewModel: ChatViewModel,
     portraitMode: PortraitMode?,
     onToggleMode: (() -> Unit)?,
+    onInteraction: () -> Unit,
     onLoginRequested: () -> Unit,
     onSettingsClick: () -> Unit,
     previewImageUrl: String?,
@@ -139,7 +139,6 @@ private fun NativeChatContainer(
     val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
 
     val isImmersiveBackgroundEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
-    // General chat immersive mode (background image + surface translucency) is dark-only
     val isImmersiveEnabled = isImmersiveBackgroundEnabled && isActuallyDark
 
     val isEmoteMenuVisible by viewModel.isEmoteMenuVisible.collectAsState()
@@ -182,10 +181,6 @@ private fun NativeChatContainer(
     }
     
     Box(modifier = modifier.fillMaxSize()) {
-        if (isImmersiveEnabled) {
-            ChatImmersiveBackground(channel, previewImageUrl)
-        }
-
         Column(modifier = Modifier.fillMaxSize()) {
             NativeTwitchChat(
                 channel = channel,
@@ -233,6 +228,7 @@ private fun NativeChatContainer(
                     isLandscape = isLandscape,
                     portraitMode = portraitMode,
                     onToggleMode = onToggleMode,
+                    onInteraction = onInteraction,
                     onLoginRequested = onLoginRequested,
                     onSettingsClick = onSettingsClick,
                     previewImageUrl = previewImageUrl,
@@ -241,22 +237,8 @@ private fun NativeChatContainer(
             }
         }
 
-        ChatDialogs(viewModel)
+        ChatDialogs(viewModel, isFullscreen = isLandscape)
     }
-}
-
-@Composable
-private fun ChatImmersiveBackground(channel: String, previewImageUrl: String?) {
-    val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
-    val imageAlpha = if (isLightMode) 0.7f else 0.65f
-    PlayerBackground(
-        channel = channel,
-        previewUrl = previewImageUrl,
-        alpha = imageAlpha,
-        blurRadius = 150.dp,
-        contentScale = ContentScale.FillBounds,
-        modifier = Modifier.fillMaxSize()
-    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -275,6 +257,7 @@ private fun ChatInputArea(
     isLandscape: Boolean,
     portraitMode: PortraitMode?,
     onToggleMode: (() -> Unit)?,
+    onInteraction: () -> Unit,
     onLoginRequested: () -> Unit,
     onSettingsClick: () -> Unit,
     previewImageUrl: String?,
@@ -288,7 +271,6 @@ private fun ChatInputArea(
     val surfaceAlpha = if (isImmersiveEnabled) {
         if (isLightMode) 0.82f else 0.78f
     } else 1.0f
-    val imageAlpha = if (isLightMode) 0.7f else 0.65f
 
     Surface(
         modifier = modifier
@@ -303,119 +285,111 @@ private fun ChatInputArea(
         border = if (isImmersiveEnabled) BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)) else null,
         tonalElevation = 0.dp
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            if (isImmersiveEnabled) {
-                PlayerBackground(
-                    alpha = imageAlpha,
-                    blurRadius = 150.dp,
-                    contentScale = ContentScale.FillBounds,
-                    containerColor = Color.Transparent,
-                    modifier = Modifier.matchParentSize()
-                )
+        Column {
+            SystemNoticeBanner(
+                message = systemNotice,
+                onDismiss = { viewModel.dismissSystemNotice() },
+                isImmersiveEnabled = isImmersiveEnabled,
+                isCompact = portraitMode == null,
+                channel = channel,
+                previewImageUrl = previewImageUrl
+            )
+            ChatInputBox(
+                isLoggedIn = isLoggedIn,
+                onSendMessage = { text ->
+                    coroutineScope.launch {
+                        viewModel.sendMessage(text)
+                    }
+                },
+                onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
+                isEmoteMenuVisible = isEmoteMenuVisible,
+                suggestions = emoteSuggestions,
+                onEmoteSelected = { emote ->
+                    viewModel.recordEmoteUsage(context, emote)
+                },
+                onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                onTextChange = { text, pos -> 
+                    viewModel.updateSuggestions(text, pos)
+                    onInteraction()
+                },
+                emoteInsertFlow = viewModel.emoteInsertFlow,
+                portraitMode = portraitMode,
+                onToggleMode = onToggleMode,
+                onInteraction = onInteraction,
+                onFocusChanged = { focused ->
+                    viewModel.setInputFocused(focused)
+                    if (focused) onInteraction()
+                },
+                onLoginRequested = onLoginRequested,
+                isImmersiveEnabled = isImmersiveEnabled
+            )
+
+            val menuHeight = if (keyboardHeightPx > 0) {
+                with(density) { keyboardHeightPx.toDp() }
+            } else {
+                if (isLandscape) 200.dp else 350.dp
             }
 
-            Column {
-                SystemNoticeBanner(
-                    message = systemNotice,
-                    onDismiss = { viewModel.dismissSystemNotice() },
-                    isImmersiveEnabled = isImmersiveEnabled,
-                    isCompact = portraitMode == null,
-                    channel = channel,
-                    previewImageUrl = previewImageUrl
-                )
-                ChatInputBox(
-                    isLoggedIn = isLoggedIn,
-                    onSendMessage = { text ->
-                        coroutineScope.launch {
-                            viewModel.sendMessage(text)
-                        }
-                    },
-                    onEmoteToggle = { viewModel.setEmoteMenuVisible(!isEmoteMenuVisible) },
-                    isEmoteMenuVisible = isEmoteMenuVisible,
-                    suggestions = emoteSuggestions,
-                    onEmoteSelected = { emote ->
-                        viewModel.recordEmoteUsage(context, emote)
-                    },
-                    onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                    onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
-                    emoteInsertFlow = viewModel.emoteInsertFlow,
-                    portraitMode = portraitMode,
-                    onToggleMode = onToggleMode,
-                    onFocusChanged = { _ ->
-                        // Logic removed to prevent triggering emote load on simple text input focus.
-                        // Emotes will only load when the emote menu icon is explicitly clicked.
-                    },
-                    onLoginRequested = onLoginRequested,
-                    isImmersiveEnabled = isImmersiveEnabled
-                )
-
-                val menuHeight = if (keyboardHeightPx > 0) {
-                    with(density) { keyboardHeightPx.toDp() }
-                } else {
-                    if (isLandscape) 200.dp else 350.dp
-                }
-
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.BottomCenter
-                ) {
-                    Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.ime.union(WindowInsets.navigationBars)))
-                    
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = isEmoteMenuVisible,
-                        enter = expandVertically(
-                            animationSpec = tween(
-                                durationMillis = 400,
-                                easing = SamtchAnimation.EmphasizedEasing
-                            )
-                        ) + fadeIn(
-                            animationSpec = tween(durationMillis = 300)
-                            ),
-                        exit = shrinkVertically(
-                            animationSpec = tween(
-                                durationMillis = 350,
-                                easing = SamtchAnimation.EmphasizedEasing
-                            )
-                        ) + fadeOut(
-                            animationSpec = tween(durationMillis = 250)
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.ime.union(WindowInsets.navigationBars)))
+                
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isEmoteMenuVisible,
+                    enter = expandVertically(
+                        animationSpec = tween(
+                            durationMillis = 400,
+                            easing = SamtchAnimation.EmphasizedEasing
+                        )
+                    ) + fadeIn(
+                        animationSpec = tween(durationMillis = 300)
                         ),
-                        label = "EmoteMenuVisibility"
-                    ) {
-                        val currentImeBottom = WindowInsets.ime.getBottom(density)
-                        val navBarBottom = WindowInsets.navigationBars.getBottom(density)
-                        val currentKeyboardHeightPx = (currentImeBottom - navBarBottom).coerceAtLeast(0)
-                        val menuHeightPx = with(density) { menuHeight.toPx() }
-                        val isKeyboardCoveringMenu = currentKeyboardHeightPx >= (menuHeightPx * 0.98f).toInt()
-                        
-                        Column {
-                            Box(modifier = Modifier.height(menuHeight)) {
-                                if (!isKeyboardCoveringMenu) {
-                                    val chatLoadingText = stringResource(R.string.chat_connecting)
-                                    val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
-                                    val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
+                    exit = shrinkVertically(
+                        animationSpec = tween(
+                            durationMillis = 350,
+                            easing = SamtchAnimation.EmphasizedEasing
+                        )
+                    ) + fadeOut(
+                        animationSpec = tween(durationMillis = 250)
+                    ),
+                    label = "EmoteMenuVisibility"
+                ) {
+                    val currentImeBottom = WindowInsets.ime.getBottom(density)
+                    val navBarBottom = WindowInsets.navigationBars.getBottom(density)
+                    val currentKeyboardHeightPx = (currentImeBottom - navBarBottom).coerceAtLeast(0)
+                    val menuHeightPx = with(density) { menuHeight.toPx() }
+                    val isKeyboardCoveringMenu = currentKeyboardHeightPx >= (menuHeightPx * 0.98f).toInt()
+                    
+                    Column {
+                        Box(modifier = Modifier.height(menuHeight)) {
+                            if (!isKeyboardCoveringMenu) {
+                                val chatLoadingText = stringResource(R.string.chat_connecting)
+                                val chatWelcomeTemplate = stringResource(R.string.chat_welcome)
+                                val chatLoginTemplate = stringResource(R.string.chat_logged_in_as)
 
-                                    EmoteMenu(
-                                        tabs = emoteMenuTabs,
-                                        onEmoteClick = { emote ->
-                                            viewModel.insertEmote(emote)
-                                            viewModel.recordEmoteUsage(context, emote)
-                                        },
-                                        onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                                        onRefresh = {
-                                            viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = true)
-                                            context.sendBroadcast(Intent(Constants.Actions.REFRESH).setPackage(context.packageName))
-                                        },
-                                        onSettingsClick = onSettingsClick,
-                                        height = menuHeight,
-                                        channel = channel,
-                                        previewImageUrl = previewImageUrl,
-                                        isImmersiveEnabled = isImmersiveEnabled,
-                                        isLoading = isEmoteLoading
-                                    )
-                                }
+                                EmoteMenu(
+                                    tabs = emoteMenuTabs,
+                                    onEmoteClick = { emote ->
+                                        viewModel.insertEmote(emote)
+                                        viewModel.recordEmoteUsage(context, emote)
+                                    },
+                                    onEmoteLongClick = { viewModel.showEmoteInfo(it) },
+                                    onRefresh = {
+                                        viewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = true)
+                                        context.sendBroadcast(Intent(Constants.Actions.REFRESH).setPackage(context.packageName))
+                                    },
+                                    onSettingsClick = onSettingsClick,
+                                    height = menuHeight,
+                                    channel = channel,
+                                    previewImageUrl = previewImageUrl,
+                                    isImmersiveEnabled = isImmersiveEnabled,
+                                    isLoading = isEmoteLoading
+                                )
                             }
-                            Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                         }
+                        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                     }
                 }
             }

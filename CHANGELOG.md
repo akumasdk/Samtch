@@ -1,5 +1,24 @@
 # Changelog
 
+## Samtch v1.1.4
+
+### What's New
+- **Dynamic Player-Chat Layout**:
+    - **Customizable Landscape Ratios**: Added a new setting to adjust the chat panel width in landscape mode (from 15% to 50%).
+    - **\"Auto (Fit Stream)\" Mode**: New default mode that dynamically calculates the perfect 16:9 ratio for the video player based on your screen size, eliminating black bars.
+    - **Interaction-Driven Expansion**: The chat panel now automatically expands to 30% when typing or using emotes, and shrinks back after 5 seconds of inactivity.
+- **Responsive UI Components**:
+    - **Adaptive Metadata Bar**: Redesigned the stream info bar with Slim and Ultra Slim variants that automatically hide secondary details (viewers, uptime) as the panel narrows.
+    - **Smart Chat Input**: The input area now optimizes space by hiding the mode toggle and send button during active typing or in ultra-narrow layouts.
+- **Cinematic Visual Experience**:
+    - **Immersive Background Crossfade**: Implemented a dual-layer background system that performs a smooth 2-second crossfade when the blurred stream preview updates.
+    - **Emphasized Motion**: Redesigned player opening, orientation changes, and minimize transitions using Material 3 Emphasized motion principles for a premium feel.
+    - **Flicker-Free Transitions**: Optimized layering to eliminate \"black void\" flashes during layout morphing.
+- **Polished Dialogs**:
+    - **Fullscreen Dialog Optimization**: Redesigned User, Emote, and Badge info sheets to be slimmer in landscape mode while maintaining the immersive system bar state.
+
+---
+
 ## Samtch v1.1.3
 
 ### What's New

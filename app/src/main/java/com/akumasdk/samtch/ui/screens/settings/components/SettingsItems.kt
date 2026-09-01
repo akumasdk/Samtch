@@ -150,6 +150,18 @@ fun ChatBadgeSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Unit) {
 }
 
 @Composable
+fun FullscreenChatRatioItem(ratio: Int, onClick: () -> Unit, onReset: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.fullscreen_chat_ratio_title)) },
+        supportingContent = { 
+            Text(if (ratio == 0) stringResource(R.string.fullscreen_chat_ratio_auto) else "$ratio%") 
+        },
+        leadingContent = { Icon(imageVector = Icons.Default.AspectRatio, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onReset)
+    )
+}
+
+@Composable
 fun BttvSettingsItem(onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(text = stringResource(R.string.bttv_settings_title)) },

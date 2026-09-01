@@ -37,6 +37,7 @@ fun SettingsScreen(
     var showChatFontSizeDialog by remember { mutableStateOf(false) }
     var showChatEmoteSizeDialog by remember { mutableStateOf(false) }
     var showChatBadgeSizeDialog by remember { mutableStateOf(false) }
+    var showChatRatioDialog by remember { mutableStateOf(false) }
     var showThemeModeDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
@@ -52,6 +53,7 @@ fun SettingsScreen(
     val chatFontSize by remember(context) { SettingsManager.getChatFontSize(context) }.collectAsState(initial = 14)
     val chatEmoteSize by remember(context) { SettingsManager.getChatEmoteSize(context) }.collectAsState(initial = 28)
     val chatBadgeSize by remember(context) { SettingsManager.getChatBadgeSize(context) }.collectAsState(initial = 18)
+    val chatRatio by remember(context) { SettingsManager.getFullscreenChatRatio(context) }.collectAsState(initial = 0)
     val themeMode by remember(context) { SettingsManager.getThemeMode(context) }.collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
     val adBlockMode by remember(context) { SettingsManager.getAdBlockMode(context) }.collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
     val isPipEnabled by remember(context) { SettingsManager.isPipEnabled(context) }.collectAsState(initial = true)
@@ -133,12 +135,14 @@ fun SettingsScreen(
                 chatFontSize = chatFontSize,
                 chatEmoteSize = chatEmoteSize,
                 chatBadgeSize = chatBadgeSize,
+                chatRatio = chatRatio,
                 scope = scope,
                 context = context,
                 onChatModeClick = { showChatModeDialog = true },
                 onFontSizeClick = { showChatFontSizeDialog = true },
                 onEmoteSizeClick = { showChatEmoteSizeDialog = true },
                 onBadgeSizeClick = { showChatBadgeSizeDialog = true },
+                onChatRatioClick = { showChatRatioDialog = true },
                 onBttvClick = { isBttvSettingsOpen = true }
             )
 
@@ -167,6 +171,7 @@ fun SettingsScreen(
         showChatFontSizeDialog = showChatFontSizeDialog,
         showChatEmoteSizeDialog = showChatEmoteSizeDialog,
         showChatBadgeSizeDialog = showChatBadgeSizeDialog,
+        showChatRatioDialog = showChatRatioDialog,
         showLogoutDialog = showLogoutDialog,
         showAboutDialog = showAboutDialog,
         themeMode = themeMode,
@@ -175,12 +180,14 @@ fun SettingsScreen(
         chatFontSize = chatFontSize,
         chatEmoteSize = chatEmoteSize,
         chatBadgeSize = chatBadgeSize,
+        chatRatio = chatRatio,
         onDismissTheme = { showThemeModeDialog = false },
         onDismissAdBlock = { showAdBlockDialog = false },
         onDismissChatMode = { showChatModeDialog = false },
         onDismissFontSize = { showChatFontSizeDialog = false },
         onDismissEmoteSize = { showChatEmoteSizeDialog = false },
         onDismissBadgeSize = { showChatBadgeSizeDialog = false },
+        onDismissChatRatio = { showChatRatioDialog = false },
         onDismissLogout = { showLogoutDialog = false },
         onDismissAbout = { showAboutDialog = false },
         onLogout = onLogout,
@@ -261,12 +268,14 @@ private fun LazyListScope.chatSection(
     chatFontSize: Int,
     chatEmoteSize: Int,
     chatBadgeSize: Int,
+    chatRatio: Int,
     scope: CoroutineScope,
     context: android.content.Context,
     onChatModeClick: () -> Unit,
     onFontSizeClick: () -> Unit,
     onEmoteSizeClick: () -> Unit,
     onBadgeSizeClick: () -> Unit,
+    onChatRatioClick: () -> Unit,
     onBttvClick: () -> Unit
 ) {
     item { SettingSectionHeader(stringResource(R.string.settings_category_chat)) }
@@ -298,6 +307,13 @@ private fun LazyListScope.chatSection(
                 chatBadgeSize, 
                 onClick = onBadgeSizeClick,
                 onReset = { scope.launch { SettingsManager.setChatBadgeSize(context, 18) } }
+            ) 
+        }
+        item { 
+            FullscreenChatRatioItem(
+                chatRatio, 
+                onClick = onChatRatioClick,
+                onReset = { scope.launch { SettingsManager.setFullscreenChatRatio(context, 0) } }
             ) 
         }
     } else {

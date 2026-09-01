@@ -16,18 +16,14 @@ kotlin {
 
 android {
     namespace = "com.akumasdk.samtch"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.magumboi.samtch"
         minSdk = 26
-        targetSdk = 36
-        versionCode = 29
-        versionName = "1.1.3"
+        targetSdk = 37
+        versionCode = 30
+        versionName = "1.1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

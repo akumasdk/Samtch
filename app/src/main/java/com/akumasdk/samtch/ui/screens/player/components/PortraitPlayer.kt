@@ -2,8 +2,8 @@ package com.akumasdk.samtch.ui.screens.player.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +29,7 @@ import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
+import com.akumasdk.samtch.ui.screens.player.models.ChatContentConfig
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
@@ -50,8 +51,9 @@ fun PortraitPlayer(
     expandTrigger: Int = 0,
     forceSlimMetadata: Boolean = false,
     isImmersiveEnabled: Boolean = true,
+    refreshTrigger: Int = 0,
     onToggleMode: () -> Unit = {},
-    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, PortraitMode, () -> Unit, Modifier) -> Unit,
+    chatContent: @Composable (ChatContentConfig, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -73,16 +75,12 @@ fun PortraitPlayer(
     }
 
     val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
-    val bgAlpha = if (isImmersiveEnabled && isActuallyDark) 0.35f else 0.2f
-    val bgBlur = if (isImmersiveEnabled && isActuallyDark) 60.dp else 0.dp
+    val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.15f else 0f
 
-    PlayerBackground(
-        channel = channel,
-        previewUrl = previewImageUrl,
-        modifier = Modifier.fillMaxSize(),
-        alpha = if (isActuallyDark) bgAlpha else 0f, // Disable root image in light mode
-        blurRadius = bgBlur,
-        contentScale = ContentScale.FillBounds
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SamtchTheme.colors.rootBackground.copy(alpha = surfaceAlpha))
     ) {
         Column(
             modifier = Modifier
@@ -130,10 +128,13 @@ fun PortraitPlayer(
                 // Twitch Chat
                 Box(modifier = Modifier.fillMaxSize()) {
                     chatContent(
-                        false,
-                        true,
-                        portraitMode,
-                        onToggleMode,
+                        ChatContentConfig(
+                            isCompact = false,
+                            showInput = true,
+                            refreshTrigger = refreshTrigger,
+                            portraitMode = portraitMode,
+                            onToggleMode = onToggleMode
+                        ),
                         Modifier.fillMaxSize()
                     )
                 }

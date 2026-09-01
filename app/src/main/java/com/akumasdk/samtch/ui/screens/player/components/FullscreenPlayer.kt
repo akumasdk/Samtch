@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.screens.player.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +33,7 @@ import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
+import com.akumasdk.samtch.ui.screens.player.models.ChatContentConfig
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
@@ -53,8 +54,9 @@ fun FullscreenPlayer(
     refreshTrigger: Int = 0,
     forceSlimMetadata: Boolean = false,
     isImmersiveEnabled: Boolean = true,
+    chatRatio: Float = 0.28f,
     onToggleChat: () -> Unit = {},
-    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, refreshTrigger: Int, Modifier) -> Unit,
+    chatContent: @Composable (ChatContentConfig, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -89,37 +91,35 @@ fun FullscreenPlayer(
 
         AnimatedVisibility(
             visible = isChatVisible,
-            enter = slideInHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeIn(),
-            exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
+            enter = slideInHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                    fadeIn(animationSpec = tween(400, easing = SamtchAnimation.EmphasizedEasing)),
+            exit = slideOutHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                   fadeOut(animationSpec = tween(300))
         ) {
             val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
-            val bgAlpha = if (isImmersiveEnabled && isActuallyDark) 0.35f else 0f
-            val bgBlur = if (isImmersiveEnabled && isActuallyDark) 60.dp else 0.dp
-            val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.4f else 1.0f
+            val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.65f else 1.0f
 
-            PlayerBackground(
-                channel = channel,
-                previewUrl = previewImageUrl,
+            Box(
                 modifier = Modifier
-                    .width(300.dp)
-                    .fillMaxHeight(),
-                alpha = if (isActuallyDark) bgAlpha else 0f,
-                blurRadius = bgBlur,
-                contentScale = ContentScale.FillBounds
+                    .fillMaxHeight()
+                    .fillMaxWidth(chatRatio)
+                    .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
                         .systemBarsPadding()
                         .displayCutoutPadding()
                 ) {
-                    // 1. Chat area (Background layer)
+                    // 1. Chat area
                     Box(modifier = Modifier.fillMaxSize()) {
                         chatContent(
-                            true,
-                            true,
-                            refreshTrigger,
+                            ChatContentConfig(
+                                isCompact = true,
+                                showInput = true,
+                                refreshTrigger = refreshTrigger,
+                                isFullscreen = true
+                            ),
                             Modifier.fillMaxSize()
                         )
                     }

@@ -29,6 +29,7 @@ fun SettingsDialogs(
     showChatFontSizeDialog: Boolean,
     showChatEmoteSizeDialog: Boolean,
     showChatBadgeSizeDialog: Boolean,
+    showChatRatioDialog: Boolean,
     showLogoutDialog: Boolean,
     showAboutDialog: Boolean,
     themeMode: SettingsManager.ThemeMode,
@@ -37,12 +38,14 @@ fun SettingsDialogs(
     chatFontSize: Int,
     chatEmoteSize: Int,
     chatBadgeSize: Int,
+    chatRatio: Int,
     onDismissTheme: () -> Unit,
     onDismissAdBlock: () -> Unit,
     onDismissChatMode: () -> Unit,
     onDismissFontSize: () -> Unit,
     onDismissEmoteSize: () -> Unit,
     onDismissBadgeSize: () -> Unit,
+    onDismissChatRatio: () -> Unit,
     onDismissLogout: () -> Unit,
     onDismissAbout: () -> Unit,
     onLogout: () -> Unit,
@@ -134,6 +137,20 @@ fun SettingsDialogs(
             selectedIndex = badgeSizeOptions.indexOf(chatBadgeSize),
             onReset = { scope.launch { SettingsManager.setChatBadgeSize(context, 18) } },
             onDismiss = onDismissBadgeSize
+        )
+    }
+
+    if (showChatRatioDialog) {
+        val ratioOptions = listOf(0, 15, 20, 25, 30, 35, 40, 45, 50)
+        SelectionDialog(
+            title = stringResource(R.string.fullscreen_chat_ratio_title),
+            options = ratioOptions.map { ratio ->
+                val label = if (ratio == 0) stringResource(R.string.fullscreen_chat_ratio_auto) else "$ratio%"
+                label to { scope.launch { SettingsManager.setFullscreenChatRatio(context, ratio) } }
+            },
+            selectedIndex = ratioOptions.indexOf(chatRatio),
+            onReset = { scope.launch { SettingsManager.setFullscreenChatRatio(context, 0) } },
+            onDismiss = onDismissChatRatio
         )
     }
 

@@ -7,15 +7,20 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.akumasdk.samtch.R
@@ -28,6 +33,7 @@ import java.util.Locale
 @Composable
 fun UserInfoDialog(
     user: UserDto,
+    isFullscreen: Boolean = false,
     onDismiss: () -> Unit,
 ) {
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
@@ -38,14 +44,34 @@ fun UserInfoDialog(
         sheetState = sheetState,
         containerColor = SamtchTheme.colors.dialogBackground,
         contentColor = SamtchTheme.colors.primaryText,
-        dragHandle = { BottomSheetDefaults.DragHandle(color = SamtchTheme.colors.secondaryText) }
+        dragHandle = { BottomSheetDefaults.DragHandle(color = SamtchTheme.colors.secondaryText) },
+        contentWindowInsets = { if (isFullscreen) WindowInsets(0) else BottomSheetDefaults.windowInsets }
     ) {
+        if (isFullscreen) {
+            val view = LocalView.current
+            DisposableEffect(view) {
+                val window = (view.parent as? DialogWindowProvider)?.window
+                if (window != null) {
+                    val controller = WindowInsetsControllerCompat(window, window.decorView)
+                    controller.hide(WindowInsetsCompat.Type.systemBars())
+                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+                onDispose {}
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp, start = 16.dp, end = 16.dp),
+                .padding(
+                    bottom = if (isFullscreen) 16.dp else 32.dp, 
+                    start = 16.dp, 
+                    end = 16.dp
+                )
+                .then(if (isFullscreen) Modifier.widthIn(max = 450.dp) else Modifier)
+                .align(Alignment.CenterHorizontally),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(if (isFullscreen) 12.dp else 16.dp)
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -54,7 +80,7 @@ fun UserInfoDialog(
                     .build(),
                 contentDescription = user.displayName,
                 modifier = Modifier
-                    .size(96.dp)
+                    .size(if (isFullscreen) 64.dp else 96.dp)
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop
             )
@@ -62,7 +88,7 @@ fun UserInfoDialog(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = user.displayName,
-                    fontSize = 22.sp,
+                    fontSize = if (isFullscreen) 20.sp else 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = SamtchTheme.colors.primaryText
                 )
@@ -75,7 +101,7 @@ fun UserInfoDialog(
                 }
             }
 
-            if (!user.description.isNullOrEmpty()) {
+            if (!user.description.isNullOrEmpty() && !isFullscreen) {
                 Text(
                     text = user.description,
                     fontSize = 14.sp,
@@ -94,20 +120,24 @@ fun UserInfoDialog(
                     value = user.createdAt.substringBefore("T")
                 )
                 InfoRow(
-                    label = "Broadcaster Type", 
+                    label = "Type", 
                     value = user.broadcasterType.ifEmpty { "User" }.replaceFirstChar { it.uppercase() }
                 )
-                InfoRow(
-                    label = "View Count", 
-                    value = String.format(locale, "%,d", user.viewCount)
-                )
+                if (!isFullscreen) {
+                    InfoRow(
+                        label = "View Count", 
+                        value = String.format(locale, "%,d", user.viewCount)
+                    )
+                }
             }
 
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.close_button), color = SamtchTheme.colors.secondaryText)
+            if (!isFullscreen) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.close_button), color = SamtchTheme.colors.secondaryText)
+                }
             }
         }
     }

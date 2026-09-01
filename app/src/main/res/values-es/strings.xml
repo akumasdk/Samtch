@@ -80,6 +80,9 @@
     <string name="chat_settings_font_size">Tamaño de fuente</string>
     <string name="chat_settings_emote_size">Tamaño de emoticono</string>
     <string name="chat_settings_badge_size">Tamaño de emblema</string>
+    <string name="fullscreen_chat_ratio_title">Relación de espacio de chat (Pantalla completa)</string>
+    <string name="fullscreen_chat_ratio_summary">Ajusta el ancho del panel de chat en modo horizontal</string>
+    <string name="fullscreen_chat_ratio_auto">Automático (Ajustar al stream)</string>
 
     <!-- Theme Settings -->
     <string name="theme_mode_title">Modo de Tema</string>

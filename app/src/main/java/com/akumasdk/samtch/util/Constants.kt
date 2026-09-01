@@ -101,5 +101,6 @@ object Constants {
         const val PLAYER_VISIBILITY_MONITOR = "js/player/visibility_monitor.js"
         const val PLAYER_VAFT = "js/player/vaft.js"
         const val PLAYER_EARLY_HIDER = "js/player/early_hider.js"
+        const val PLAYER_BACKGROUND = "js/player/player_background.js"
     }
 }

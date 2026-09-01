@@ -42,11 +42,11 @@ fun WebViewContainer(
     val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VAFT)
 
     // Reset status and inject early when loading starts
-    LaunchedEffect(state.loadingState, adBlockMode) {
+    LaunchedEffect(state.loadingState, adBlockMode, channel) {
         if (state.loadingState is LoadingState.Loading) {
             onAdblocked("")
             
-            // Inject localized strings for scripts
+            // Inject context and localized strings for scripts
             val stringMap = mapOf(
                 "loading_stream" to resources.getString(R.string.loading_stream),
                 "searching_video" to resources.getString(R.string.searching_video),
@@ -55,7 +55,12 @@ fun WebViewContainer(
                 "bypassing_ads" to resources.getString(R.string.bypassing_ads)
             )
             val stringsJson = stringMap.entries.joinToString(",") { "\"${it.key}\": \"${it.value}\"" }
-            navigator.evaluateJavaScript("window.SamtchStrings = { $stringsJson };")
+            val initJs = """
+                window.SamtchChannel = '$channel';
+                window.SamtchStrings = { $stringsJson };
+                console.log('Samtch: Context initialized for ' + window.SamtchChannel);
+            """.trimIndent()
+            navigator.evaluateJavaScript(initJs)
 
             val scriptPath = when (adBlockMode) {
                 SettingsManager.AdBlockMode.VAFT -> Constants.Scripts.PLAYER_VAFT
@@ -63,14 +68,15 @@ fun WebViewContainer(
             }
             val adScript = ScriptLoader.getScript(context, scriptPath)
             if (adScript.isNotEmpty()) {
-                Log.d("TwitchPlayer", "Injecting $adBlockMode early (Loading state detected)")
+                Log.d("TwitchPlayer", "Injecting $adBlockMode and Background early (Loading state detected)")
                 navigator.evaluateJavaScript(adScript)
             }
 
             // Also inject playback monitor and early hider to catch fast starts
             val earlyScripts = listOf(
                 Constants.Scripts.PLAYER_PLAYBACK_MONITOR,
-                Constants.Scripts.PLAYER_EARLY_HIDER
+                Constants.Scripts.PLAYER_EARLY_HIDER,
+                Constants.Scripts.PLAYER_BACKGROUND
             ).mapNotNull { path ->
                 val s = ScriptLoader.getScript(context, path)
                 if (s.isNotEmpty()) s else null
@@ -98,7 +104,8 @@ fun WebViewContainer(
             val scripts = listOf(
                 Constants.Scripts.PLAYER_UI_CLEANER,
                 Constants.Scripts.PLAYER_CONTROLS_INJECTOR,
-                Constants.Scripts.PLAYER_PLAYBACK_MONITOR
+                Constants.Scripts.PLAYER_PLAYBACK_MONITOR,
+                Constants.Scripts.PLAYER_BACKGROUND
             ).mapNotNull { path ->
                 val script = ScriptLoader.getScript(context, path)
                 if (script.isNotEmpty()) script else null
@@ -106,14 +113,15 @@ fun WebViewContainer(
 
             if (scripts.isEmpty()) return@LaunchedEffect
             val finalScripts = scripts.joinToString("\n")
-
+            Log.d("TwitchPlayer", "Injecting scripts bundle (Cleaner, Controls, Background)")
+            
             // Wait for WebView to be ready
-            delay(100.milliseconds)
+            delay(200.milliseconds)
 
             // Initial tight polling for early hooks (catch hydration)
             repeat(8) {
                 navigator.evaluateJavaScript(finalScripts)
-                delay(300.milliseconds)
+                delay(400.milliseconds)
             }
 
             // Steady polling for dynamic hydration (catch late UI elements)

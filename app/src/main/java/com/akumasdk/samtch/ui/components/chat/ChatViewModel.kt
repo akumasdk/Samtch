@@ -80,6 +80,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _isEmoteLoading = MutableStateFlow(false)
     val isEmoteLoading = _isEmoteLoading.asStateFlow()
 
+    private val _isInputFocused = MutableStateFlow(false)
+    val isInputFocused = _isInputFocused.asStateFlow()
+
     private val _hasTriggeredEmoteLoad = MutableStateFlow(false)
 
     private val _currentChannel = MutableStateFlow<String?>(null)
@@ -505,6 +508,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 refreshEmotes(channel)
             }
         }
+    }
+
+    fun setInputFocused(focused: Boolean) {
+        _isInputFocused.value = focused
     }
 
     fun updateKeyboardHeight(context: android.content.Context, heightPx: Int, isLandscape: Boolean) {

@@ -27,10 +27,17 @@ fun rememberPlayerLayoutDimensions(
     isPip: Boolean,
     screenWidth: Dp,
     screenHeight: Dp,
-    isChatVisible: Boolean
+    isChatVisible: Boolean,
+    chatRatio: Float = 0.28f
 ): PlayerLayoutDimensions {
     val isChatOnly = portraitMode == PortraitMode.CHAT_ONLY && !isPip
-    val animationSpec = if (isChatOnly) snap() else SamtchAnimation.DpSpring
+    
+    // Choose the best motion spec for the current state change
+    val animationSpec = when {
+        isChatOnly -> snap<Dp>()
+        isFullscreen -> SamtchAnimation.layoutSpring() // Unified smooth motion for landscape
+        else -> SamtchAnimation.morphSpring()     // Snappy motion for mini-player
+    }
 
     val height = animateDpAsState(
         targetValue = when {
@@ -47,7 +54,7 @@ fun rememberPlayerLayoutDimensions(
     val width = animateDpAsState(
         targetValue = when {
             isMinimized -> 120.dp
-            isFullscreen && isChatVisible -> (screenWidth - 300.dp)
+            isFullscreen && isChatVisible -> screenWidth * (1f - chatRatio)
             isChatOnly -> 0.dp
             else -> screenWidth
         },
@@ -68,7 +75,7 @@ fun rememberPlayerLayoutDimensions(
     )
 
     val cornerRadius = animateDpAsState(
-        targetValue = if (isMinimized) 20.dp else 0.dp,
+        targetValue = if (isMinimized) 40.dp else 0.dp,
         animationSpec = animationSpec,
         label = "PlayerCornerRadius"
     )

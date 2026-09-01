@@ -23,6 +23,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -58,6 +61,7 @@ import com.akumasdk.samtch.ui.MainViewModel
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.login.LoginActivity
 import com.akumasdk.samtch.ui.screens.player.TwitchPlayer
+import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.screens.settings.SettingsScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
@@ -298,6 +302,39 @@ class MainActivity : ComponentActivity() {
                                     viewModel.incrementRefreshTrigger()
                                 },
                             ) { viewModel.isAppLoaded = true }
+                        }
+
+                        // Stylish backdrop dimming and blurred preview when player is active
+                        // This serves as the "Foundation Background" to prevent black void flickers
+                        val dimAlpha by animateFloatAsState(
+                            targetValue = if (isPlayerActive) 0.5f else 0f,
+                            animationSpec = tween(durationMillis = 500, easing = SamtchAnimation.EmphasizedEasing),
+                            label = "PlayerBackdropDim"
+                        )
+                        
+                        if (dimAlpha > 0f || (viewModel.selectedChannel != null && !viewModel.isMinimized)) {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                if (viewModel.selectedChannel != null && !viewModel.isMinimized) {
+                                    PlayerBackground(
+                                        channel = viewModel.selectedChannel!!,
+                                        previewUrl = playerViewModel.streamMetadata?.user?.stream?.previewImageUrl,
+                                        refreshKey = playerViewModel.metadataRefreshTrigger,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.FillBounds,
+                                        alpha = if (darkTheme) 0.5f else 0.12f,
+                                        blurRadius = 100.dp,
+                                        containerColor = SamtchTheme.colors.rootBackground
+                                    )
+                                }
+                                
+                                if (dimAlpha > 0f) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = dimAlpha))
+                                    )
+                                }
+                            }
                         }
 
                         AnimatedVisibility(
