@@ -42,124 +42,134 @@ fun StreamMetadataBar(
     onClick: () -> Unit = {},
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
-    var isSlimManual by rememberSaveable { mutableStateOf(false) }
-    // forceSlim (keyboard/emotes) takes absolute precedence over forceExpanded (Chat Only mode)
-    val isSlim = forceSlim || (isSlimManual && !forceExpanded)
-
-    val animatedHeight by animateDpAsState(
-        targetValue = if (isSlim) 38.dp else 68.dp,
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "MetadataBarHeight"
-    )
-
-    val animatedTopPadding by animateDpAsState(
-        targetValue = if (isSlim) 0.dp else 8.dp,
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "MetadataTopPadding"
-    )
-
-    val animatedHorizontalPadding by animateDpAsState(
-        targetValue = if (isSlim) 0.dp else 12.dp,
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "MetadataHorizontalPadding"
-    )
-
-    val animatedTopRadius by animateDpAsState(
-        targetValue = if (isSlim) 0.dp else 16.dp,
-        animationSpec = SamtchAnimation.DpSpring,
-        label = "MetadataTopRadius"
-    )
-
-    // Manual expansion / Title change / Force expansion
-    LaunchedEffect(expandTrigger, streamTitle, forceExpanded) {
-        isSlimManual = false
-    }
-
-    // Auto-shrink timer (Resets on expansion/trigger/title)
-    LaunchedEffect(isSlimManual, expandTrigger, streamTitle, forceExpanded, forceSlim) {
-        if (!isSlimManual && !forceExpanded && !forceSlim) {
-            delay(15.seconds)
-            isSlimManual = true
-        }
-    }
-
-    val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
-    // Immersive mode is disabled for metadata bar in light mode as per request
-    val isImmersiveActuallyEnabled = isImmersiveEnabled && !isLightMode
-
-    val surfaceAlpha = if (isImmersiveActuallyEnabled) 0.82f else 1.0f
-    
-    // Minimal image alpha for very subtle color accents
-    val imageAlpha = 0.7f
-
-    Surface(
-        modifier = modifier
-            .padding(
-                start = animatedHorizontalPadding.coerceAtLeast(0.dp),
-                top = animatedTopPadding.coerceAtLeast(0.dp),
-                end = animatedHorizontalPadding.coerceAtLeast(0.dp),
-                bottom = 8.dp
-            )
-            .fillMaxWidth()
-            .height(animatedHeight),
-        shape = RoundedCornerShape(
-            topStart = animatedTopRadius.coerceAtLeast(0.dp),
-            topEnd = animatedTopRadius.coerceAtLeast(0.dp),
-            bottomStart = 16.dp,
-            bottomEnd = 16.dp
-        ),
-        color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
-        border = if (isImmersiveActuallyEnabled) {
-            BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f))
-        } else {
-            BorderStroke(0.5.dp, SamtchTheme.colors.divider.copy(alpha = 0.3f))
-        },
-        tonalElevation = if (isImmersiveActuallyEnabled) 0.dp else 2.dp
-    ) {
-        if (isImmersiveActuallyEnabled) {
-            PlayerBackground(
-                previewUrl = previewImageUrl,
-                alpha = imageAlpha,
-                blurRadius = 150.dp,
-                contentScale = ContentScale.FillBounds,
-                containerColor = Color.Transparent,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+    BoxWithConstraints(modifier = modifier) {
+        val containerWidth = maxWidth
         
-        AnimatedContent(
-            targetState = isSlim,
-            modifier = Modifier.clickable { 
-                if (isSlim) {
-                    isSlimManual = false
-                } else {
-                    onClick()
-                }
-            },
-            transitionSpec = {
-                SamtchAnimation.FadeIn togetherWith SamtchAnimation.FadeOut
-            },
-            label = "MetadataBarStyleTransition",
-            contentAlignment = Alignment.TopStart
-        ) { slimMode ->
-            if (slimMode) {
-                SlimMetadataBar(
-                    channel = channel,
-                    displayName = displayName,
-                    streamTitle = streamTitle,
-                    viewersCount = viewersCount,
-                    streamStartedAt = streamStartedAt
+        var isSlimManual by rememberSaveable { mutableStateOf(false) }
+        // forceSlim (keyboard/emotes) or narrow width takes absolute precedence over forceExpanded (Chat Only mode)
+        val isSlim = forceSlim || (containerWidth < 300.dp) || (isSlimManual && !forceExpanded)
+
+        val animatedHeight by animateDpAsState(
+            targetValue = if (isSlim) 38.dp else 68.dp,
+            animationSpec = SamtchAnimation.DpSpring,
+            label = "MetadataBarHeight"
+        )
+
+        val animatedTopPadding by animateDpAsState(
+            targetValue = if (isSlim) 0.dp else 8.dp,
+            animationSpec = SamtchAnimation.DpSpring,
+            label = "MetadataTopPadding"
+        )
+
+        val animatedHorizontalPadding by animateDpAsState(
+            targetValue = if (isSlim) 0.dp else 12.dp,
+            animationSpec = SamtchAnimation.DpSpring,
+            label = "MetadataHorizontalPadding"
+        )
+
+        val animatedTopRadius by animateDpAsState(
+            targetValue = if (isSlim) 0.dp else 16.dp,
+            animationSpec = SamtchAnimation.DpSpring,
+            label = "MetadataTopRadius"
+        )
+
+        // Manual expansion / Title change / Force expansion
+        LaunchedEffect(expandTrigger, streamTitle, forceExpanded) {
+            isSlimManual = false
+        }
+
+        // Auto-shrink timer (Resets on expansion/trigger/title)
+        LaunchedEffect(isSlimManual, expandTrigger, streamTitle, forceExpanded, forceSlim, containerWidth) {
+            if (!isSlimManual && !forceExpanded && !forceSlim && containerWidth >= 300.dp) {
+                delay(15.seconds)
+                isSlimManual = true
+            }
+        }
+
+        val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
+        // Immersive mode is disabled for metadata bar in light mode as per request
+        val isImmersiveActuallyEnabled = isImmersiveEnabled && !isLightMode
+
+        val surfaceAlpha = if (isImmersiveActuallyEnabled) 0.82f else 1.0f
+        
+        // Minimal image alpha for very subtle color accents
+        val imageAlpha = 0.7f
+
+        Surface(
+            modifier = Modifier
+                .padding(
+                    start = animatedHorizontalPadding.coerceAtLeast(0.dp),
+                    top = animatedTopPadding.coerceAtLeast(0.dp),
+                    end = animatedHorizontalPadding.coerceAtLeast(0.dp),
+                    bottom = 8.dp
                 )
+                .fillMaxWidth()
+                .height(animatedHeight),
+            shape = RoundedCornerShape(
+                topStart = animatedTopRadius.coerceAtLeast(0.dp),
+                topEnd = animatedTopRadius.coerceAtLeast(0.dp),
+                bottomStart = 16.dp,
+                bottomEnd = 16.dp
+            ),
+            color = SamtchTheme.colors.dialogBackground.copy(alpha = surfaceAlpha),
+            border = if (isImmersiveActuallyEnabled) {
+                BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f))
             } else {
-                StandardMetadataBar(
-                    channel = channel,
-                    displayName = displayName,
-                    avatarUrl = avatarUrl,
-                    streamTitle = streamTitle,
-                    gameName = gameName,
-                    viewersCount = viewersCount,
-                    streamStartedAt = streamStartedAt
+                BorderStroke(0.5.dp, SamtchTheme.colors.divider.copy(alpha = 0.3f))
+            },
+            tonalElevation = if (isImmersiveActuallyEnabled) 0.dp else 2.dp
+        ) {
+            if (isImmersiveActuallyEnabled) {
+                PlayerBackground(
+                    previewUrl = previewImageUrl,
+                    alpha = imageAlpha,
+                    blurRadius = 150.dp,
+                    contentScale = ContentScale.FillBounds,
+                    containerColor = Color.Transparent,
+                    modifier = Modifier.fillMaxSize()
                 )
+            }
+            
+            AnimatedContent(
+                targetState = isSlim,
+                modifier = Modifier.clickable { 
+                    if (isSlim) {
+                        if (containerWidth >= 300.dp) {
+                            isSlimManual = false
+                        } else {
+                            onClick()
+                        }
+                    } else {
+                        onClick()
+                    }
+                },
+                transitionSpec = {
+                    SamtchAnimation.FadeIn togetherWith SamtchAnimation.FadeOut
+                },
+                label = "MetadataBarStyleTransition",
+                contentAlignment = Alignment.TopStart
+            ) { slimMode ->
+                if (slimMode) {
+                    SlimMetadataBar(
+                        channel = channel,
+                        displayName = displayName,
+                        avatarUrl = avatarUrl,
+                        viewersCount = viewersCount,
+                        streamStartedAt = streamStartedAt,
+                        maxWidth = containerWidth
+                    )
+                } else {
+                    StandardMetadataBar(
+                        channel = channel,
+                        displayName = displayName,
+                        avatarUrl = avatarUrl,
+                        streamTitle = streamTitle,
+                        gameName = gameName,
+                        viewersCount = viewersCount,
+                        streamStartedAt = streamStartedAt,
+                        maxWidth = containerWidth
+                    )
+                }
             }
         }
     }

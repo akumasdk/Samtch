@@ -41,7 +41,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -145,11 +144,60 @@ fun TwitchPlayer(
         var showFullscreenControls by remember(isFullscreen) { mutableStateOf(!isFullscreen) }
 
         val isAudioOnlyBackgroundEnabled by SettingsManager.isAudioOnlyBackgroundEnabled(context).collectAsState(initial = false)
-
+        val chatRatioPercent by SettingsManager.getFullscreenChatRatio(context).collectAsState(initial = 0)
+        
         val chatViewModel: ChatViewModel = viewModel()
         val isEmoteMenuVisible by chatViewModel.isEmoteMenuVisible.collectAsState()
+        val isInputFocused by chatViewModel.isInputFocused.collectAsState()
+
+        var chatInteractionTrigger by remember { mutableIntStateOf(0) }
+        var isChatTemporarilyExpanded by remember { mutableStateOf(false) }
+
+        LaunchedEffect(chatInteractionTrigger, isInputFocused, isEmoteMenuVisible) {
+            if (chatInteractionTrigger > 0 || isInputFocused || isEmoteMenuVisible) {
+                isChatTemporarilyExpanded = true
+                
+                // Only start the countdown if not focused and menu is closed
+                if (!isInputFocused && !isEmoteMenuVisible) {
+                    delay(5.seconds)
+                    isChatTemporarilyExpanded = false
+                    chatViewModel.setEmoteMenuVisible(false)
+                }
+            } else {
+                isChatTemporarilyExpanded = false
+                chatViewModel.setEmoteMenuVisible(false)
+            }
+        }
+
+        val baseChatRatio = remember(chatRatioPercent, screenWidth, screenHeight) {
+            if (chatRatioPercent == 0) {
+                // Auto calculation: Fit 16:9 exactly to screen height to avoid black bars
+                val targetAspectRatio = 16f / 9f
+                val screenAspectRatio = screenWidth / screenHeight
+                
+                if (screenAspectRatio > targetAspectRatio) {
+                    val idealPlayerWidth = screenHeight * targetAspectRatio
+                    val autoRatio = 1f - (idealPlayerWidth / screenWidth)
+                    // Coerce between 10% and 50% to keep chat usable
+                    autoRatio.coerceIn(0.10f, 0.50f)
+                } else {
+                    // Screen is narrower than 16:9, use minimum ratio
+                    0.15f 
+                }
+            } else {
+                chatRatioPercent / 100f
+            }
+        }
+
+        val chatRatioFloat = if (isFullscreen && isChatTemporarilyExpanded) {
+            baseChatRatio.coerceAtLeast(0.30f)
+        } else {
+            baseChatRatio
+        }
+
+        val isEmoteMenuVisibleInPlace = isEmoteMenuVisible
         val isImeVisible = WindowInsets.isImeVisible
-        val forceSlimMetadata = isEmoteMenuVisible || isImeVisible
+        val forceSlimMetadata = isEmoteMenuVisibleInPlace || isImeVisible
 
         val scope = rememberCoroutineScope()
         var currentLoadingSession by remember { mutableLongStateOf(0L) }
@@ -314,15 +362,16 @@ fun TwitchPlayer(
         }
 
         val chatContent = remember(channel) {
-            movableContentOf { config: ChatContentConfig, pMode: PortraitMode?, onToggle: (() -> Unit)?, modifier: Modifier ->
+            movableContentOf { config: ChatContentConfig, modifier: Modifier ->
                 TwitchChat(
                     channel = channel,
                     isCompact = config.isCompact,
                     showInput = config.showInput,
                     refreshTrigger = config.refreshTrigger,
                     viewModel = chatViewModel,
-                    portraitMode = pMode,
-                    onToggleMode = onToggle,
+                    portraitMode = config.portraitMode,
+                    onToggleMode = config.onToggleMode,
+                    onInteraction = config.onInteraction ?: {},
                     onLoginRequested = onLoginRequested,
                     onSettingsClick = onSettingsClick,
                     modifier = modifier
@@ -479,7 +528,8 @@ fun TwitchPlayer(
             isPip = isPip,
             screenWidth = screenWidth,
             screenHeight = screenHeight,
-            isChatVisible = isChatVisible
+            isChatVisible = isChatVisible,
+            chatRatio = chatRatioFloat
         )
 
         // Root Container
@@ -521,6 +571,7 @@ fun TwitchPlayer(
                         isPip = isPip,
                         isChatVisible = isChatVisible,
                         refreshTrigger = refreshTrigger,
+                        chatRatio = chatRatioFloat,
                         forceSlimMetadata = forceSlimMetadata,
                         isImmersiveEnabled = isImmersiveEnabled,
                         onToggleChat = {
@@ -536,8 +587,11 @@ fun TwitchPlayer(
                             }
                             isChatVisible = true
                         },
-                        chatContent = { config, pMode, onToggle, modifier ->
-                            chatContent(config, pMode, onToggle, modifier)
+                        onChatInteraction = {
+                            if (isFullscreen) chatInteractionTrigger++
+                        },
+                        chatContent = { config, modifier ->
+                            chatContent(config, modifier)
                         }
                     )
                 }
@@ -667,13 +721,11 @@ fun TwitchPlayer(
                                     ) {
                                         chatContent(
                                             ChatContentConfig(
-                                                true,
-                                                false,
-                                                refreshTrigger,
+                                                isCompact = true,
+                                                showInput = false,
+                                                refreshTrigger = refreshTrigger,
                                                 isFullscreen = isFullscreen
                                             ),
-                                            null,
-                                            null,
                                             Modifier.fillMaxSize()
                                         )
                                     }

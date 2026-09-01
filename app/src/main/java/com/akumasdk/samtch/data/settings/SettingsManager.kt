@@ -30,6 +30,7 @@ object SettingsManager {
     private val CHAT_EMOTE_SIZE = intPreferencesKey("chat_emote_size")
     private val CHAT_BADGE_SIZE = intPreferencesKey("chat_badge_size")
     private val IMMERSIVE_BACKGROUND_ENABLED = booleanPreferencesKey("immersive_background_enabled")
+    private val FULLSCREEN_CHAT_RATIO = intPreferencesKey("fullscreen_chat_ratio_v2") // 15 to 50
 
     // Auth
     private val AUTH_TOKEN = stringPreferencesKey("auth_token")
@@ -255,6 +256,18 @@ object SettingsManager {
     suspend fun setImmersiveBackgroundEnabled(context: Context, enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[IMMERSIVE_BACKGROUND_ENABLED] = enabled
+        }
+    }
+
+    fun getFullscreenChatRatio(context: Context): Flow<Int> {
+        return context.dataStore.data.map { preferences ->
+            preferences[FULLSCREEN_CHAT_RATIO] ?: 0
+        }
+    }
+
+    suspend fun setFullscreenChatRatio(context: Context, ratio: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[FULLSCREEN_CHAT_RATIO] = ratio
         }
     }
 

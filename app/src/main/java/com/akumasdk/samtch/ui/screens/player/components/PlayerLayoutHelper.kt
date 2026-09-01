@@ -27,7 +27,8 @@ fun rememberPlayerLayoutDimensions(
     isPip: Boolean,
     screenWidth: Dp,
     screenHeight: Dp,
-    isChatVisible: Boolean
+    isChatVisible: Boolean,
+    chatRatio: Float = 0.28f
 ): PlayerLayoutDimensions {
     val isChatOnly = portraitMode == PortraitMode.CHAT_ONLY && !isPip
     val animationSpec = if (isChatOnly) snap() else SamtchAnimation.DpSpring
@@ -47,7 +48,7 @@ fun rememberPlayerLayoutDimensions(
     val width = animateDpAsState(
         targetValue = when {
             isMinimized -> 120.dp
-            isFullscreen && isChatVisible -> (screenWidth - 300.dp)
+            isFullscreen && isChatVisible -> screenWidth * (1f - chatRatio)
             isChatOnly -> 0.dp
             else -> screenWidth
         },

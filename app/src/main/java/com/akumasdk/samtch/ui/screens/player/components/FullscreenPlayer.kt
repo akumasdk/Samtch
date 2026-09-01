@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +32,7 @@ import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
+import com.akumasdk.samtch.ui.screens.player.models.ChatContentConfig
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
@@ -53,8 +53,9 @@ fun FullscreenPlayer(
     refreshTrigger: Int = 0,
     forceSlimMetadata: Boolean = false,
     isImmersiveEnabled: Boolean = true,
+    chatRatio: Float = 0.28f,
     onToggleChat: () -> Unit = {},
-    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, refreshTrigger: Int, Modifier) -> Unit,
+    chatContent: @Composable (ChatContentConfig, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -101,8 +102,8 @@ fun FullscreenPlayer(
                 channel = channel,
                 previewUrl = previewImageUrl,
                 modifier = Modifier
-                    .width(300.dp)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .fillMaxWidth(chatRatio),
                 alpha = if (isActuallyDark) bgAlpha else 0f,
                 blurRadius = bgBlur,
                 contentScale = ContentScale.FillBounds
@@ -117,9 +118,12 @@ fun FullscreenPlayer(
                     // 1. Chat area (Background layer)
                     Box(modifier = Modifier.fillMaxSize()) {
                         chatContent(
-                            true,
-                            true,
-                            refreshTrigger,
+                            ChatContentConfig(
+                                isCompact = true,
+                                showInput = true,
+                                refreshTrigger = refreshTrigger,
+                                isFullscreen = true
+                            ),
                             Modifier.fillMaxSize()
                         )
                     }

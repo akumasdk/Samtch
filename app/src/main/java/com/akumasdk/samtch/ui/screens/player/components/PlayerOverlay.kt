@@ -24,11 +24,13 @@ fun PlayerOverlay(
     isPip: Boolean,
     isChatVisible: Boolean,
     refreshTrigger: Int,
+    chatRatio: Float = 0.28f,
     forceSlimMetadata: Boolean = false,
     isImmersiveEnabled: Boolean = true,
     onToggleChat: () -> Unit,
     onToggleMode: () -> Unit,
-    chatContent: @Composable (ChatContentConfig, PortraitMode?, (() -> Unit)?, Modifier) -> Unit
+    onChatInteraction: () -> Unit = {},
+    chatContent: @Composable (ChatContentConfig, Modifier) -> Unit
 ) {
     AnimatedVisibility(
         visible = !isMinimized && !isPip,
@@ -52,9 +54,13 @@ fun PlayerOverlay(
                 expandTrigger = metadataExpandTrigger,
                 forceSlimMetadata = forceSlimMetadata,
                 isImmersiveEnabled = isImmersiveEnabled,
+                chatRatio = chatRatio,
                 onToggleChat = onToggleChat,
-                chatContent = { isCompact, showInput, rTrigger, modifier ->
-                    chatContent(ChatContentConfig(isCompact, showInput, rTrigger, isFullscreen = true), null, null, modifier)
+                chatContent = { config, modifier ->
+                    chatContent(
+                        config.copy(onInteraction = onChatInteraction),
+                        modifier
+                    )
                 },
                 webView = { modifier, _ ->
                     Box(modifier = modifier)
@@ -77,9 +83,13 @@ fun PlayerOverlay(
                 expandTrigger = metadataExpandTrigger,
                 forceSlimMetadata = forceSlimMetadata,
                 isImmersiveEnabled = isImmersiveEnabled,
+                refreshTrigger = refreshTrigger,
                 onToggleMode = onToggleMode,
-                chatContent = { isCompact, showInput, pMode, onToggle, modifier ->
-                    chatContent(ChatContentConfig(isCompact, showInput, refreshTrigger), pMode, onToggle, modifier)
+                chatContent = { config, modifier ->
+                    chatContent(
+                        config.copy(onInteraction = onChatInteraction),
+                        modifier
+                    )
                 },
                 webView = { modifier, _ ->
                     Box(modifier = modifier)

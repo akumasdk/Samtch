@@ -31,7 +31,8 @@ internal fun StandardMetadataBar(
     streamTitle: String?,
     gameName: String?,
     viewersCount: Int,
-    streamStartedAt: String?
+    streamStartedAt: String?,
+    maxWidth: androidx.compose.ui.unit.Dp = 400.dp
 ) {
     Row(
         modifier = Modifier
@@ -107,7 +108,7 @@ internal fun StandardMetadataBar(
                 )
 
                 val duration = formatStreamDuration(streamStartedAt)
-                if (duration.isNotEmpty()) {
+                if (duration.isNotEmpty() && maxWidth >= 260.dp) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -177,7 +178,7 @@ internal fun StandardMetadataBar(
                     Spacer(modifier = Modifier.weight(1f))
                 }
 
-                if (viewersCount > 0) {
+                if (viewersCount > 0 && maxWidth >= 200.dp) {
                     Box(modifier = Modifier.padding(start = 8.dp)) {
                         AnimatedViewerCount(
                             count = viewersCount,

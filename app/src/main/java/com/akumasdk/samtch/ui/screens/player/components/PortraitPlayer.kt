@@ -29,6 +29,7 @@ import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
+import com.akumasdk.samtch.ui.screens.player.models.ChatContentConfig
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
@@ -50,8 +51,9 @@ fun PortraitPlayer(
     expandTrigger: Int = 0,
     forceSlimMetadata: Boolean = false,
     isImmersiveEnabled: Boolean = true,
+    refreshTrigger: Int = 0,
     onToggleMode: () -> Unit = {},
-    chatContent: @Composable (isCompact: Boolean, showInput: Boolean, PortraitMode, () -> Unit, Modifier) -> Unit,
+    chatContent: @Composable (ChatContentConfig, Modifier) -> Unit,
     webView: @Composable (Modifier, () -> Unit) -> Unit
 ) {
     var playerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -130,10 +132,13 @@ fun PortraitPlayer(
                 // Twitch Chat
                 Box(modifier = Modifier.fillMaxSize()) {
                     chatContent(
-                        false,
-                        true,
-                        portraitMode,
-                        onToggleMode,
+                        ChatContentConfig(
+                            isCompact = false,
+                            showInput = true,
+                            refreshTrigger = refreshTrigger,
+                            portraitMode = portraitMode,
+                            onToggleMode = onToggleMode
+                        ),
                         Modifier.fillMaxSize()
                     )
                 }

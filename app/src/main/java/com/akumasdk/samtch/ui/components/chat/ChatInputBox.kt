@@ -2,7 +2,6 @@ package com.akumasdk.samtch.ui.components.chat
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -68,41 +67,58 @@ fun ChatInputBox(
     modifier: Modifier = Modifier,
     portraitMode: PortraitMode? = null,
     onToggleMode: (() -> Unit)? = null,
+    onInteraction: () -> Unit = {},
     onFocusChanged: (Boolean) -> Unit = {},
     onLoginRequested: () -> Unit = {},
     isImmersiveEnabled: Boolean = true
 ) {
-    Surface(
+    BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
-        color = Color.Transparent,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+        val containerWidth = maxWidth
+        
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.Transparent,
         ) {
-            if (isLoggedIn) {
-                LoggedInChatInput(
-                    onSendMessage = onSendMessage,
-                    onEmoteToggle = onEmoteToggle,
-                    isEmoteMenuVisible = isEmoteMenuVisible,
-                    suggestions = suggestions,
-                    onEmoteSelected = onEmoteSelected,
-                    onEmoteLongClick = onEmoteLongClick,
-                    onTextChange = onTextChange,
-                    emoteInsertFlow = emoteInsertFlow,
-                    portraitMode = portraitMode,
-                    onToggleMode = onToggleMode,
-                    onFocusChanged = onFocusChanged,
-                    isImmersiveEnabled = isImmersiveEnabled
-                )
-            } else {
-                LoggedOutChatInput(
-                    portraitMode = portraitMode,
-                    onToggleMode = onToggleMode,
-                    onLoginRequested = onLoginRequested,
-                    isImmersiveEnabled = isImmersiveEnabled
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                if (isLoggedIn) {
+                    LoggedInChatInput(
+                        onSendMessage = onSendMessage,
+                        onEmoteToggle = {
+                            onEmoteToggle()
+                            onInteraction()
+                        },
+                        isEmoteMenuVisible = isEmoteMenuVisible,
+                        suggestions = suggestions,
+                        onEmoteSelected = onEmoteSelected,
+                        onEmoteLongClick = onEmoteLongClick,
+                        onTextChange = onTextChange,
+                        emoteInsertFlow = emoteInsertFlow,
+                        portraitMode = portraitMode,
+                        onToggleMode = onToggleMode,
+                        onFocusChanged = { focused ->
+                            onFocusChanged(focused)
+                            onInteraction()
+                        },
+                        isImmersiveEnabled = isImmersiveEnabled,
+                        maxWidth = containerWidth,
+                        onInteraction = onInteraction
+                    )
+                } else {
+                    LoggedOutChatInput(
+                        portraitMode = portraitMode,
+                        onToggleMode = onToggleMode,
+                        onLoginRequested = onLoginRequested,
+                        isImmersiveEnabled = isImmersiveEnabled,
+                        maxWidth = containerWidth,
+                        onInteraction = onInteraction
+                    )
+                }
             }
         }
     }
@@ -122,7 +138,9 @@ private fun LoggedInChatInput(
     portraitMode: PortraitMode?,
     onToggleMode: (() -> Unit)?,
     onFocusChanged: (Boolean) -> Unit,
-    isImmersiveEnabled: Boolean
+    isImmersiveEnabled: Boolean,
+    maxWidth: androidx.compose.ui.unit.Dp,
+    onInteraction: () -> Unit
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     val haptic = LocalHapticFeedback.current
@@ -182,10 +200,20 @@ private fun LoggedInChatInput(
                 .fillMaxWidth()
                 .heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(if (maxWidth < 180.dp) 2.dp else if (maxWidth < 240.dp) 4.dp else 8.dp)
         ) {
-            if (onToggleMode != null && portraitMode != null && portraitMode != PortraitMode.AUDIO_AND_CHAT) {
-                ModeToggleButton(portraitMode, onToggleMode)
+            val isUltraCompact = maxWidth < 180.dp
+            val shouldShowModeToggle = onToggleMode != null && 
+                                      portraitMode != null && 
+                                      portraitMode != PortraitMode.AUDIO_AND_CHAT && 
+                                      maxWidth >= 260.dp && 
+                                      !isFocused
+
+            if (shouldShowModeToggle && portraitMode != null && onToggleMode != null) {
+                ModeToggleButton(portraitMode, {
+                    onToggleMode()
+                    onInteraction()
+                })
             }
 
             Surface(
@@ -196,7 +224,7 @@ private fun LoggedInChatInput(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(start = 4.dp, end = 16.dp)
+                    modifier = Modifier.padding(start = if (isUltraCompact) 0.dp else 4.dp, end = if (isUltraCompact) 8.dp else 16.dp)
                 ) {
                     EmoteToggleButton(
                         isEmoteMenuVisible = isEmoteMenuVisible,
@@ -217,7 +245,9 @@ private fun LoggedInChatInput(
                                 text = stringResource(R.string.chat_input_placeholder),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
-                                fontSize = 15.sp
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
                         BasicTextField(
@@ -253,15 +283,17 @@ private fun LoggedInChatInput(
                 }
             }
 
-            SendButton(
-                enabled = textFieldValue.text.isNotBlank(),
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onSendMessage(textFieldValue.text)
-                    textFieldValue = TextFieldValue("")
-                    onTextChange("", 0)
-                }
-            )
+            if (!isUltraCompact || textFieldValue.text.isNotBlank()) {
+                SendButton(
+                    enabled = textFieldValue.text.isNotBlank(),
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onSendMessage(textFieldValue.text)
+                        textFieldValue = TextFieldValue("")
+                        onTextChange("", 0)
+                    }
+                )
+            }
         }
     }
 }
@@ -379,15 +411,25 @@ private fun LoggedOutChatInput(
     portraitMode: PortraitMode?,
     onToggleMode: (() -> Unit)?,
     onLoginRequested: () -> Unit,
-    isImmersiveEnabled: Boolean
+    isImmersiveEnabled: Boolean,
+    maxWidth: androidx.compose.ui.unit.Dp,
+    onInteraction: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (maxWidth < 200.dp) 4.dp else 8.dp)
     ) {
-        if (onToggleMode != null && portraitMode != null && portraitMode != PortraitMode.AUDIO_AND_CHAT) {
-            ModeToggleButton(portraitMode, onToggleMode)
+        val shouldShowModeToggle = onToggleMode != null && 
+                                  portraitMode != null && 
+                                  portraitMode != PortraitMode.AUDIO_AND_CHAT && 
+                                  maxWidth >= 260.dp
+
+        if (shouldShowModeToggle && portraitMode != null && onToggleMode != null) {
+            ModeToggleButton(portraitMode, { 
+                onToggleMode()
+                onInteraction()
+            })
         }
 
         Surface(
@@ -396,7 +438,10 @@ private fun LoggedOutChatInput(
             border = BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)),
             modifier = Modifier
                 .weight(1f)
-                .clickable { onLoginRequested() }
+                .clickable { 
+                    onLoginRequested()
+                    onInteraction()
+                }
         ) {
             Text(
                 text = if (portraitMode == null) stringResource(R.string.chat_login_required) else stringResource(R.string.chat_login_prompt),

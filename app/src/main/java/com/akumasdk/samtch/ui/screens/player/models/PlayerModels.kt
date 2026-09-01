@@ -10,5 +10,8 @@ data class ChatContentConfig(
     val isCompact: Boolean,
     val showInput: Boolean,
     val refreshTrigger: Int,
-    val isFullscreen: Boolean = false
+    val isFullscreen: Boolean = false,
+    val portraitMode: PortraitMode? = null,
+    val onToggleMode: (() -> Unit)? = null,
+    val onInteraction: (() -> Unit)? = null
 )

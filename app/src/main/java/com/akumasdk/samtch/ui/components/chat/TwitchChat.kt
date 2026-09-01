@@ -85,6 +85,7 @@ fun TwitchChat(
     viewModel: ChatViewModel,
     portraitMode: PortraitMode? = null,
     onToggleMode: (() -> Unit)? = null,
+    onInteraction: () -> Unit = {},
     onLoginRequested: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     previewImageUrl: String? = null,
@@ -102,6 +103,7 @@ fun TwitchChat(
             viewModel = viewModel,
             portraitMode = portraitMode,
             onToggleMode = onToggleMode,
+            onInteraction = onInteraction,
             onLoginRequested = onLoginRequested,
             onSettingsClick = onSettingsClick,
             previewImageUrl = previewImageUrl
@@ -126,6 +128,7 @@ private fun NativeChatContainer(
     viewModel: ChatViewModel,
     portraitMode: PortraitMode?,
     onToggleMode: (() -> Unit)?,
+    onInteraction: () -> Unit,
     onLoginRequested: () -> Unit,
     onSettingsClick: () -> Unit,
     previewImageUrl: String?,
@@ -233,6 +236,7 @@ private fun NativeChatContainer(
                     isLandscape = isLandscape,
                     portraitMode = portraitMode,
                     onToggleMode = onToggleMode,
+                    onInteraction = onInteraction,
                     onLoginRequested = onLoginRequested,
                     onSettingsClick = onSettingsClick,
                     previewImageUrl = previewImageUrl,
@@ -275,6 +279,7 @@ private fun ChatInputArea(
     isLandscape: Boolean,
     portraitMode: PortraitMode?,
     onToggleMode: (() -> Unit)?,
+    onInteraction: () -> Unit,
     onLoginRequested: () -> Unit,
     onSettingsClick: () -> Unit,
     previewImageUrl: String?,
@@ -337,13 +342,17 @@ private fun ChatInputArea(
                         viewModel.recordEmoteUsage(context, emote)
                     },
                     onEmoteLongClick = { viewModel.showEmoteInfo(it) },
-                    onTextChange = { text, pos -> viewModel.updateSuggestions(text, pos) },
+                    onTextChange = { text, pos -> 
+                        viewModel.updateSuggestions(text, pos)
+                        onInteraction()
+                    },
                     emoteInsertFlow = viewModel.emoteInsertFlow,
                     portraitMode = portraitMode,
                     onToggleMode = onToggleMode,
-                    onFocusChanged = { _ ->
-                        // Logic removed to prevent triggering emote load on simple text input focus.
-                        // Emotes will only load when the emote menu icon is explicitly clicked.
+                    onInteraction = onInteraction,
+                    onFocusChanged = { focused ->
+                        viewModel.setInputFocused(focused)
+                        if (focused) onInteraction()
                     },
                     onLoginRequested = onLoginRequested,
                     isImmersiveEnabled = isImmersiveEnabled

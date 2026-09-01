@@ -80,6 +80,9 @@
     <string name="chat_settings_font_size">Font Size</string>
     <string name="chat_settings_emote_size">Emote Size</string>
     <string name="chat_settings_badge_size">Badge Size</string>
+    <string name="fullscreen_chat_ratio_title">Chat Space Ratio (Fullscreen)</string>
+    <string name="fullscreen_chat_ratio_summary">Adjust the width of the chat panel in landscape mode</string>
+    <string name="fullscreen_chat_ratio_auto">Auto (Fit Stream)</string>
 
     <!-- Theme Settings -->
     <string name="theme_mode_title">Theme Mode</string>
