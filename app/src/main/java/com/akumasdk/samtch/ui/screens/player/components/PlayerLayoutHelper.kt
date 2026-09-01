@@ -31,7 +31,13 @@ fun rememberPlayerLayoutDimensions(
     chatRatio: Float = 0.28f
 ): PlayerLayoutDimensions {
     val isChatOnly = portraitMode == PortraitMode.CHAT_ONLY && !isPip
-    val animationSpec = if (isChatOnly) snap<Dp>() else SamtchAnimation.morphSpring()
+    
+    // Choose the best motion spec for the current state change
+    val animationSpec = when {
+        isChatOnly -> snap<Dp>()
+        isFullscreen -> SamtchAnimation.fullscreenSpring() // Grand, stable motion for orientation changes
+        else -> SamtchAnimation.morphSpring()     // Snappy, interactive motion for mini-player
+    }
 
     val height = animateDpAsState(
         targetValue = when {

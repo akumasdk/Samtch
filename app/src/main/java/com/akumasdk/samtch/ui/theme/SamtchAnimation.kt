@@ -40,6 +40,12 @@ object SamtchAnimation {
         stiffness = 450f     // Snappier response
     )
 
+    // Ultra-smooth Fullscreen Transition (Landscape <-> Portrait)
+    fun <T> fullscreenSpring() = spring<T>(
+        dampingRatio = 0.92f, // Very stable, almost no oscillation
+        stiffness = 320f      // Slightly slower, more "grand" feel
+    )
+
     // Tweens
     val StandardDuration = 300
     val FastDuration = 150

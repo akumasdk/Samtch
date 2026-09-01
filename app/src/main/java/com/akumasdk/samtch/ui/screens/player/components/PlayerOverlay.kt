@@ -1,8 +1,7 @@
 package com.akumasdk.samtch.ui.screens.player.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -37,64 +36,75 @@ fun PlayerOverlay(
         enter = fadeIn(animationSpec = SamtchAnimation.EmphasizedTween),
         exit = fadeOut(animationSpec = SamtchAnimation.FastTween)
     ) {
-        if (isFullscreen && !isAudioOnly) {
-            FullscreenPlayer(
-                channel = channel,
-                displayName = streamMetadata?.user?.displayName,
-                avatarUrl = avatarUrl,
-                streamTitle = streamMetadata?.user?.stream?.title,
-                gameName = streamMetadata?.user?.stream?.game?.name,
-                viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
-                adblockText = adblockText,
-                refreshTrigger = refreshTrigger,
-                streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                user = streamMetadata?.user,
-                isChatVisible = isChatVisible,
-                expandTrigger = metadataExpandTrigger,
-                forceSlimMetadata = forceSlimMetadata,
-                isImmersiveEnabled = isImmersiveEnabled,
-                chatRatio = chatRatio,
-                onToggleChat = onToggleChat,
-                chatContent = { config, modifier ->
-                    chatContent(
-                        config.copy(onInteraction = onChatInteraction),
-                        modifier
-                    )
-                },
-                webView = { modifier, _ ->
-                    Box(modifier = modifier)
-                }
-            )
-        } else {
-            PortraitPlayer(
-                channel = channel,
-                displayName = streamMetadata?.user?.displayName,
-                avatarUrl = avatarUrl,
-                streamTitle = streamMetadata?.user?.stream?.title,
-                gameName = streamMetadata?.user?.stream?.game?.name,
-                viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
-                isAudioOnly = isAudioOnly,
-                adblockText = adblockText,
-                streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                user = streamMetadata?.user,
-                portraitMode = portraitMode,
-                expandTrigger = metadataExpandTrigger,
-                forceSlimMetadata = forceSlimMetadata,
-                isImmersiveEnabled = isImmersiveEnabled,
-                refreshTrigger = refreshTrigger,
-                onToggleMode = onToggleMode,
-                chatContent = { config, modifier ->
-                    chatContent(
-                        config.copy(onInteraction = onChatInteraction),
-                        modifier
-                    )
-                },
-                webView = { modifier, _ ->
-                    Box(modifier = modifier)
-                }
-            )
+        AnimatedContent(
+            targetState = isFullscreen && !isAudioOnly,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(500, easing = SamtchAnimation.EmphasizedEasing)) + 
+                 scaleIn(initialScale = 0.98f, animationSpec = tween(500, easing = SamtchAnimation.EmphasizedEasing)))
+                    .togetherWith(fadeOut(animationSpec = tween(300)) + 
+                                  scaleOut(targetScale = 0.98f, animationSpec = tween(300)))
+            },
+            label = "FullscreenContentTransition"
+        ) { isFull ->
+            if (isFull) {
+                FullscreenPlayer(
+                    channel = channel,
+                    displayName = streamMetadata?.user?.displayName,
+                    avatarUrl = avatarUrl,
+                    streamTitle = streamMetadata?.user?.stream?.title,
+                    gameName = streamMetadata?.user?.stream?.game?.name,
+                    viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
+                    adblockText = adblockText,
+                    refreshTrigger = refreshTrigger,
+                    streamStartedAt = streamMetadata?.user?.stream?.createdAt,
+                    previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                    user = streamMetadata?.user,
+                    isChatVisible = isChatVisible,
+                    expandTrigger = metadataExpandTrigger,
+                    forceSlimMetadata = forceSlimMetadata,
+                    isImmersiveEnabled = isImmersiveEnabled,
+                    chatRatio = chatRatio,
+                    onToggleChat = onToggleChat,
+                    chatContent = { config, modifier ->
+                        chatContent(
+                            config.copy(onInteraction = onChatInteraction),
+                            modifier
+                        )
+                    },
+                    webView = { modifier, _ ->
+                        Box(modifier = modifier)
+                    }
+                )
+            } else {
+                PortraitPlayer(
+                    channel = channel,
+                    displayName = streamMetadata?.user?.displayName,
+                    avatarUrl = avatarUrl,
+                    streamTitle = streamMetadata?.user?.stream?.title,
+                    gameName = streamMetadata?.user?.stream?.game?.name,
+                    viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
+                    isAudioOnly = isAudioOnly,
+                    adblockText = adblockText,
+                    streamStartedAt = streamMetadata?.user?.stream?.createdAt,
+                    previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                    user = streamMetadata?.user,
+                    portraitMode = portraitMode,
+                    expandTrigger = metadataExpandTrigger,
+                    forceSlimMetadata = forceSlimMetadata,
+                    isImmersiveEnabled = isImmersiveEnabled,
+                    refreshTrigger = refreshTrigger,
+                    onToggleMode = onToggleMode,
+                    chatContent = { config, modifier ->
+                        chatContent(
+                            config.copy(onInteraction = onChatInteraction),
+                            modifier
+                        )
+                    },
+                    webView = { modifier, _ ->
+                        Box(modifier = modifier)
+                    }
+                )
+            }
         }
     }
 }
