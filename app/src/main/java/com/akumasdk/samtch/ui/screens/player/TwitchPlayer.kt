@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -284,6 +285,12 @@ fun TwitchPlayer(
         val state = rememberSaveableWebViewState("")
         val navigator = rememberWebViewNavigator()
 
+        LaunchedEffect(playerViewModel.metadataRefreshTrigger) {
+            if (playerViewModel.metadataRefreshTrigger > 0) {
+                navigator.evaluateJavaScript("if (window.refreshSamtchBackground) { window.refreshSamtchBackground(); }")
+            }
+        }
+
         Log.d("TwitchPlayer", "Creating player for channel: $channel (isPip: $isPip, isMinimized: $isMinimized)")
 
         // Handle back button behavior:
@@ -317,7 +324,7 @@ fun TwitchPlayer(
                 unloadWebView(state, navigator)
                 return@LaunchedEffect
             }
-            
+
             // Resume WebView if it was paused
             try {
                 state.nativeWebView.apply {
