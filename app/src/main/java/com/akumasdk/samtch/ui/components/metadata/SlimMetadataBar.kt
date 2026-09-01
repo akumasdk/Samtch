@@ -25,6 +25,7 @@ internal fun SlimMetadataBar(
     channel: String,
     displayName: String?,
     avatarUrl: String?,
+    streamTitle: String?,
     viewersCount: Int,
     streamStartedAt: String?,
     maxWidth: androidx.compose.ui.unit.Dp = 400.dp,
@@ -39,7 +40,7 @@ internal fun SlimMetadataBar(
         horizontalArrangement = if (isUltraSlim) {
             Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
         } else {
-            Arrangement.spacedBy(8.dp)
+            Arrangement.Start
         },
     ) {
         // Mini Avatar
@@ -78,15 +79,34 @@ internal fun SlimMetadataBar(
             }
         }
 
-        Text(
-            text = displayName ?: channel,
-            color = SamtchTheme.colors.accentColor,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = if (isUltraSlim) Modifier else Modifier.weight(1f)
-        )
+        // Streamer Info (Name + Title)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = if (isUltraSlim) Modifier else Modifier.weight(1f).padding(start = 8.dp)
+        ) {
+            Text(
+                text = displayName ?: channel,
+                color = SamtchTheme.colors.accentColor,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            if (!isUltraSlim) {
+                Text(text = ": ", color = SamtchTheme.colors.secondaryText, fontSize = 13.sp)
+                
+                Text(
+                    text = streamTitle ?: "Stream Offline",
+                    color = SamtchTheme.colors.primaryText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
 
         if (!isUltraSlim) {
             val duration = formatStreamDuration(streamStartedAt)
