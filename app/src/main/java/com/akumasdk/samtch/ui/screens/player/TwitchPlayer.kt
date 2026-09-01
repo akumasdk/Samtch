@@ -637,19 +637,22 @@ fun TwitchPlayer(
                                 Modifier
                                     .align(Alignment.BottomStart)
                                     .navigationBarsPadding()
-                                    .padding(bottom = layout.paddingBottom.value)
-                                    .padding(start = layout.paddingStart.value)
+                                    .padding(bottom = layout.paddingBottom.value.coerceAtLeast(0.dp))
+                                    .padding(start = layout.paddingStart.value.coerceAtLeast(0.dp))
                                     .offset { IntOffset(nudgeOffset.value.roundToInt(), 0) } // Follow the nudge!
                                     .offset {
                                         // Follow the swipe to dismiss offset
                                         IntOffset(dismissState.requireOffset().roundToInt(), 0)
                                     }
-                                    .size(layout.width.value, layout.height.value)
-                                    .clip(RoundedCornerShape(layout.cornerRadius.value))
+                                    .size(
+                                        layout.width.value.coerceAtLeast(1.dp),
+                                        layout.height.value.coerceAtLeast(1.dp)
+                                    )
+                                    .clip(RoundedCornerShape(layout.cornerRadius.value.coerceAtLeast(0.dp)))
                             } else if (isFullscreen && !isAudioOnly) {
                                 Modifier
                                     .align(Alignment.TopStart)
-                                    .width(layout.width.value)
+                                    .width(layout.width.value.coerceAtLeast(1.dp))
                                     .fillMaxHeight()
                                     .clip(RectangleShape)
                             } else {
@@ -657,7 +660,7 @@ fun TwitchPlayer(
                                     .align(Alignment.TopStart)
                                     .statusBarsPadding()
                                     .fillMaxWidth()
-                                    .height(layout.height.value)
+                                    .height(layout.height.value.coerceAtLeast(1.dp))
                                     .clip(RectangleShape)
                             }
                                 .onSizeChanged { stablePlayerSize = it }

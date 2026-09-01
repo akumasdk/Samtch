@@ -23,6 +23,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -298,6 +300,20 @@ class MainActivity : ComponentActivity() {
                                     viewModel.incrementRefreshTrigger()
                                 },
                             ) { viewModel.isAppLoaded = true }
+                        }
+
+                        // Stylish backdrop dimming when player is active
+                        val dimAlpha by animateFloatAsState(
+                            targetValue = if (isPlayerActive) 0.5f else 0f,
+                            animationSpec = tween(durationMillis = 500, easing = SamtchAnimation.EmphasizedEasing),
+                            label = "PlayerBackdropDim"
+                        )
+                        if (dimAlpha > 0f) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = dimAlpha))
+                            )
                         }
 
                         AnimatedVisibility(

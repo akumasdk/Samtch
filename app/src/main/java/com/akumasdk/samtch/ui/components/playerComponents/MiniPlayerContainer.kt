@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.components.playerComponents
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -47,10 +48,14 @@ fun BoxScope.MiniPlayerContainer(
     onClose: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val morphSpec = SamtchAnimation.morphSpring<Float>()
+
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(animationSpec = SamtchAnimation.StandardTween) + scaleIn(initialScale = 0.92f, animationSpec = SamtchAnimation.StandardTween),
-        exit = fadeOut(animationSpec = SamtchAnimation.FastTween) + scaleOut(targetScale = 0.92f, animationSpec = SamtchAnimation.FastTween),
+        enter = fadeIn(animationSpec = tween(400, easing = SamtchAnimation.EmphasizedEasing)) + 
+                scaleIn(initialScale = 0.94f, animationSpec = morphSpec),
+        exit = fadeOut(animationSpec = tween(300)) + 
+               scaleOut(targetScale = 0.94f, animationSpec = morphSpec),
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .navigationBarsPadding()

@@ -5,7 +5,6 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.ui.unit.IntOffset
 
 /**
  * Standard animation specifications for Samtch.
@@ -34,6 +33,12 @@ object SamtchAnimation {
 
     val InteractiveSpring = springInteractive<Float>()
     val DpSpring = springInteractive<androidx.compose.ui.unit.Dp>()
+    
+    // Stylish Minimize/Maximize Spring (Material 3 Emphasized)
+    fun <T> morphSpring() = spring<T>(
+        dampingRatio = 0.88f, // Slightly less bouncy, more "settled"
+        stiffness = 450f     // Snappier response
+    )
 
     // Tweens
     val StandardDuration = 300
@@ -57,14 +62,30 @@ object SamtchAnimation {
     ) + fadeOut(animationSpec = tween(StandardDuration))
 
     val PlayerEnterTransition = slideInVertically(
-        initialOffsetY = { it },
-        animationSpec = springInteractive<IntOffset>()
-    ) + fadeIn(animationSpec = StandardTween)
+        initialOffsetY = { it / 6 }, // subtle lift
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 400f
+        )
+    ) + fadeIn(
+        animationSpec = tween(durationMillis = 500, easing = EmphasizedEasing)
+    ) + scaleIn(
+        initialScale = 0.95f,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 400f
+        )
+    )
 
     val PlayerExitTransition = slideOutVertically(
-        targetOffsetY = { it },
-        animationSpec = tween(StandardDuration, easing = StandardEasing)
-    ) + fadeOut(animationSpec = tween(StandardDuration, easing = StandardEasing))
+        targetOffsetY = { it / 8 },
+        animationSpec = tween(durationMillis = 400, easing = EmphasizedEasing)
+    ) + fadeOut(
+        animationSpec = tween(durationMillis = 350)
+    ) + scaleOut(
+        targetScale = 0.97f,
+        animationSpec = tween(durationMillis = 400, easing = EmphasizedEasing)
+    )
 
     val FadeIn = fadeIn(animationSpec = tween(StandardDuration))
     val FadeOut = fadeOut(animationSpec = tween(StandardDuration))
