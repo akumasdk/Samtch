@@ -10,7 +10,10 @@ import android.view.WindowManager
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.scale
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ExtM3UParser
 import com.akumasdk.samtch.util.ExtMediaEntry
@@ -38,9 +42,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.unit.sp
@@ -77,13 +85,21 @@ enum class ChatMode {
 fun PlayerScreen(channel: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val view = LocalView.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     
-    // Completely hide and block the keyboard
+    val focusRequester = remember { FocusRequester() }
+
+    // Completely hide and block the keyboard, and keep screen on
     LaunchedEffect(Unit) {
+        focusManager.clearFocus()
+        keyboardController?.hide()
+        focusRequester.requestFocus()
         val window = (context as? Activity)?.window ?: return@LaunchedEffect
         val controller = WindowInsetsControllerCompat(window, view)
         controller.hide(WindowInsetsCompat.Type.ime())
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
     
     val exoPlayer = remember {
@@ -100,6 +116,7 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
     }
 
     var showMenu by remember { mutableStateOf(false) }
+    var lastFocusedMenuIndex by remember { mutableIntStateOf(1) } // Default to "Refresh" button (index 1)
     var chatMode by remember { mutableStateOf(ChatMode.OFF) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
@@ -216,8 +233,10 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
             FpsMonitor.stop()
             PlaybackWatchdog.stop()
             
-            // Re-allow keyboard when leaving player
-            (context as? Activity)?.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED)
+            // Re-allow keyboard and let screen sleep when leaving player
+            val window = (context as? Activity)?.window
+            window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED)
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
@@ -225,7 +244,10 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
     LaunchedEffect(showMenu) {
         if (showMenu) {
             delay(8000) // Longer delay for TV users
-            showMenu = false
+            if (showMenu) {
+                showMenu = false
+                focusRequester.requestFocus()
+            }
         }
     }
 
@@ -235,6 +257,7 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
             showQualityDialog = false
         } else if (showMenu) {
             showMenu = false
+            focusRequester.requestFocus() // Return focus to main container for key interception
         } else {
             onBack()
         }
@@ -244,6 +267,8 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(SamtchTheme.colors.rootBackground)
+            .focusRequester(focusRequester)
+            .focusable()
             .onKeyEvent { keyEvent ->
                 // Only show menu on specific interaction keys (Center/OK, Directional keys)
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
@@ -275,6 +300,7 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
                             player = exoPlayer
                             useController = false
                             resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            keepScreenOn = true
                         }
                     },
                     modifier = Modifier.fillMaxSize()
@@ -361,7 +387,9 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
                     }
                 },
                 onSelectQuality = { showQualityDialog = true },
-                chatMode = chatMode
+                chatMode = chatMode,
+                initialFocusIndex = lastFocusedMenuIndex,
+                onFocusChanged = { lastFocusedMenuIndex = it }
             )
         }
         
@@ -386,12 +414,23 @@ fun PlayerMenu(
     onRefresh: () -> Unit,
     onToggleChat: () -> Unit,
     onSelectQuality: () -> Unit,
-    chatMode: ChatMode
+    chatMode: ChatMode,
+    initialFocusIndex: Int,
+    onFocusChanged: (Int) -> Unit
 ) {
-    val focusRequester = remember { FocusRequester() }
+    val backRequester = remember { FocusRequester() }
+    val refreshRequester = remember { FocusRequester() }
+    val qualityRequester = remember { FocusRequester() }
+    val chatRequester = remember { FocusRequester() }
     
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        when (initialFocusIndex) {
+            0 -> backRequester.requestFocus()
+            1 -> refreshRequester.requestFocus()
+            2 -> qualityRequester.requestFocus()
+            3 -> chatRequester.requestFocus()
+            else -> refreshRequester.requestFocus()
+        }
     }
 
     Surface(
@@ -401,7 +440,7 @@ fun PlayerMenu(
     ) {
         Row(
             modifier = Modifier
-                .background(SamtchTheme.colors.miniPlayerBackground.copy(alpha = 0.85f), RoundedCornerShape(40.dp))
+                .background(SamtchTheme.colors.miniPlayerBackground.copy(alpha = 0.75f), RoundedCornerShape(40.dp))
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -409,18 +448,26 @@ fun PlayerMenu(
             MenuButton(
                 onClick = onBack,
                 icon = Icons.Default.ArrowBack,
-                label = "Back"
+                label = "Back",
+                modifier = Modifier
+                    .focusRequester(backRequester)
+                    .onFocusChanged { if (it.isFocused) onFocusChanged(0) }
             )
             MenuButton(
                 onClick = onRefresh,
                 icon = Icons.Default.Refresh,
                 label = "Refresh",
-                modifier = Modifier.focusRequester(focusRequester)
+                modifier = Modifier
+                    .focusRequester(refreshRequester)
+                    .onFocusChanged { if (it.isFocused) onFocusChanged(1) }
             )
             MenuButton(
                 onClick = onSelectQuality,
                 icon = Icons.Default.Settings,
-                label = "Quality"
+                label = "Quality",
+                modifier = Modifier
+                    .focusRequester(qualityRequester)
+                    .onFocusChanged { if (it.isFocused) onFocusChanged(2) }
             )
             MenuButton(
                 onClick = onToggleChat,
@@ -431,7 +478,10 @@ fun PlayerMenu(
                     ChatMode.OVERLAY -> "Overlay Chat"
                 },
                 containerColor = if (chatMode != ChatMode.OFF) SamtchTheme.colors.accentColor else SamtchTheme.colors.tabButtonBackground,
-                contentColor = SamtchTheme.colors.primaryText
+                contentColor = SamtchTheme.colors.primaryText,
+                modifier = Modifier
+                    .focusRequester(chatRequester)
+                    .onFocusChanged { if (it.isFocused) onFocusChanged(3) }
             )
         }
     }
@@ -500,27 +550,52 @@ fun MenuButton(
     containerColor: Color = SamtchTheme.colors.tabButtonBackground,
     contentColor: Color = SamtchTheme.colors.primaryText
 ) {
-    Button(
+    var isFocused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.1f else 1.0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "ButtonScale"
+    )
+    val animatedContainerColor by animateColorAsState(
+        if (isFocused) Color.White else containerColor, 
+        label = "ButtonColor"
+    )
+    val animatedContentColor by animateColorAsState(
+        if (isFocused) Color.Black else contentColor, 
+        label = "ButtonContentColor"
+    )
+
+    Surface(
         onClick = onClick,
-        modifier = modifier.height(56.dp), // Taller buttons
+        modifier = modifier
+            .height(56.dp)
+            .scale(scale)
+            .onFocusChanged { isFocused = it.isFocused },
         shape = RoundedCornerShape(28.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        ),
-        contentPadding = PaddingValues(horizontal = 28.dp),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 4.dp,
-            focusedElevation = 12.dp
-        )
+        color = animatedContainerColor,
+        contentColor = animatedContentColor,
+        border = if (isFocused) BorderStroke(3.dp, SamtchTheme.colors.accentColor) else null,
+        tonalElevation = if (isFocused) 12.dp else 0.dp,
+        shadowElevation = if (isFocused) 20.dp else 0.dp
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = label, 
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 28.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon, 
+                contentDescription = null, 
+                modifier = Modifier.size(24.dp),
+                tint = animatedContentColor
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = label, 
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (isFocused) FontWeight.ExtraBold else FontWeight.Bold
+            )
+        }
     }
 }
 
