@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.screens.player.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -90,8 +91,10 @@ fun FullscreenPlayer(
 
         AnimatedVisibility(
             visible = isChatVisible,
-            enter = slideInHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeIn(),
-            exit = slideOutHorizontally(animationSpec = SamtchAnimation.springInteractive()) { it } + fadeOut()
+            enter = slideInHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                    fadeIn(animationSpec = tween(400, easing = SamtchAnimation.EmphasizedEasing)),
+            exit = slideOutHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                   fadeOut(animationSpec = tween(300))
         ) {
             val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
             val bgAlpha = if (isImmersiveEnabled && isActuallyDark) 0.35f else 0f

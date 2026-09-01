@@ -75,16 +75,10 @@ fun PortraitPlayer(
     }
 
     val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
-    val bgAlpha = if (isImmersiveEnabled && isActuallyDark) 0.35f else 0.2f
-    val bgBlur = if (isImmersiveEnabled && isActuallyDark) 60.dp else 0.dp
+    val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.4f else 1.0f
 
-    PlayerBackground(
-        channel = channel,
-        previewUrl = previewImageUrl,
-        modifier = Modifier.fillMaxSize(),
-        alpha = if (isActuallyDark) bgAlpha else 0f, // Disable root image in light mode
-        blurRadius = bgBlur,
-        contentScale = ContentScale.FillBounds
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier

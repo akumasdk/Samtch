@@ -3,6 +3,7 @@ package com.akumasdk.samtch.ui.screens.player.components
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.akumasdk.samtch.ui.screens.player.models.ChatContentConfig
@@ -36,15 +37,19 @@ fun PlayerOverlay(
         enter = fadeIn(animationSpec = SamtchAnimation.EmphasizedTween),
         exit = fadeOut(animationSpec = SamtchAnimation.FastTween)
     ) {
+        val previewUrl = streamMetadata?.user?.stream?.previewImageUrl
+        
         AnimatedContent(
             targetState = isFullscreen && !isAudioOnly,
             transitionSpec = {
-                (fadeIn(animationSpec = tween(500, easing = SamtchAnimation.EmphasizedEasing)) + 
-                 scaleIn(initialScale = 0.98f, animationSpec = tween(500, easing = SamtchAnimation.EmphasizedEasing)))
+                val duration = 550
+                (fadeIn(animationSpec = tween(duration, easing = SamtchAnimation.EmphasizedEasing)) + 
+                 scaleIn(initialScale = 0.96f, animationSpec = tween(duration, easing = SamtchAnimation.EmphasizedEasing)))
                     .togetherWith(fadeOut(animationSpec = tween(300)) + 
-                                  scaleOut(targetScale = 0.98f, animationSpec = tween(300)))
+                                  scaleOut(targetScale = 0.96f, animationSpec = tween(300)))
             },
-            label = "FullscreenContentTransition"
+            label = "FullscreenContentTransition",
+            modifier = Modifier.fillMaxSize()
         ) { isFull ->
             if (isFull) {
                 FullscreenPlayer(
@@ -57,7 +62,7 @@ fun PlayerOverlay(
                     adblockText = adblockText,
                     refreshTrigger = refreshTrigger,
                     streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                    previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                    previewImageUrl = previewUrl,
                     user = streamMetadata?.user,
                     isChatVisible = isChatVisible,
                     expandTrigger = metadataExpandTrigger,
@@ -86,7 +91,7 @@ fun PlayerOverlay(
                     isAudioOnly = isAudioOnly,
                     adblockText = adblockText,
                     streamStartedAt = streamMetadata?.user?.stream?.createdAt,
-                    previewImageUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                    previewImageUrl = previewUrl,
                     user = streamMetadata?.user,
                     portraitMode = portraitMode,
                     expandTrigger = metadataExpandTrigger,

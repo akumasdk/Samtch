@@ -115,7 +115,11 @@ fun TwitchPlayer(
     onAudioOnlyModeChanged: (Boolean) -> Unit = {},
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {},
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SamtchTheme.colors.twitchPurple.copy(alpha = 0.05f)) // Subtlest hint of color
+    ) {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
         val context = LocalContext.current
@@ -128,6 +132,21 @@ fun TwitchPlayer(
         val streamMetadata = playerViewModel.streamMetadata
         val avatarUrl = playerViewModel.avatarUrl
         val streamSubtitle = playerViewModel.streamSubtitle
+
+        // 0. ABSOLUTE BASE BACKGROUND (Lives outside animation scopes)
+        // High opacity and blur to fill any gaps during layout morphing
+        if (!isMinimized) {
+            PlayerBackground(
+                channel = channel,
+                previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
+                refreshKey = playerViewModel.metadataRefreshTrigger,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.FillBounds,
+                alpha = if (SamtchTheme.colors.dialogBackground.luminance() < 0.5f) 0.6f else 0.15f,
+                blurRadius = 120.dp,
+                containerColor = Color.Transparent
+            )
+        }
 
         // Gesture Overlay State
         var isDraggingVolume by remember { mutableStateOf(false) }
@@ -546,17 +565,6 @@ fun TwitchPlayer(
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                // Fullscreen Background
-                if (!isMinimized) {
-                    PlayerBackground(
-                        channel = channel,
-                        previewUrl = streamMetadata?.user?.stream?.previewImageUrl,
-                        refreshKey = playerViewModel.metadataRefreshTrigger,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.FillBounds
-                    )
-                }
-
                 // 1. FULL PLAYER OVERLAY (Chat, Metadata)
                 CompositionLocalProvider(
                     LocalStreamPreview provides StreamPreviewInfo(

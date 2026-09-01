@@ -35,8 +35,8 @@ fun rememberPlayerLayoutDimensions(
     // Choose the best motion spec for the current state change
     val animationSpec = when {
         isChatOnly -> snap<Dp>()
-        isFullscreen -> SamtchAnimation.fullscreenSpring() // Grand, stable motion for orientation changes
-        else -> SamtchAnimation.morphSpring()     // Snappy, interactive motion for mini-player
+        isFullscreen -> SamtchAnimation.layoutSpring() // Unified smooth motion for landscape
+        else -> SamtchAnimation.morphSpring()     // Snappy motion for mini-player
     }
 
     val height = animateDpAsState(

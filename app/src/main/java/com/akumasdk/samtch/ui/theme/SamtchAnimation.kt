@@ -34,16 +34,16 @@ object SamtchAnimation {
     val InteractiveSpring = springInteractive<Float>()
     val DpSpring = springInteractive<androidx.compose.ui.unit.Dp>()
     
+    // Smooth layout changes (Material 3 Emphasized)
+    fun <T> layoutSpring() = spring<T>(
+        dampingRatio = 0.9f, 
+        stiffness = 400f
+    )
+
     // Stylish Minimize/Maximize Spring (Material 3 Emphasized)
     fun <T> morphSpring() = spring<T>(
         dampingRatio = 0.88f, // Slightly less bouncy, more "settled"
         stiffness = 450f     // Snappier response
-    )
-
-    // Ultra-smooth Fullscreen Transition (Landscape <-> Portrait)
-    fun <T> fullscreenSpring() = spring<T>(
-        dampingRatio = 0.92f, // Very stable, almost no oscillation
-        stiffness = 320f      // Slightly slower, more "grand" feel
     )
 
     // Tweens
