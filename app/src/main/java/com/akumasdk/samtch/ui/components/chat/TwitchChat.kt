@@ -245,7 +245,7 @@ private fun NativeChatContainer(
             }
         }
 
-        ChatDialogs(viewModel)
+        ChatDialogs(viewModel, isFullscreen = isLandscape)
     }
 }
 

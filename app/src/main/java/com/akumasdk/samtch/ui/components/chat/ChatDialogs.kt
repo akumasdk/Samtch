@@ -9,7 +9,7 @@ import com.akumasdk.samtch.ui.components.chat.emote.EmoteInfoDialog
 import com.akumasdk.samtch.ui.components.chat.user.UserInfoDialog
 
 @Composable
-fun ChatDialogs(viewModel: ChatViewModel) {
+fun ChatDialogs(viewModel: ChatViewModel, isFullscreen: Boolean = false) {
     val context = LocalContext.current
     val selectedEmoteForInfo by viewModel.selectedEmoteForInfo.collectAsState()
     val selectedBadgeForInfo by viewModel.selectedBadgeForInfo.collectAsState()
@@ -18,6 +18,7 @@ fun ChatDialogs(viewModel: ChatViewModel) {
     selectedEmoteForInfo?.let { emote ->
         EmoteInfoDialog(
             emote = emote,
+            isFullscreen = isFullscreen,
             onDismiss = { viewModel.dismissEmoteInfo() },
             onUseEmote = { 
                 viewModel.insertEmote(it)
@@ -29,6 +30,7 @@ fun ChatDialogs(viewModel: ChatViewModel) {
     selectedBadgeForInfo?.let { badge ->
         BadgeInfoDialog(
             badge = badge,
+            isFullscreen = isFullscreen,
             onDismiss = { viewModel.dismissBadgeInfo() }
         )
     }
@@ -36,6 +38,7 @@ fun ChatDialogs(viewModel: ChatViewModel) {
     selectedUserForInfo?.let { user ->
         UserInfoDialog(
             user = user,
+            isFullscreen = isFullscreen,
             onDismiss = { viewModel.dismissUserInfo() }
         )
     }
