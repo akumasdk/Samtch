@@ -4,7 +4,7 @@ import android.util.Log
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.util.Constants
-import io.ktor.client.HttpClient
+import com.akumasdk.samtch.util.NetworkUtil
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
@@ -36,16 +36,7 @@ object HelixApi {
         explicitNulls = false
     }
 
-    private val client = HttpClient {
-        install(ContentNegotiation) {
-            json(json)
-        }
-        install(HttpTimeout) {
-            requestTimeoutMillis = 20000
-            connectTimeoutMillis = 10000
-            socketTimeoutMillis = 10000
-        }
-    }
+    private val client = NetworkUtil.ktorClient
     
     suspend fun getClientId(context: android.content.Context): String {
         val auth = TwitchAuthManager.getAuthState(context)

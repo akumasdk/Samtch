@@ -21,12 +21,12 @@ object StreamingPlayerFactory {
     // 1. Reusable Network Client with HTTP/2, Instant Retries, and Streamlink HLS Logic
     val okHttpClient: OkHttpClient by lazy {
         Log.d(TAG, "Initializing shared OkHttpClient with TwitchHlsInterceptor...")
-        OkHttpClient.Builder()
+        NetworkUtil.getClient(useRelaxed = true).newBuilder() // Force relaxed for this environment
             .connectionPool(ConnectionPool(20, 5, TimeUnit.MINUTES)) // More persistent connections
             .addInterceptor(TwitchHlsInterceptor()) 
             .retryOnConnectionFailure(true) 
-            .connectTimeout(3, TimeUnit.SECONDS) // Faster timeouts
-            .readTimeout(3, TimeUnit.SECONDS)
+            .connectTimeout(5, TimeUnit.SECONDS) // Slightly more time for TV
+            .readTimeout(5, TimeUnit.SECONDS)
             .build()
     }
 
@@ -43,6 +43,7 @@ object StreamingPlayerFactory {
                 .head() // Minimal HEAD request to trigger handshake without downloading body
                 .build()
 
+            // Use the relaxed shared client for prewarm as well
             okHttpClient.newCall(request).enqueue(object : okhttp3.Callback {
                 override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
                     Log.w(TAG, "Prewarm HEAD request failed after ${System.currentTimeMillis() - startTime}ms: ${e.message}")

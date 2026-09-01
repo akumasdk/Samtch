@@ -3,9 +3,9 @@ package com.akumasdk.samtch.service
 import android.util.Log
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.irc.IrcMessage
+import com.akumasdk.samtch.util.NetworkUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class TwitchChatClient(
     private val context: android.content.Context,
-    private val httpClient: HttpClient = HttpClient { install(WebSockets) }
+    private val httpClient: HttpClient = NetworkUtil.ktorClient
 ) {
     private val TAG = "TwitchChatClient"
     private val scope = CoroutineScope(Dispatchers.IO + Job())

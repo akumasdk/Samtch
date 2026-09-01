@@ -23,10 +23,10 @@ object BufferingManager {
         return DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                /* minBufferMs = */ 3_000, // Aggressive low buffer for TV
-                /* maxBufferMs = */ 15_000, 
-                /* bufferForPlaybackMs = */ 500, 
-                /* bufferForPlaybackAfterRebufferMs = */ 1_000 
+                /* minBufferMs = */ 10_000, // More generous min buffer for TV stability
+                /* maxBufferMs = */ 30_000, 
+                /* bufferForPlaybackMs = */ 2_000, // Wait for 2s of video before starting
+                /* bufferForPlaybackAfterRebufferMs = */ 3_000 
             )
             .setBackBuffer(
                 /* backBufferDurationMs = */ 10_000, 
@@ -46,15 +46,15 @@ object BufferingManager {
         val builder = MediaItem.LiveConfiguration.Builder()
         
         if (isLowLatencyEnabled) {
-            builder.setTargetOffsetMs(1_000L) // 1.0s target for minimum delay
-                .setMinOffsetMs(500L) 
-                .setMaxOffsetMs(3_000L)
-                .setMaxPlaybackSpeed(1.50f) // Aggressive catch-up
-                .setMinPlaybackSpeed(0.50f) 
+            builder.setTargetOffsetMs(3_000L) // 3.0s target for better stability on TV
+                .setMinOffsetMs(1_500L) 
+                .setMaxOffsetMs(10_000L)
+                .setMaxPlaybackSpeed(1.10f) // Suble catch-up
+                .setMinPlaybackSpeed(0.95f) // Prevent "slowmo" feel
         } else {
-            builder.setTargetOffsetMs(5_000L) 
-                .setMinOffsetMs(2_000L)
-                .setMaxOffsetMs(20_000L)
+            builder.setTargetOffsetMs(8_000L) 
+                .setMinOffsetMs(4_000L)
+                .setMaxOffsetMs(30_000L)
                 .setMaxPlaybackSpeed(1.10f)
                 .setMinPlaybackSpeed(0.95f)
         }

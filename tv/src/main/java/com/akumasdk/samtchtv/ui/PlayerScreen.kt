@@ -58,6 +58,8 @@ import com.akumasdk.samtch.util.FpsMonitor
 import com.akumasdk.samtch.util.PlaybackWatchdog
 import com.akumasdk.samtch.util.StreamingPlayerFactory
 import com.akumasdk.samtch.data.api.PreviewImageService
+import com.akumasdk.samtch.data.emote.Emote
+import com.akumasdk.samtch.data.emote.EmoteType
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.service.TwitchChatClient
 import com.akumasdk.samtch.data.irc.IrcMessage
@@ -141,11 +143,9 @@ fun PlayerScreen(channel: String, onBack: () -> Unit) {
                             .sortedByDescending { it.bandwidth ?: 0L }
                         qualities = filteredQualities
                         
-                        // Set highest quality on start if not already selected
-                        if (selectedQualityUrl == null && filteredQualities.isNotEmpty()) {
-                            val highest = filteredQualities.maxByOrNull { it.bandwidth ?: 0L }
-                            selectedQualityUrl = highest?.playlistUrl
-                        }
+                        // Default to Auto (null) instead of forcing highest bandwidth
+                        // This allows ExoPlayer's ABR to handle initial startup
+                        Log.d("PlayerScreen", "Found ${filteredQualities.size} qualities. Starting in Auto mode.")
                     }
                 } catch (e: Exception) {
                     qualities = emptyList()
@@ -452,7 +452,7 @@ fun QualityDialog(
             LazyColumn {
                 item {
                     QualityItem(
-                        label = "Auto (Source)", 
+                        label = "Auto (Adaptive)", 
                         isSelected = selectedUrl == null
                     ) {
                         onQualitySelected(null)
@@ -551,6 +551,8 @@ fun ChatMessageItem(msg: IrcMessage, channel: String) {
     val colorHex = msg.tags["color"] ?: "#FFFFFF"
     val userColor = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { SamtchTheme.colors.defaultUserColor }
 
+    val tokens = remember(msg) { parseMessageTokens(msg, channel) }
+
     Column(modifier = Modifier.padding(vertical = 2.dp)) {
         Text(
             text = displayName,
@@ -558,27 +560,121 @@ fun ChatMessageItem(msg: IrcMessage, channel: String) {
             style = MaterialTheme.typography.labelLarge
         )
         
-        // Simple emote-aware rendering
-        val parts = msg.message.split(" ")
         FlowRow(modifier = Modifier.fillMaxWidth()) {
-            parts.forEach { part ->
-                val emote = EmoteRepository.getEmote(channel, part)
-                if (emote != null) {
-                    EmoteImage(emote = emote, part = part)
-                } else {
-                    Text(
-                        text = "$part ",
-                        color = SamtchTheme.colors.primaryText,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+            tokens.forEach { token ->
+                when (token) {
+                    is MessageToken.Text -> {
+                        Text(
+                            text = token.text,
+                            color = SamtchTheme.colors.primaryText,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    is MessageToken.EmoteToken -> {
+                        EmoteImage(emote = token.emote, part = token.code)
+                    }
                 }
             }
         }
     }
 }
 
+sealed class MessageToken {
+    data class Text(val text: String) : MessageToken()
+    data class EmoteToken(val code: String, val emote: Emote) : MessageToken()
+}
+
+fun parseMessageTokens(msg: IrcMessage, channel: String): List<MessageToken> {
+    val messageText = msg.message
+    val occurrences = mutableListOf<Triple<IntRange, String, String>>() // Range, Code, URL
+
+    // 1. Parse Twitch emotes from tags
+    val twitchEmotesTag = msg.tags["emotes"]
+    if (!twitchEmotesTag.isNullOrEmpty()) {
+        twitchEmotesTag.split("/").forEach { emoteData ->
+            val parts = emoteData.split(":")
+            if (parts.size == 2) {
+                val id = parts[0]
+                val url = Constants.Twitch.Templates.EMOTE_CDN.format(id)
+                parts[1].split(",").forEach { rangeStr ->
+                    val rangeParts = rangeStr.split("-")
+                    if (rangeParts.size == 2) {
+                        val start = rangeParts[0].toIntOrNull() ?: 0
+                        val end = rangeParts[1].toIntOrNull() ?: 0
+                        try {
+                            if (start < messageText.length && end < messageText.length) {
+                                val code = messageText.substring(start, end + 1)
+                                occurrences.add(Triple(start..end, code, url))
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort by start position
+    occurrences.sortBy { it.first.first }
+
+    val tokens = mutableListOf<MessageToken>()
+    var lastIdx = 0
+
+    for (occ in occurrences) {
+        val range = occ.first
+        if (range.first > lastIdx) {
+            val text = messageText.substring(lastIdx, range.first)
+            // Process 3rd party emotes in the text segment
+            tokens.addAll(processThirdPartyEmotes(text, channel))
+        }
+        
+        tokens.add(MessageToken.EmoteToken(
+            occ.second,
+            Emote(
+                id = "", 
+                code = occ.second,
+                url = occ.third,
+                type = EmoteType.TWITCH
+            )
+        ))
+        lastIdx = range.last + 1
+    }
+
+    if (lastIdx < messageText.length) {
+        val text = messageText.substring(lastIdx)
+        tokens.addAll(processThirdPartyEmotes(text, channel))
+    }
+
+    return if (tokens.isEmpty() && messageText.isNotEmpty()) {
+        processThirdPartyEmotes(messageText, channel)
+    } else tokens
+}
+
+fun processThirdPartyEmotes(text: String, channel: String): List<MessageToken> {
+    if (text.isEmpty()) return emptyList()
+    
+    // Split by whitespace but keep the whitespace as separate parts to maintain spacing
+    val tokens = mutableListOf<MessageToken>()
+    val words = text.split(" ")
+    
+    words.forEachIndexed { index, word ->
+        if (word.isNotEmpty()) {
+            val thirdPartyEmote = EmoteRepository.getEmote(channel, word)
+            if (thirdPartyEmote != null) {
+                tokens.add(MessageToken.EmoteToken(word, thirdPartyEmote))
+            } else {
+                tokens.add(MessageToken.Text(word))
+            }
+        }
+        // Add a space back if it's not the last word or if there was a trailing space
+        if (index < words.size - 1) {
+            tokens.add(MessageToken.Text(" "))
+        }
+    }
+    return tokens
+}
+
 @Composable
-fun EmoteImage(emote: com.akumasdk.samtch.data.emote.Emote, part: String) {
+fun EmoteImage(emote: Emote, part: String) {
     var aspectRatio by remember { mutableFloatStateOf(1f) }
     AsyncImage(
         model = emote.url,

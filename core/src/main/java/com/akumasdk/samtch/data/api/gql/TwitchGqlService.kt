@@ -153,23 +153,15 @@ object TwitchGqlService {
     suspend fun getUserId(channelName: String): String? = withContext(Dispatchers.IO) {
         try {
             val clientId = getDynamicClientId()
-            val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
 
             suspend fun fetchId(token: String?, useRelaxed: Boolean): String? {
                 return try {
                     val payload = JSONObject().apply {
                         put("operationName", "GetUserId")
-                        val variables = JSONObject().apply {
+                        put("query", GET_USER_ID_QUERY.trimIndent())
+                        put("variables", JSONObject().apply {
                             put("login", channelName.lowercase())
-                        }
-                        val extensions = JSONObject().apply {
-                            put("persistedQuery", JSONObject().apply {
-                                put("version", 1)
-                                put("sha256Hash", "e1ed0c80679e44906f47c09a9f4a39039e31d49110196715396d3bb2d48997fd")
-                            })
-                        }
-                        put("variables", variables)
-                        put("extensions", extensions)
+                        })
                     }
 
                     val requestBuilder = Request.Builder()
@@ -201,14 +193,18 @@ object TwitchGqlService {
                 }
             }
 
-            var id = fetchId(integrityToken, false)
+            // Try without token first (most reliable for public data)
+            var id = fetchId(null, false)
+            
             if (id == null) {
-                delay(500)
-                id = fetchId(null, false)
+                val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
+                if (integrityToken != null) {
+                    id = fetchId(integrityToken, false)
+                }
             }
             
             if (id == null) {
-                Log.w(TAG, "GQL getUserId failed for $channelName after all attempts")
+                Log.w(TAG, "GQL getUserId failed for $channelName after all attempts (including relaxed fallback)")
             }
             id
         } catch (e: Exception) {
@@ -240,6 +236,14 @@ object TwitchGqlService {
                 name
               }
             }
+          }
+        }
+    """
+
+    private const val GET_USER_ID_QUERY = """
+        query GetUserId(${"$"}login: String!) {
+          user(login: ${"$"}login) {
+            id
           }
         }
     """

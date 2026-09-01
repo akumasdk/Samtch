@@ -1,14 +1,10 @@
 package com.akumasdk.samtch.data.api.thirdparty
 
 import com.akumasdk.samtch.util.Constants
-import io.ktor.client.HttpClient
+import com.akumasdk.samtch.util.NetworkUtil
 import io.ktor.client.call.body
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 @Serializable
 data class BTTVEmote(val id: String, val code: String, val imageType: String)
@@ -20,16 +16,7 @@ data class BTTVChannelResponse(
 )
 
 object BTTVApi {
-    private val client = HttpClient {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-        install(HttpTimeout) {
-            requestTimeoutMillis = 15000
-            connectTimeoutMillis = 10000
-            socketTimeoutMillis = 10000
-        }
-    }
+    private val client = NetworkUtil.ktorClient
 
     suspend fun getGlobalEmotes(): List<BTTVEmote> {
         return client.get(Constants.ThirdParty.BTTV.API_GLOBAL).body()

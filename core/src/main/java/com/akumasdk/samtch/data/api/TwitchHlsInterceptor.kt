@@ -22,10 +22,7 @@ import java.util.regex.Pattern
 class TwitchHlsInterceptor : Interceptor {
 
     private val m3u8Parser = ExtM3UParser()
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-        .build()
+    private val httpClient = com.akumasdk.samtch.util.NetworkUtil.getClient(useRelaxed = true)
 
     // Cache for backup variant URLs to avoid re-resolving through GQL every 2 seconds
     private val backupUrlCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()

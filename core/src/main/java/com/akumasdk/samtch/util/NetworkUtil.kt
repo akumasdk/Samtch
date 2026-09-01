@@ -1,5 +1,12 @@
 package com.akumasdk.samtch.util
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
@@ -7,6 +14,12 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
 object NetworkUtil {
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        explicitNulls = false
+    }
 
     private val standardClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -30,6 +43,23 @@ object NetworkUtil {
                 .build()
         } catch (e: Exception) {
             standardClient
+        }
+    }
+
+    val ktorClient: HttpClient by lazy {
+        HttpClient(OkHttp) {
+            engine {
+                preconfigured = relaxedClient
+            }
+            install(ContentNegotiation) {
+                json(json)
+            }
+            install(WebSockets)
+            install(HttpTimeout) {
+                requestTimeoutMillis = 20000
+                connectTimeoutMillis = 10000
+                socketTimeoutMillis = 10000
+            }
         }
     }
 
