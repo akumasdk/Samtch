@@ -503,7 +503,8 @@ fun TwitchPlayer(
                                 PlayerLoadingScreen(
                                     channel = channel,
                                     previewUrl = previewImageUrl,
-                                    loadingMessage = loadingMessage
+                                    loadingMessage = loadingMessage,
+                                    refreshKey = playerViewModel.metadataRefreshTrigger
                                 )
                             }
                         }

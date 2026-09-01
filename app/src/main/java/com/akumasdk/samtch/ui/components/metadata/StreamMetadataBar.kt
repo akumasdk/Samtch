@@ -154,6 +154,7 @@ fun StreamMetadataBar(
                         channel = channel,
                         displayName = displayName,
                         avatarUrl = avatarUrl,
+                        streamTitle = streamTitle,
                         viewersCount = viewersCount,
                         streamStartedAt = streamStartedAt,
                         maxWidth = containerWidth

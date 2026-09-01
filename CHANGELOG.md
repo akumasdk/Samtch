@@ -1,5 +1,22 @@
 # Changelog
 
+## Samtch v1.1.5
+
+### What's New
+- **Refined Loading Experience**:
+    - **Cinematic Loading Screen**: Redesigned the player loader with a blurred, animated stream preview and a pulsing Material 3 indicator.
+    - **Real-time Preview Refresh**: Fixed an issue where the loading preview didn't update during metadata refreshes, ensuring you always see the latest stream state.
+- **Improved Adaptive UI**:
+    - **Enhanced Slim Metadata Bar**: Re-introduced the stream title in the slim variant for better context without sacrificing space.
+    - **Balanced Ultra-Slim Layout**: Optimized the metadata bar for ultra-narrow panels (< 180dp) by centering the mini-avatar and streamer name for a more professional look.
+- **Visual Stability**:
+    - **Zero-Flicker Transitions**: Unified background layers across the entire app hierarchy to eliminate \"black void\" flashes when rotating the screen or minimizing the player.
+    - **Solid Immersive Backgrounds**: Ensured that the blurred background remains solid and static during layout morphing, creating a more cohesive \"liquid\" UI feel.
+- **Under-the-Hood Optimization**:
+    - **Deep Animation Pre-warming**: Pre-calculated Bezier curves and physics specs for all player transitions, making them snappier and jank-free from the first tap.
+    - **Shader Warm-up**: Pre-compiled graphics shaders for blur effects to prevent micro-stuttering during orientation changes.
+
+---
 ## Samtch v1.1.4
 
 ### What's New
