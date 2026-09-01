@@ -17,7 +17,6 @@
     - **Shader Warm-up**: Pre-compiled graphics shaders for blur effects to prevent micro-stuttering during orientation changes.
 
 ---
-
 ## Samtch v1.1.4
 
 ### What's New
