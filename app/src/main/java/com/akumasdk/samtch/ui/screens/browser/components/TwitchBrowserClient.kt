@@ -11,6 +11,8 @@ import com.akumasdk.samtch.util.TwitchUrlUtil
 
 class TwitchBrowserClient(
     private val context: android.content.Context,
+    private val urlUtil: TwitchUrlUtil,
+    private val currentUserProvider: () -> String?,
     private val safeHistory: List<String>,
     private val onChannelSelected: (String) -> Unit,
     private val onUiLoadingChanged: (Boolean) -> Unit,
@@ -22,7 +24,7 @@ class TwitchBrowserClient(
         Log.d("TwitchBrowserClient", "shouldOverrideUrlLoading: $url")
 
         // Force mobile domain
-        val mobileUrl = TwitchUrlUtil.ensureMobileUrl(url)
+        val mobileUrl = urlUtil.ensureMobileUrl(url)
         if (mobileUrl != url) {
             Log.d("TwitchBrowserClient", "Desktop URL detected, forcing mobile: $mobileUrl")
             view?.loadUrl(mobileUrl)
@@ -30,20 +32,20 @@ class TwitchBrowserClient(
         }
 
         // Force full reload for the global home to avoid SPA issues
-        if (TwitchUrlUtil.isGlobalHome(url)) {
+        if (urlUtil.isGlobalHome(url)) {
             Log.d("TwitchBrowserClient", "Global home path detected, forcing full load")
             view?.loadUrl(url)
             return true
         }
 
         // Detect if user navigated to an unsafe page
-        val channelMatch = TwitchUrlUtil.extractChannelFromUrl(url)
-        val isSafe = TwitchUrlUtil.isSafeExplorationUrl(url)
+        val channelMatch = urlUtil.extractChannelFromUrl(url)
+        val isSafe = urlUtil.isSafeExplorationUrl(url)
 
         if (!isSafe) {
             val lastSafeUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
             Log.d("TwitchBrowserClient", "Intercepted unsafe URL: $url. Redirecting to $lastSafeUrl")
-            if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUser(context))) {
+            if (urlUtil.isPlayableChannel(channelMatch, currentUserProvider())) {
                 onChannelSelected(channelMatch!!)
             }
             view?.loadUrl(lastSafeUrl)
@@ -65,20 +67,20 @@ class TwitchBrowserClient(
         }
 
         url?.let {
-            val mobileUrl = TwitchUrlUtil.ensureMobileUrl(it)
+            val mobileUrl = urlUtil.ensureMobileUrl(it)
             if (mobileUrl != it) {
                 Log.d("TwitchBrowserClient", "onPageStarted: Desktop URL detected, forcing mobile")
                 view?.loadUrl(mobileUrl)
                 return
             }
 
-            val channelMatch = TwitchUrlUtil.extractChannelFromUrl(it)
-            val isSafe = TwitchUrlUtil.isSafeExplorationUrl(it)
+            val channelMatch = urlUtil.extractChannelFromUrl(it)
+            val isSafe = urlUtil.isSafeExplorationUrl(it)
 
             if (!isSafe) {
                 val lastSafeUrl = safeHistory.lastOrNull() ?: Constants.Twitch.MOBILE_URL
                 Log.d("TwitchBrowserClient", "Page started on unsafe URL. Redirecting.")
-                if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUser(context))) {
+                if (urlUtil.isPlayableChannel(channelMatch, currentUserProvider())) {
                     onChannelSelected(channelMatch!!)
                 }
                 view?.loadUrl(lastSafeUrl)

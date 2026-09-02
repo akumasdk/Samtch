@@ -7,10 +7,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.Constants
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import javax.inject.Inject
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    val settingsManager: SettingsManager,
+    val urlUtil: com.akumasdk.samtch.util.TwitchUrlUtil
+) : ViewModel() {
     var selectedChannel by mutableStateOf<String?>(null)
     var isInPipMode by mutableStateOf(false)
     var wasInPip by mutableStateOf(false)
@@ -24,6 +34,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     var lastAvatarUrl: String? = null
     var lastSubtitle: String? = null
+
+    val currentUser = settingsManager.getAuthUserName()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     fun handleIntent(intent: Intent?): String? {
         val action = intent?.getStringExtra(Constants.Extras.ACTION)

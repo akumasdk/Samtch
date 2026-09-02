@@ -42,7 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.ui.theme.SamtchTheme
@@ -55,7 +55,7 @@ fun NativeTwitchChat(
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
     isImmersiveEnabled: Boolean = true,
-    viewModel: ChatViewModel = viewModel(),
+    viewModel: ChatViewModel = hiltViewModel(),
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
     onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
@@ -146,6 +146,7 @@ fun NativeTwitchChat(
                 key(msg.id, isCompact) {
                     ChatMessageRow(
                         message = msg,
+                        emoteRepository = viewModel.emoteRepository,
                         isCompact = isCompact,
                         onEmoteClick = onEmoteClick,
                         onEmoteLongClick = onEmoteLongClick,

@@ -52,10 +52,16 @@ fun EmoteMenu(
     isLoading: Boolean = false
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabResIds = tabs.keys.toList()
+    val tabResIds = remember(tabs) { tabs.keys.toList() }
 
-    Log.d("EmoteMenu", "Rendering menu. Tabs found: ${tabResIds.size}. Channel: $channel")
-    
+    // Ensure selectedTabIndex is within bounds when tabs change
+    LaunchedEffect(tabResIds) {
+        if (selectedTabIndex >= tabResIds.size && tabResIds.isNotEmpty()) {
+            selectedTabIndex = 0
+        }
+        Log.d("EmoteMenu", "Tabs updated: ${tabResIds.size} tabs. Keys: ${tabResIds.joinToString { it.toString() }}")
+    }
+
     val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
     val surfaceAlpha = if (isImmersiveEnabled) {
         if (isLightMode) 0.94f else 0.82f
@@ -80,7 +86,7 @@ fun EmoteMenu(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     SecondaryScrollableTabRow(
-                        selectedTabIndex = selectedTabIndex,
+                        selectedTabIndex = selectedTabIndex.coerceIn(0, (tabResIds.size - 1).coerceAtLeast(0)),
                         containerColor = Color.Transparent,
                         contentColor = SamtchTheme.colors.accentColor,
                         edgePadding = 0.dp,
@@ -101,6 +107,7 @@ fun EmoteMenu(
                             )
                         }
                     }
+                    // ... icon buttons ...
                     
                     IconButton(
                         onClick = onRefresh,

@@ -30,11 +30,13 @@ import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
+import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ExtM3UParser
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,8 +46,15 @@ import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
+
+    @Inject lateinit var gqlService: TwitchGqlService
+    @Inject lateinit var helixApiClient: HelixApiClient
+    @Inject lateinit var authManager: TwitchAuthManager
+    @Inject lateinit var okHttpClient: OkHttpClient
 
     private var mediaSession: MediaSession? = null
     private var exoPlayer: ExoPlayer? = null
@@ -228,15 +237,15 @@ class PlaybackService : MediaSessionService() {
         private suspend fun resolveMediaItem(item: MediaItem): MutableList<MediaItem> {
             val channelName = item.mediaId
             
-            val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(this@PlaybackService)
+            val auth = authManager.getAuthState()
 
             // Parallel fetch for token and metadata
-            val tokenPairDeferred = serviceScope.async { TwitchGqlService.getPlaybackAccessToken(channelName) }
+            val tokenPairDeferred = serviceScope.async { gqlService.getPlaybackAccessToken(channelName) }
             val metadataDeferred = serviceScope.async { 
                 if (auth.isLoggedIn) {
                     try {
-                        val helixUser = HelixApiClient.getUsers(this@PlaybackService, logins = listOf(channelName)).getOrNull()?.firstOrNull()
-                        val helixStream = HelixApiClient.getStreamMetadata(this@PlaybackService, channelName).getOrNull()
+                        val helixUser = helixApiClient.getUsers(logins = listOf(channelName)).getOrNull()?.firstOrNull()
+                        val helixStream = helixApiClient.getStreamMetadata(channelName).getOrNull()
                         if (helixUser != null) {
                             return@async TwitchHelixMapper.mapHelixToMetadata(helixUser, helixStream)
                         }
@@ -244,14 +253,14 @@ class PlaybackService : MediaSessionService() {
                         // Fallback to GQL
                     }
                 }
-                TwitchGqlService.getStreamMetadata(channelName)
+                gqlService.getStreamMetadata(channelName)
             }
             
             val tokenPair = tokenPairDeferred.await()
             val detailedMetadata = metadataDeferred.await()
             
             return if (tokenPair != null) {
-                val hlsUrl = TwitchGqlService.buildHlsUrl(channelName, tokenPair.first, tokenPair.second)
+                val hlsUrl = gqlService.buildHlsUrl(channelName, tokenPair.first, tokenPair.second)
                 val audioOnlyUrl = fetchAudioOnlyUrl(hlsUrl)
                 
                 val finalUrl = audioOnlyUrl ?: hlsUrl
@@ -282,17 +291,12 @@ class PlaybackService : MediaSessionService() {
 
     private fun fetchAudioOnlyUrl(masterUrl: String): String? {
         return try {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.SECONDS)
-                .build()
-
             val request = Request.Builder()
                 .url(masterUrl)
                 .header("User-Agent", Constants.UserAgents.DESKTOP)
                 .build()
 
-            val response = client.newCall(request).execute()
+            val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) return null
 
             val body = response.body.string()

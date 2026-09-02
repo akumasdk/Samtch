@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.data.api.gql
 
 import android.util.Log
+import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
 import com.akumasdk.samtch.util.Constants
 import kotlinx.coroutines.Dispatchers
@@ -14,22 +15,78 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.UUID
-import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 
-/**
- * Service for fetching Twitch stream access tokens via GraphQL
- * Required for direct HLS playback.
- * 
- * Note: Non-HLS functions (Badges, User ID, Stream Metadata) have been migrated to Helix.
- */
-object TwitchGqlService {
+@Singleton
+class TwitchGqlService @Inject constructor(
+    private val client: OkHttpClient,
+    private val authManager: TwitchAuthManager
+) {
+    companion object {
+        private const val TAG = "TwitchGqlService"
 
-    private const val TAG = "TwitchGqlService"
+        private const val USER_EMOTES_QUERY = """
+            query UserEmotes {
+              currentUser {
+                emoteSets {
+                  id
+                  emotes {
+                    id
+                    token
+                  }
+                }
+              }
+            }
+        """
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+        private const val PLAYBACK_ACCESS_TOKEN_QUERY = """
+            query PlaybackAccessToken(${"$"}login: String!, ${"$"}playerType: String!) {
+              streamPlaybackAccessToken(
+                channelName: ${"$"}login,
+                params: { platform: "web", playerBackend: "mediaplayer", playerType: ${"$"}playerType }
+              ) {
+                value
+                signature
+              }
+            }
+        """
+
+        private const val STREAM_METADATA_QUERY = """
+            query StreamMetadata(${"$"}login: String!) {
+              user(login: ${"$"}login) {
+                id
+                login
+                displayName
+                description
+                profileImageURL(width: 300)
+                createdAt
+                roles {
+                  isPartner
+                }
+                stream {
+                  id
+                  title
+                  type
+                  viewersCount
+                  previewImageURL(height: 360, width: 640)
+                  createdAt
+                  game {
+                    name
+                  }
+                }
+              }
+            }
+        """
+
+        private const val GET_USER_ID_QUERY = """
+            query GetUserId(${"$"}login: String!) {
+              user(login: ${"$"}login) {
+                id
+              }
+            }
+        """
+    }
 
     @Volatile
     private var cachedIntegrityToken: String? = null
@@ -39,9 +96,6 @@ object TwitchGqlService {
 
     private val clientIdMutex = Mutex()
 
-    /**
-     * Dynamically scrapes the Twitch Client ID from the homepage.
-     */
     suspend fun getDynamicClientId(): String {
         cachedDynamicClientId?.let { return it }
 
@@ -59,8 +113,7 @@ object TwitchGqlService {
                     val body = response.body.string()
 
                     if (response.isSuccessful && body.isNotEmpty()) {
-                        val regex =
-                            """clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["']""".toRegex()
+                        val regex = """clientId\s*=\s*["']([^"']+)["']|"Client-ID"\s*:\s*["']([^"']+)["']""".toRegex()
                         val match = regex.find(body)
                         val scrapedId = match?.groupValues?.get(1)?.takeIf { it.isNotEmpty() }
                             ?: match?.groupValues?.get(2)
@@ -74,55 +127,48 @@ object TwitchGqlService {
                 } catch (e: Exception) {
                     Log.e(TAG, "Exception while scraping dynamic Client-ID", e)
                 }
-
                 Constants.Twitch.CLIENT_ID
             }
         }
     }
 
-    /**
-     * Fetches detailed stream and user metadata.
-     */
-    suspend fun getStreamMetadata(channelName: String): TwitchStreamMetadata? =
-        withContext(Dispatchers.IO) {
-            try {
-                val clientId = getDynamicClientId()
-                val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
-                
-                val payload = JSONObject().apply {
-                    put("operationName", "StreamMetadata")
-                    put("query", STREAM_METADATA_QUERY.trimIndent())
-                    put("variables", JSONObject().apply {
-                        put("login", channelName.lowercase())
-                    })
-                }
-
-                val requestBuilder = Request.Builder()
-                    .url(Constants.Twitch.Api.GQL)
-                    .post(payload.toString().toRequestBody("application/json".toMediaType()))
-                    .addCommonHeaders(clientId)
-                
-                if (!integrityToken.isNullOrBlank()) {
-                    requestBuilder.header("Client-Integrity", integrityToken)
-                }
-
-                val response = client.newCall(requestBuilder.build()).execute()
-                val body = response.body.string()
-
-                if (!response.isSuccessful) return@withContext null
-
-                TwitchGqlMapper.mapStreamMetadata(body)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error fetching stream metadata", e)
-                null
+    suspend fun getStreamMetadata(channelName: String): TwitchStreamMetadata? = withContext(Dispatchers.IO) {
+        try {
+            val clientId = getDynamicClientId()
+            val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
+            
+            val payload = JSONObject().apply {
+                put("operationName", "StreamMetadata")
+                put("query", STREAM_METADATA_QUERY.trimIndent())
+                put("variables", JSONObject().apply {
+                    put("login", channelName.lowercase())
+                })
             }
+
+            val requestBuilder = Request.Builder()
+                .url(Constants.Twitch.Api.GQL)
+                .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                .addCommonHeaders(clientId)
+            
+            if (!integrityToken.isNullOrBlank()) {
+                requestBuilder.header("Client-Integrity", integrityToken)
+            }
+
+            val response = client.newCall(requestBuilder.build()).execute()
+            val body = response.body.string()
+
+            if (!response.isSuccessful) return@withContext null
+
+            TwitchGqlMapper.mapStreamMetadata(body)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching stream metadata", e)
+            null
         }
+    }
 
     suspend fun getUserId(channelName: String): String? = withContext(Dispatchers.IO) {
         try {
             val clientId = getDynamicClientId()
-            
-            // Try with integrity token first, then without if it fails
             val integrityToken = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
 
             val fetchId: suspend (String?) -> String? = { token ->
@@ -153,12 +199,7 @@ object TwitchGqlService {
 
             var id = fetchId(integrityToken)
             if (id == null && integrityToken != null) {
-                // Try once more without integrity token if it failed
                 id = fetchId(null)
-            }
-            
-            if (id == null) {
-                Log.w(TAG, "GQL getUserId failed for $channelName after all attempts")
             }
             id
         } catch (e: Exception) {
@@ -167,105 +208,51 @@ object TwitchGqlService {
         }
     }
 
-    // Stable per app-process run
     private val deviceId: String = UUID.randomUUID().toString().replace("-", "")
 
-    private const val PLAYBACK_ACCESS_TOKEN_QUERY = """
-        query PlaybackAccessToken(${"$"}login: String!, ${"$"}playerType: String!) {
-          streamPlaybackAccessToken(
-            channelName: ${"$"}login,
-            params: { platform: "web", playerBackend: "mediaplayer", playerType: ${"$"}playerType }
-          ) {
-            value
-            signature
-          }
-        }
-    """
-
-    private const val STREAM_METADATA_QUERY = """
-        query StreamMetadata(${"$"}login: String!) {
-          user(login: ${"$"}login) {
-            id
-            login
-            displayName
-            description
-            profileImageURL(width: 300)
-            createdAt
-            roles {
-              isPartner
-            }
-            stream {
-              id
-              title
-              type
-              viewersCount
-              previewImageURL(height: 360, width: 640)
-              createdAt
-              game {
-                name
-              }
-            }
-          }
-        }
-    """
-
-    private const val GET_USER_ID_QUERY = """
-        query GetUserId(${"$"}login: String!) {
-          user(login: ${"$"}login) {
-            id
-          }
-        }
-    """
-
-    private fun Request.Builder.addCommonHeaders(clientId: String): Request.Builder {
-        return this
+    private suspend fun Request.Builder.addCommonHeaders(clientId: String): Request.Builder {
+        val auth = authManager.getAuthState()
+        val builder = this
             .header("Client-Id", clientId)
             .header("X-Device-Id", deviceId)
             .header("User-Agent", Constants.UserAgents.DESKTOP)
             .header("Origin", Constants.Twitch.BASE_URL)
             .header("Referer", "${Constants.Twitch.BASE_URL}/")
             .header("Accept", "application/json")
+        
+        if (auth.isLoggedIn && !auth.authToken.isNullOrEmpty()) {
+            builder.header("Authorization", "OAuth ${auth.authToken}")
+        }
+        
+        return builder
     }
 
-    /**
-     * Fetches a new Integrity Token from Twitch.
-     */
-    private suspend fun fetchIntegrityToken(clientId: String): String? =
-        withContext(Dispatchers.IO) {
-            try {
-                val request = Request.Builder()
-                    .url(Constants.Twitch.Api.INTEGRITY)
-                    .post("{}".toRequestBody("application/json".toMediaType()))
-                    .addCommonHeaders(clientId)
-                    .build()
+    private suspend fun fetchIntegrityToken(clientId: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val requestBuilder = Request.Builder()
+                .url(Constants.Twitch.Api.INTEGRITY)
+                .post("{}".toRequestBody("application/json".toMediaType()))
+                .addCommonHeaders(clientId)
+            
+            val response = client.newCall(requestBuilder.build()).execute()
+            val body = response.body.string()
 
-                val response = client.newCall(request).execute()
-                val body = response.body.string()
+            if (!response.isSuccessful) return@withContext null
 
-                if (!response.isSuccessful) {
-                    Log.w(TAG, "Integrity token fetch failed: ${response.code} body=$body")
-                    return@withContext null
-                }
+            val json = JSONObject(body)
+            val token = json.optString("token").takeIf { it.isNotBlank() }
 
-                val json = JSONObject(body)
-                val token = json.optString("token").takeIf { it.isNotBlank() }
-
-                if (token != null) {
-                    cachedIntegrityToken = token
-                    return@withContext token
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to fetch integrity token", e)
+            if (token != null) {
+                cachedIntegrityToken = token
+                return@withContext token
             }
-            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch integrity token", e)
         }
+        null
+    }
 
-    /**
-     * Fetch playback access token and signature for a channel
-     */
-    suspend fun getPlaybackAccessToken(
-        channelName: String
-    ): Pair<String, String>? = withContext(Dispatchers.IO) {
+    suspend fun getPlaybackAccessToken(channelName: String): Pair<String, String>? = withContext(Dispatchers.IO) {
         val clientId = getDynamicClientId()
 
         val firstIntegrity = cachedIntegrityToken ?: fetchIntegrityToken(clientId)
@@ -277,11 +264,7 @@ object TwitchGqlService {
         return@withContext getPlaybackAccessTokenOnce(channelName, clientId, secondIntegrity)
     }
 
-    private fun getPlaybackAccessTokenOnce(
-        channelName: String,
-        clientId: String,
-        integrityToken: String?
-    ): Pair<String, String>? {
+    private suspend fun getPlaybackAccessTokenOnce(channelName: String, clientId: String, integrityToken: String?): Pair<String, String>? {
         return try {
             val payload = JSONObject().apply {
                 put("operationName", "PlaybackAccessToken")
@@ -310,6 +293,55 @@ object TwitchGqlService {
         } catch (e: Exception) {
             Log.e(TAG, "Playback token request exception", e)
             null
+        }
+    }
+
+    suspend fun getUserEmotes(): List<com.akumasdk.samtch.data.emote.Emote> = withContext(Dispatchers.IO) {
+        try {
+            val clientId = getDynamicClientId()
+            val auth = authManager.getAuthState()
+            if (!auth.isLoggedIn) return@withContext emptyList()
+
+            val payload = JSONObject().apply {
+                put("operationName", "UserEmotes")
+                put("query", USER_EMOTES_QUERY.trimIndent())
+            }
+
+            val requestBuilder = Request.Builder()
+                .url(Constants.Twitch.Api.GQL)
+                .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                .addCommonHeaders(clientId)
+
+            val response = client.newCall(requestBuilder.build()).execute()
+            val body = response.body.string()
+
+            if (!response.isSuccessful) return@withContext emptyList()
+
+            val json = JSONObject(body)
+            val emoteSets = json.optJSONObject("data")
+                ?.optJSONObject("currentUser")
+                ?.optJSONArray("emoteSets") ?: return@withContext emptyList()
+
+            val result = mutableListOf<com.akumasdk.samtch.data.emote.Emote>()
+            for (i in 0 until emoteSets.length()) {
+                val set = emoteSets.getJSONObject(i)
+                val emotes = set.optJSONArray("emotes") ?: continue
+                for (j in 0 until emotes.length()) {
+                    val e = emotes.getJSONObject(j)
+                    val id = e.getString("id")
+                    val token = e.getString("token")
+                    result.add(com.akumasdk.samtch.data.emote.Emote(
+                        id = id,
+                        code = token,
+                        url = "https://static-cdn.jtvnw.net/emoticons/v2/$id/static/dark/3.0",
+                        type = com.akumasdk.samtch.data.emote.EmoteType.TWITCH
+                    ))
+                }
+            }
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching GQL user emotes", e)
+            emptyList()
         }
     }
 

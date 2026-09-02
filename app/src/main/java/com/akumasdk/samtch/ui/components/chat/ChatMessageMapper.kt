@@ -12,8 +12,14 @@ import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.data.irc.IrcMessage
 import com.akumasdk.samtch.util.Constants
+import javax.inject.Inject
+import javax.inject.Singleton
 
-object ChatMessageMapper {
+@Singleton
+class ChatMessageMapper @Inject constructor(
+    private val emoteRepository: EmoteRepository,
+    private val badgeRepository: BadgeRepository
+) {
 
     private data class EmoteOccurrence(
         val id: String,
@@ -93,7 +99,7 @@ object ChatMessageMapper {
             cleanText.forEachWord { word, start ->
                 val end = start + word.length - 1
                 if (occurrences.none { it.range.first <= start && it.range.last >= end }) {
-                    val emote = EmoteRepository.getEmote(channelName, word)
+                    val emote = emoteRepository.getEmote(channelName, word)
                     if (emote != null) {
                         occurrences.add(EmoteOccurrence(emote.id, word, emote.url, emote.type.name, start..end, emote.isZeroWidth))
                     }
@@ -178,7 +184,7 @@ object ChatMessageMapper {
             if (parts.size == 2) {
                 val setId = parts[0]
                 val version = parts[1]
-                BadgeRepository.getBadge(channelName, setId, version)
+                badgeRepository.getBadge(channelName, setId, version)
             } else {
                 null
             }

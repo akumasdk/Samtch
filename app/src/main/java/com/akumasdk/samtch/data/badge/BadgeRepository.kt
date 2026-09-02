@@ -2,17 +2,25 @@ package com.akumasdk.samtch.data.badge
 
 import android.util.Log
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
-import com.akumasdk.samtch.data.api.helix.dto.BadgeSetDto
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
+import javax.inject.Singleton
 
-object BadgeRepository {
-    private const val TAG = "BadgeRepository"
+@Singleton
+class BadgeRepository @Inject constructor(
+    private val helixApiClient: HelixApiClient,
+    private val authManager: TwitchAuthManager
+) {
+    companion object {
+        private const val TAG = "BadgeRepository"
+    }
 
     private val _globalState = MutableStateFlow(GlobalBadgeState())
     val globalState = _globalState.asStateFlow()
@@ -23,120 +31,71 @@ object BadgeRepository {
         MutableStateFlow(ChannelBadgeState())
     }.asStateFlow()
 
-    suspend fun loadGlobalBadges(context: android.content.Context) = withContext(Dispatchers.IO) {
-        val auth = TwitchAuthManager.getAuthState(context)
-        if (_globalState.value.isLoaded && _globalState.value.loadedWithAuth == auth.isLoggedIn) return@withContext
-
-        try {
-            Log.d(TAG, "Loading global badges. isLoggedIn=${auth.isLoggedIn}")
-            val globalBadges = if (auth.isLoggedIn) {
-                val badgeResult = HelixApiClient.getGlobalBadges(context)
-                val badgeSets = badgeResult.getOrDefault(emptyList())
-                Log.d(TAG, "Global badge fetch result size: ${badgeSets.size}")
-                mapHelixBadges(badgeSets)
-            } else {
-                emptyMap()
+    suspend fun loadGlobalBadges(force: Boolean = false) = withContext(Dispatchers.IO) {
+        val auth = authManager.authStateFlow.first()
+        if (!force && _globalState.value.isLoaded && _globalState.value.loadedWithAuth == auth.isLoggedIn) return@withContext
+        
+        Log.d(TAG, "Fetching global badges...")
+        helixApiClient.getGlobalBadges().onSuccess { badgeSets ->
+            val badgeMap = badgeSets.associate { set ->
+                set.id to set.versions.associate { v ->
+                    v.id to TwitchBadgeDto(
+                        setID = set.id,
+                        version = v.id,
+                        title = v.title,
+                        image1x = v.imageUrlLow,
+                        image2x = v.imageUrlMedium,
+                        image4x = v.imageUrlHigh
+                    )
+                }
             }
-
-            _globalState.update { it.copy(
-                badges = globalBadges,
-                isLoaded = true,
-                loadedWithAuth = auth.isLoggedIn
-            ) }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading global badges", e)
+            _globalState.update { it.copy(badges = badgeMap, isLoaded = true, loadedWithAuth = auth.isLoggedIn) }
+            Log.d(TAG, "Global badges loaded: ${badgeMap.size} sets")
+        }.onFailure { 
+            Log.e(TAG, "Failed to load global badges", it)
+            _globalState.update { it.copy(isLoaded = true, loadedWithAuth = auth.isLoggedIn) }
         }
     }
 
-    suspend fun loadChannelBadges(context: android.content.Context, channelName: String, userId: String) = withContext(Dispatchers.IO) {
+    suspend fun loadChannelBadges(channelName: String, broadcasterId: String, force: Boolean = false) = withContext(Dispatchers.IO) {
         val channelLower = channelName.lowercase()
         val stateFlow = _channelStates.getOrPut(channelLower) { MutableStateFlow(ChannelBadgeState()) }
-        val auth = TwitchAuthManager.getAuthState(context)
+        val auth = authManager.authStateFlow.first()
         
-        if (stateFlow.value.isLoaded && stateFlow.value.loadedWithAuth == auth.isLoggedIn) return@withContext
+        if (!force && stateFlow.value.isLoaded && stateFlow.value.loadedWithAuth == auth.isLoggedIn) return@withContext
 
-        try {
-            Log.d(TAG, "Loading channel badges for $channelLower. isLoggedIn=${auth.isLoggedIn}, userId=$userId")
-            val channelBadges = if (auth.isLoggedIn) {
-                val badgeResult = HelixApiClient.getChannelBadges(context, userId)
-                val badgeSets = badgeResult.getOrDefault(emptyList())
-                Log.d(TAG, "Channel badge fetch result size for $channelLower: ${badgeSets.size}")
-                mapHelixBadges(badgeSets)
-            } else {
-                emptyMap()
+        Log.d(TAG, "Fetching channel badges for $channelName...")
+        helixApiClient.getChannelBadges(broadcasterId).onSuccess { badgeSets ->
+            val badgeMap = badgeSets.associate { set ->
+                set.id to set.versions.associate { v ->
+                    v.id to TwitchBadgeDto(
+                        setID = set.id,
+                        version = v.id,
+                        title = v.title,
+                        image1x = v.imageUrlLow,
+                        image2x = v.imageUrlMedium,
+                        image4x = v.imageUrlHigh
+                    )
+                }
             }
-
-            stateFlow.update { it.copy(
-                badges = channelBadges,
-                isLoaded = true,
-                loadedWithAuth = auth.isLoggedIn
-            ) }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading channel badges for $channelLower", e)
+            stateFlow.update { it.copy(badges = badgeMap, isLoaded = true, loadedWithAuth = auth.isLoggedIn) }
+            Log.d(TAG, "Channel badges loaded for $channelName: ${badgeMap.size} sets")
+        }.onFailure { 
+            Log.e(TAG, "Failed to load channel badges for $channelName", it)
+            stateFlow.update { it.copy(isLoaded = true, loadedWithAuth = auth.isLoggedIn) }
         }
     }
 
-    private fun mapHelixBadges(badgeSets: List<BadgeSetDto>): Map<String, Map<String, TwitchBadgeDto>> {
-        val result = mutableMapOf<String, MutableMap<String, TwitchBadgeDto>>()
-        badgeSets.forEach { setDto ->
-            val versions = mutableMapOf<String, TwitchBadgeDto>()
-            setDto.versions.forEach { badgeDto ->
-                versions[badgeDto.id] = TwitchBadgeDto(
-                    setID = setDto.id,
-                    version = badgeDto.id,
-                    title = badgeDto.title,
-                    image1x = badgeDto.imageUrlLow,
-                    image2x = badgeDto.imageUrlMedium,
-                    image4x = badgeDto.imageUrlHigh
-                )
-            }
-            if (versions.isNotEmpty()) {
-                result[setDto.id] = versions
-            }
-        }
-        return result
-    }
-
-    fun getBadge(channelName: String, setId: String, version: String): TwitchBadgeDto? {
-        val channelLower = channelName.lowercase()
-        val channelState = _channelStates[channelLower]?.value
-        val globalState = _globalState.value
-
-        return channelState?.displayBadges?.get(setId)?.takeIf { it.version == version }
-            ?: channelState?.badges?.get(setId)?.get(version)
-            ?: globalState.badges[setId]?.get(version)
-    }
-
-    fun getBadgeUrl(channelName: String, setId: String, version: String): String? {
-        val channelLower = channelName.lowercase()
-        val channelState = _channelStates[channelLower]?.value
-        val globalState = _globalState.value
-
-        if (globalState.badges.isEmpty() && (channelState?.badges?.isEmpty() != false)) {
-            return null
-        }
-
-        val badge = getBadge(channelLower, setId, version)
-            
-        if (badge == null) {
-            Log.d(TAG, "Badge not found: $setId/$version in $channelLower")
-            return null
-        }
-
-        val url = badge.bestUrl ?: return null
-                 
-        return if (url.startsWith("http") || url.startsWith("//")) {
-            if (url.startsWith("//")) "https:$url" else url
-        } else {
-            "https://$url"
-        }
+    fun getBadge(channelName: String, setId: String, versionId: String): TwitchBadgeDto? {
+        val channelBadges = _channelStates[channelName.lowercase()]?.value?.badges
+        val globalBadges = _globalState.value.badges
+        
+        return channelBadges?.get(setId)?.get(versionId) ?: globalBadges[setId]?.get(versionId)
     }
 
     fun clearCache() {
         Log.d(TAG, "Clearing badge cache")
         _globalState.update { GlobalBadgeState() }
-        _channelStates.values.forEach { flow ->
-            flow.update { ChannelBadgeState() }
-        }
+        _channelStates.values.forEach { it.update { ChannelBadgeState() } }
     }
 }

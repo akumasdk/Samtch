@@ -49,8 +49,8 @@ fun SettingsDialogs(
     onDismissLogout: () -> Unit,
     onDismissAbout: () -> Unit,
     onLogout: () -> Unit,
-    scope: CoroutineScope,
-    context: android.content.Context
+    settingsManager: SettingsManager,
+    scope: CoroutineScope
 ) {
     if (showThemeDialog) {
         SelectionDialog(
@@ -61,10 +61,10 @@ fun SettingsDialogs(
                     SettingsManager.ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
                     SettingsManager.ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
                 }
-                label to { scope.launch { SettingsManager.setThemeMode(context, mode) } }
+                label to { scope.launch { settingsManager.setThemeMode(mode) } }
             },
             selectedIndex = SettingsManager.ThemeMode.entries.indexOf(themeMode),
-            onReset = { scope.launch { SettingsManager.setThemeMode(context, SettingsManager.ThemeMode.SYSTEM) } },
+            onReset = { scope.launch { settingsManager.setThemeMode(SettingsManager.ThemeMode.SYSTEM) } },
             onDismiss = onDismissTheme
         )
     }
@@ -77,10 +77,10 @@ fun SettingsDialogs(
                     SettingsManager.AdBlockMode.VAFT -> stringResource(R.string.ad_block_mode_vaft)
                     SettingsManager.AdBlockMode.VIDEO_SWAP -> stringResource(R.string.ad_block_mode_video_swap)
                 }
-                label to { scope.launch { SettingsManager.setAdBlockMode(context, mode) } }
+                label to { scope.launch { settingsManager.setAdBlockMode(mode) } }
             },
             selectedIndex = SettingsManager.AdBlockMode.entries.indexOf(adBlockMode),
-            onReset = { scope.launch { SettingsManager.setAdBlockMode(context, SettingsManager.AdBlockMode.VAFT) } },
+            onReset = { scope.launch { settingsManager.setAdBlockMode(SettingsManager.AdBlockMode.VAFT) } },
             onDismiss = onDismissAdBlock
         )
     }
@@ -93,10 +93,10 @@ fun SettingsDialogs(
                     SettingsManager.ChatMode.NATIVE -> stringResource(R.string.chat_mode_native)
                     SettingsManager.ChatMode.LEGACY -> stringResource(R.string.chat_mode_legacy)
                 }
-                label to { scope.launch { SettingsManager.setChatMode(context, mode) } }
+                label to { scope.launch { settingsManager.setChatMode(mode) } }
             },
             selectedIndex = SettingsManager.ChatMode.entries.indexOf(chatMode),
-            onReset = { scope.launch { SettingsManager.setChatMode(context, SettingsManager.ChatMode.NATIVE) } },
+            onReset = { scope.launch { settingsManager.setChatMode(SettingsManager.ChatMode.NATIVE) } },
             onDismiss = onDismissChatMode
         )
     }
@@ -106,10 +106,10 @@ fun SettingsDialogs(
         SelectionDialog(
             title = stringResource(R.string.chat_settings_font_size),
             options = fontSizeOptions.map { size ->
-                "${size}sp" to { scope.launch { SettingsManager.setChatFontSize(context, size) } }
+                "${size}sp" to { scope.launch { settingsManager.setChatFontSize(size) } }
             },
             selectedIndex = fontSizeOptions.indexOf(chatFontSize),
-            onReset = { scope.launch { SettingsManager.setChatFontSize(context, 14) } },
+            onReset = { scope.launch { settingsManager.setChatFontSize(14) } },
             onDismiss = onDismissFontSize
         )
     }
@@ -119,10 +119,10 @@ fun SettingsDialogs(
         SelectionDialog(
             title = stringResource(R.string.chat_settings_emote_size),
             options = emoteSizeOptions.map { size ->
-                "${size}dp" to { scope.launch { SettingsManager.setChatEmoteSize(context, size) } }
+                "${size}dp" to { scope.launch { settingsManager.setChatEmoteSize(size) } }
             },
             selectedIndex = emoteSizeOptions.indexOf(chatEmoteSize),
-            onReset = { scope.launch { SettingsManager.setChatEmoteSize(context, 28) } },
+            onReset = { scope.launch { settingsManager.setChatEmoteSize(28) } },
             onDismiss = onDismissEmoteSize
         )
     }
@@ -132,10 +132,10 @@ fun SettingsDialogs(
         SelectionDialog(
             title = stringResource(R.string.chat_settings_badge_size),
             options = badgeSizeOptions.map { size ->
-                "${size}dp" to { scope.launch { SettingsManager.setChatBadgeSize(context, size) } }
+                "${size}dp" to { scope.launch { settingsManager.setChatBadgeSize(size) } }
             },
             selectedIndex = badgeSizeOptions.indexOf(chatBadgeSize),
-            onReset = { scope.launch { SettingsManager.setChatBadgeSize(context, 18) } },
+            onReset = { scope.launch { settingsManager.setChatBadgeSize(18) } },
             onDismiss = onDismissBadgeSize
         )
     }
@@ -146,10 +146,10 @@ fun SettingsDialogs(
             title = stringResource(R.string.fullscreen_chat_ratio_title),
             options = ratioOptions.map { ratio ->
                 val label = if (ratio == 0) stringResource(R.string.fullscreen_chat_ratio_auto) else "$ratio%"
-                label to { scope.launch { SettingsManager.setFullscreenChatRatio(context, ratio) } }
+                label to { scope.launch { settingsManager.setFullscreenChatRatio(ratio) } }
             },
             selectedIndex = ratioOptions.indexOf(chatRatio),
-            onReset = { scope.launch { SettingsManager.setFullscreenChatRatio(context, 0) } },
+            onReset = { scope.launch { settingsManager.setFullscreenChatRatio(0) } },
             onDismiss = onDismissChatRatio
         )
     }
