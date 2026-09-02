@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.settings.SettingsManager
+import com.akumasdk.samtch.ui.MainViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.util.ScriptLoader
 import com.multiplatform.webview.web.LoadingState
@@ -37,9 +39,10 @@ fun WebViewContainer(
     onLoadingStatus: (String) -> Unit = {},
     onAdblocked: (String) -> Unit = {}
 ) {
+    val mainViewModel: MainViewModel = hiltViewModel()
     val context = LocalContext.current
     val resources = context.resources
-    val adBlockMode by SettingsManager.getAdBlockMode(context).collectAsState(initial = SettingsManager.AdBlockMode.VAFT)
+    val adBlockMode by mainViewModel.settingsManager.getAdBlockMode().collectAsState(initial = SettingsManager.AdBlockMode.VAFT)
 
     // Reset status and inject early when loading starts
     LaunchedEffect(state.loadingState, adBlockMode, channel) {

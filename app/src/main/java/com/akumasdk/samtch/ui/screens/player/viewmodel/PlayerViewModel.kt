@@ -5,8 +5,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,10 +31,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.akumasdk.samtch.data.auth.TwitchAuthManager
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-class PlayerViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class PlayerViewModel @Inject constructor(
+    private val gqlService: TwitchGqlService,
+    private val helixApiClient: HelixApiClient,
+    private val authManager: TwitchAuthManager
+) : androidx.lifecycle.ViewModel() {
     var channel by mutableStateOf<String?>(null)
         private set
         
@@ -43,6 +55,61 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     
     var metadataRefreshTrigger by mutableStateOf(0)
     
+    var isUiLoading by mutableStateOf(true)
+    var loadingMessage by mutableStateOf("")
+    var adblockText by mutableStateOf("")
+    
+    var isChatVisible by mutableStateOf(true)
+    var showFullscreenControls by mutableStateOf(true)
+
+    var isChatTemporarilyExpanded by mutableStateOf(false)
+    var chatInteractionTrigger by mutableIntStateOf(0)
+
+    fun onChatInteraction() {
+        chatInteractionTrigger++
+        isChatTemporarilyExpanded = true
+    }
+
+    fun toggleChat() {
+        isChatVisible = !isChatVisible
+    }
+
+    fun toggleFullscreenControls() {
+        showFullscreenControls = !showFullscreenControls
+    }
+
+    fun isVideoRequired(isFullscreen: Boolean): Boolean {
+        return (!isAudioOnly) && (portraitMode != PortraitMode.CHAT_ONLY) && (isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
+    }
+
+    fun getChatRatio(
+        chatRatioPercent: Int,
+        screenWidth: Dp,
+        screenHeight: Dp,
+        isFullscreen: Boolean
+    ): Float {
+        val baseChatRatio = if (chatRatioPercent == 0) {
+            val targetAspectRatio = 16f / 9f
+            val screenAspectRatio = screenWidth / screenHeight
+
+            if (screenAspectRatio > targetAspectRatio) {
+                val idealPlayerWidth = screenHeight * targetAspectRatio
+                val autoRatio = 1f - (idealPlayerWidth / screenWidth)
+                autoRatio.coerceIn(0.10f, 0.50f)
+            } else {
+                0.15f
+            }
+        } else {
+            chatRatioPercent / 100f
+        }
+
+        return if (isFullscreen && isChatTemporarilyExpanded) {
+            baseChatRatio.coerceAtLeast(0.30f)
+        } else {
+            baseChatRatio
+        }
+    }
+
     var hasBackgroundReloaded by mutableStateOf(false)
     
     var mediaController by mutableStateOf<MediaController?>(null)
@@ -169,12 +236,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun fetchMetadata(channel: String): TwitchStreamMetadata? {
-        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(getApplication())
+        val auth = authManager.getAuthState()
         
         if (auth.isLoggedIn) {
             try {
-                val helixStream = HelixApiClient.getStreamMetadata(getApplication(), channel).getOrNull()
-                val helixUser = HelixApiClient.getUsers(getApplication(), logins = listOf(channel)).getOrNull()?.firstOrNull()
+                val helixStream = helixApiClient.getStreamMetadata(channel).getOrNull()
+                val helixUser = helixApiClient.getUsers(logins = listOf(channel)).getOrNull()?.firstOrNull()
                 
                 if (helixUser != null) {
                     return TwitchHelixMapper.mapHelixToMetadata(helixUser, helixStream)
@@ -184,7 +251,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         
-        return TwitchGqlService.getStreamMetadata(channel)
+        return gqlService.getStreamMetadata(channel)
     }
 
     private fun updateMetadataState(metadata: TwitchStreamMetadata) {

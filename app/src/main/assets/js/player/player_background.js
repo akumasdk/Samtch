@@ -9,8 +9,11 @@
     let isTransitioning = false;
     let lastRefreshTime = 0;
 
-    function getUrl() {
-        return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.toLowerCase()}-853x480.jpg?t=${new Date().getTime()}`;
+    function getUrl(key) {
+        const trigger = parseInt(key) || 0;
+        const res = (trigger % 2 === 0) ? '640x360' : '1280x720';
+        const cacheBuster = key ? `v=${key}` : `t=${new Date().getTime()}`;
+        return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.toLowerCase()}-${res}.jpg?${cacheBuster}`;
     }
 
     function injectStyles() {
@@ -52,7 +55,7 @@
         document.head.appendChild(style);
     }
 
-    window.refreshSamtchBackground = function() {
+    window.refreshSamtchBackground = function(key) {
         const now = Date.now();
         // Prevent multiple simultaneous transitions or spamming (min 10s between refreshes)
         if (isTransitioning || (now - lastRefreshTime < 10000 && !isFirstLoad)) {
@@ -62,7 +65,7 @@
         const container = document.querySelector('[data-a-target="video-ref"]');
         if (!container) return;
 
-        const nextUrl = getUrl();
+        const nextUrl = getUrl(key);
         const img = new Image();
 
         isTransitioning = true;

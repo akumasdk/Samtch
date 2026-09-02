@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.akumasdk.samtch.ui.MainViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.akumasdk.samtch.ui.screens.browser.components.TwitchBrowserBridge
 import com.akumasdk.samtch.ui.screens.browser.components.TwitchBrowserClient
 import com.akumasdk.samtch.R
@@ -62,9 +64,11 @@ fun TwitchBrowser(
     onRefreshRequested: () -> Unit = {},
     onLoaded: () -> Unit = {}
 ) {
+    val mainViewModel: MainViewModel = hiltViewModel()
     val activity = LocalActivity.current
     val context = LocalContext.current
-    val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+    val themeMode by mainViewModel.settingsManager.getThemeMode().collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+    val currentUser by mainViewModel.currentUser.collectAsState()
     val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
     var webViewRef by remember { mutableStateOf<NativeWebView?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
@@ -179,10 +183,9 @@ fun TwitchBrowser(
 
             // Check if this is a channel URL - if so, don't inject scripts
             val currentUrl = state.lastLoadedUrl ?: ""
-            val channelMatch = TwitchUrlUtil.extractChannelFromUrl(currentUrl)
-            val currentUser = TwitchUrlUtil.getCurrentUser(context)
-
-            if (TwitchUrlUtil.isPlayableChannel(channelMatch, currentUser)) {
+            val channelMatch = mainViewModel.urlUtil.extractChannelFromUrl(currentUrl)
+            val currentUserVal = currentUser
+            if (mainViewModel.urlUtil.isPlayableChannel(channelMatch, currentUserVal)) {
                 Log.d("TwitchBrowser", "Channel page detected, skipping script injection and stopping load")
                 navigator.stopLoading()
                 return@LaunchedEffect
@@ -233,15 +236,15 @@ fun TwitchBrowser(
             },
             onUrlChanged = { url, blocked, requestBack ->
                 try {
-                    val mobileUrl = TwitchUrlUtil.ensureMobileUrl(url)
-                    val channelMatch = TwitchUrlUtil.extractChannelFromUrl(mobileUrl)
-                    val isSafe = TwitchUrlUtil.isSafeExplorationUrl(mobileUrl)
+                    val mobileUrl = mainViewModel.urlUtil.ensureMobileUrl(url)
+                    val channelMatch = mainViewModel.urlUtil.extractChannelFromUrl(mobileUrl)
+                    val isSafe = mainViewModel.urlUtil.isSafeExplorationUrl(mobileUrl)
 
                     if (!isSafe || requestBack) {
                         Log.d("TwitchBrowser", "Sentinel: Unsafe or Escape detected. blocked=$blocked, url=$mobileUrl")
                         
                         // 1. Trigger the player (if it's a channel)
-                        if (TwitchUrlUtil.isPlayableChannel(channelMatch, TwitchUrlUtil.getCurrentUser(context))) {
+                        if (mainViewModel.urlUtil.isPlayableChannel(channelMatch, currentUser)) {
                             currentOnChannelSelected(channelMatch!!)
                         }
                         
@@ -282,10 +285,10 @@ fun TwitchBrowser(
                 // Perform initial load or restore previous URL when returning from player.
                 // "At All Costs" Guard: If the restored URL is a channel, force Home instead.
                 val restoredUrl = state.lastLoadedUrl
-                val channelMatch = restoredUrl?.let { TwitchUrlUtil.extractChannelFromUrl(it) }
-                val currentUser = TwitchUrlUtil.getCurrentUser(context)
+                val channelMatch = restoredUrl?.let { mainViewModel.urlUtil.extractChannelFromUrl(it) }
+                val currentUserVal = currentUser
 
-                val urlToLoad = if (TwitchUrlUtil.isPlayableChannel(channelMatch, currentUser)) {
+                val urlToLoad = if (mainViewModel.urlUtil.isPlayableChannel(channelMatch, currentUserVal)) {
                     Log.d("TwitchBrowser", "onCreated: Restored URL is a channel ($channelMatch). Forcing Home instead.")
                     Constants.Twitch.MOBILE_URL
                 } else if (!restoredUrl.isNullOrEmpty()) {
@@ -326,6 +329,8 @@ fun TwitchBrowser(
                     // Custom WebViewClient to intercept URL changes
                     webViewClient = TwitchBrowserClient(
                         context = context,
+                        urlUtil = mainViewModel.urlUtil,
+                        currentUserProvider = { mainViewModel.currentUser.value },
                         safeHistory = safeHistory,
                         onChannelSelected = { currentOnChannelSelected(it) },
                         onUiLoadingChanged = { isUiLoading = it },

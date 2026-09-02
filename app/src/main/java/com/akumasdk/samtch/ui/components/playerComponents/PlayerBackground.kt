@@ -12,13 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
-import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.CachePolicy
@@ -27,8 +24,7 @@ import com.akumasdk.samtch.ui.theme.LocalStreamPreview
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.akumasdk.samtch.ui.components.metadata.util.getAlternatingPreviewUrl
 
 @Composable
 fun PlayerBackground(
@@ -49,12 +45,15 @@ fun PlayerBackground(
     val targetUrl = previewUrl ?: previewInfo.previewUrl 
     val targetRefreshKey = refreshKey ?: previewInfo.refreshKey
     
-    val baseUrl = targetUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(targetChannel.lowercase())
+    val baseUrl = remember(targetUrl, targetChannel, targetRefreshKey) {
+        val url = targetUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(targetChannel.lowercase())
+        getAlternatingPreviewUrl(url, targetRefreshKey) ?: ""
+    }
     
     val finalUrl = remember(baseUrl, targetRefreshKey) {
         val url = if (targetRefreshKey != null) {
             val connector = if (baseUrl.contains("?")) "&" else "?"
-            "$baseUrl${connector}t=${System.currentTimeMillis()}"
+            "$baseUrl${connector}v=$targetRefreshKey"
         } else {
             baseUrl
         }
@@ -75,31 +74,6 @@ fun PlayerBackground(
                 label = "PlayerBackgroundCrossfade"
             ) { url ->
                 var isLoaded by remember { mutableStateOf(false) }
-                var imageLuminance by remember { mutableFloatStateOf(0f) }
-                var successState by remember { mutableStateOf<AsyncImagePainter.State.Success?>(null) }
-                
-                // Offload CPU-intensive luminance analysis to a background thread
-                LaunchedEffect(successState) {
-                    val state = successState ?: return@LaunchedEffect
-                    withContext(Dispatchers.Default) {
-                        try {
-                            // toBitmap() and Palette generation are heavy operations
-                            val bitmap = state.result.drawable.toBitmap()
-                            val palette = Palette.from(bitmap).generate()
-                            
-                            val dom = Color(palette.getDominantColor(0)).luminance()
-                            val muted = Color(palette.getMutedColor(0)).luminance()
-                            
-                            // Return to main thread to update UI state
-                            imageLuminance = (dom + muted) / 2f
-                            isLoaded = true
-                            Log.d("PlayerBackground", "Luminance Analyzed: $imageLuminance")
-                        } catch (e: Exception) {
-                            Log.e("PlayerBackground", "Background Palette analysis failed", e)
-                            isLoaded = true // Still show the image even if analysis fails
-                        }
-                    }
-                }
 
                 val animatedAlpha by animateFloatAsState(
                     targetValue = if (isLoaded) alpha else 0f,
@@ -116,7 +90,6 @@ fun PlayerBackground(
                         .crossfade(true)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .memoryCachePolicy(CachePolicy.ENABLED)
-                        .allowHardware(false) // Required for Palette to read the bitmap
                         .build(),
                     contentDescription = null,
                     modifier = Modifier
@@ -126,21 +99,10 @@ fun PlayerBackground(
                     alpha = animatedAlpha,
                     onState = { state ->
                         if (state is AsyncImagePainter.State.Success) {
-                            successState = state
+                            isLoaded = true
                         }
                     }
                 )
-
-                // Dynamic dark wash: apply more darkness if the image is bright
-                // This ensures content readability regardless of image brightness.
-                if (isLoaded && imageLuminance > 0.25f) {
-                    val washAlpha = ((imageLuminance - 0.25f) * 0.95f).coerceIn(0f, 0.75f)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = washAlpha))
-                    )
-                }
             }
         }
         

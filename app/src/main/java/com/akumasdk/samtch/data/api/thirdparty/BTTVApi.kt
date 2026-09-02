@@ -1,35 +1,35 @@
 package com.akumasdk.samtch.data.api.thirdparty
 
+import com.akumasdk.samtch.data.emote.BTTVChannelResponse
+import com.akumasdk.samtch.data.emote.BTTVEmote
 import com.akumasdk.samtch.util.Constants
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
-import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import io.ktor.client.statement.HttpResponse
+import io.ktor.http.isSuccess
+import javax.inject.Inject
+import javax.inject.Singleton
 
-@Serializable
-data class BTTVEmote(val id: String, val code: String, val imageType: String)
-
-@Serializable
-data class BTTVChannelResponse(
-    val channelEmotes: List<BTTVEmote> = emptyList(),
-    val sharedEmotes: List<BTTVEmote> = emptyList()
-)
-
-object BTTVApi {
-    private val client = HttpClient {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
+@Singleton
+class BTTVApi @Inject constructor(
+    private val client: HttpClient
+) {
+    suspend fun getGlobalEmotes(): Result<List<BTTVEmote>> = runCatching {
+        val response: HttpResponse = client.get(Constants.ThirdParty.BTTV.API_GLOBAL)
+        if (response.status.isSuccess()) {
+            response.body()
+        } else {
+            throw Exception("BTTV API error: ${response.status}")
         }
     }
 
-    suspend fun getGlobalEmotes(): List<BTTVEmote> {
-        return client.get(Constants.ThirdParty.BTTV.API_GLOBAL).body()
-    }
-
-    suspend fun getChannelEmotes(userId: String): BTTVChannelResponse {
-        return client.get(Constants.ThirdParty.BTTV.API_USER.format(userId)).body()
+    suspend fun getChannelEmotes(userId: String): Result<BTTVChannelResponse> = runCatching {
+        val response: HttpResponse = client.get(Constants.ThirdParty.BTTV.API_USER.format(userId))
+        if (response.status.isSuccess()) {
+            response.body()
+        } else {
+            throw Exception("BTTV API error: ${response.status}")
+        }
     }
 }

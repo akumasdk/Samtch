@@ -38,6 +38,7 @@ import coil.compose.AsyncImage
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
+import com.akumasdk.samtch.ui.components.metadata.util.unifyPreviewUrl
 
 @Composable
 fun PlayerLoadingScreen(
@@ -58,7 +59,11 @@ fun PlayerLoadingScreen(
         label = "PulseScale"
     )
 
-    val baseUrl = previewUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
+    val baseUrl = remember(previewUrl, channel) {
+        val url = previewUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
+        unifyPreviewUrl(url) ?: ""
+    }
+    
     val finalUrl = remember(baseUrl, refreshKey) {
         if (refreshKey != null) {
             val connector = if (baseUrl.contains("?")) "&" else "?"

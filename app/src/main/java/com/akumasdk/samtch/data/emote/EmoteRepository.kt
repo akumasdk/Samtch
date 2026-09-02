@@ -4,20 +4,32 @@ import android.util.Log
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.dto.HelixEmoteDto
-import com.akumasdk.samtch.data.api.thirdparty.BTTVApi
-import com.akumasdk.samtch.data.api.thirdparty.FFZApi
-import com.akumasdk.samtch.data.api.thirdparty.SevenTVApi
+import com.akumasdk.samtch.data.api.thirdparty.*
+import com.akumasdk.samtch.data.auth.TwitchAuthManager
+import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.Constants
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
-object EmoteRepository {
-    private const val TAG = "EmoteRepository"
+@Singleton
+class EmoteRepository @Inject constructor(
+    private val helixApiClient: HelixApiClient,
+    private val bttvApi: BTTVApi,
+    private val ffzApi: FFZApi,
+    private val sevenTVApi: SevenTVApi,
+    private val gqlService: TwitchGqlService,
+    private val authManager: TwitchAuthManager
+) {
+    companion object {
+        private const val TAG = "EmoteRepository"
+        private val BTTV_ZERO_WIDTH = setOf(
+            "SoSnowy", "IceCold", "SantaHat", "TopHat", "ReinDeer", "CandyCane", "cvMask", "cvHazmat"
+        )
+    }
 
     private val _globalState = MutableStateFlow(GlobalEmoteState())
     val globalState = _globalState.asStateFlow()
@@ -26,213 +38,316 @@ object EmoteRepository {
     val userEmoteState = _userEmoteState.asStateFlow()
 
     private val _channelStates = ConcurrentHashMap<String, MutableStateFlow<ChannelEmoteState>>()
+    private val _tabCache = ConcurrentHashMap<String, StateFlow<Map<Int, List<Emote>>>>()
+    private val _flattenedCache = ConcurrentHashMap<String, StateFlow<List<Emote>>>()
+    
+    private val repoScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val aspectRatioCache = ConcurrentHashMap<String, Float>()
 
     fun getAspectRatio(url: String): Float? = aspectRatioCache[url]
-
-    fun putAspectRatio(url: String, ratio: Float) {
-        aspectRatioCache[url] = ratio
-    }
+    fun putAspectRatio(url: String, ratio: Float) { aspectRatioCache[url] = ratio }
 
     fun getChannelState(channelName: String) = _channelStates.getOrPut(channelName.lowercase()) {
         MutableStateFlow(ChannelEmoteState())
     }.asStateFlow()
 
-    private val BTTV_ZERO_WIDTH = setOf(
-        "SoSnowy", "IceCold", "SantaHat", "TopHat", "ReinDeer", "CandyCane", "cvMask", "cvHazmat"
-    )
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+    fun getEmoteTabs(channelName: String, settingsManager: SettingsManager): StateFlow<Map<Int, List<Emote>>> {
+        val channelLower = channelName.lowercase()
+        @Suppress("UNCHECKED_CAST")
+        return _tabCache.getOrPut(channelLower) {
+            Log.d(TAG, "Initializing EmoteTabs for $channelLower")
+            combine(
+                settingsManager.getRecentEmotes(channelLower),
+                globalState,
+                userEmoteState,
+                getChannelState(channelLower)
+            ) { recent, global, userState, channelState ->
+                val tabs = mutableMapOf<Int, List<Emote>>()
+                
+                if (recent.isNotEmpty()) {
+                    tabs[com.akumasdk.samtch.R.string.emote_menu_recent] = recent
+                }
 
-    suspend fun loadGlobalEmotes(context: android.content.Context) = withContext(Dispatchers.IO) {
-        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
-        
-        // If already loaded with the same auth state, skip. 
-        if (_globalState.value.isLoaded && _globalState.value.loadedWithAuth == auth.isLoggedIn) return@withContext
-        
-        Log.d(TAG, "Loading global emotes. isLoggedIn=${auth.isLoggedIn}")
-        
-        // Set isLoaded to true immediately to signal loading started/ready for increments
-        _globalState.update { it.copy(isLoaded = true, loadedWithAuth = auth.isLoggedIn) }
+                // Channel Emotes
+                val allChannelEmotes = (channelState.twitchEmotes.values + channelState.seventvEmotes.values + channelState.bttvEmotes.values + channelState.ffzEmotes.values).distinctBy { it.id }
+                if (allChannelEmotes.isNotEmpty()) {
+                    tabs[com.akumasdk.samtch.R.string.emote_menu_channel] = allChannelEmotes
+                }
 
-        kotlinx.coroutines.supervisorScope {
-            // Load Twitch Global
-            if (auth.isLoggedIn) {
+                // User Emotes
+                if (userState.twitchEmotes.isNotEmpty()) {
+                    tabs[com.akumasdk.samtch.R.string.emote_menu_user] = userState.twitchEmotes.values.toList()
+                }
+
+                // Global Twitch
+                if (global.twitchEmotes.isNotEmpty()) {
+                    tabs[com.akumasdk.samtch.R.string.emote_menu_twitch] = global.twitchEmotes.values.toList()
+                }
+
+                // Global 3rd Party
+                val allGlobal3rdParty = (global.seventvEmotes.values + global.bttvEmotes.values + global.ffzEmotes.values).toList()
+                if (allGlobal3rdParty.isNotEmpty()) {
+                    tabs[com.akumasdk.samtch.R.string.emote_menu_global] = allGlobal3rdParty
+                }
+
+                Log.d(TAG, "Tabs emission calculated for $channelLower: ${tabs.size} tabs")
+                tabs
+            }
+            .debounce(100.milliseconds) // Avoid UI jumps when multiple providers load back-to-back
+            .stateIn(
+                scope = repoScope,
+                started = SharingStarted.Eagerly, 
+                initialValue = emptyMap()
+            )
+        } as StateFlow<Map<Int, List<Emote>>>
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getFlattenedEmotes(channelName: String): StateFlow<List<Emote>> {
+        val channelLower = channelName.lowercase()
+        @Suppress("UNCHECKED_CAST")
+        return _flattenedCache.getOrPut(channelLower) {
+            combine(
+                globalState,
+                userEmoteState,
+                getChannelState(channelLower)
+            ) { global, userState, channelState ->
+                buildList {
+                    addAll(channelState.twitchEmotes.values)
+                    addAll(channelState.seventvEmotes.values)
+                    addAll(channelState.bttvEmotes.values)
+                    addAll(channelState.ffzEmotes.values)
+                    addAll(userState.twitchEmotes.values)
+                    addAll(global.twitchEmotes.values)
+                    addAll(global.seventvEmotes.values)
+                    addAll(global.bttvEmotes.values)
+                    addAll(global.ffzEmotes.values)
+                }.distinctBy { it.id }
+            }.stateIn(
+                scope = repoScope,
+                started = SharingStarted.Lazily,
+                initialValue = emptyList()
+            )
+        } as StateFlow<List<Emote>>
+    }
+
+    suspend fun loadGlobalEmotes(force: Boolean = false) = withContext(Dispatchers.IO) {
+        val auth = authManager.authStateFlow.first()
+        val currentState = _globalState.value
+        
+        if (!force && currentState.isTwitchLoaded && currentState.loadedWithAuth == auth.isLoggedIn && 
+            currentState.isBttvLoaded && currentState.isSeventvLoaded && currentState.isFfzLoaded) {
+            return@withContext
+        }
+        
+        Log.d(TAG, "Loading global emotes. isLoggedIn=${auth.isLoggedIn}, force=$force")
+
+        supervisorScope {
+            // Twitch Global
+            val shouldLoadTwitch = auth.isLoggedIn && (force || !currentState.isTwitchLoaded || !currentState.loadedWithAuth)
+            if (shouldLoadTwitch) {
                 launch {
-                    try {
-                        val twitchMap = mutableMapOf<String, Emote>()
-                        HelixApiClient.getGlobalEmotes(context).getOrNull()?.forEach {
-                            twitchMap[it.name] = mapHelixEmote(it)
-                        }
-                        _globalState.update { it.copy(twitchEmotes = it.twitchEmotes + twitchMap) }
-                    } catch (e: Exception) { Log.e(TAG, "Twitch Global load failed", e) }
+                    helixApiClient.getGlobalEmotes().onSuccess { helixEmotes ->
+                        val twitchMap = helixEmotes.associateBy({ it.name }, { mapHelixEmote(it) })
+                        _globalState.update { it.copy(twitchEmotes = twitchMap, isTwitchLoaded = true, loadedWithAuth = true) }
+                    }.onFailure { e ->
+                        if (e is CancellationException) throw e
+                        Log.e(TAG, "Twitch Global load failed", e)
+                        _globalState.update { it.copy(loadedWithAuth = true) }
+                    }
+                }
+            } else if (!auth.isLoggedIn) {
+                _globalState.update { it.copy(twitchEmotes = emptyMap(), isTwitchLoaded = true, loadedWithAuth = false) }
+            }
+
+            // BTTV Global
+            if (force || !currentState.isBttvLoaded) {
+                launch {
+                    bttvApi.getGlobalEmotes().onSuccess { bttvList ->
+                        val bttvMap = bttvList.associate { it.code to Emote(
+                            it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
+                            isZeroWidth = it.code in BTTV_ZERO_WIDTH
+                        )}
+                        _globalState.update { it.copy(bttvEmotes = bttvMap, isBttvLoaded = true) }
+                    }.onFailure { e ->
+                        if (e is CancellationException) throw e
+                        Log.e(TAG, "BTTV Global load failed", e)
+                        _globalState.update { it.copy(isBttvLoaded = true) }
+                    }
                 }
             }
 
-            // Load BTTV Global
-            launch {
-                try {
-                    val bttvMap = mutableMapOf<String, Emote>()
-                    BTTVApi.getGlobalEmotes().forEach {
-                        bttvMap[it.code] = Emote(
-                            it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
-                            isZeroWidth = it.code in BTTV_ZERO_WIDTH
-                        )
+            // 7TV Global
+            if (force || !currentState.isSeventvLoaded) {
+                launch {
+                    sevenTVApi.getGlobalEmotes().onSuccess { sevenTVSet ->
+                        val seventvMap = sevenTVSet.emotes.mapNotNull { parseSevenTVEmote(it) }.associateBy { it.code }
+                        _globalState.update { it.copy(seventvEmotes = seventvMap, isSeventvLoaded = true) }
+                    }.onFailure { e ->
+                        if (e is CancellationException) throw e
+                        Log.e(TAG, "7TV Global load failed", e)
+                        _globalState.update { it.copy(isSeventvLoaded = true) }
                     }
-                    _globalState.update { it.copy(bttvEmotes = it.bttvEmotes + bttvMap) }
-                } catch (e: Exception) { Log.e(TAG, "BTTV Global load failed", e) }
-            }
-
-            // Load 7TV Global
-            launch {
-                try {
-                    val seventvMap = mutableMapOf<String, Emote>()
-                    SevenTVApi.getGlobalEmotes().emotes.forEach { emote ->
-                        parseSevenTVEmote(emote)?.let { seventvMap[it.code] = it }
-                    }
-                    _globalState.update { it.copy(seventvEmotes = it.seventvEmotes + seventvMap) }
-                } catch (e: Exception) { Log.e(TAG, "7TV Global load failed", e) }
+                }
             }
             
-            // Load FFZ Global
-            launch {
-                try {
-                    val ffzMap = mutableMapOf<String, Emote>()
-                    val ffzGlobal = FFZApi.getGlobalEmotes()
-                    ffzGlobal.default_sets.forEach { setId ->
-                        ffzGlobal.sets[setId.toString()]?.emotes?.forEach { emote ->
-                            val url = emote.animated?.get("4") ?: emote.animated?.get("2") ?: emote.animated?.get("1")
-                                     ?: emote.urls["4"] ?: emote.urls["2"] ?: emote.urls["1"] ?: ""
-                            if (url.isNotEmpty()) {
-                                val fullUrl = when {
-                                    url.startsWith("http") -> url
-                                    url.startsWith("//") -> "https:$url"
-                                    else -> "https:$url"
-                                }
-                                ffzMap[emote.name] = Emote(emote.id.toString(), emote.name, fullUrl, EmoteType.FFZ)
-                            }
+            // FFZ Global
+            if (force || !currentState.isFfzLoaded) {
+                launch {
+                    ffzApi.getGlobalEmotes().onSuccess { ffzResponse ->
+                        val ffzMap = mutableMapOf<String, Emote>()
+                        ffzResponse.default_sets.forEach { setId ->
+                            ffzGlobalToMap(ffzResponse, setId.toString(), ffzMap)
                         }
+                        _globalState.update { it.copy(ffzEmotes = ffzMap, isFfzLoaded = true) }
+                    }.onFailure { e ->
+                        if (e is CancellationException) throw e
+                        Log.e(TAG, "FFZ Global load failed", e)
+                        _globalState.update { it.copy(isFfzLoaded = true) }
                     }
-                    _globalState.update { it.copy(ffzEmotes = it.ffzEmotes + ffzMap) }
-                } catch (e: Exception) { Log.e(TAG, "FFZ Global load failed", e) }
+                }
             }
         }
     }
 
-    suspend fun loadChannelEmotes(context: android.content.Context, channelName: String, userId: String? = null) = withContext(Dispatchers.IO) {
+    private fun ffzGlobalToMap(response: FFZGlobalResponse, setId: String, outMap: MutableMap<String, Emote>) {
+        response.sets[setId]?.emotes?.forEach { emote ->
+            val url = emote.animated?.get("4") ?: emote.animated?.get("2") ?: emote.animated?.get("1")
+                     ?: emote.urls["4"] ?: emote.urls["2"] ?: emote.urls["1"] ?: ""
+            if (url.isNotEmpty()) {
+                val fullUrl = if (url.startsWith("http") || url.startsWith("//")) {
+                    if (url.startsWith("//")) "https:$url" else url
+                } else "https:$url"
+                outMap[emote.name] = Emote(emote.id.toString(), emote.name, fullUrl, EmoteType.FFZ)
+            }
+        }
+    }
+
+    suspend fun loadChannelEmotes(channelName: String, userId: String? = null, force: Boolean = false) = withContext(Dispatchers.IO) {
         val channelLower = channelName.lowercase()
         val stateFlow = _channelStates.getOrPut(channelLower) { MutableStateFlow(ChannelEmoteState()) }
-        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+        val auth = authManager.authStateFlow.first()
         
-        // If already loaded with a valid ID and same auth state, skip.
         val currentState = stateFlow.value
-        if (currentState.isLoaded && currentState.loadedWithAuth == auth.isLoggedIn && (userId == null || currentState.twitchEmotes.isNotEmpty() || currentState.seventvEmotes.isNotEmpty())) {
+        if (!force && currentState.isTwitchLoaded && currentState.loadedWithAuth == auth.isLoggedIn && 
+            currentState.isBttvLoaded && currentState.isSeventvLoaded && currentState.isFfzLoaded) {
              return@withContext
         }
 
-        // Resolve User ID: Use provided, or try Helix (if auth), or fallback to GQL (guest)
         val resolvedUserId = userId ?: if (auth.isLoggedIn && auth.userName.equals(channelLower, ignoreCase = true)) {
             auth.userId
         } else {
-            // Try Helix first (requires auth), then GQL (guest-friendly)
-            HelixApiClient.getUserIdByName(context, channelLower).getOrNull() 
-                ?: TwitchGqlService.getUserId(channelLower)
+            helixApiClient.getUserIdByName(channelLower).getOrNull() ?: gqlService.getUserId(channelLower)
         }
 
         if (resolvedUserId == null) {
-            Log.e(TAG, "Failed to get User ID for $channelLower, channel emotes won't load")
+            stateFlow.update { it.copy(isTwitchLoaded = true, isBttvLoaded = true, isSeventvLoaded = true, isFfzLoaded = true, loadedWithAuth = auth.isLoggedIn) }
             return@withContext
         }
 
         Log.d(TAG, "Loading channel emotes for $channelLower (ID: $resolvedUserId)")
-        stateFlow.update { it.copy(isLoaded = true, loadedWithAuth = auth.isLoggedIn) }
 
-        kotlinx.coroutines.supervisorScope {
-            // Load Twitch Channel - Requires Auth
-            if (auth.isLoggedIn) {
+        supervisorScope {
+            // Twitch Channel
+            val shouldLoadTwitch = auth.isLoggedIn && (force || !currentState.isTwitchLoaded || !currentState.loadedWithAuth)
+            if (shouldLoadTwitch) {
                 launch {
-                    try {
-                        val twitchMap = mutableMapOf<String, Emote>()
-                        HelixApiClient.getChannelEmotes(context, resolvedUserId).getOrNull()?.forEach {
-                            twitchMap[it.name] = mapHelixEmote(it)
-                        }
-                        stateFlow.update { it.copy(twitchEmotes = it.twitchEmotes + twitchMap) }
-                    } catch (e: Exception) { Log.e(TAG, "Twitch Channel load failed for $channelLower", e) }
+                    helixApiClient.getChannelEmotes(resolvedUserId).onSuccess { helixEmotes ->
+                        val twitchMap = helixEmotes.associateBy({ it.name }, { mapHelixEmote(it) })
+                        stateFlow.update { it.copy(twitchEmotes = twitchMap, isTwitchLoaded = true, loadedWithAuth = true) }
+                    }.onFailure { e ->
+                        if (e is CancellationException) throw e
+                        Log.e(TAG, "Twitch Channel load failed for $channelLower", e)
+                        stateFlow.update { it.copy(isTwitchLoaded = true, loadedWithAuth = true) }
+                    }
+                }
+            } else if (!auth.isLoggedIn) {
+                stateFlow.update { it.copy(twitchEmotes = emptyMap(), isTwitchLoaded = true, loadedWithAuth = false) }
+            }
+
+            // BTTV Channel
+            if (force || !currentState.isBttvLoaded) {
+                launch {
+                    bttvApi.getChannelEmotes(resolvedUserId).onSuccess { bttvChannel ->
+                        val bttvMap = (bttvChannel.channelEmotes + bttvChannel.sharedEmotes).associate { it.code to Emote(
+                            it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
+                            isZeroWidth = it.code in BTTV_ZERO_WIDTH
+                        )}
+                        stateFlow.update { it.copy(bttvEmotes = bttvMap, isBttvLoaded = true) }
+                    }.onFailure { e ->
+                        if (e is CancellationException) throw e
+                        Log.e(TAG, "BTTV Channel load failed", e)
+                        stateFlow.update { it.copy(isBttvLoaded = true) }
+                    }
                 }
             }
 
-            // Load 3rd Party Channel - Needs numerical Twitch ID
-            // Load BTTV Channel
-            launch {
-                try {
-                    val bttvMap = mutableMapOf<String, Emote>()
-                    val bttvChannel = BTTVApi.getChannelEmotes(resolvedUserId)
-                    (bttvChannel.channelEmotes + bttvChannel.sharedEmotes).forEach {
-                        bttvMap[it.code] = Emote(
-                            it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
-                            isZeroWidth = it.code in BTTV_ZERO_WIDTH
-                        )
+            // 7TV Channel
+            if (force || !currentState.isSeventvLoaded) {
+                launch {
+                    sevenTVApi.getChannelEmotes(resolvedUserId).onSuccess { seventvUser ->
+                        val seventvMap = (seventvUser.emoteSet ?: seventvUser.user?.emoteSet)?.emotes?.mapNotNull { parseSevenTVEmote(it) }?.associateBy { it.code } ?: emptyMap()
+                        stateFlow.update { it.copy(seventvEmotes = seventvMap, isSeventvLoaded = true) }
+                    }.onFailure { e ->
+                        if (e is CancellationException) throw e
+                        Log.e(TAG, "7TV Channel load failed", e)
+                        stateFlow.update { it.copy(isSeventvLoaded = true) }
                     }
-                    stateFlow.update { it.copy(bttvEmotes = it.bttvEmotes + bttvMap) }
-                } catch (e: Exception) { Log.e(TAG, "BTTV Channel load failed for $channelLower", e) }
+                }
             }
 
-            // Load 7TV Channel
-            launch {
-                try {
-                    val seventvMap = mutableMapOf<String, Emote>()
-                    val seventvUser = SevenTVApi.getChannelEmotes(resolvedUserId)
-                    val activeSet = seventvUser.emoteSet ?: seventvUser.user?.emoteSet
-                    activeSet?.emotes?.forEach { emote ->
-                        parseSevenTVEmote(emote)?.let { seventvMap[it.code] = it }
-                    }
-                    stateFlow.update { it.copy(seventvEmotes = it.seventvEmotes + seventvMap) }
-                } catch (e: Exception) { Log.e(TAG, "7TV Channel load failed for $channelLower", e) }
-            }
-
-            // Load FFZ Channel
-            launch {
-                try {
-                    val ffzMap = mutableMapOf<String, Emote>()
-                    val ffzRoom = FFZApi.getChannelEmotes(resolvedUserId)
-                    ffzRoom.sets.values.forEach { set ->
-                        set.emotes.forEach { emote ->
-                            val url = emote.animated?.get("4") ?: emote.animated?.get("2") ?: emote.animated?.get("1")
-                                     ?: emote.urls["4"] ?: emote.urls["2"] ?: emote.urls["1"] ?: ""
-                            if (url.isNotEmpty()) {
-                                val fullUrl = when {
-                                    url.startsWith("http") -> url
-                                    url.startsWith("//") -> "https:$url"
-                                    else -> "https:$url"
+            // FFZ Channel
+            if (force || !currentState.isFfzLoaded) {
+                launch {
+                    ffzApi.getChannelEmotes(resolvedUserId).onSuccess { ffzRoom ->
+                        val ffzMap = mutableMapOf<String, Emote>()
+                        ffzRoom.sets.values.forEach { set ->
+                            set.emotes.forEach { emote ->
+                                val url = emote.animated?.get("4") ?: emote.animated?.get("2") ?: emote.animated?.get("1")
+                                         ?: emote.urls["4"] ?: emote.urls["2"] ?: emote.urls["1"] ?: ""
+                                if (url.isNotEmpty()) {
+                                    val fullUrl = if (url.startsWith("http") || url.startsWith("//")) {
+                                        if (url.startsWith("//")) "https:$url" else url
+                                    } else "https:$url"
+                                    ffzMap[emote.name] = Emote(emote.id.toString(), emote.name, fullUrl, EmoteType.FFZ)
                                 }
-                                ffzMap[emote.name] = Emote(emote.id.toString(), emote.name, fullUrl, EmoteType.FFZ)
                             }
                         }
+                        stateFlow.update { it.copy(ffzEmotes = ffzMap, isFfzLoaded = true) }
+                    }.onFailure { e ->
+                        if (e is CancellationException) throw e
+                        Log.e(TAG, "FFZ Channel load failed", e)
+                        stateFlow.update { it.copy(isFfzLoaded = true) }
                     }
-                    stateFlow.update { it.copy(ffzEmotes = it.ffzEmotes + ffzMap) }
-                } catch (e: Exception) { Log.e(TAG, "FFZ Channel load failed for $channelLower", e) }
+                }
             }
         }
     }
 
-    suspend fun loadUserEmotes(context: android.content.Context) = withContext(Dispatchers.IO) {
-        val auth = com.akumasdk.samtch.data.auth.TwitchAuthManager.getAuthState(context)
+    suspend fun loadUserEmotes() = withContext(Dispatchers.IO) {
+        val auth = authManager.authStateFlow.first()
         if (!auth.isLoggedIn || auth.userId == null) return@withContext
         if (_userEmoteState.value.isLoaded && _userEmoteState.value.userId == auth.userId) return@withContext
 
-        try {
-            val twitchMap = mutableMapOf<String, Emote>()
-            HelixApiClient.getUserEmotes(context, auth.userId).getOrNull()?.forEach {
-                twitchMap[it.name] = mapHelixEmote(it)
+        Log.d(TAG, "Loading user emotes for ${auth.userName}")
+        
+        // 1. Try Helix first (official API)
+        helixApiClient.getUserEmotes(auth.userId).onSuccess { helixEmotes ->
+            if (helixEmotes.isNotEmpty()) {
+                val twitchMap = helixEmotes.associateBy({ it.name }, { mapHelixEmote(it) })
+                _userEmoteState.update { it.copy(twitchEmotes = twitchMap, isLoaded = true, userId = auth.userId) }
+                return@withContext
             }
-
-            _userEmoteState.update { it.copy(
-                twitchEmotes = twitchMap,
-                isLoaded = true,
-                userId = auth.userId
-            ) }
-            Log.d(TAG, "User emotes loaded for ${auth.userName}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading user emotes", e)
+        }.onFailure { e ->
+            if (e is CancellationException) throw e
+            Log.w(TAG, "Helix user emotes failed, trying GQL fallback: ${e.message}")
         }
+
+        // 2. Fallback to GQL (often works better with browser session tokens)
+        val gqlEmotes = gqlService.getUserEmotes()
+        val twitchMap = gqlEmotes.associateBy { it.code }
+        _userEmoteState.update { it.copy(twitchEmotes = twitchMap, isLoaded = true, userId = auth.userId) }
     }
 
     fun getEmote(channelName: String, code: String): Emote? {
@@ -251,38 +366,11 @@ object EmoteRepository {
             ?: globalState.ffzEmotes[code]
     }
 
-    fun getAllEmotes(channelName: String): List<Emote> {
-        val channelState = _channelStates[channelName.lowercase()]?.value
-        val globalState = _globalState.value
-        val userState = _userEmoteState.value
-        
-        return buildList {
-            channelState?.let {
-                addAll(it.twitchEmotes.values)
-                addAll(it.seventvEmotes.values)
-                addAll(it.bttvEmotes.values)
-                addAll(it.ffzEmotes.values)
-            }
-            addAll(userState.twitchEmotes.values)
-            addAll(globalState.twitchEmotes.values)
-            addAll(globalState.seventvEmotes.values)
-            addAll(globalState.bttvEmotes.values)
-            addAll(globalState.ffzEmotes.values)
-        }.distinctBy { it.id }
-    }
-
     private fun mapHelixEmote(dto: HelixEmoteDto): Emote {
         val isAnimated = dto.format?.contains("animated") == true
         val format = if (isAnimated) "animated" else "static"
-        // Use the template-style URL for better control, falling back to url_4x
         val url = "https://static-cdn.jtvnw.net/emoticons/v2/${dto.id}/$format/dark/3.0"
-        
-        return Emote(
-            id = dto.id,
-            code = dto.name,
-            url = url,
-            type = EmoteType.TWITCH
-        )
+        return Emote(dto.id, dto.name, url, EmoteType.TWITCH)
     }
 
     private fun parseSevenTVEmote(emote: SevenTVEmote): Emote? {
@@ -290,39 +378,25 @@ object EmoteRepository {
         val hostUrl = data.host.url
         if (hostUrl.isBlank()) return null
         
-        // Find best quality (webp preferably)
         val bestFile = data.host.files.find { it.name == "4x.webp" }
                       ?: data.host.files.find { it.format == "WEBP" && it.name.contains("4x") }
                       ?: data.host.files.find { it.name == "2x.webp" }
                       ?: data.host.files.firstOrNull()
         
         val path = bestFile?.name ?: "4x.webp"
-        val baseUrl = when {
-            hostUrl.startsWith("//") -> "https:$hostUrl"
-            hostUrl.startsWith("http") -> hostUrl
-            else -> "https://$hostUrl"
-        }
+        val baseUrl = if (hostUrl.startsWith("//")) "https:$hostUrl" else if (hostUrl.startsWith("http")) hostUrl else "https://$hostUrl"
         val url = if (baseUrl.endsWith("/")) "$baseUrl$path" else "$baseUrl/$path"
         
-        return Emote(
-            id = emote.id,
-            code = emote.name,
-            url = url,
-            type = EmoteType.SEVENTV,
-            isZeroWidth = emote.isZeroWidth
-        )
+        return Emote(emote.id, emote.name, url, EmoteType.SEVENTV, isZeroWidth = emote.isZeroWidth)
     }
 
     fun clearCache() {
         Log.d(TAG, "Clearing emote cache")
         _globalState.update { GlobalEmoteState() }
         _userEmoteState.update { UserEmoteState() }
-        
-        // Reset all active channel flows instead of clearing the map
-        _channelStates.values.forEach { flow ->
-            flow.update { ChannelEmoteState() }
-        }
-        
+        _channelStates.values.forEach { it.update { ChannelEmoteState() } }
+        _tabCache.clear()
+        _flattenedCache.clear()
         aspectRatioCache.clear()
     }
 }

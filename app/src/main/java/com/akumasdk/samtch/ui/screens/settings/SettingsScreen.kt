@@ -22,6 +22,7 @@ import com.akumasdk.samtch.data.model.GitHubRelease
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.ui.screens.settings.components.*
 import com.akumasdk.samtch.util.UpdateManager
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -29,9 +30,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val settingsManager = viewModel.settingsManager
     var showAboutDialog by remember { mutableStateOf(false) }
+    // ... rest of the state
     var showAdBlockDialog by remember { mutableStateOf(false) }
     var showChatModeDialog by remember { mutableStateOf(false) }
     var showChatFontSizeDialog by remember { mutableStateOf(false) }
@@ -49,17 +53,17 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val chatMode by remember(context) { SettingsManager.getChatMode(context) }.collectAsState(initial = SettingsManager.ChatMode.NATIVE)
-    val chatFontSize by remember(context) { SettingsManager.getChatFontSize(context) }.collectAsState(initial = 14)
-    val chatEmoteSize by remember(context) { SettingsManager.getChatEmoteSize(context) }.collectAsState(initial = 28)
-    val chatBadgeSize by remember(context) { SettingsManager.getChatBadgeSize(context) }.collectAsState(initial = 18)
-    val chatRatio by remember(context) { SettingsManager.getFullscreenChatRatio(context) }.collectAsState(initial = 0)
-    val themeMode by remember(context) { SettingsManager.getThemeMode(context) }.collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
-    val adBlockMode by remember(context) { SettingsManager.getAdBlockMode(context) }.collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
-    val isPipEnabled by remember(context) { SettingsManager.isPipEnabled(context) }.collectAsState(initial = true)
-    val isAudioBackgroundEnabled by remember(context) { SettingsManager.isAudioOnlyBackgroundEnabled(context) }.collectAsState(initial = false)
-    val isImmersiveBackgroundEnabled by remember(context) { SettingsManager.isImmersiveBackgroundEnabled(context) }.collectAsState(initial = true)
-    val isLoggedIn by remember(context) { SettingsManager.isLoggedIn(context) }.collectAsState(initial = false)
+    val chatMode by settingsManager.getChatMode().collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+    val chatFontSize by settingsManager.getChatFontSize().collectAsState(initial = 14)
+    val chatEmoteSize by settingsManager.getChatEmoteSize().collectAsState(initial = 28)
+    val chatBadgeSize by settingsManager.getChatBadgeSize().collectAsState(initial = 18)
+    val chatRatio by settingsManager.getFullscreenChatRatio().collectAsState(initial = 0)
+    val themeMode by settingsManager.getThemeMode().collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+    val adBlockMode by settingsManager.getAdBlockMode().collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
+    val isPipEnabled by settingsManager.isPipEnabled().collectAsState(initial = true)
+    val isAudioBackgroundEnabled by settingsManager.isAudioOnlyBackgroundEnabled().collectAsState(initial = false)
+    val isImmersiveBackgroundEnabled by settingsManager.isImmersiveBackgroundEnabled().collectAsState(initial = true)
+    val isLoggedIn by settingsManager.isLoggedIn().collectAsState(initial = false)
 
     val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
     val isActuallyDark = when (themeMode) {
@@ -117,8 +121,8 @@ fun SettingsScreen(
                 isImmersiveEnabled = isImmersiveBackgroundEnabled,
                 isActuallyDark = isActuallyDark,
                 scope = scope,
-                context = context,
-                onThemeClick = { showThemeModeDialog = true }
+                onThemeClick = { showThemeModeDialog = true },
+                settingsManager = settingsManager
             )
 
             playerSection(
@@ -126,8 +130,8 @@ fun SettingsScreen(
                 isAudioEnabled = isAudioBackgroundEnabled,
                 adBlockMode = adBlockMode,
                 scope = scope,
-                context = context,
-                onAdBlockClick = { showAdBlockDialog = true }
+                onAdBlockClick = { showAdBlockDialog = true },
+                settingsManager = settingsManager
             )
 
             chatSection(
@@ -137,13 +141,13 @@ fun SettingsScreen(
                 chatBadgeSize = chatBadgeSize,
                 chatRatio = chatRatio,
                 scope = scope,
-                context = context,
                 onChatModeClick = { showChatModeDialog = true },
                 onFontSizeClick = { showChatFontSizeDialog = true },
                 onEmoteSizeClick = { showChatEmoteSizeDialog = true },
                 onBadgeSizeClick = { showChatBadgeSizeDialog = true },
                 onChatRatioClick = { showChatRatioDialog = true },
-                onBttvClick = { isBttvSettingsOpen = true }
+                onBttvClick = { isBttvSettingsOpen = true },
+                settingsManager = settingsManager
             )
 
             if (isLoggedIn) {
@@ -191,8 +195,8 @@ fun SettingsScreen(
         onDismissLogout = { showLogoutDialog = false },
         onDismissAbout = { showAboutDialog = false },
         onLogout = onLogout,
-        scope = scope,
-        context = context
+        settingsManager = settingsManager,
+        scope = scope
     )
 
     if (isBttvSettingsOpen) {
@@ -207,7 +211,7 @@ private fun LazyListScope.appearanceSection(
     isImmersiveEnabled: Boolean,
     isActuallyDark: Boolean,
     scope: CoroutineScope,
-    context: android.content.Context,
+    settingsManager: SettingsManager,
     onThemeClick: () -> Unit
 ) {
     item { SettingSectionHeader(stringResource(R.string.settings_category_appearance)) }
@@ -215,15 +219,15 @@ private fun LazyListScope.appearanceSection(
         ThemeModeItem(
             themeMode, 
             onClick = onThemeClick,
-            onReset = { scope.launch { SettingsManager.setThemeMode(context, SettingsManager.ThemeMode.SYSTEM) } }
+            onReset = { scope.launch { settingsManager.setThemeMode(SettingsManager.ThemeMode.SYSTEM) } }
         ) 
     }
     if (isActuallyDark) {
         item { 
             ImmersiveBackgroundToggleItem(
                 enabled = isImmersiveEnabled,
-                onToggle = { scope.launch { SettingsManager.setImmersiveBackgroundEnabled(context, it) } },
-                onReset = { scope.launch { SettingsManager.setImmersiveBackgroundEnabled(context, true) } }
+                onToggle = { scope.launch { settingsManager.setImmersiveBackgroundEnabled(it) } },
+                onReset = { scope.launch { settingsManager.setImmersiveBackgroundEnabled(true) } }
             )
         }
     }
@@ -235,29 +239,29 @@ private fun LazyListScope.playerSection(
     isAudioEnabled: Boolean,
     adBlockMode: SettingsManager.AdBlockMode,
     scope: CoroutineScope,
-    context: android.content.Context,
+    settingsManager: SettingsManager,
     onAdBlockClick: () -> Unit
 ) {
     item { SettingSectionHeader(stringResource(R.string.settings_category_player)) }
     item { 
         PipToggleItem(
             isPipEnabled, 
-            onToggle = { scope.launch { SettingsManager.setPipEnabled(context, it) } },
-            onReset = { scope.launch { SettingsManager.setPipEnabled(context, true) } }
+            onToggle = { scope.launch { settingsManager.setPipEnabled(it) } },
+            onReset = { scope.launch { settingsManager.setPipEnabled(true) } }
         ) 
     }
     item { 
         AudioBackgroundToggleItem(
             isAudioEnabled, 
-            onToggle = { scope.launch { SettingsManager.setAudioOnlyBackgroundEnabled(context, it) } },
-            onReset = { scope.launch { SettingsManager.setAudioOnlyBackgroundEnabled(context, false) } }
+            onToggle = { scope.launch { settingsManager.setAudioOnlyBackgroundEnabled(it) } },
+            onReset = { scope.launch { settingsManager.setAudioOnlyBackgroundEnabled(false) } }
         ) 
     }
     item { 
         AdBlockModeItem(
             adBlockMode, 
             onClick = onAdBlockClick,
-            onReset = { scope.launch { SettingsManager.setAdBlockMode(context, SettingsManager.AdBlockMode.VAFT) } }
+            onReset = { scope.launch { settingsManager.setAdBlockMode(SettingsManager.AdBlockMode.VAFT) } }
         ) 
     }
     item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }
@@ -270,7 +274,7 @@ private fun LazyListScope.chatSection(
     chatBadgeSize: Int,
     chatRatio: Int,
     scope: CoroutineScope,
-    context: android.content.Context,
+    settingsManager: SettingsManager,
     onChatModeClick: () -> Unit,
     onFontSizeClick: () -> Unit,
     onEmoteSizeClick: () -> Unit,
@@ -283,7 +287,7 @@ private fun LazyListScope.chatSection(
         ChatModeItem(
             chatMode, 
             onClick = onChatModeClick,
-            onReset = { scope.launch { SettingsManager.setChatMode(context, SettingsManager.ChatMode.NATIVE) } }
+            onReset = { scope.launch { settingsManager.setChatMode(SettingsManager.ChatMode.NATIVE) } }
         ) 
     }
     
@@ -292,31 +296,32 @@ private fun LazyListScope.chatSection(
             ChatFontSizeItem(
                 chatFontSize, 
                 onClick = onFontSizeClick,
-                onReset = { scope.launch { SettingsManager.setChatFontSize(context, 14) } }
+                onReset = { scope.launch { settingsManager.setChatFontSize(14) } }
             ) 
         }
         item { 
             ChatEmoteSizeItem(
                 chatEmoteSize, 
                 onClick = onEmoteSizeClick,
-                onReset = { scope.launch { SettingsManager.setChatEmoteSize(context, 28) } }
+                onReset = { scope.launch { settingsManager.setChatEmoteSize(28) } }
             ) 
         }
         item { 
             ChatBadgeSizeItem(
                 chatBadgeSize, 
                 onClick = onBadgeSizeClick,
-                onReset = { scope.launch { SettingsManager.setChatBadgeSize(context, 18) } }
+                onReset = { scope.launch { settingsManager.setChatBadgeSize(18) } }
             ) 
         }
         item { 
             FullscreenChatRatioItem(
                 chatRatio, 
                 onClick = onChatRatioClick,
-                onReset = { scope.launch { SettingsManager.setFullscreenChatRatio(context, 0) } }
+                onReset = { scope.launch { settingsManager.setFullscreenChatRatio(0) } }
             ) 
         }
-    } else {
+    }
+else {
         item { BttvSettingsItem(onClick = onBttvClick) }
     }
     item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp), thickness = 0.5.dp) }

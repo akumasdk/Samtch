@@ -5,10 +5,15 @@ import android.util.Log
 import android.webkit.CookieManager
 import com.akumasdk.samtch.data.settings.SettingsManager
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import java.net.URI
 
-object TwitchUrlUtil {
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class TwitchUrlUtil @Inject constructor(
+    private val settingsManager: SettingsManager
+) {
     fun ensureMobileUrl(url: String): String {
         val uri = try { URI(url) } catch (_: Exception) { return url }
         if (uri.host == "www.twitch.tv" || uri.host == Constants.Twitch.DOMAIN) {
@@ -83,10 +88,10 @@ object TwitchUrlUtil {
         return channelCandidate
     }
 
-    fun getCurrentUser(context: Context): String? {
+    suspend fun getCurrentUser(): String? {
         return try {
             // 1. Try OAuth from DataStore first
-            val oauthUserName = runBlocking { SettingsManager.getAuthUserName(context).first() }
+            val oauthUserName = settingsManager.getAuthUserName().first()
             if (!oauthUserName.isNullOrEmpty()) {
                 return oauthUserName
             }

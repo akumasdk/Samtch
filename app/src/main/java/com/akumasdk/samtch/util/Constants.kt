@@ -40,7 +40,7 @@ object Constants {
         object Templates {
             const val PLAYER_URL = "https://player.twitch.tv/?channel=%s&parent=twitch.tv&muted=false&autoplay=true&enableExtensions=false&player=mobile"
             const val CHAT_URL = "https://www.twitch.tv/embed/%s/chat?parent=twitch.tv&darkpopout"
-            const val PREVIEW_URL = "https://static-cdn.jtvnw.net/previews-ttv/live_user_%s-853x480.jpg"
+            const val PREVIEW_URL = "https://static-cdn.jtvnw.net/previews-ttv/live_user_%s-640x360.jpg"
             const val EMOTE_CDN = "https://static-cdn.jtvnw.net/emoticons/v2/%s/default/dark/3.0"
         }
     }

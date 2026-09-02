@@ -25,6 +25,7 @@ import com.akumasdk.samtch.data.emote.EmoteRepository
 fun DynamicEmoteText(
     text: AnnotatedString,
     emotes: List<EmoteInfo>,
+    emoteRepository: EmoteRepository,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
     style: TextStyle = TextStyle.Default,
@@ -48,7 +49,7 @@ fun DynamicEmoteText(
 
             val urls = emote.url.split("|")
             val baseEmoteUrl = urls.first()
-            val cachedRatio = EmoteRepository.getAspectRatio(baseEmoteUrl)
+            val cachedRatio = emoteRepository.getAspectRatio(baseEmoteUrl)
             
             val width = measuredWidths[emote.id] ?: (if (cachedRatio != null) baseHeight * cachedRatio else baseHeight)
             
@@ -81,7 +82,7 @@ fun DynamicEmoteText(
                                     val calculatedWidth = baseHeight * ratio
                                     if (measuredWidths[emote.id] != calculatedWidth) {
                                         measuredWidths[emote.id] = calculatedWidth
-                                        EmoteRepository.putAspectRatio(url, ratio)
+                                        emoteRepository.putAspectRatio(url, ratio)
                                     }
                                 }
                             }

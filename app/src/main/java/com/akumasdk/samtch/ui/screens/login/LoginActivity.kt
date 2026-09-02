@@ -37,10 +37,16 @@ import com.multiplatform.webview.web.rememberSaveableWebViewState
 import com.multiplatform.webview.web.rememberWebViewNavigator
 import kotlinx.coroutines.launch
 import android.webkit.JavascriptInterface
-
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
+@AndroidEntryPoint
 class LoginActivity : ComponentActivity() {
+    @Inject lateinit var settingsManager: SettingsManager
+    @Inject lateinit var helixApi: HelixApi
+    @Inject lateinit var authManager: TwitchAuthManager
+
     @Volatile
     private var isDismissing = false
     private var webViewInstance: android.webkit.WebView? = null
@@ -56,8 +62,6 @@ class LoginActivity : ComponentActivity() {
                     Log.d("LoginBridge", "Login success received but not dismissing yet. Forcing redirect check.")
                     webViewInstance?.url?.let { handleRedirect(it) }
                 } else {
-                    // If we are already dismissing, it means validation is in progress.
-                    // We'll give it a moment and then force close if it's still stuck.
                     lifecycleScope.launch {
                         kotlinx.coroutines.delay(500.milliseconds)
                         if (!isFinishing) {
@@ -93,7 +97,7 @@ class LoginActivity : ComponentActivity() {
                 "&force_verify=true"
 
         setContent {
-            val themeMode by SettingsManager.getThemeMode(this).collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
+            val themeMode by settingsManager.getThemeMode().collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
             val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
             
             val darkTheme = when (themeMode) {
@@ -102,14 +106,11 @@ class LoginActivity : ComponentActivity() {
                 SettingsManager.ThemeMode.SYSTEM -> isSystemInDarkTheme
             }
 
-            // Start with blank to avoid early load with wrong settings
             val state = rememberSaveableWebViewState(Constants.ABOUT_BLANK)
             val navigator = rememberWebViewNavigator()
 
-            // Login Detection Logic
             LaunchedEffect(state.loadingState) {
                 if (state.loadingState is LoadingState.Finished) {
-                    // Inject theme
                     val twitchTheme = if (darkTheme) 1 else 0
                     state.nativeWebView.evaluateJavascript("localStorage.setItem('twilight.theme', '$twitchTheme');", null)
                 }
@@ -145,7 +146,6 @@ class LoginActivity : ComponentActivity() {
                             captureBackPresses = false,
                             onCreated = { webView ->
                                 webViewInstance = webView
-                                // Apply exact same settings pattern from TwitchBrowser.kt
                                 state.webSettings.apply {
                                     isJavaScriptEnabled = true
                                     androidWebSettings.apply {
@@ -157,13 +157,9 @@ class LoginActivity : ComponentActivity() {
 
                                 webView.apply {
                                     webChromeClient = WebChromeClient()
-                                    
                                     addJavascriptInterface(LoginBridge(), "LoginBridge")
-
-                                    // Prevent onViewTypeAvailable crash by disabling Autofill
                                     importantForAutofill = android.view.View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
 
-                                    // Set a robust WebViewClient for error logging
                                     webViewClient = object : WebViewClient() {
                                         override fun onReceivedError(view: android.webkit.WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                                             super.onReceivedError(view, request, error)
@@ -192,16 +188,13 @@ class LoginActivity : ComponentActivity() {
                                     settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                                     settings.userAgentString = Constants.UserAgents.MOBILE
                                     
-                                    // Trigger load only after settings are established
                                     if (webView.url == null || webView.url == Constants.ABOUT_BLANK) {
-                                        Log.d("LoginActivity", "Settings ready. Loading login page.")
                                         webView.loadUrl(loginUrl)
                                     }
                                 }
                             }
                         )
 
-                        // Loading Overlay
                         val isLoading = state.loadingState is LoadingState.Loading
                         AnimatedVisibility(
                             visible = isLoading,
@@ -230,20 +223,10 @@ class LoginActivity : ComponentActivity() {
     private fun handleRedirect(url: String) {
         if (isDismissing) return
         
-        Log.d("LoginActivity", "Redirect intercepted: $url")
-        
-        // 1. Check for errors in query parameters
         val uri = try { url.toUri() } catch (_: Exception) { null }
         val error = uri?.getQueryParameter("error")
-        val errorDesc = uri?.getQueryParameter("error_description")
-        
-        if (error != null) {
-            Log.e("LoginActivity", "OAuth Error: $error - $errorDesc")
-            // Optionally show a toast or dialog here
-            return
-        }
+        if (error != null) return
 
-        // 2. Check for access token in fragment
         val fragment = url.substringAfter("#", "")
         if (fragment.isEmpty()) return
 
@@ -255,18 +238,15 @@ class LoginActivity : ComponentActivity() {
         val accessToken = params["access_token"]
         if (accessToken != null) {
             isDismissing = true
-            Log.d("LoginActivity", "Found access token. Validating...")
             lifecycleScope.launch {
                 try {
-                    val validateResponse = HelixApi.validateToken(accessToken)
+                    val validateResponse = helixApi.validateToken(accessToken)
                     if (validateResponse != null) {
                         val userId = validateResponse.user_id
                         val userName = validateResponse.login
 
                         if (userId != null && userName != null) {
-                            Log.d("LoginActivity", "Token valid for user: $userName ($userId)")
-                            SettingsManager.setAuthData(
-                                context = this@LoginActivity,
+                            settingsManager.setAuthData(
                                 token = accessToken,
                                 clientId = Constants.Twitch.LOGIN_CLIENT_ID,
                                 userName = userName,
@@ -276,15 +256,12 @@ class LoginActivity : ComponentActivity() {
                             setResult(RESULT_OK)
                             finish()
                         } else {
-                            Log.e("LoginActivity", "Validation response missing required fields")
                             isDismissing = false
                         }
                     } else {
-                        Log.e("LoginActivity", "Token validation failed")
                         isDismissing = false
                     }
                 } catch (e: Exception) {
-                    Log.e("LoginActivity", "Error during handleRedirect", e)
                     isDismissing = false
                 }
             }

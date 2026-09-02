@@ -88,7 +88,7 @@ fun TwitchChat(
     previewImageUrl: String? = null,
 ) {
     val context = LocalContext.current
-    val chatMode by SettingsManager.getChatMode(context).collectAsState(initial = SettingsManager.ChatMode.NATIVE)
+    val chatMode by viewModel.settingsManager.getChatMode().collectAsState(initial = SettingsManager.ChatMode.NATIVE)
 
     if (chatMode == SettingsManager.ChatMode.NATIVE) {
         NativeChatContainer(
@@ -138,7 +138,7 @@ private fun NativeChatContainer(
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
 
-    val isImmersiveBackgroundEnabled by SettingsManager.isImmersiveBackgroundEnabled(context).collectAsState(initial = true)
+    val isImmersiveBackgroundEnabled by viewModel.settingsManager.isImmersiveBackgroundEnabled().collectAsState(initial = true)
     val isImmersiveEnabled = isImmersiveBackgroundEnabled && isActuallyDark
 
     val isEmoteMenuVisible by viewModel.isEmoteMenuVisible.collectAsState()
@@ -157,7 +157,7 @@ private fun NativeChatContainer(
     }
 
     LaunchedEffect(isLandscape) {
-        viewModel.initKeyboardHeight(context, isLandscape)
+        viewModel.initKeyboardHeight(isLandscape)
     }
 
     val isLoggedIn by viewModel.isLoggedIn.collectAsState()
@@ -305,7 +305,7 @@ private fun ChatInputArea(
                 isEmoteMenuVisible = isEmoteMenuVisible,
                 suggestions = emoteSuggestions,
                 onEmoteSelected = { emote ->
-                    viewModel.recordEmoteUsage(context, emote)
+                    viewModel.recordEmoteUsage(emote)
                 },
                 onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                 onTextChange = { text, pos -> 
@@ -373,7 +373,7 @@ private fun ChatInputArea(
                                     tabs = emoteMenuTabs,
                                     onEmoteClick = { emote ->
                                         viewModel.insertEmote(emote)
-                                        viewModel.recordEmoteUsage(context, emote)
+                                        viewModel.recordEmoteUsage(emote)
                                     },
                                     onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                                     onRefresh = {

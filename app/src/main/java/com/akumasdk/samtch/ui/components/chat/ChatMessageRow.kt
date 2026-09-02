@@ -17,11 +17,13 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.data.badge.TwitchBadgeDto
+import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @Composable
 fun ChatMessageRow(
     message: ChatMessageUiState,
+    emoteRepository: EmoteRepository,
     isCompact: Boolean = false,
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
@@ -83,6 +85,7 @@ fun ChatMessageRow(
             DynamicEmoteText(
                 text = fullAnnotatedString,
                 emotes = combinedEmotes,
+                emoteRepository = emoteRepository,
                 isCompact = isCompact,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                 onEmoteClick = { info ->
