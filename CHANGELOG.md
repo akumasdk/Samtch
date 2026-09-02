@@ -1,5 +1,24 @@
 # Changelog
 
+## Samtch v1.1.6
+
+### What's New
+- **Architectural Modernization**:
+    - **Dependency Injection**: Migrated to Dagger Hilt for more robust component management and cleaner code architecture.
+    - **Centralized Networking**: Unified all API calls through a shared, optimized OkHttp/Ktor client pool, improving connection reuse and latency.
+- **Enhanced Emote & Badge Experience**:
+    - **Intelligent Emote Menu**: Implemented a 100ms debounce on tab updates and granular provider tracking (Twitch, 7TV, BTTV, FFZ) to eliminate UI flickering.
+    - **GQL Fallback**: Added a powerful GQL-based fallback for user emotes, ensuring your sub-emotes load even when the official Helix API token scopes are limited.
+    - **Zero-Wait Refresh**: Refactored repositories to reactively trigger refreshes on login/logout, keeping your collections in sync instantly.
+- **Performance & Reliability**:
+    - **Loop Prevention**: Fixed a critical bug in high-traffic channels (like `elmariana`) where rapid message flow could trigger infinite emote refresh loops.
+    - **Early Room-ID Detection**: Optimized guest-user support by extracting room IDs from the first chat message, enabling instant loading of 3rd-party emotes without a full channel scrape.
+    - **Attempt-Based Caching**: The app now intelligently tracks failed loading attempts, preventing endless retries for streamers who don't use specific 3rd-party providers.
+- **Robust Error Handling**:
+    - **Auth-Aware Guard**: Strengthened Helix API guards to prevent unnecessary 401/403 errors when browsing as a guest.
+    - **Graceful Failures**: Updated 3rd-party API parsers to handle rate-limit error responses without crashing the UI.
+
+---
 ## Samtch v1.1.5
 
 ### What's New
