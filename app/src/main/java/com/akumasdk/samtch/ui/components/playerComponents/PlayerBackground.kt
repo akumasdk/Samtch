@@ -27,6 +27,7 @@ import com.akumasdk.samtch.ui.theme.LocalStreamPreview
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
+import com.akumasdk.samtch.ui.components.metadata.util.getAlternatingPreviewUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -49,12 +50,15 @@ fun PlayerBackground(
     val targetUrl = previewUrl ?: previewInfo.previewUrl 
     val targetRefreshKey = refreshKey ?: previewInfo.refreshKey
     
-    val baseUrl = targetUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(targetChannel.lowercase())
+    val baseUrl = remember(targetUrl, targetChannel, targetRefreshKey) {
+        val url = targetUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(targetChannel.lowercase())
+        getAlternatingPreviewUrl(url, targetRefreshKey) ?: ""
+    }
     
     val finalUrl = remember(baseUrl, targetRefreshKey) {
         val url = if (targetRefreshKey != null) {
             val connector = if (baseUrl.contains("?")) "&" else "?"
-            "$baseUrl${connector}t=${System.currentTimeMillis()}"
+            "$baseUrl${connector}v=$targetRefreshKey"
         } else {
             baseUrl
         }

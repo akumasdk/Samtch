@@ -199,7 +199,7 @@ object TwitchGqlService {
               title
               type
               viewersCount
-              previewImageURL(height: 480, width: 853)
+              previewImageURL(height: 360, width: 640)
               createdAt
               game {
                 name

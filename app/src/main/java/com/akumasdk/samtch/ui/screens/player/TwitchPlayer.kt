@@ -305,7 +305,7 @@ fun TwitchPlayer(
 
         LaunchedEffect(playerViewModel.metadataRefreshTrigger) {
             if (playerViewModel.metadataRefreshTrigger > 0) {
-                navigator.evaluateJavaScript("if (window.refreshSamtchBackground) { window.refreshSamtchBackground(); }")
+                navigator.evaluateJavaScript("if (window.refreshSamtchBackground) { window.refreshSamtchBackground(${playerViewModel.metadataRefreshTrigger}); }")
             }
         }
 

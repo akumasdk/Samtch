@@ -48,3 +48,26 @@ fun formatDate(dateString: String?): String {
         dateString
     }
 }
+
+fun unifyPreviewUrl(url: String?): String? {
+    if (url == null) return null
+    return url.replace("{width}", "640")
+        .replace("{height}", "360")
+        .replace("-853x480", "-640x360")
+        .replace("-1280x720", "-640x360")
+        .replace("-1920x1080", "-640x360")
+}
+
+fun getAlternatingPreviewUrl(url: String?, key: Any?): String? {
+    if (url == null) return null
+    val trigger = (key as? Int) ?: 0
+    
+    val base = url.replace("{width}", "WIDTH").replace("{height}", "HEIGHT")
+        .replace("640x360", "WIDTHxHEIGHT")
+        .replace("1280x720", "WIDTHxHEIGHT")
+        .replace("853x480", "WIDTHxHEIGHT")
+        .replace("1920x1080", "WIDTHxHEIGHT")
+    
+    val (w, h) = if (trigger % 2 == 0) "640" to "360" else "1280" to "720"
+    return base.replace("WIDTH", w).replace("HEIGHT", h)
+}
