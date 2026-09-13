@@ -146,6 +146,8 @@ fun WebViewContainer(
         onCreated = { webView ->
             Log.d("TwitchPlayer", "WebView created for channel: $channel")
 
+            NativeWebView.setWebContentsDebuggingEnabled(true)
+
             // Prevent the renderer process from being killed when hidden
             webView.setRendererPriorityPolicy(NativeWebView.RENDERER_PRIORITY_BOUND, false)
 

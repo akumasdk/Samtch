@@ -101,8 +101,31 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    private val _areEmotesLoaded = MutableStateFlow(false)
+    val areEmotesLoaded: StateFlow<Boolean> = _areEmotesLoaded.asStateFlow()
+
+    private val messageBufferList = java.util.Collections.synchronizedList(mutableListOf<IrcMessage>())
+
     private var lastLoadedRoomId: String? = null
     private var connectionJob: Job? = null
+
+    private suspend fun flushMessageBuffer(channel: String) {
+        if (_areEmotesLoaded.value) return
+        _areEmotesLoaded.value = true
+        val buffered = synchronized(messageBufferList) {
+            val list = ArrayList(messageBufferList)
+            messageBufferList.clear()
+            list
+        }
+        if (buffered.isNotEmpty()) {
+            withContext(Dispatchers.Default) {
+                buffered.forEach { msg ->
+                    val uiState = chatMessageMapper.mapToUiState(channel, msg)
+                    messageStore.emitMessage(uiState)
+                }
+            }
+        }
+    }
 
     fun connect(
         context: android.content.Context,
@@ -117,6 +140,10 @@ class ChatViewModel @Inject constructor(
         // 1. Instantly cancel any active session logic for the previous channel
         connectionJob?.cancel()
         _currentChannel.value = channel
+        _areEmotesLoaded.value = false
+        synchronized(messageBufferList) {
+            messageBufferList.clear()
+        }
         emoteManager.resetLoadTrigger(forceRefresh)
         lastLoadedRoomId = null
         
@@ -148,7 +175,16 @@ class ChatViewModel @Inject constructor(
             launch { settingsManager.getChatEmoteSize().collect { _chatEmoteSize.value = it } }
             launch { settingsManager.getChatBadgeSize().collect { _chatBadgeSize.value = it } }
 
-            // Watch for load status to trigger remapping (emotes and badges)
+            // Timeout safety to ensure buffer is released even if network calls hang
+            val timeoutJob = launch {
+                delay(2500.milliseconds)
+                if (!_areEmotesLoaded.value) {
+                    Log.d(TAG, "Emote load timeout reached for $channel, releasing buffered messages")
+                    flushMessageBuffer(channel)
+                }
+            }
+
+            // Watch for load status to trigger remapping & release buffered messages
             launch {
                 combine(
                     emoteRepository.globalState,
@@ -157,10 +193,14 @@ class ChatViewModel @Inject constructor(
                     badgeRepository.getChannelState(channel),
                     emoteManager.hasTriggeredEmoteLoad
                 ) { globalEmotes, channelEmotes, globalBadges, channelBadges, triggered ->
-                    emoteManager.setEmoteLoading(triggered && (!globalEmotes.isLoaded || !channelEmotes.isLoaded))
-                    globalEmotes.isLoaded || channelEmotes.isLoaded || globalBadges.isLoaded || channelBadges.isLoaded
-                }.collectLatest { anyLoaded ->
-                    if (anyLoaded) {
+                    val emotesFullyLoaded = globalEmotes.isFullyLoaded && channelEmotes.isFullyLoaded
+                    val badgesLoaded = globalBadges.isLoaded && channelBadges.isLoaded
+                    emoteManager.setEmoteLoading(triggered && (!emotesFullyLoaded || !channelEmotes.isFullyLoaded))
+                    emotesFullyLoaded && badgesLoaded
+                }.collectLatest { fullyLoaded ->
+                    if (fullyLoaded) {
+                        timeoutJob.cancel()
+                        flushMessageBuffer(channel)
                         delay(1000.milliseconds) // Debounce re-mapping
                         messageStore.remapMessages(viewModelScope, channel)
                     }
@@ -205,8 +245,14 @@ class ChatViewModel @Inject constructor(
 
                     if (msg.command == "PRIVMSG") {
                         messageStore.addRawMessage(msg)
-                        val uiState = chatMessageMapper.mapToUiState(channel, msg)
-                        messageStore.emitMessage(uiState)
+                        if (!_areEmotesLoaded.value) {
+                            synchronized(messageBufferList) {
+                                messageBufferList.add(msg)
+                            }
+                        } else {
+                            val uiState = chatMessageMapper.mapToUiState(channel, msg)
+                            messageStore.emitMessage(uiState)
+                        }
                     } else if (msg.command == "NOTICE" || msg.command == "USERNOTICE") {
                         val messageText = msg.params.lastOrNull() ?: msg.raw
                         val systemMsg = ChatMessageUiState.SystemMessageUi(
@@ -272,6 +318,10 @@ class ChatViewModel @Inject constructor(
         connectionJob?.cancel()
         chatClient.disconnect()
         messageStore.clear()
+        synchronized(messageBufferList) {
+            messageBufferList.clear()
+        }
+        _areEmotesLoaded.value = false
         userTags.clear()
         emoteManager.clear()
         _currentChannel.value = null
