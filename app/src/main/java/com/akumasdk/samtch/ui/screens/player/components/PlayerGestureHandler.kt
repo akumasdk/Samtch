@@ -77,6 +77,7 @@ fun Modifier.playerGestureHandler(
                                 } else {
                                     currentWindowB
                                 }
+                                onBrightnessChange(initialBrightness)
                             } else {
                                 isBrightnessDrag = false
                                 onVolumeDragging(true)

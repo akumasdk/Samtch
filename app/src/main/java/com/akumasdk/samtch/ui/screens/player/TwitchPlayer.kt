@@ -563,13 +563,14 @@ private fun BoxScope.StablePlayerShell(
     var isDraggingVolume by remember { mutableStateOf(false) }
     var volumeProgress by remember { mutableFloatStateOf(0f) }
     var isDraggingBrightness by remember { mutableStateOf(false) }
-    var brightnessProgress by remember { mutableFloatStateOf(0.5f) }
+    var brightnessProgress by remember { mutableFloatStateOf(-1f) }
 
     BrightnessManager(
         isFullscreen = isFullscreen,
         isPip = isPip,
         brightnessProgress = brightnessProgress,
-        isDraggingBrightness = isDraggingBrightness
+        isDraggingBrightness = isDraggingBrightness,
+        onBrightnessProgressReset = { brightnessProgress = -1f }
     )
 
     key(channel) {

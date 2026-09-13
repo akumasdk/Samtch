@@ -9,7 +9,8 @@ fun BrightnessManager(
     isFullscreen: Boolean,
     isPip: Boolean,
     brightnessProgress: Float,
-    isDraggingBrightness: Boolean
+    isDraggingBrightness: Boolean,
+    onBrightnessProgressReset: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -24,6 +25,17 @@ fun BrightnessManager(
                 if (originalBrightness == -100f) {
                     originalBrightness = lp.screenBrightness
                 }
+            }
+        } else {
+            // Restore immediately if we exit fullscreen or enter PiP
+            if (originalBrightness != -100f) {
+                activity?.let { act ->
+                    val lp = act.window.attributes
+                    lp.screenBrightness = originalBrightness
+                    act.window.attributes = lp
+                }
+                originalBrightness = -100f
+                onBrightnessProgressReset()
             }
         }
         onDispose {
