@@ -49,25 +49,19 @@ fun formatDate(dateString: String?): String {
     }
 }
 
-fun unifyPreviewUrl(url: String?): String? {
+fun unifyPreviewUrl(url: String?, width: String = "640", height: String = "360"): String? {
     if (url == null) return null
-    return url.replace("{width}", "640")
-        .replace("{height}", "360")
-        .replace("-853x480", "-640x360")
-        .replace("-1280x720", "-640x360")
-        .replace("-1920x1080", "-640x360")
+    return url.replace("{width}", width)
+        .replace("{height}", height)
+        .replace("-853x480", "-${width}x${height}")
+        .replace("-1280x720", "-${width}x${height}")
+        .replace("-1920x1080", "-${width}x${height}")
+        .replace("-640x360", "-${width}x${height}")
 }
 
 fun getAlternatingPreviewUrl(url: String?, key: Any?): String? {
     if (url == null) return null
     val trigger = (key as? Int) ?: 0
-    
-    val base = url.replace("{width}", "WIDTH").replace("{height}", "HEIGHT")
-        .replace("640x360", "WIDTHxHEIGHT")
-        .replace("1280x720", "WIDTHxHEIGHT")
-        .replace("853x480", "WIDTHxHEIGHT")
-        .replace("1920x1080", "WIDTHxHEIGHT")
-    
     val (w, h) = if (trigger % 2 == 0) "640" to "360" else "1280" to "720"
-    return base.replace("WIDTH", w).replace("HEIGHT", h)
+    return unifyPreviewUrl(url, w, h)
 }

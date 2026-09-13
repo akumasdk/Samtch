@@ -61,7 +61,7 @@ fun PlayerLoadingScreen(
 
     val baseUrl = remember(previewUrl, channel) {
         val url = previewUrl ?: Constants.Twitch.Templates.PREVIEW_URL.format(channel.lowercase())
-        unifyPreviewUrl(url)?.replace("{width}", "853")?.replace("{height}", "480") ?: ""
+        unifyPreviewUrl(url, width = "853", height = "480") ?: ""
     }
     
     val finalUrl = remember(baseUrl, refreshKey) {
