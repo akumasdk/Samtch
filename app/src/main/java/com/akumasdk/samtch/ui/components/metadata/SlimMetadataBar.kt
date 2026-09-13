@@ -30,14 +30,14 @@ internal fun SlimMetadataBar(
     streamStartedAt: String?,
     maxWidth: androidx.compose.ui.unit.Dp = 400.dp,
 ) {
-    val isUltraSlim = maxWidth < 180.dp
+    val isNarrow = maxWidth < 240.dp
 
     Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (isUltraSlim) {
+        horizontalArrangement = if (isNarrow) {
             Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
         } else {
             Arrangement.Start
@@ -79,38 +79,32 @@ internal fun SlimMetadataBar(
             }
         }
 
-        // Streamer Info (Name + Title)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = if (isUltraSlim) Modifier else Modifier.weight(1f).padding(start = 8.dp)
-        ) {
+        // Streamer Name
+        Text(
+            text = displayName ?: channel,
+            color = SamtchTheme.colors.accentColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = if (isNarrow) Modifier else Modifier.padding(start = 8.dp)
+        )
+
+        if (!isNarrow) {
+            Text(text = ": ", color = SamtchTheme.colors.secondaryText, fontSize = 13.sp)
+            
             Text(
-                text = displayName ?: channel,
-                color = SamtchTheme.colors.accentColor,
+                text = streamTitle ?: "Stream Offline",
+                color = SamtchTheme.colors.primaryText,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
             )
 
-            if (!isUltraSlim) {
-                Text(text = ": ", color = SamtchTheme.colors.secondaryText, fontSize = 13.sp)
-                
-                Text(
-                    text = streamTitle ?: "Stream Offline",
-                    color = SamtchTheme.colors.primaryText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-
-        if (!isUltraSlim) {
             val duration = formatStreamDuration(streamStartedAt)
-            if ((duration.isNotEmpty()) && (maxWidth >= 220.dp)) {
+            if (duration.isNotEmpty()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -130,7 +124,7 @@ internal fun SlimMetadataBar(
                 }
             }
 
-            if ((viewersCount > 0) && (maxWidth >= 180.dp)) {
+            if (viewersCount > 0) {
                 AnimatedViewerCount(
                     count = viewersCount,
                     fontSize = 11.sp,
