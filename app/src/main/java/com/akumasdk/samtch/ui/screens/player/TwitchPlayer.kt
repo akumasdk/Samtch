@@ -553,6 +553,13 @@ private fun BoxScope.StablePlayerShell(
     var isDraggingBrightness by remember { mutableStateOf(false) }
     var brightnessProgress by remember { mutableFloatStateOf(0.5f) }
 
+    BrightnessManager(
+        isFullscreen = isFullscreen,
+        isPip = isPip,
+        brightnessProgress = brightnessProgress,
+        isDraggingBrightness = isDraggingBrightness
+    )
+
     key(channel) {
         Box(
             modifier = when (layoutType) {
@@ -590,19 +597,13 @@ private fun BoxScope.StablePlayerShell(
                 .onSizeChanged(onSizeChanged)
                 .playerGestureHandler(
                     isFullscreen = isFullscreen && !playerViewModel.isAudioOnly,
+                    isMinimized = isMinimized,
+                    size = stablePlayerSize,
+                    doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
                     onBrightnessChange = { brightnessProgress = it },
                     onVolumeChange = { volumeProgress = it },
                     onVolumeDragging = { isDraggingVolume = it },
-                    onBrightnessDragging = { isDraggingBrightness = it }
-                )
-                .playerInputHandler(
-                    size = stablePlayerSize,
-                    isFullscreen = isFullscreen,
-                    isMinimized = isMinimized,
-                    doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
-                    onDoubleTapCenter = {
-                        if (isFullscreen && !playerViewModel.isAudioOnly) playerViewModel.toggleChat() else onToggleFullscreen()
-                    },
+                    onBrightnessDragging = { isDraggingBrightness = it },
                     onSingleTap = {
                         if (isFullscreen && !playerViewModel.isAudioOnly) {
                             playerViewModel.toggleFullscreenControls()
@@ -612,6 +613,9 @@ private fun BoxScope.StablePlayerShell(
                                 playerViewModel.portraitMode = PortraitMode.VIDEO_AND_CHAT
                             }
                         }
+                    },
+                    onDoubleTapCenter = {
+                        if (isFullscreen && !playerViewModel.isAudioOnly) playerViewModel.toggleChat() else onToggleFullscreen()
                     }
                 )
         ) {
