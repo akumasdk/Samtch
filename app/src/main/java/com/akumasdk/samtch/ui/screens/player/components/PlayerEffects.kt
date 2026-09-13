@@ -80,8 +80,11 @@ fun PlayerLifecycleEffects(
 
     // Manage chat connection lifecycle
     LaunchedEffect(channel, isPip, lifecycleState, portraitMode, refreshTrigger) {
-        val isForeground = lifecycleState.isAtLeast(Lifecycle.State.STARTED)
-        val shouldBeConnected = isForeground && (!isPip || portraitMode == PortraitMode.CHAT_ONLY)
+        // In PiP mode, lifecycle drops to PAUSED. But if the app is visible (STARTED) or in PiP, 
+        // we should keep connections active depending on the portrait mode.
+        val isVisible = lifecycleState.isAtLeast(Lifecycle.State.STARTED) || isPip
+        val shouldBeConnected = isVisible && (!isPip || portraitMode == PortraitMode.CHAT_ONLY)
+        
         val isManualRefresh = refreshTrigger > lastRefreshTrigger
         lastRefreshTrigger = refreshTrigger
 

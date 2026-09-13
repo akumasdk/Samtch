@@ -49,7 +49,9 @@ fun WebViewContainer(
         if (state.loadingState is LoadingState.Loading) {
             onAdblocked("")
             
-            // Inject context and localized strings for scripts
+            val builder = StringBuilder()
+
+            // 1. Inject context and localized strings for scripts
             val stringMap = mapOf(
                 "loading_stream" to resources.getString(R.string.loading_stream),
                 "searching_video" to resources.getString(R.string.searching_video),
@@ -58,34 +60,36 @@ fun WebViewContainer(
                 "bypassing_ads" to resources.getString(R.string.bypassing_ads)
             )
             val stringsJson = stringMap.entries.joinToString(",") { "\"${it.key}\": \"${it.value}\"" }
-            val initJs = """
+            builder.appendLine("""
                 window.SamtchChannel = '$channel';
                 window.SamtchStrings = { $stringsJson };
                 console.log('Samtch: Context initialized for ' + window.SamtchChannel);
-            """.trimIndent()
-            navigator.evaluateJavaScript(initJs)
+            """.trimIndent())
 
+            // 2. Inject adblock script
             val scriptPath = when (adBlockMode) {
                 SettingsManager.AdBlockMode.VAFT -> Constants.Scripts.PLAYER_VAFT
                 SettingsManager.AdBlockMode.VIDEO_SWAP -> Constants.Scripts.PLAYER_VIDEO_SWAP
             }
             val adScript = ScriptLoader.getScript(context, scriptPath)
             if (adScript.isNotEmpty()) {
-                Log.d("TwitchPlayer", "Injecting $adBlockMode and Background early (Loading state detected)")
-                navigator.evaluateJavaScript(adScript)
+                builder.appendLine(adScript)
             }
 
-            // Also inject playback monitor and early hider to catch fast starts
-            val earlyScripts = listOf(
+            // 3. Inject playback monitor and early hider to catch fast starts
+            listOf(
                 Constants.Scripts.PLAYER_PLAYBACK_MONITOR,
                 Constants.Scripts.PLAYER_EARLY_HIDER,
                 Constants.Scripts.PLAYER_BACKGROUND
-            ).mapNotNull { path ->
+            ).forEach { path ->
                 val s = ScriptLoader.getScript(context, path)
-                if (s.isNotEmpty()) s else null
+                if (s.isNotEmpty()) builder.appendLine(s)
             }
-            if (earlyScripts.isNotEmpty()) {
-                navigator.evaluateJavaScript(earlyScripts.joinToString("\n"))
+
+            // Batch evaluate to reduce IPC roundtrips
+            if (builder.isNotEmpty()) {
+                Log.d("TwitchPlayer", "Injecting batched early scripts for Loading state")
+                navigator.evaluateJavaScript(builder.toString())
             }
         }
     }

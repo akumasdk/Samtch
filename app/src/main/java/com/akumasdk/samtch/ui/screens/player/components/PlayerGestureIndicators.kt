@@ -30,9 +30,9 @@ import kotlin.math.roundToInt
 @Composable
 fun PlayerGestureIndicators(
     showVolume: Boolean,
-    volumeProgress: Float,
+    volumeProgress: () -> Float,
     showBrightness: Boolean,
-    brightnessProgress: Float,
+    brightnessProgress: () -> Float,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -41,13 +41,15 @@ fun PlayerGestureIndicators(
             enter = fadeIn(),
             exit = fadeOut()
         ) {
-            val volumeIcon = when {
-                volumeProgress <= 0f -> Icons.AutoMirrored.Filled.VolumeMute
-                volumeProgress < 0.5f -> Icons.AutoMirrored.Filled.VolumeDown
-                else -> Icons.AutoMirrored.Filled.VolumeUp
-            }
             GestureIndicator(
-                icon = volumeIcon,
+                iconProvider = {
+                    val p = volumeProgress()
+                    when {
+                        p <= 0f -> Icons.AutoMirrored.Filled.VolumeMute
+                        p < 0.5f -> Icons.AutoMirrored.Filled.VolumeDown
+                        else -> Icons.AutoMirrored.Filled.VolumeUp
+                    }
+                },
                 label = "Volume",
                 progress = volumeProgress
             )
@@ -58,13 +60,15 @@ fun PlayerGestureIndicators(
             enter = fadeIn(),
             exit = fadeOut()
         ) {
-            val brightnessIcon = when {
-                brightnessProgress < 0.35f -> Icons.Default.BrightnessLow
-                brightnessProgress < 0.7f -> Icons.Default.Brightness5
-                else -> Icons.Default.Brightness7
-            }
             GestureIndicator(
-                icon = brightnessIcon,
+                iconProvider = {
+                    val p = brightnessProgress()
+                    when {
+                        p < 0.35f -> Icons.Default.BrightnessLow
+                        p < 0.7f -> Icons.Default.Brightness5
+                        else -> Icons.Default.Brightness7
+                    }
+                },
                 label = "Brightness",
                 progress = brightnessProgress
             )
@@ -74,9 +78,9 @@ fun PlayerGestureIndicators(
 
 @Composable
 private fun GestureIndicator(
-    icon: ImageVector,
+    iconProvider: () -> ImageVector,
     label: String,
-    progress: Float
+    progress: () -> Float
 ) {
     Surface(
         color = Color.Black.copy(alpha = 0.75f),
@@ -89,21 +93,21 @@ private fun GestureIndicator(
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = icon,
+                imageVector = iconProvider(),
                 contentDescription = label,
                 tint = Color.White,
                 modifier = Modifier.size(28.dp)
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "${(progress.coerceIn(0f, 1f) * 100).roundToInt()}%",
+                text = "${(progress().coerceIn(0f, 1f) * 100).roundToInt()}%",
                 color = Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
+                progress = { progress().coerceIn(0f, 1f) },
                 modifier = Modifier.width(110.dp).height(4.dp),
                 color = SamtchTheme.colors.accentColor,
                 trackColor = Color.White.copy(alpha = 0.25f)

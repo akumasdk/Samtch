@@ -277,6 +277,16 @@ fun TwitchPlayer(
 
         val isVideoRequired = playerViewModel.isVideoRequired(isFullscreen)
 
+        LaunchedEffect(lifecycleState, isVideoRequired, isPip) {
+            // Check STARTED instead of RESUMED to keep video playing in PiP or multi-window mode
+            val isVisible = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+            if ((isVisible || isPip) && isVideoRequired) {
+                try { state.nativeWebView.apply { onResume() } } catch (_: Exception) {}
+            } else {
+                try { state.nativeWebView.apply { onPause() } } catch (_: Exception) {}
+            }
+        }
+
         LaunchedEffect(channel, refreshTrigger, isVideoRequired) {
             if (!isVideoRequired) {
                 currentLoadingSession = System.currentTimeMillis()
@@ -591,7 +601,7 @@ private fun BoxScope.StablePlayerShell(
                     .align(Alignment.TopStart)
                     .statusBarsPadding()
                     .fillMaxWidth()
-                    .height(layout.height.value.coerceAtLeast(1.dp))
+                    .height(layout.height.value.coerceAtLeast(0.dp))
                     .clip(RectangleShape)
             }
                 .onSizeChanged(onSizeChanged)
@@ -656,8 +666,8 @@ private fun BoxScope.StablePlayerShell(
                     PlayerGestureOverlay(
                         isDraggingVolume = isDraggingVolume,
                         isDraggingBrightness = isDraggingBrightness,
-                        volumeProgress = volumeProgress,
-                        brightnessProgress = brightnessProgress
+                        volumeProgress = { volumeProgress },
+                        brightnessProgress = { brightnessProgress }
                     )
 
                     TapTooltip(

@@ -8,8 +8,8 @@ import kotlin.time.Duration.Companion.seconds
 fun PlayerGestureOverlay(
     isDraggingVolume: Boolean,
     isDraggingBrightness: Boolean,
-    volumeProgress: Float,
-    brightnessProgress: Float
+    volumeProgress: () -> Float,
+    brightnessProgress: () -> Float
 ) {
     var showVolumeOverlay by remember { mutableStateOf(false) }
     var showBrightnessOverlay by remember { mutableStateOf(false) }

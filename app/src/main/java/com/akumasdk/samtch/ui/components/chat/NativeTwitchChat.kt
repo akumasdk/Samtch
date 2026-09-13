@@ -143,20 +143,18 @@ fun NativeTwitchChat(
                 key = { _, it -> it.id },
                 contentType = { _, it -> it.contentType }
             ) { _, msg ->
-                key(msg.id, isCompact) {
-                    ChatMessageRow(
-                        message = msg,
-                        emoteRepository = viewModel.emoteRepository,
-                        isCompact = isCompact,
-                        onEmoteClick = onEmoteClick,
-                        onEmoteLongClick = onEmoteLongClick,
-                        onBadgeClick = onBadgeClick,
-                        onUserClick = onUserClick,
-                        fontSize = chatFontSize,
-                        emoteSize = chatEmoteSize,
-                        badgeSize = chatBadgeSize
-                    )
-                }
+                ChatMessageRow(
+                    message = msg,
+                    emoteRepository = viewModel.emoteRepository,
+                    isCompact = isCompact,
+                    onEmoteClick = onEmoteClick,
+                    onEmoteLongClick = onEmoteLongClick,
+                    onBadgeClick = onBadgeClick,
+                    onUserClick = onUserClick,
+                    fontSize = chatFontSize,
+                    emoteSize = chatEmoteSize,
+                    badgeSize = chatBadgeSize
+                )
             }
         }
 
