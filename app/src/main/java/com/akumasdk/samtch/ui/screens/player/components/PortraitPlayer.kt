@@ -51,6 +51,7 @@ fun PortraitPlayer(
     expandTrigger: Int = 0,
     forceSlimMetadata: Boolean = false,
     isImmersiveEnabled: Boolean = true,
+    videoHeight: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp.Unspecified,
     refreshTrigger: Int = 0,
     onToggleMode: () -> Unit = {},
     chatContent: @Composable (ChatContentConfig, Modifier) -> Unit,
@@ -94,7 +95,9 @@ fun PortraitPlayer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(
-                        if (isAudioOnly) {
+                        if (videoHeight != androidx.compose.ui.unit.Dp.Unspecified) {
+                            Modifier.height(videoHeight)
+                        } else if (isAudioOnly) {
                             Modifier.height(240.dp)
                         } else if (portraitMode == PortraitMode.CHAT_ONLY) {
                             Modifier.height(0.dp)

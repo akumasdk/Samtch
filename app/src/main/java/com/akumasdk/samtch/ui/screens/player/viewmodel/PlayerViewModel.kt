@@ -39,10 +39,11 @@ import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    private val gqlService: TwitchGqlService,
-    private val helixApiClient: HelixApiClient,
-    private val authManager: TwitchAuthManager
+    private val gqlService: TwitchGqlService?,
+    private val helixApiClient: HelixApiClient?,
+    private val authManager: TwitchAuthManager?
 ) : androidx.lifecycle.ViewModel() {
+    constructor() : this(null, null, null)
     var channel by mutableStateOf<String?>(null)
         private set
         
@@ -90,21 +91,42 @@ class PlayerViewModel @Inject constructor(
     ): Float {
         val baseChatRatio = if (chatRatioPercent == 0) {
             val targetAspectRatio = 16f / 9f
-            val screenAspectRatio = screenWidth / screenHeight
 
-            if (screenAspectRatio > targetAspectRatio) {
-                val idealPlayerWidth = screenHeight * targetAspectRatio
-                val autoRatio = 1f - (idealPlayerWidth / screenWidth)
-                autoRatio.coerceIn(0.10f, 0.50f)
+            // Normalize to landscape screen dimensions regardless of current orientation state
+            val landscapeWidth = maxOf(screenWidth, screenHeight)
+            val landscapeHeight = minOf(screenWidth, screenHeight)
+
+            if (landscapeHeight.value <= 0f || landscapeWidth.value <= 0f) {
+                0.28f
             } else {
-                0.15f
+                val deviceAspectRatio = landscapeWidth / landscapeHeight
+
+                if (deviceAspectRatio > targetAspectRatio) {
+                    val idealPlayerWidth = landscapeHeight * targetAspectRatio
+                    val autoRatio = 1f - (idealPlayerWidth / landscapeWidth)
+
+                    // Ensure chat remains comfortable and readable on narrow/standard phones while 
+                    // providing exact 16:9 video fit on ultra-wide screens (20:9, 21:9, etc.).
+                    val minReadableChatRatio = (180.dp / landscapeWidth).coerceIn(0.20f, 0.30f)
+
+                    if (autoRatio >= minReadableChatRatio) {
+                        autoRatio.coerceAtMost(0.50f)
+                    } else {
+                        // On devices where exact 16:9 fit leaves chat too narrow (< minReadableChatRatio),
+                        // floor at minReadableChatRatio so chat stays readable.
+                        minReadableChatRatio
+                    }
+                } else {
+                    // For screens with aspect ratio <= 16:9 (e.g. 16:9 phones, 16:10 or 4:3 tablets)
+                    0.28f
+                }
             }
         } else {
             chatRatioPercent / 100f
         }
 
         return if (isFullscreen && isChatTemporarilyExpanded) {
-            baseChatRatio.coerceAtLeast(0.30f)
+            baseChatRatio.coerceAtLeast(0.32f)
         } else {
             baseChatRatio
         }
@@ -236,12 +258,12 @@ class PlayerViewModel @Inject constructor(
     }
 
     private suspend fun fetchMetadata(channel: String): TwitchStreamMetadata? {
-        val auth = authManager.getAuthState()
+        val auth = authManager?.getAuthState()
         
-        if (auth.isLoggedIn) {
+        if (auth != null && auth.isLoggedIn) {
             try {
-                val helixStream = helixApiClient.getStreamMetadata(channel).getOrNull()
-                val helixUser = helixApiClient.getUsers(logins = listOf(channel)).getOrNull()?.firstOrNull()
+                val helixStream = helixApiClient?.getStreamMetadata(channel)?.getOrNull()
+                val helixUser = helixApiClient?.getUsers(logins = listOf(channel))?.getOrNull()?.firstOrNull()
                 
                 if (helixUser != null) {
                     return TwitchHelixMapper.mapHelixToMetadata(helixUser, helixStream)
@@ -251,7 +273,7 @@ class PlayerViewModel @Inject constructor(
             }
         }
         
-        return gqlService.getStreamMetadata(channel)
+        return gqlService?.getStreamMetadata(channel)
     }
 
     private fun updateMetadataState(metadata: TwitchStreamMetadata) {

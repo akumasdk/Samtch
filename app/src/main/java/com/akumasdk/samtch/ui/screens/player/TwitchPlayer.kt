@@ -277,6 +277,16 @@ fun TwitchPlayer(
 
         val isVideoRequired = playerViewModel.isVideoRequired(isFullscreen)
 
+        LaunchedEffect(lifecycleState, isVideoRequired, isPip) {
+            // Check STARTED instead of RESUMED to keep video playing in PiP or multi-window mode
+            val isVisible = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+            if ((isVisible || isPip) && isVideoRequired) {
+                try { state.nativeWebView.apply { onResume() } } catch (_: Exception) {}
+            } else {
+                try { state.nativeWebView.apply { onPause() } } catch (_: Exception) {}
+            }
+        }
+
         LaunchedEffect(channel, refreshTrigger, isVideoRequired) {
             if (!isVideoRequired) {
                 currentLoadingSession = System.currentTimeMillis()
@@ -430,7 +440,8 @@ private fun TwitchPlayerOrchestrator(
         screenWidth = screenWidth,
         screenHeight = screenHeight,
         isChatVisible = playerViewModel.isChatVisible,
-        chatRatio = chatRatioFloat
+        chatRatio = chatRatioFloat,
+        isKeyboardOrMenuVisible = forceSlimMetadata
     )
 
     SharedTransitionLayout {
@@ -460,6 +471,7 @@ private fun TwitchPlayerOrchestrator(
                     chatRatio = chatRatioFloat,
                     forceSlimMetadata = forceSlimMetadata,
                     isImmersiveEnabled = isImmersiveEnabled,
+                    videoHeight = layout.height.value,
                     onToggleChat = {
                         playerViewModel.toggleChat()
                         if (layoutType == PlayerLayoutType.FULLSCREEN) playerViewModel.showFullscreenControls = true
@@ -551,7 +563,15 @@ private fun BoxScope.StablePlayerShell(
     var isDraggingVolume by remember { mutableStateOf(false) }
     var volumeProgress by remember { mutableFloatStateOf(0f) }
     var isDraggingBrightness by remember { mutableStateOf(false) }
-    var brightnessProgress by remember { mutableFloatStateOf(0.5f) }
+    var brightnessProgress by remember { mutableFloatStateOf(-1f) }
+
+    BrightnessManager(
+        isFullscreen = isFullscreen,
+        isPip = isPip,
+        brightnessProgress = brightnessProgress,
+        isDraggingBrightness = isDraggingBrightness,
+        onBrightnessProgressReset = { brightnessProgress = -1f }
+    )
 
     key(channel) {
         Box(
@@ -584,25 +604,19 @@ private fun BoxScope.StablePlayerShell(
                     .align(Alignment.TopStart)
                     .statusBarsPadding()
                     .fillMaxWidth()
-                    .height(layout.height.value.coerceAtLeast(1.dp))
+                    .height(layout.height.value.coerceAtLeast(0.dp))
                     .clip(RectangleShape)
             }
                 .onSizeChanged(onSizeChanged)
                 .playerGestureHandler(
                     isFullscreen = isFullscreen && !playerViewModel.isAudioOnly,
+                    isMinimized = isMinimized,
+                    size = stablePlayerSize,
+                    doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
                     onBrightnessChange = { brightnessProgress = it },
                     onVolumeChange = { volumeProgress = it },
                     onVolumeDragging = { isDraggingVolume = it },
-                    onBrightnessDragging = { isDraggingBrightness = it }
-                )
-                .playerInputHandler(
-                    size = stablePlayerSize,
-                    isFullscreen = isFullscreen,
-                    isMinimized = isMinimized,
-                    doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
-                    onDoubleTapCenter = {
-                        if (isFullscreen && !playerViewModel.isAudioOnly) playerViewModel.toggleChat() else onToggleFullscreen()
-                    },
+                    onBrightnessDragging = { isDraggingBrightness = it },
                     onSingleTap = {
                         if (isFullscreen && !playerViewModel.isAudioOnly) {
                             playerViewModel.toggleFullscreenControls()
@@ -612,6 +626,9 @@ private fun BoxScope.StablePlayerShell(
                                 playerViewModel.portraitMode = PortraitMode.VIDEO_AND_CHAT
                             }
                         }
+                    },
+                    onDoubleTapCenter = {
+                        if (isFullscreen && !playerViewModel.isAudioOnly) playerViewModel.toggleChat() else onToggleFullscreen()
                     }
                 )
         ) {
@@ -652,8 +669,8 @@ private fun BoxScope.StablePlayerShell(
                     PlayerGestureOverlay(
                         isDraggingVolume = isDraggingVolume,
                         isDraggingBrightness = isDraggingBrightness,
-                        volumeProgress = volumeProgress,
-                        brightnessProgress = brightnessProgress
+                        volumeProgress = { volumeProgress },
+                        brightnessProgress = { brightnessProgress }
                     )
 
                     TapTooltip(

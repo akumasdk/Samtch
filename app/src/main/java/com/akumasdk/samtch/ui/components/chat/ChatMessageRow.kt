@@ -59,27 +59,29 @@ fun ChatMessageRow(
                 badgesAsEmotes + message.emotes
             }
 
-            val fullAnnotatedString = buildAnnotatedString {
-                // Inline Badges
-                message.badges.forEachIndexed { index, _ ->
-                    appendInlineContent("badge_${message.id}_$index", "[badge]")
-                    append(" ")
-                }
+            val fullAnnotatedString = remember(message, userColor) {
+                buildAnnotatedString {
+                    // Inline Badges
+                    message.badges.forEachIndexed { index, _ ->
+                        appendInlineContent("badge_${message.id}_$index", "[badge]")
+                        append(" ")
+                    }
 
-                // Name and Message content in one flow
-                withStyle(SpanStyle(color = userColor, fontWeight = FontWeight.Bold)) {
-                    pushStringAnnotation(tag = "username", annotation = message.displayName)
-                    append(message.displayName)
-                    pop()
-                }
+                    // Name and Message content in one flow
+                    withStyle(SpanStyle(color = userColor, fontWeight = FontWeight.Bold)) {
+                        pushStringAnnotation(tag = "username", annotation = message.displayName)
+                        append(message.displayName)
+                        pop()
+                    }
 
-                if (!message.isAction) {
-                    append(": ")
-                } else {
-                    append(" ")
-                }
+                    if (!message.isAction) {
+                        append(": ")
+                    } else {
+                        append(" ")
+                    }
 
-                append(message.annotatedString)
+                    append(message.annotatedString)
+                }
             }
 
             DynamicEmoteText(

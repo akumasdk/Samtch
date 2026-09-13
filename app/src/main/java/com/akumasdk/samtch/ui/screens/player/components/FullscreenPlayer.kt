@@ -37,6 +37,14 @@ import com.akumasdk.samtch.ui.screens.player.models.ChatContentConfig
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FullscreenPlayer(
     channel: String,
@@ -81,7 +89,7 @@ fun FullscreenPlayer(
         // Video Player
         Box(
             modifier = Modifier
-                .weight(1f)
+                .weight(if (isChatVisible) (1f - chatRatio).coerceAtLeast(0.01f) else 1f)
                 .onSizeChanged { size ->
                     playerSize = size
                 }
@@ -91,6 +99,9 @@ fun FullscreenPlayer(
 
         AnimatedVisibility(
             visible = isChatVisible,
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(chatRatio),
             enter = slideInHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
                     fadeIn(animationSpec = tween(400, easing = SamtchAnimation.EmphasizedEasing)),
             exit = slideOutHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
@@ -101,15 +112,13 @@ fun FullscreenPlayer(
 
             Box(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(chatRatio)
+                    .fillMaxSize()
                     .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .systemBarsPadding()
-                        .displayCutoutPadding()
+                        .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End))
                 ) {
                     // 1. Chat area
                     Box(modifier = Modifier.fillMaxSize()) {

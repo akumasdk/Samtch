@@ -1,5 +1,21 @@
 # Changelog
 
+## Samtch v1.1.7
+
+### What's New
+- **Massive Performance Upgrades**:
+  - **WebView IPC Batching**: Drastically reduced Inter-Process Communication (IPC) overhead during player startup by batching all initial JavaScript injections.
+  - **Zero-Flicker Chat Rendering**: Completely refactored the chat list using `@Immutable` Compose states and deferred rich-text building. High-velocity chat will no longer cause micro-stutters or frame drops.
+  - **Heavy Compose Optimizations**: Separated rapid gesture states (brightness/volume sliders) from the main video player, ensuring the 60fps video doesn't needlessly recompose when adjusting settings.
+- **Robustness & Stability**:
+  - **Lifecycle Mastery**: Fixed a bug where entering Picture-in-Picture (PiP) mode or multi-window mode would pause the stream. The player now correctly maps to visibility rather than raw foreground focus.
+  - **Chat Buffer Synchronization**: Incoming chat messages are now securely buffered in the background while Twitch/7TV/BTTV/FFZ emotes load, eliminating the visual glitch where raw emote text (e.g., "KEKW") flashed before turning into images.
+  - **Hardware Brightness Fixes**: Brightness gestures now properly reset and re-sync with the hardware device level after exiting fullscreen, preventing jarring "jumps" on subsequent swipes.
+- **Adaptive UI Polish**:
+  - **Foldable/Tablet Enhancements**: Fixed an issue in portrait mode on ultra-wide screens where the software keyboard covered the chat input. The video player now dynamically shrinks down smoothly using `layoutSpring` physics when typing.
+  - **Crisp Loading Previews**: Standardized the loading screen's background preview to strictly pull the `853x480` high-quality image directly from Twitch servers, rather than distorting lower resolutions.
+
+---
 ## Samtch v1.1.6
 
 ### What's New

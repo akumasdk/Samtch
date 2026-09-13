@@ -8,12 +8,27 @@
     let isFirstLoad = true;
     let isTransitioning = false;
     let lastRefreshTime = 0;
+    let currentPosterUrl = '';
 
     function getUrl(key) {
         const trigger = parseInt(key) || 0;
         const res = (trigger % 2 === 0) ? '640x360' : '1280x720';
         const cacheBuster = key ? `v=${key}` : `t=${new Date().getTime()}`;
         return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.toLowerCase()}-${res}.jpg?${cacheBuster}`;
+    }
+
+    function updatePosters(newPoster) {
+        const poster = newPoster || currentPosterUrl || getUrl();
+        if (!poster) return;
+        if (newPoster) {
+            currentPosterUrl = newPoster;
+        }
+        document.querySelectorAll('video').forEach(video => {
+            // Check if poster is missing or using the default WebView poster
+            if (!video.poster || video.poster.startsWith('android-webview-video-poster:')) {
+                video.poster = poster;
+            }
+        });
     }
 
     function injectStyles() {
@@ -72,6 +87,7 @@
 
         img.onload = function() {
             lastRefreshTime = Date.now();
+            updatePosters(nextUrl);
             if (isFirstLoad) {
                 container.style.setProperty('--samtch-bg-prev', `url('${nextUrl}')`);
                 isFirstLoad = false;
@@ -104,12 +120,17 @@
     };
 
     injectStyles();
+    updatePosters();
     // Initial call
-    setTimeout(() => window.refreshSamtchBackground(), 1000);
+    setTimeout(() => {
+        window.refreshSamtchBackground();
+        updatePosters();
+    }, 1000);
 
     if (!window.SamtchObserverActive) {
         const observer = new MutationObserver(() => {
             if (!document.getElementById(styleId)) injectStyles();
+            updatePosters();
             const container = document.querySelector('[data-a-target="video-ref"]');
             // Only trigger if container exists and hasn't been initialized yet
             if (container && !container.style.getPropertyValue('--samtch-bg-prev') && !isTransitioning) {
