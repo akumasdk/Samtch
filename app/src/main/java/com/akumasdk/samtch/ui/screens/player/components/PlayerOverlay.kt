@@ -27,6 +27,7 @@ fun PlayerOverlay(
     chatRatio: Float = 0.28f,
     forceSlimMetadata: Boolean = false,
     isImmersiveEnabled: Boolean = true,
+    videoHeight: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp.Unspecified,
     onToggleChat: () -> Unit,
     onToggleMode: () -> Unit,
     onChatInteraction: () -> Unit = {},
@@ -97,6 +98,7 @@ fun PlayerOverlay(
                     expandTrigger = metadataExpandTrigger,
                     forceSlimMetadata = forceSlimMetadata,
                     isImmersiveEnabled = isImmersiveEnabled,
+                    videoHeight = videoHeight,
                     refreshTrigger = refreshTrigger,
                     onToggleMode = onToggleMode,
                     chatContent = { config, modifier ->

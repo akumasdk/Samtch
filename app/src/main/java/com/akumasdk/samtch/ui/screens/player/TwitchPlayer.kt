@@ -440,7 +440,8 @@ private fun TwitchPlayerOrchestrator(
         screenWidth = screenWidth,
         screenHeight = screenHeight,
         isChatVisible = playerViewModel.isChatVisible,
-        chatRatio = chatRatioFloat
+        chatRatio = chatRatioFloat,
+        isKeyboardOrMenuVisible = forceSlimMetadata
     )
 
     SharedTransitionLayout {
@@ -470,6 +471,7 @@ private fun TwitchPlayerOrchestrator(
                     chatRatio = chatRatioFloat,
                     forceSlimMetadata = forceSlimMetadata,
                     isImmersiveEnabled = isImmersiveEnabled,
+                    videoHeight = layout.height.value,
                     onToggleChat = {
                         playerViewModel.toggleChat()
                         if (layoutType == PlayerLayoutType.FULLSCREEN) playerViewModel.showFullscreenControls = true

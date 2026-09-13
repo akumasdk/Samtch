@@ -28,14 +28,15 @@ fun rememberPlayerLayoutDimensions(
     screenWidth: Dp,
     screenHeight: Dp,
     isChatVisible: Boolean,
-    chatRatio: Float = 0.28f
+    chatRatio: Float = 0.28f,
+    isKeyboardOrMenuVisible: Boolean = false
 ): PlayerLayoutDimensions {
     val isChatOnly = portraitMode == PortraitMode.CHAT_ONLY && !isPip
     
     // Choose the best motion spec for the current state change
     val animationSpec = when {
         isChatOnly -> snap<Dp>()
-        isFullscreen -> SamtchAnimation.layoutSpring() // Unified smooth motion for landscape
+        isFullscreen || isKeyboardOrMenuVisible -> SamtchAnimation.layoutSpring() // Unified smooth motion for landscape/keyboard
         else -> SamtchAnimation.morphSpring()     // Snappy motion for mini-player
     }
 
@@ -45,6 +46,7 @@ fun rememberPlayerLayoutDimensions(
             isAudioOnly -> 240.dp
             isFullscreen -> screenHeight
             isChatOnly -> 0.dp
+            isKeyboardOrMenuVisible -> (screenWidth * 9 / 16).coerceAtMost(screenHeight * 0.3f)
             else -> (screenWidth * 9 / 16)
         },
         animationSpec = animationSpec,
