@@ -35,6 +35,7 @@ object Constants {
             const val HELIX_GLOBAL_EMOTES = "https://api.twitch.tv/helix/chat/emotes/global"
             const val HELIX_CHANNEL_EMOTES = "https://api.twitch.tv/helix/chat/emotes"
             const val HELIX_USER_EMOTES = "https://api.twitch.tv/helix/chat/emotes/user"
+            const val HELIX_USER_SUBSCRIPTION = "https://api.twitch.tv/helix/subscriptions/user"
         }
 
         object Templates {
@@ -98,6 +99,7 @@ object Constants {
         const val PLAYER_VIDEO_SWAP = "js/player/video_swap.js"
         const val PLAYER_LINK_DISABLER = "js/player/link_disabler.js"
         const val PLAYER_CONTROLS_INJECTOR = "js/player/controls_injector.js"
+        const val PLAYER_AUDIO_COMPRESSOR = "js/player/audio_compressor.js"
         const val PLAYER_VISIBILITY_MONITOR = "js/player/visibility_monitor.js"
         const val PLAYER_VAFT = "js/player/vaft.js"
         const val PLAYER_EARLY_HIDER = "js/player/early_hider.js"

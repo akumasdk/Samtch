@@ -24,6 +24,7 @@ object ScriptLoader {
             Scripts.PLAYER_VIDEO_SWAP,
             Scripts.PLAYER_LINK_DISABLER,
             Scripts.PLAYER_CONTROLS_INJECTOR,
+            Scripts.PLAYER_AUDIO_COMPRESSOR,
             Scripts.PLAYER_VISIBILITY_MONITOR,
             Scripts.PLAYER_VAFT
         )

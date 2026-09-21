@@ -92,6 +92,37 @@
             injectedCount++;
         }
 
+        // 3. Audio Compressor Toggle Button
+        if (!document.getElementById('samtch-compressor-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'samtch-compressor-btn';
+            btn.className = 'samtch-control-btn';
+
+            const isActive = (window.samtch_is_compressor_active && window.samtch_is_compressor_active());
+            btn.title = isActive ? 'Audio Compressor (ON)' : 'Audio Compressor (OFF)';
+            if (isActive) {
+                btn.classList.add('active');
+                btn.style.color = '#9147ff';
+            }
+
+            btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z"></path></svg>';
+            btn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const toggleFn = window.toggleCompressor || window.samtch_toggle_compressor;
+                if (toggleFn) {
+                    const active = toggleFn();
+                    if (window.TwitchPlayerBridge && window.TwitchPlayerBridge.onCompressorToggled) {
+                        window.TwitchPlayerBridge.onCompressorToggled(active);
+                    }
+                } else {
+                    console.error('[Samtch] Audio compressor module not loaded.');
+                }
+            };
+            rightGroup.prepend(btn);
+            injectedCount++;
+        }
+
         if (injectedCount > 0) {
             console.log('[Samtch] Buttons injected successfully (' + injectedCount + ')');
             document.documentElement.classList.add('samtch-ready');

@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.data.emote
 
 import android.util.Log
+import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.dto.HelixEmoteDto
@@ -59,36 +60,69 @@ class EmoteRepository @Inject constructor(
             Log.d(TAG, "Initializing EmoteTabs for $channelLower")
             combine(
                 settingsManager.getRecentEmotes(channelLower),
+                settingsManager.isThirdPartyEmotesEnabledForChannel(channelLower),
                 globalState,
                 userEmoteState,
                 getChannelState(channelLower)
-            ) { recent, global, userState, channelState ->
+            ) { recent, thirdPartyEnabled, global, userState, channelState ->
                 val tabs = mutableMapOf<Int, List<Emote>>()
-                
-                if (recent.isNotEmpty()) {
-                    tabs[com.akumasdk.samtch.R.string.emote_menu_recent] = recent
+                val auth = authManager.getAuthState()
+                val unlockedUserEmoteIds = userState.twitchEmotes.values.map { it.id }.toSet()
+                val unlockedUserEmoteCodes = userState.twitchEmotes.values.map { it.code.lowercase() }.toSet()
+                val isChannelOwner = auth.isLoggedIn && auth.userName.equals(channelLower, ignoreCase = true)
+                val isSubscribed = isChannelOwner || channelState.isUserSubscribed
+
+                val filteredRecent = if (thirdPartyEnabled) recent else recent.filter { it.type == EmoteType.TWITCH }
+                if (filteredRecent.isNotEmpty()) {
+                    tabs[R.string.emote_menu_recent] = filteredRecent
                 }
 
                 // Channel Emotes
-                val allChannelEmotes = (channelState.twitchEmotes.values + channelState.seventvEmotes.values + channelState.bttvEmotes.values + channelState.ffzEmotes.values).distinctBy { it.id }
-                if (allChannelEmotes.isNotEmpty()) {
-                    tabs[com.akumasdk.samtch.R.string.emote_menu_channel] = allChannelEmotes
+                val rawChannelEmotes = if (thirdPartyEnabled) {
+                    (channelState.twitchEmotes.values + channelState.seventvEmotes.values + channelState.bttvEmotes.values + channelState.ffzEmotes.values).distinctBy { it.id }
+                } else {
+                    channelState.twitchEmotes.values.toList()
                 }
 
-                // User Emotes
+                val processedChannelEmotes = rawChannelEmotes.map { emote ->
+                    if (emote.type == EmoteType.TWITCH && emote.isSubOnly) {
+                        val isUnlocked = !auth.isLoggedIn || 
+                                        isSubscribed || 
+                                        emote.id in unlockedUserEmoteIds || 
+                                        emote.code.lowercase() in unlockedUserEmoteCodes ||
+                                        userState.twitchEmotes.values.any { it.ownerChannelId == emote.ownerChannelId && !emote.ownerChannelId.isNullOrEmpty() }
+                        emote.copy(isUnlocked = isUnlocked)
+                    } else {
+                        emote.copy(isUnlocked = true)
+                    }
+                }
+
+                if (processedChannelEmotes.isNotEmpty()) {
+                    tabs[R.string.emote_menu_channel] = processedChannelEmotes
+                }
+
+                // Subscribed Emotes tab (custom sub emotes from user's active subs)
+                val subEmotes = userState.twitchEmotes.values.toList()
+                if (subEmotes.isNotEmpty()) {
+                    tabs[R.string.emote_menu_subscribed] = subEmotes.map { it.copy(isUnlocked = true) }
+                }
+
+                // User Emotes (personal/all unlocked user emotes)
                 if (userState.twitchEmotes.isNotEmpty()) {
-                    tabs[com.akumasdk.samtch.R.string.emote_menu_user] = userState.twitchEmotes.values.toList()
+                    tabs[R.string.emote_menu_user] = userState.twitchEmotes.values.map { it.copy(isUnlocked = true) }
                 }
 
                 // Global Twitch
                 if (global.twitchEmotes.isNotEmpty()) {
-                    tabs[com.akumasdk.samtch.R.string.emote_menu_twitch] = global.twitchEmotes.values.toList()
+                    tabs[R.string.emote_menu_twitch] = global.twitchEmotes.values.map { it.copy(isUnlocked = true) }
                 }
 
                 // Global 3rd Party
-                val allGlobal3rdParty = (global.seventvEmotes.values + global.bttvEmotes.values + global.ffzEmotes.values).toList()
-                if (allGlobal3rdParty.isNotEmpty()) {
-                    tabs[com.akumasdk.samtch.R.string.emote_menu_global] = allGlobal3rdParty
+                if (thirdPartyEnabled) {
+                    val allGlobal3rdParty = (global.seventvEmotes.values + global.bttvEmotes.values + global.ffzEmotes.values).toList()
+                    if (allGlobal3rdParty.isNotEmpty()) {
+                        tabs[R.string.emote_menu_global] = allGlobal3rdParty
+                    }
                 }
 
                 Log.d(TAG, "Tabs emission calculated for $channelLower: ${tabs.size} tabs")
@@ -249,6 +283,19 @@ class EmoteRepository @Inject constructor(
         Log.d(TAG, "Loading channel emotes for $channelLower (ID: $resolvedUserId)")
 
         supervisorScope {
+            // Check subscription status
+            if (auth.isLoggedIn && auth.userId != null) {
+                launch {
+                    val isSubbed = if (auth.userName.equals(channelLower, ignoreCase = true)) {
+                        true
+                    } else {
+                        helixApiClient.isUserSubscribed(resolvedUserId, auth.userId).getOrDefault(false)
+                    }
+                    stateFlow.update { it.copy(isUserSubscribed = isSubbed) }
+                    Log.d(TAG, "Subscription check for $channelLower: isSubbed=$isSubbed")
+                }
+            }
+
             // Twitch Channel
             val shouldLoadTwitch = auth.isLoggedIn && (force || !currentState.isTwitchLoaded || !currentState.loadedWithAuth)
             if (shouldLoadTwitch) {
@@ -325,17 +372,23 @@ class EmoteRepository @Inject constructor(
         }
     }
 
-    suspend fun loadUserEmotes() = withContext(Dispatchers.IO) {
+    suspend fun loadUserEmotes(force: Boolean = false) = withContext(Dispatchers.IO) {
         val auth = authManager.authStateFlow.first()
         if (!auth.isLoggedIn || auth.userId == null) return@withContext
-        if (_userEmoteState.value.isLoaded && _userEmoteState.value.userId == auth.userId) return@withContext
+        if (!force && _userEmoteState.value.isLoaded && _userEmoteState.value.userId == auth.userId && _userEmoteState.value.twitchEmotes.isNotEmpty()) return@withContext
 
-        Log.d(TAG, "Loading user emotes for ${auth.userName}")
+        Log.d(TAG, "Loading user emotes for ${auth.userName} (userId=${auth.userId}, force=$force)")
         
         // 1. Try Helix first (official API)
         helixApiClient.getUserEmotes(auth.userId).onSuccess { helixEmotes ->
             if (helixEmotes.isNotEmpty()) {
-                val twitchMap = helixEmotes.associateBy({ it.name }, { mapHelixEmote(it) })
+                val twitchMap = helixEmotes.associateBy({ it.name }, { dto ->
+                    mapHelixEmote(dto).copy(
+                        isSubOnly = dto.emote_type == "subscriptions" || dto.tier != null || dto.owner_id != null,
+                        isUnlocked = true
+                    )
+                })
+                Log.d(TAG, "Successfully loaded ${twitchMap.size} user emotes from Helix")
                 _userEmoteState.update { it.copy(twitchEmotes = twitchMap, isLoaded = true, userId = auth.userId) }
                 return@withContext
             }
@@ -346,7 +399,10 @@ class EmoteRepository @Inject constructor(
 
         // 2. Fallback to GQL (often works better with browser session tokens)
         val gqlEmotes = gqlService.getUserEmotes()
-        val twitchMap = gqlEmotes.associateBy { it.code }
+        val twitchMap = gqlEmotes.associateBy({ it.code }, { emote ->
+            emote.copy(isSubOnly = true, isUnlocked = true)
+        })
+        Log.d(TAG, "Loaded ${twitchMap.size} user emotes from GQL fallback")
         _userEmoteState.update { it.copy(twitchEmotes = twitchMap, isLoaded = true, userId = auth.userId) }
     }
 
@@ -370,7 +426,17 @@ class EmoteRepository @Inject constructor(
         val isAnimated = dto.format?.contains("animated") == true
         val format = if (isAnimated) "animated" else "static"
         val url = "https://static-cdn.jtvnw.net/emoticons/v2/${dto.id}/$format/dark/3.0"
-        return Emote(dto.id, dto.name, url, EmoteType.TWITCH)
+        val isSubOnly = dto.emote_type == "subscriptions" || dto.tier != null
+        return Emote(
+            id = dto.id,
+            code = dto.name,
+            url = url,
+            type = EmoteType.TWITCH,
+            isSubOnly = isSubOnly,
+            isUnlocked = true,
+            tier = dto.tier,
+            ownerChannelId = dto.owner_id
+        )
     }
 
     private fun parseSevenTVEmote(emote: SevenTVEmote): Emote? {

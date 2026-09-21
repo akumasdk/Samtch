@@ -24,8 +24,8 @@ android {
         applicationId = "com.magumboi.samtch"
         minSdk = 26
         targetSdk = 37
-        versionCode = 33
-        versionName = "1.1.7"
+        versionCode = 34
+        versionName = "1.1.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

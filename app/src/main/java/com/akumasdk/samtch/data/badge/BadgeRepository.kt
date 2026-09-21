@@ -33,7 +33,7 @@ class BadgeRepository @Inject constructor(
 
     suspend fun loadGlobalBadges(force: Boolean = false) = withContext(Dispatchers.IO) {
         val auth = authManager.authStateFlow.first()
-        if (!force && _globalState.value.isLoaded && _globalState.value.loadedWithAuth == auth.isLoggedIn) return@withContext
+        if (!force && _globalState.value.isLoaded && _globalState.value.loadedWithAuth == auth.isLoggedIn && _globalState.value.badges.isNotEmpty()) return@withContext
         
         Log.d(TAG, "Fetching global badges...")
         helixApiClient.getGlobalBadges().onSuccess { badgeSets ->
@@ -62,7 +62,7 @@ class BadgeRepository @Inject constructor(
         val stateFlow = _channelStates.getOrPut(channelLower) { MutableStateFlow(ChannelBadgeState()) }
         val auth = authManager.authStateFlow.first()
         
-        if (!force && stateFlow.value.isLoaded && stateFlow.value.loadedWithAuth == auth.isLoggedIn) return@withContext
+        if (!force && stateFlow.value.isLoaded && stateFlow.value.loadedWithAuth == auth.isLoggedIn && stateFlow.value.badges.isNotEmpty()) return@withContext
 
         Log.d(TAG, "Fetching channel badges for $channelName...")
         helixApiClient.getChannelBadges(broadcasterId).onSuccess { badgeSets ->

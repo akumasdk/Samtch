@@ -7,6 +7,7 @@ import com.akumasdk.samtch.data.badge.BadgeRepository
 import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.data.emote.Emote
 import com.akumasdk.samtch.data.emote.EmoteRepository
+import com.akumasdk.samtch.data.emote.EmoteType
 import com.akumasdk.samtch.data.irc.IrcMessage
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.TwitchChatClient
@@ -95,11 +96,19 @@ class ChatViewModel @Inject constructor(
                 val channel = _currentChannel.value
                 if (channel != null) {
                     Log.d(TAG, "Auth change detected (loggedIn=$loggedIn). Refreshing emotes for $channel.")
-                    emoteManager.refreshEmotes(viewModelScope, channel)
+                    emoteManager.refreshEmotes(viewModelScope, channel, force = true)
                 }
             }
         }
     }
+
+    private data class RemapTriggerState(
+        val isFullyLoaded: Boolean,
+        val globalBadgeCount: Int,
+        val channelBadgeCount: Int,
+        val globalEmoteCount: Int,
+        val channelEmoteCount: Int
+    )
 
     private val _areEmotesLoaded = MutableStateFlow(false)
     val areEmotesLoaded: StateFlow<Boolean> = _areEmotesLoaded.asStateFlow()
@@ -184,7 +193,7 @@ class ChatViewModel @Inject constructor(
                 }
             }
 
-            // Watch for load status to trigger remapping & release buffered messages
+            // Watch for load status & badge/emote content updates to release buffer and remap messages
             launch {
                 combine(
                     emoteRepository.globalState,
@@ -196,12 +205,19 @@ class ChatViewModel @Inject constructor(
                     val emotesFullyLoaded = globalEmotes.isFullyLoaded && channelEmotes.isFullyLoaded
                     val badgesLoaded = globalBadges.isLoaded && channelBadges.isLoaded
                     emoteManager.setEmoteLoading(triggered && (!emotesFullyLoaded || !channelEmotes.isFullyLoaded))
-                    emotesFullyLoaded && badgesLoaded
-                }.collectLatest { fullyLoaded ->
-                    if (fullyLoaded) {
+
+                    RemapTriggerState(
+                        isFullyLoaded = emotesFullyLoaded && badgesLoaded,
+                        globalBadgeCount = globalBadges.badges.size,
+                        channelBadgeCount = channelBadges.badges.size,
+                        globalEmoteCount = globalEmotes.twitchEmotes.size + globalEmotes.seventvEmotes.size + globalEmotes.bttvEmotes.size + globalEmotes.ffzEmotes.size,
+                        channelEmoteCount = channelEmotes.twitchEmotes.size + channelEmotes.seventvEmotes.size + channelEmotes.bttvEmotes.size + channelEmotes.ffzEmotes.size
+                    )
+                }.collectLatest { state ->
+                    if (state.isFullyLoaded) {
                         timeoutJob.cancel()
                         flushMessageBuffer(channel)
-                        delay(1000.milliseconds) // Debounce re-mapping
+                        delay(500.milliseconds) // Debounce re-mapping
                         messageStore.remapMessages(viewModelScope, channel)
                     }
                 }
@@ -287,6 +303,21 @@ class ChatViewModel @Inject constructor(
     suspend fun sendMessage(message: String) {
         val channel = _currentChannel.value ?: return
         val authState = twitchAuthManager.getAuthState()
+
+        // Validate message for locked sub-emotes
+        val words = message.split(" ")
+        val lockedEmote = words.mapNotNull { word ->
+            emoteRepository.getEmote(channel, word)
+        }.find { emote ->
+            emote.type == EmoteType.TWITCH && emote.isSubOnly && !emote.isUnlocked
+        }
+
+        if (lockedEmote != null) {
+            withContext(Dispatchers.Main) {
+                _systemNotice.value = "Cannot send sub-only emote '${lockedEmote.code}'. Subscription required."
+            }
+            return
+        }
         
         if (authState.isLoggedIn && !authState.userName.isNullOrEmpty()) {
             val tags = userTags.toMutableMap()

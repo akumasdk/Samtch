@@ -9,7 +9,12 @@ data class Emote(
     val code: String,
     val url: String,
     val type: EmoteType,
-    val isZeroWidth: Boolean = false
+    val isZeroWidth: Boolean = false,
+    val isSubOnly: Boolean = false,
+    val isUnlocked: Boolean = true,
+    val tier: String? = null,
+    val ownerChannelId: String? = null,
+    val ownerChannelName: String? = null
 )
 
 @Serializable

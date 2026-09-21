@@ -128,4 +128,14 @@ class HelixApi @Inject constructor(
             parameter("user_id", userId)
         }
     }
+
+    suspend fun getUserSubscription(broadcasterId: String, userId: String): HttpResponse {
+        val clientId = getClientId()
+        return client.get(Constants.Twitch.Api.HELIX_USER_SUBSCRIPTION) {
+            header("Client-Id", clientId)
+            addAuth()
+            parameter("broadcaster_id", broadcasterId)
+            parameter("user_id", userId)
+        }
+    }
 }

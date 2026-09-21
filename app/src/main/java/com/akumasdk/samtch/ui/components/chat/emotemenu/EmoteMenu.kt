@@ -1,39 +1,39 @@
 package com.akumasdk.samtch.ui.components.chat.emotemenu
 
 import android.util.Log
-import androidx.compose.animation.core.*
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.emote.Emote
 import com.akumasdk.samtch.data.emote.EmoteType
-import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +54,6 @@ fun EmoteMenu(
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabResIds = remember(tabs) { tabs.keys.toList() }
 
-    // Ensure selectedTabIndex is within bounds when tabs change
     LaunchedEffect(tabResIds) {
         if (selectedTabIndex >= tabResIds.size && tabResIds.isNotEmpty()) {
             selectedTabIndex = 0
@@ -107,8 +106,7 @@ fun EmoteMenu(
                             )
                         }
                     }
-                    // ... icon buttons ...
-                    
+
                     IconButton(
                         onClick = onRefresh,
                         modifier = Modifier.padding(horizontal = 2.dp).size(40.dp)
@@ -136,8 +134,7 @@ fun EmoteMenu(
 
                 Box(modifier = Modifier.weight(1f)) {
                     val currentEmotes = tabs[tabResIds[selectedTabIndex]] ?: emptyList()
-                    
-                    // Group emotes by type for sections
+
                     val groupedEmotes = remember(currentEmotes) {
                         currentEmotes.groupBy { it.type }
                     }
@@ -150,10 +147,14 @@ fun EmoteMenu(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         groupedEmotes.forEach { (type, emotes) ->
-                            item(span = { GridItemSpan(maxLineSpan) }) {
+                            item(
+                                key = "header_${type.name}",
+                                span = { GridItemSpan(maxLineSpan) },
+                                contentType = "header"
+                            ) {
                                 Column(modifier = Modifier.padding(top = 8.dp)) {
                                     Text(
-                                        text = when(type) {
+                                        text = when (type) {
                                             EmoteType.TWITCH -> stringResource(R.string.emote_source_twitch)
                                             EmoteType.SEVENTV -> stringResource(R.string.emote_source_seventv)
                                             EmoteType.BTTV -> stringResource(R.string.emote_source_bttv)
@@ -170,8 +171,12 @@ fun EmoteMenu(
                                     )
                                 }
                             }
-                            
-                            items(emotes, key = { it.id }) { emote ->
+
+                            items(
+                                items = emotes,
+                                key = { "${type.name}_${it.id}_${it.code}" },
+                                contentType = { "emote" }
+                            ) { emote ->
                                 EmoteItem(
                                     emote = emote,
                                     onClick = { onEmoteClick(emote) },
@@ -219,54 +224,77 @@ fun EmoteMenu(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EmoteItem(
     emote: Emote,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var isLoading by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    val subRequiredMsg = stringResource(R.string.emote_requires_subscription)
+
+    val imageRequest = remember(emote.url) {
+        ImageRequest.Builder(context)
+            .data(emote.url)
+            .size(128)
+            .crossfade(true)
+            .build()
+    }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(48.dp)
-            .pointerInput(emote) {
-                detectTapGestures(
-                    onTap = { onClick() },
-                    onLongPress = { onLongClick() }
-                )
-            },
+            .combinedClickable(
+                onClick = {
+                    if (emote.isUnlocked) {
+                        onClick()
+                    } else {
+                        Toast.makeText(context, "$subRequiredMsg: ${emote.code}", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onLongClick = onLongClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
-            val infiniteTransition = rememberInfiniteTransition(label = "DotPulse")
-            val alpha by infiniteTransition.animateFloat(
-                initialValue = 0.2f,
-                targetValue = 0.6f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(800, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "DotAlpha"
-            )
-            
             Box(
                 modifier = Modifier
-                    .size(4.dp)
-                    .background(SamtchTheme.colors.secondaryText.copy(alpha = alpha), CircleShape)
+                    .size(6.dp)
+                    .background(SamtchTheme.colors.secondaryText.copy(alpha = 0.15f), CircleShape)
             )
         }
         AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(emote.url)
-                .crossfade(true)
-                .build(),
+            model = imageRequest,
             contentDescription = emote.code,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (!emote.isUnlocked) Modifier.alpha(0.38f) else Modifier),
             contentScale = ContentScale.Fit,
             onState = { state ->
-                isLoading = state is coil.compose.AsyncImagePainter.State.Loading
+                isLoading = state is AsyncImagePainter.State.Loading
             }
         )
+
+        if (!emote.isUnlocked) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.7f),
+                shape = CircleShape,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(16.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Locked",
+                        tint = Color.White,
+                        modifier = Modifier.size(10.dp)
+                    )
+                }
+            }
+        }
     }
 }

@@ -127,7 +127,7 @@ class ChatEmoteManager @Inject constructor(
                 
                 supervisorScope {
                     launch { emoteRepository.loadGlobalEmotes(force) }
-                    launch { emoteRepository.loadUserEmotes() }
+                    launch { emoteRepository.loadUserEmotes(force) }
                     launch { badgeRepository.loadGlobalBadges(force) }
 
                     if (resolvedUserId != null) {
@@ -194,52 +194,164 @@ class ChatEmoteManager @Inject constructor(
         }
     }
 
+    private var suggestionJob: Job? = null
+
+    private data class TokenInfo(
+        val token: String,
+        val query: String,
+        val isColonTriggered: Boolean,
+        val start: Int,
+        val end: Int
+    )
+
+    private enum class EmoteScope(val baseWeight: Int) {
+        RECENT(0),
+        CHANNEL(1_000),
+        USER(2_000),
+        GLOBAL(3_000)
+    }
+
     fun updateSuggestions(scope: CoroutineScope, channel: String, text: String, cursorPosition: Int) {
-        val currentWord = extractCurrentWord(text, cursorPosition)
-        
-        if (currentWord.isBlank() || currentWord.length < 2) {
+        suggestionJob?.cancel()
+
+        val tokenInfo = extractCurrentToken(text, cursorPosition)
+        if (tokenInfo == null) {
             _emoteSuggestions.value = emptyList()
             return
         }
 
-        val query = if (currentWord.startsWith(':')) currentWord.substring(1) else currentWord
-        
-        scope.launch(Dispatchers.Default) {
-            val allEmotes = emoteRepository.getFlattenedEmotes(channel).value
-            val filtered = allEmotes.mapNotNull { emote ->
-                val score = scoreEmote(emote.code, query)
-                if (score != Int.MIN_VALUE) {
-                    emote to score
-                } else {
-                    null
-                }
-            }.sortedBy { it.second }
-             .map { it.first }
-             .take(20)
-            
-            _emoteSuggestions.value = filtered
+        val query = tokenInfo.query
+        val isColon = tokenInfo.isColonTriggered
+
+        if (!isColon && query.length < 2) {
+            _emoteSuggestions.value = emptyList()
+            return
+        }
+
+        suggestionJob = scope.launch(Dispatchers.Default) {
+            val suggestions = searchEmotes(channel, query, isColon)
+            if (isActive) {
+                _emoteSuggestions.value = suggestions
+            }
         }
     }
 
-    private fun extractCurrentWord(text: String, cursorPosition: Int): String {
+    private fun extractCurrentToken(text: String, cursorPosition: Int): TokenInfo? {
+        if (text.isEmpty()) return null
         val cursorPos = cursorPosition.coerceIn(0, text.length)
+
         var start = cursorPos
-        while (start > 0 && text[start - 1] != ' ') start--
-        return text.substring(start, cursorPos)
-    }
-
-    private fun scoreEmote(code: String, query: String): Int {
-        val matchIndex = code.indexOf(query, ignoreCase = true)
-        if (matchIndex < 0) return Int.MIN_VALUE
-
-        var caseDiffs = 0
-        for (i in query.indices) {
-            if (code[matchIndex + i] != query[i]) caseDiffs++
+        while (start > 0 && text[start - 1] != ' ') {
+            start--
         }
 
-        val extraChars = code.length - query.length
-        val caseCost = if (caseDiffs == 0) -10 else caseDiffs
-        return caseCost + extraChars * 100
+        var end = cursorPos
+        while (end < text.length && text[end] != ' ') {
+            end++
+        }
+
+        val token = text.substring(start, end)
+        if (token.isEmpty()) return null
+
+        val isColonTriggered = token.startsWith(':')
+        val query = if (isColonTriggered) token.substring(1) else token
+
+        return TokenInfo(
+            token = token,
+            query = query,
+            isColonTriggered = isColonTriggered,
+            start = start,
+            end = end
+        )
+    }
+
+    private fun searchEmotes(channel: String, query: String, isColonTriggered: Boolean): List<Emote> {
+        val channelState = emoteRepository.getChannelState(channel).value
+        val userState = emoteRepository.userEmoteState.value
+        val globalState = emoteRepository.globalState.value
+
+        val seenKeys = HashSet<String>()
+        val candidates = mutableListOf<Pair<Emote, EmoteScope>>()
+
+        fun addEmotes(emotes: Collection<Emote>, scope: EmoteScope) {
+            for (emote in emotes) {
+                if (!emote.isUnlocked) continue
+                val key = "${emote.id}_${emote.code}"
+                if (seenKeys.add(key)) {
+                    candidates.add(emote to scope)
+                }
+            }
+        }
+
+        // 1. Recent Emotes
+        addEmotes(_recentEmotes.value, EmoteScope.RECENT)
+
+        // 2. Channel Emotes
+        addEmotes(channelState.twitchEmotes.values, EmoteScope.CHANNEL)
+        addEmotes(channelState.seventvEmotes.values, EmoteScope.CHANNEL)
+        addEmotes(channelState.bttvEmotes.values, EmoteScope.CHANNEL)
+        addEmotes(channelState.ffzEmotes.values, EmoteScope.CHANNEL)
+
+        // 3. User Emotes
+        addEmotes(userState.twitchEmotes.values, EmoteScope.USER)
+
+        // 4. Global Emotes
+        addEmotes(globalState.twitchEmotes.values, EmoteScope.GLOBAL)
+        addEmotes(globalState.seventvEmotes.values, EmoteScope.GLOBAL)
+        addEmotes(globalState.bttvEmotes.values, EmoteScope.GLOBAL)
+        addEmotes(globalState.ffzEmotes.values, EmoteScope.GLOBAL)
+
+        if (query.isEmpty()) {
+            return candidates.take(20).map { it.first }
+        }
+
+        val scored = mutableListOf<Pair<Emote, Int>>()
+        for ((emote, scope) in candidates) {
+            val score = calculateEmoteScore(emote.code, query, scope, isColonTriggered)
+            if (score != Int.MAX_VALUE) {
+                scored.add(emote to score)
+            }
+        }
+
+        return scored
+            .sortedBy { it.second }
+            .map { it.first }
+            .take(20)
+    }
+
+    private fun calculateEmoteScore(
+        code: String,
+        query: String,
+        scope: EmoteScope,
+        isColonTriggered: Boolean
+    ): Int {
+        val matchIndex = code.indexOf(query, ignoreCase = true)
+        if (matchIndex < 0) return Int.MAX_VALUE
+
+        val isPrefix = matchIndex == 0
+        val isExact = code.length == query.length
+
+        if (!isColonTriggered && !isPrefix && query.length < 3) {
+            return Int.MAX_VALUE
+        }
+
+        val isCaseExact = code == query
+        val isCasePrefixExact = isPrefix && code.startsWith(query, ignoreCase = false)
+        val isCaseSubstringExact = code.contains(query, ignoreCase = false)
+
+        val matchPenalty = when {
+            isCaseExact -> 0
+            isExact -> 50
+            isCasePrefixExact -> 100
+            isPrefix -> 200
+            isCaseSubstringExact -> 500 + (matchIndex * 20)
+            else -> 700 + (matchIndex * 20)
+        }
+
+        val lengthDiff = (code.length - query.length).coerceAtLeast(0)
+        val lengthPenalty = lengthDiff * 5
+
+        return scope.baseWeight + matchPenalty + lengthPenalty
     }
 
     fun resetLoadTrigger(force: Boolean) {
@@ -254,6 +366,8 @@ class ChatEmoteManager @Inject constructor(
     }
     
     fun clear() {
+        suggestionJob?.cancel()
+        suggestionJob = null
         _emoteSuggestions.value = emptyList()
         _isEmoteMenuVisible.value = false
         _selectedEmoteForInfo.value = null

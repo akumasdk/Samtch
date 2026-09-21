@@ -10,15 +10,20 @@ import androidx.compose.ui.text.withStyle
 import com.akumasdk.samtch.data.badge.BadgeRepository
 import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.data.emote.EmoteRepository
+import com.akumasdk.samtch.data.emote.EmoteType
 import com.akumasdk.samtch.data.irc.IrcMessage
+import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.Constants
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ChatMessageMapper @Inject constructor(
     private val emoteRepository: EmoteRepository,
-    private val badgeRepository: BadgeRepository
+    private val badgeRepository: BadgeRepository,
+    private val settingsManager: SettingsManager
 ) {
 
     private data class EmoteOccurrence(
@@ -96,11 +101,12 @@ class ChatMessageMapper @Inject constructor(
             }
 
             // 2. Parse 3rd party emotes
+            val thirdPartyEnabled = runBlocking { settingsManager.isThirdPartyEmotesEnabledForChannel(channelName).first() }
             cleanText.forEachWord { word, start ->
                 val end = start + word.length - 1
                 if (occurrences.none { it.range.first <= start && it.range.last >= end }) {
                     val emote = emoteRepository.getEmote(channelName, word)
-                    if (emote != null) {
+                    if (emote != null && (thirdPartyEnabled || emote.type == EmoteType.TWITCH)) {
                         occurrences.add(EmoteOccurrence(emote.id, word, emote.url, emote.type.name, start..end, emote.isZeroWidth))
                     }
                 }

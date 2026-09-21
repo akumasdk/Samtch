@@ -19,11 +19,6 @@ class HelixApiClient @Inject constructor(
     }
 
     suspend fun getGlobalBadges(): Result<List<BadgeSetDto>> = runCatching {
-        val auth = authManager.getAuthState()
-        if (!auth.isLoggedIn || auth.authToken.isNullOrEmpty()) {
-            return Result.success(emptyList())
-        }
-
         val response = helixApi.getGlobalBadges()
         if (!response.status.isSuccess()) {
             throw Exception("Failed to fetch global badges: ${response.status}")
@@ -32,11 +27,6 @@ class HelixApiClient @Inject constructor(
     }
 
     suspend fun getChannelBadges(broadcasterId: String): Result<List<BadgeSetDto>> = runCatching {
-        val auth = authManager.getAuthState()
-        if (!auth.isLoggedIn || auth.authToken.isNullOrEmpty()) {
-            return Result.success(emptyList())
-        }
-
         val response = helixApi.getChannelBadges(broadcasterId)
         if (!response.status.isSuccess()) {
             throw Exception("Failed to fetch channel badges: ${response.status}")
@@ -121,5 +111,15 @@ class HelixApiClient @Inject constructor(
             throw Exception("Failed to fetch user emotes: ${response.status}")
         }
         response.body<HelixEmoteResponse>().data
+    }
+
+    suspend fun isUserSubscribed(broadcasterId: String, userId: String): Result<Boolean> = runCatching {
+        val auth = authManager.getAuthState()
+        if (!auth.isLoggedIn || auth.authToken.isNullOrEmpty()) {
+            return Result.success(false)
+        }
+
+        val response = helixApi.getUserSubscription(broadcasterId, userId)
+        response.status.value == 200
     }
 }
