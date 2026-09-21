@@ -76,8 +76,9 @@ fun WebViewContainer(
                 builder.appendLine(adScript)
             }
 
-            // 3. Inject playback monitor and early hider to catch fast starts
+            // 3. Inject audio compressor, playback monitor and early hider to catch fast starts
             listOf(
+                Constants.Scripts.PLAYER_AUDIO_COMPRESSOR,
                 Constants.Scripts.PLAYER_PLAYBACK_MONITOR,
                 Constants.Scripts.PLAYER_EARLY_HIDER,
                 Constants.Scripts.PLAYER_BACKGROUND
@@ -109,6 +110,7 @@ fun WebViewContainer(
             if (!url.contains(Constants.Twitch.DOMAIN)) return@LaunchedEffect
 
             val scripts = listOf(
+                Constants.Scripts.PLAYER_AUDIO_COMPRESSOR,
                 Constants.Scripts.PLAYER_UI_CLEANER,
                 Constants.Scripts.PLAYER_CONTROLS_INJECTOR,
                 Constants.Scripts.PLAYER_PLAYBACK_MONITOR,

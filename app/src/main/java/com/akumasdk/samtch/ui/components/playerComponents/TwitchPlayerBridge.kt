@@ -8,7 +8,8 @@ class TwitchPlayerBridge(
     private val onToggleAudioOnly: () -> Unit = {},
     private val onPlaybackStartedCallback: () -> Unit = {},
     private val onLoadingStatusCallback: (String) -> Unit = {},
-    private val onAdblockedCallback: (String) -> Unit = {}
+    private val onAdblockedCallback: (String) -> Unit = {},
+    private val onCompressorToggledCallback: (Boolean) -> Unit = {}
 ) {
     @JavascriptInterface
     fun toggleFullscreen() {
@@ -38,5 +39,10 @@ class TwitchPlayerBridge(
     @JavascriptInterface
     fun onAdblocked(text: String) {
         onAdblockedCallback(text)
+    }
+
+    @JavascriptInterface
+    fun onCompressorToggled(active: Boolean) {
+        onCompressorToggledCallback(active)
     }
 }
