@@ -24,7 +24,8 @@ data class ChannelEmoteState(
     val isBttvLoaded: Boolean = false,
     val isSeventvLoaded: Boolean = false,
     val isFfzLoaded: Boolean = false,
-    val loadedWithAuth: Boolean = false
+    val loadedWithAuth: Boolean = false,
+    val isUserSubscribed: Boolean = false
 ) {
     val isLoaded: Boolean get() = isTwitchLoaded || isBttvLoaded || isSeventvLoaded || isFfzLoaded
     val isFullyLoaded: Boolean get() = isTwitchLoaded && isBttvLoaded && isSeventvLoaded && isFfzLoaded

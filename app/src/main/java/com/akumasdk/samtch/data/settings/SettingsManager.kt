@@ -38,6 +38,7 @@ class SettingsManager @Inject constructor(
     private val CHAT_BADGE_SIZE = intPreferencesKey("chat_badge_size")
     private val IMMERSIVE_BACKGROUND_ENABLED = booleanPreferencesKey("immersive_background_enabled")
     private val FULLSCREEN_CHAT_RATIO = intPreferencesKey("fullscreen_chat_ratio_v2")
+    private val THIRD_PARTY_EMOTES_ENABLED = booleanPreferencesKey("third_party_emotes_enabled")
 
     // Auth
     private val AUTH_TOKEN = stringPreferencesKey("auth_token")
@@ -120,6 +121,18 @@ class SettingsManager @Inject constructor(
 
     fun getFullscreenChatRatio(): Flow<Int> = dataStore.data.map { it[FULLSCREEN_CHAT_RATIO] ?: 0 }
     suspend fun setFullscreenChatRatio(ratio: Int) = dataStore.edit { it[FULLSCREEN_CHAT_RATIO] = ratio }
+
+    private fun getChannelThirdPartyEmotesKey(channel: String) = booleanPreferencesKey("third_party_emotes_${channel.lowercase()}")
+
+    fun isThirdPartyEmotesEnabled(): Flow<Boolean> = dataStore.data.map { it[THIRD_PARTY_EMOTES_ENABLED] ?: true }
+    suspend fun setThirdPartyEmotesEnabled(enabled: Boolean) = dataStore.edit { it[THIRD_PARTY_EMOTES_ENABLED] = enabled }
+
+    fun isThirdPartyEmotesEnabledForChannel(channel: String): Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[getChannelThirdPartyEmotesKey(channel)] ?: preferences[THIRD_PARTY_EMOTES_ENABLED] ?: true
+    }
+    suspend fun setThirdPartyEmotesEnabledForChannel(channel: String, enabled: Boolean) = dataStore.edit { preferences ->
+        preferences[getChannelThirdPartyEmotesKey(channel)] = enabled
+    }
 
     // Auth methods
     fun getAuthToken(): Flow<String?> = dataStore.data.map { it[AUTH_TOKEN] }

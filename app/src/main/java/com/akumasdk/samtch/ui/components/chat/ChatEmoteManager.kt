@@ -127,7 +127,7 @@ class ChatEmoteManager @Inject constructor(
                 
                 supervisorScope {
                     launch { emoteRepository.loadGlobalEmotes(force) }
-                    launch { emoteRepository.loadUserEmotes() }
+                    launch { emoteRepository.loadUserEmotes(force) }
                     launch { badgeRepository.loadGlobalBadges(force) }
 
                     if (resolvedUserId != null) {
@@ -275,6 +275,7 @@ class ChatEmoteManager @Inject constructor(
 
         fun addEmotes(emotes: Collection<Emote>, scope: EmoteScope) {
             for (emote in emotes) {
+                if (!emote.isUnlocked) continue
                 val key = "${emote.id}_${emote.code}"
                 if (seenKeys.add(key)) {
                     candidates.add(emote to scope)

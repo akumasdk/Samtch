@@ -7,6 +7,7 @@ import com.akumasdk.samtch.data.badge.BadgeRepository
 import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.data.emote.Emote
 import com.akumasdk.samtch.data.emote.EmoteRepository
+import com.akumasdk.samtch.data.emote.EmoteType
 import com.akumasdk.samtch.data.irc.IrcMessage
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.service.TwitchChatClient
@@ -302,6 +303,21 @@ class ChatViewModel @Inject constructor(
     suspend fun sendMessage(message: String) {
         val channel = _currentChannel.value ?: return
         val authState = twitchAuthManager.getAuthState()
+
+        // Validate message for locked sub-emotes
+        val words = message.split(" ")
+        val lockedEmote = words.mapNotNull { word ->
+            emoteRepository.getEmote(channel, word)
+        }.find { emote ->
+            emote.type == EmoteType.TWITCH && emote.isSubOnly && !emote.isUnlocked
+        }
+
+        if (lockedEmote != null) {
+            withContext(Dispatchers.Main) {
+                _systemNotice.value = "Cannot send sub-only emote '${lockedEmote.code}'. Subscription required."
+            }
+            return
+        }
         
         if (authState.isLoggedIn && !authState.userName.isNullOrEmpty()) {
             val tags = userTags.toMutableMap()

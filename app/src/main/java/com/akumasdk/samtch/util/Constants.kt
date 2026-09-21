@@ -35,6 +35,7 @@ object Constants {
             const val HELIX_GLOBAL_EMOTES = "https://api.twitch.tv/helix/chat/emotes/global"
             const val HELIX_CHANNEL_EMOTES = "https://api.twitch.tv/helix/chat/emotes"
             const val HELIX_USER_EMOTES = "https://api.twitch.tv/helix/chat/emotes/user"
+            const val HELIX_USER_SUBSCRIPTION = "https://api.twitch.tv/helix/subscriptions/user"
         }
 
         object Templates {

@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.components.chat.emotemenu
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -12,12 +13,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
@@ -226,13 +229,21 @@ fun EmoteItem(
     onLongClick: () -> Unit
 ) {
     var isLoading by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    val subRequiredMsg = stringResource(R.string.emote_requires_subscription)
 
     Box(
         modifier = Modifier
             .size(48.dp)
             .pointerInput(emote) {
                 detectTapGestures(
-                    onTap = { onClick() },
+                    onTap = {
+                        if (emote.isUnlocked) {
+                            onClick()
+                        } else {
+                            Toast.makeText(context, "$subRequiredMsg: ${emote.code}", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     onLongPress = { onLongClick() }
                 )
             },
@@ -262,11 +273,32 @@ fun EmoteItem(
                 .crossfade(true)
                 .build(),
             contentDescription = emote.code,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (!emote.isUnlocked) Modifier.alpha(0.38f) else Modifier),
             contentScale = ContentScale.Fit,
             onState = { state ->
                 isLoading = state is coil.compose.AsyncImagePainter.State.Loading
             }
         )
+
+        if (!emote.isUnlocked) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.7f),
+                shape = CircleShape,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(16.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Locked",
+                        tint = Color.White,
+                        modifier = Modifier.size(10.dp)
+                    )
+                }
+            }
+        }
     }
 }

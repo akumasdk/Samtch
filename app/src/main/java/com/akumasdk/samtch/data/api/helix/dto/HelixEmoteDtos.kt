@@ -12,7 +12,8 @@ data class HelixEmoteDto(
     val theme_mode: List<String>? = null,
     val emote_type: String? = null,
     val emote_set_id: String? = null,
-    val owner_id: String? = null
+    val owner_id: String? = null,
+    val tier: String? = null
 )
 
 @Serializable

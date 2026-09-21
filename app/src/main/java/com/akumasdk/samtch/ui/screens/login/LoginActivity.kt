@@ -87,6 +87,8 @@ class LoginActivity : ComponentActivity() {
             "chat:edit",
             "user:read:email",
             "user:read:follows",
+            "user:read:subscriptions",
+            "user:read:emotes",
             "channel:read:redemptions",
             "moderator:read:chatters"
         )

@@ -117,6 +117,8 @@
     <string name="emote_menu_recent">Recent</string>
     <string name="emote_menu_twitch">Twitch</string>
     <string name="emote_menu_channel">Channel</string>
+    <string name="emote_menu_subscribed">Subscribed</string>
+    <string name="emote_requires_subscription">Requires Subscription</string>
     <string name="emote_menu_user">Personal</string>
     <string name="emote_menu_global">Global</string>
     <string name="emote_menu_empty">No emotes available</string>

@@ -112,4 +112,14 @@ class HelixApiClient @Inject constructor(
         }
         response.body<HelixEmoteResponse>().data
     }
+
+    suspend fun isUserSubscribed(broadcasterId: String, userId: String): Result<Boolean> = runCatching {
+        val auth = authManager.getAuthState()
+        if (!auth.isLoggedIn || auth.authToken.isNullOrEmpty()) {
+            return Result.success(false)
+        }
+
+        val response = helixApi.getUserSubscription(broadcasterId, userId)
+        response.status.value == 200
+    }
 }
