@@ -1,5 +1,30 @@
 # Changelog
 
+## Samtch v1.1.8
+
+### What's New
+- **Web Audio API Audio Compressor**:
+  - **Audio Dynamics Compressor**: Integrated Web Audio API dynamics compressor (`threshold: -50dB`, `knee: 40`, `ratio: 12:1`, `attack: 0s`, `release: 0.25s`) directly into the stream player.
+  - **Player Control Button**: Added a dedicated equalizer control button in the player controls overlay to toggle audio compression ON/OFF with instant visual feedback.
+  - **Enabled by Default**: Automatically initializes compression on stream load for balanced, consistent volume.
+- **Subscription-Based Emote Controls & Subscribed Tab**:
+  - **Subscription Permissions**: Verified channel subscription status via Twitch Helix `/subscriptions/user`. Unsubscribed channel emotes are rendered greyed-out with a lock icon, preventing accidental selection or chat submission.
+  - **Dedicated "Subscribed Emotes" Tab**: Added a new **Subscribed** tab in the Emote Picker containing all custom subscriber emotes across your active channel subscriptions.
+  - **Client-Side Validation**: Filtered out locked sub-emotes from autocomplete suggestions and manual text sending.
+  - **Third-Party Emotes Toggle**: Added per-channel and global settings to toggle third-party emotes (7TV, BTTV, FFZ).
+- **Snappier Emote Picker Performance**:
+  - **Zero Infinite Recompositions**: Removed infinite loading animation loops from lazy grid items to eliminate scrolling frame drops.
+  - **Low-Memory Thumbnails**: Memoized Coil image requests and enforced `128px` target bounds for hardware-scaled image rendering.
+  - **Lazy Grid Node Recycling**: Added `contentType` node recycling and `combinedClickable` touch handlers to `LazyVerticalGrid`.
+- **Chat & Autocomplete Enhancements**:
+  - **Intelligent Token Autocomplete**: Re-engineered autocomplete token extraction and multi-scope scoring (`RECENT` $\rightarrow$ `CHANNEL` $\rightarrow$ `USER` $\rightarrow$ `GLOBAL`) with in-flight cancellation.
+  - **Dynamic Badge Synchronization**: Fixed an issue where chat badges failed to update when logging in while the stream player was open.
+
+> [!IMPORTANT]
+> **Re-Login Recommendation:** If you signed in on a version prior to v1.1.8, please **log out and log in again** in the app. This ensures your Twitch OAuth token is updated with the newly required `user:read:subscriptions` and `user:read:emotes` permissions!
+
+---
+
 ## Samtch v1.1.7
 
 ### What's New
