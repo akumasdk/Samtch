@@ -1,12 +1,16 @@
 package com.akumasdk.samtch.ui.components.chat
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -48,6 +52,7 @@ import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.emote.Emote
 import com.akumasdk.samtch.ui.components.chat.suggestion.EmoteSuggestions
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
+import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -156,42 +161,44 @@ private fun LoggedInChatInput(
     }
 
     val handleEmoteSelected: (Emote) -> Unit = { emote ->
-        val text = textFieldValue.text
-        val selection = textFieldValue.selection
-        val cursorPos = selection.start
-        
-        var start = cursorPos
-        while (start > 0 && text[start - 1] != ' ') start--
-        
-        val newText = text.substring(0, start) + emote.code + " " + text.substring(cursorPos)
-        val newCursorPos = start + emote.code.length + 1
-        textFieldValue = TextFieldValue(newText, TextRange(newCursorPos))
-        onTextChange(newText, newCursorPos)
+        val (newTfv, newCursorPos) = replaceTokenWithEmote(textFieldValue, emote)
+        textFieldValue = newTfv
+        onTextChange(newTfv.text, newCursorPos)
         onEmoteSelected(emote)
     }
 
     LaunchedEffect(emoteInsertFlow) {
         emoteInsertFlow.collectLatest { emote ->
-            val text = textFieldValue.text
-            val selection = textFieldValue.selection
-            val cursorPos = selection.start
-            
-            val newText = text.substring(0, cursorPos) + emote.code + " " + text.substring(cursorPos)
-            val newCursorPos = cursorPos + emote.code.length + 1
-            textFieldValue = TextFieldValue(newText, TextRange(newCursorPos))
-            onTextChange(newText, newCursorPos)
+            val (newTfv, newCursorPos) = replaceTokenWithEmote(textFieldValue, emote)
+            textFieldValue = newTfv
+            onTextChange(newTfv.text, newCursorPos)
         }
     }
 
     Column {
-        if (suggestions.isNotEmpty()) {
+        AnimatedVisibility(
+            visible = suggestions.isNotEmpty(),
+            enter = expandVertically(
+                animationSpec = tween(
+                    durationMillis = 200,
+                    easing = SamtchAnimation.EmphasizedEasing
+                )
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = shrinkVertically(
+                animationSpec = tween(
+                    durationMillis = 180,
+                    easing = SamtchAnimation.EmphasizedEasing
+                )
+            ) + fadeOut(animationSpec = tween(180)),
+            label = "EmoteSuggestionsVisibility"
+        ) {
             EmoteSuggestions(
                 suggestions = suggestions,
                 onEmoteClick = handleEmoteSelected,
                 onEmoteLongClick = onEmoteLongClick,
                 modifier = Modifier
                     .padding(bottom = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
             )
         }
 
@@ -456,4 +463,35 @@ private fun LoggedOutChatInput(
             )
         }
     }
+}
+
+private fun replaceTokenWithEmote(
+    currentValue: TextFieldValue,
+    emote: Emote
+): Pair<TextFieldValue, Int> {
+    val text = currentValue.text
+    val cursorPos = currentValue.selection.start.coerceIn(0, text.length)
+
+    var start = cursorPos
+    while (start > 0 && text[start - 1] != ' ') {
+        start--
+    }
+    var end = cursorPos
+    while (end < text.length && text[end] != ' ') {
+        end++
+    }
+
+    val prefix = text.substring(0, start)
+    val suffix = text.substring(end)
+
+    val needsSpaceAfter = suffix.isEmpty() || !suffix.startsWith(" ")
+    val replacement = emote.code + if (needsSpaceAfter) " " else ""
+    val newText = prefix + replacement + suffix
+    val newCursorPos = start + emote.code.length + 1
+
+    val newTextFieldValue = TextFieldValue(
+        text = newText,
+        selection = TextRange(newCursorPos.coerceIn(0, newText.length))
+    )
+    return Pair(newTextFieldValue, newCursorPos.coerceIn(0, newText.length))
 }
