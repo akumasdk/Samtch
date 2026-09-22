@@ -29,7 +29,8 @@ fun rememberPlayerLayoutDimensions(
     screenHeight: Dp,
     isChatVisible: Boolean,
     chatRatio: Float = 0.28f,
-    isKeyboardOrMenuVisible: Boolean = false
+    isKeyboardOrMenuVisible: Boolean = false,
+    isFoldableInnerScreen: Boolean = false
 ): PlayerLayoutDimensions {
     val isChatOnly = portraitMode == PortraitMode.CHAT_ONLY && !isPip
     
@@ -44,7 +45,11 @@ fun rememberPlayerLayoutDimensions(
         targetValue = when {
             isMinimized -> 64.dp
             isAudioOnly -> 240.dp
-            isFullscreen -> screenHeight
+            isFullscreen -> if (isFoldableInnerScreen && isChatVisible) {
+                (screenWidth * 9f / 16f).coerceAtMost(screenHeight * 0.55f)
+            } else {
+                screenHeight
+            }
             isChatOnly -> 0.dp
             isKeyboardOrMenuVisible -> (screenWidth * 9 / 16).coerceAtMost(screenHeight * 0.3f)
             else -> (screenWidth * 9 / 16)
@@ -56,7 +61,11 @@ fun rememberPlayerLayoutDimensions(
     val width = animateDpAsState(
         targetValue = when {
             isMinimized -> 120.dp
-            isFullscreen && isChatVisible -> screenWidth * (1f - chatRatio)
+            isFullscreen -> if (isFoldableInnerScreen || !isChatVisible) {
+                screenWidth
+            } else {
+                screenWidth * (1f - chatRatio)
+            }
             isChatOnly -> 0.dp
             else -> screenWidth
         },

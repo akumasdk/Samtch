@@ -124,6 +124,11 @@ fun TwitchPlayer(
     ) {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
+        val maxDim = maxOf(screenWidth, screenHeight)
+        val minDim = minOf(screenWidth, screenHeight)
+        val aspectRatio = if (minDim > 0.dp) maxDim / minDim else 1.77f
+        val isFoldableInnerScreen = aspectRatio < 1.35f
+
         val context = LocalContext.current
         
         var isAudioOnly by playerViewModel::isAudioOnly
@@ -402,7 +407,8 @@ fun TwitchPlayer(
             tooltipShowCount = tooltipShowCount,
             screenWidth = screenWidth,
             screenHeight = screenHeight,
-            bannerText = bannerText
+            bannerText = bannerText,
+            isFoldableInnerScreen = isFoldableInnerScreen
         )
     }
 }
@@ -429,7 +435,8 @@ private fun TwitchPlayerOrchestrator(
     tooltipShowCount: Int,
     screenWidth: androidx.compose.ui.unit.Dp,
     screenHeight: androidx.compose.ui.unit.Dp,
-    bannerText: String
+    bannerText: String,
+    isFoldableInnerScreen: Boolean = false
 ) {
     val layout = rememberPlayerLayoutDimensions(
         isMinimized = layoutType == PlayerLayoutType.MINIMIZED,
@@ -441,7 +448,8 @@ private fun TwitchPlayerOrchestrator(
         screenHeight = screenHeight,
         isChatVisible = playerViewModel.isChatVisible,
         chatRatio = chatRatioFloat,
-        isKeyboardOrMenuVisible = forceSlimMetadata
+        isKeyboardOrMenuVisible = forceSlimMetadata,
+        isFoldableInnerScreen = isFoldableInnerScreen
     )
 
     SharedTransitionLayout {
@@ -471,6 +479,7 @@ private fun TwitchPlayerOrchestrator(
                     chatRatio = chatRatioFloat,
                     forceSlimMetadata = forceSlimMetadata,
                     isImmersiveEnabled = isImmersiveEnabled,
+                    isFoldableInnerScreen = isFoldableInnerScreen,
                     videoHeight = layout.height.value,
                     onToggleChat = {
                         playerViewModel.toggleChat()
@@ -530,6 +539,7 @@ private fun TwitchPlayerOrchestrator(
                 isImmersiveEnabled = isImmersiveEnabled,
                 tooltipShowCount = tooltipShowCount,
                 refreshTrigger = refreshTrigger,
+                isFoldableInnerScreen = isFoldableInnerScreen,
                 onSizeChanged = { stablePlayerSize = it },
                 stablePlayerSize = stablePlayerSize
             )
@@ -552,6 +562,7 @@ private fun BoxScope.StablePlayerShell(
     isImmersiveEnabled: Boolean,
     tooltipShowCount: Int,
     refreshTrigger: Int,
+    isFoldableInnerScreen: Boolean = false,
     onSizeChanged: (IntSize) -> Unit,
     stablePlayerSize: IntSize
 ) {
@@ -587,11 +598,19 @@ private fun BoxScope.StablePlayerShell(
                     .size(layout.width.value.coerceAtLeast(1.dp), layout.height.value.coerceAtLeast(1.dp))
                     .clip(RoundedCornerShape(layout.cornerRadius.value.coerceAtLeast(0.dp)))
                 PlayerLayoutType.FULLSCREEN -> if (!playerViewModel.isAudioOnly) {
-                    Modifier
-                        .align(Alignment.TopStart)
-                        .width(layout.width.value.coerceAtLeast(1.dp))
-                        .fillMaxHeight()
-                        .clip(RectangleShape)
+                    if (isFoldableInnerScreen) {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .fillMaxWidth()
+                            .height(layout.height.value.coerceAtLeast(1.dp))
+                            .clip(RectangleShape)
+                    } else {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .width(layout.width.value.coerceAtLeast(1.dp))
+                            .fillMaxHeight()
+                            .clip(RectangleShape)
+                    }
                 } else {
                     Modifier
                         .align(Alignment.TopStart)
