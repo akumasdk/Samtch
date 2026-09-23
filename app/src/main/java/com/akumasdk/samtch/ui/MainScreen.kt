@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,13 +24,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.view.WindowManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.screens.browser.TwitchBrowser
 import com.akumasdk.samtch.ui.screens.login.LoginActivity
@@ -57,6 +59,14 @@ fun MainScreen(
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
+    DisposableEffect(mainViewModel.selectedChannel) {
+        val window = (view.context as? android.app.Activity)?.window
+        if (mainViewModel.selectedChannel != null) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    }
     
     val browserBottomPadding by animateDpAsState(
         targetValue = if (mainViewModel.isMinimized && mainViewModel.selectedChannel != null) 104.dp else 0.dp,
@@ -71,7 +81,7 @@ fun MainScreen(
     val physicalOrientation by orientationManager.orientation.collectAsState()
     
     LaunchedEffect(physicalOrientation, isAutoRotateEnabled) {
-        if (isAutoRotateEnabled && mainViewModel.selectedChannel != null && !mainViewModel.isMinimized && !mainViewModel.isAudioOnlyMode) {
+        if (isAutoRotateEnabled && mainViewModel.selectedChannel != null && !mainViewModel.isMinimized) {
             when (physicalOrientation) {
                 PhysicalOrientation.LANDSCAPE -> isFullscreen = true
                 PhysicalOrientation.PORTRAIT -> isFullscreen = false
@@ -193,8 +203,6 @@ fun MainScreen(
                         onClose = {
                             mainViewModel.updateChannel(null)
                             playerViewModel.updateChannel(null)
-                            val stopIntent = Intent(context, PlaybackService::class.java)
-                            context.stopService(stopIntent)
                         },
                         onMetadataUpdated = { avatar, subtitle ->
                             mainViewModel.lastAvatarUrl = avatar
@@ -205,9 +213,6 @@ fun MainScreen(
                             loginLauncher.launch(intent)
                         },
                         onSettingsClick = { mainViewModel.isSettingsOpen = true },
-                        onAudioOnlyModeChanged = { isAudioOnly ->
-                            mainViewModel.isAudioOnlyMode = isAudioOnly
-                        },
                         onVideoBoundsChanged = { rect -> mainViewModel.pipRect = rect }
                     )
                 }

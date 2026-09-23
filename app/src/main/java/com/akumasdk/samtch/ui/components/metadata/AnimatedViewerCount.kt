@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -28,19 +30,21 @@ import com.akumasdk.samtch.ui.components.metadata.util.formatViewerCount
 @Composable
 fun AnimatedViewerCount(
     count: Int,
+    modifier: Modifier = Modifier,
     color: Color = SamtchTheme.colors.accentColor,
     fontSize: TextUnit = 11.sp,
     fontWeight: FontWeight = FontWeight.Bold
 ) {
     Row(
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Icon(
             imageVector = Icons.Default.Person,
             contentDescription = null,
             tint = color,
-            modifier = Modifier.size(fontSize.value.dp * 1.2f)
+            modifier = Modifier.size(13.dp)
         )
         
         AnimatedContent(
@@ -63,7 +67,11 @@ fun AnimatedViewerCount(
                 color = color,
                 fontSize = fontSize,
                 fontWeight = fontWeight,
-                maxLines = 1
+                maxLines = 1,
+                style = TextStyle(
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    lineHeight = 14.sp
+                )
             )
         }
     }

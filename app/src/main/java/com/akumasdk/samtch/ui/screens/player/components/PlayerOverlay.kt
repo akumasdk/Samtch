@@ -17,7 +17,6 @@ fun PlayerOverlay(
     channel: String,
     streamMetadata: com.akumasdk.samtch.data.model.TwitchStreamMetadata?,
     avatarUrl: String?,
-    isAudioOnly: Boolean,
     adblockText: String,
     portraitMode: PortraitMode,
     metadataExpandTrigger: Int,
@@ -27,6 +26,7 @@ fun PlayerOverlay(
     chatRatio: Float = 0.28f,
     forceSlimMetadata: Boolean = false,
     isImmersiveEnabled: Boolean = true,
+    isFoldableInnerScreen: Boolean = false,
     videoHeight: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp.Unspecified,
     onToggleChat: () -> Unit,
     onToggleMode: () -> Unit,
@@ -41,7 +41,7 @@ fun PlayerOverlay(
         val previewUrl = streamMetadata?.user?.stream?.previewImageUrl
         
         AnimatedContent(
-            targetState = isFullscreen && !isAudioOnly,
+            targetState = isFullscreen,
             transitionSpec = {
                 val duration = 550
                 (fadeIn(animationSpec = tween(duration, easing = SamtchAnimation.EmphasizedEasing)) + 
@@ -69,6 +69,7 @@ fun PlayerOverlay(
                     expandTrigger = metadataExpandTrigger,
                     forceSlimMetadata = forceSlimMetadata,
                     isImmersiveEnabled = isImmersiveEnabled,
+                    isFoldableInnerScreen = isFoldableInnerScreen,
                     chatRatio = chatRatio,
                     onToggleChat = onToggleChat,
                     chatContent = { config, modifier ->
@@ -89,7 +90,6 @@ fun PlayerOverlay(
                     streamTitle = streamMetadata?.user?.stream?.title,
                     gameName = streamMetadata?.user?.stream?.game?.name,
                     viewersCount = streamMetadata?.user?.stream?.viewersCount ?: 0,
-                    isAudioOnly = isAudioOnly,
                     adblockText = adblockText,
                     streamStartedAt = streamMetadata?.user?.stream?.createdAt,
                     previewImageUrl = previewUrl,

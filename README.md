@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" alt="License">
 </p>
 
-Samtch is a lightweight Twitch client for Android designed for a clean, ad-free viewing experience. It combines the power of the native Twitch web interface for discovery with a highly optimized custom player for watching, featuring a premium background audio mode.
+Samtch is a lightweight Twitch client for Android designed for a clean, ad-free viewing experience. It combines the power of the native Twitch web interface for discovery with a highly optimized custom player for watching and chatting.
 
 ## 🖼️ Gallery
 
@@ -38,11 +38,12 @@ Samtch is a lightweight Twitch client for Android designed for a clean, ad-free 
 ## ✨ Features
 
 - **Native Twitch Chat**: A full native chat experience featuring support for **BetterTTV** and **7TV** (v3) emotes, smooth auto-scrolling, and a high-performance compact mode.
+- **Twitch GIFs in Chat**: Displays GIFs sent through Twitch chat with a preview and an info dialog for viewing or copying the source URL.
 - **Intelligent Emote Browser**: Includes a tabbed browser for **Recently Used**, Channel, and Global emotes, plus a smart suggestion system with scoring for fast typing.
 - **Just Chatting (Chat-Only) Mode**: A dedicated silent mode designed for community interaction without video or audio playback, saving battery and data.
-- **Premium Audio-Only Mode**: A dedicated "music player" aesthetic for background listening, featuring high-resolution stream artwork, dark gradients, and synchronized media notifications.
 - **Rich Stream Metadata**: Real-time titles, game categories, **stream tags**, and viewer counts fetched via GraphQL. Features a dynamic metadata bar that automatically shrinks to maximize chat space.
-- **Smart Mini-Player**: A context-aware minimized window that dynamically displays live video, stream thumbnails, or channel avatars with state badges depending on your active mode.
+- **Smart Mini-Player**: A context-aware minimized window that dynamically displays live video, stream thumbnails, or channel avatars while keeping the screen awake during active playback.
+- **Polished Loading States**: Preview-based loading skeletons for the player and metadata surfaces with reduced-motion support.
 - **Ad-Free Viewing**: Integrated scripts and a native status banner to bypass common video ads and tracking with real-time feedback.
 - **Seamless Discovery**: Navigate the full Twitch mobile site for browsing and following, while switching automatically to a native-feeling modular player when a stream is selected.
 - **Fullscreen & PiP**: Immersive landscape mode with side-tab chat and Picture-in-Picture support for multitasking.
@@ -90,7 +91,6 @@ Contributions are welcome! If you have ideas for improvements or have found a bu
 - [x] **Native Chat Integration**: Integrated chat with 3rd-party emote support.
 - [x] **Chat in Fullscreen**: Overlay chat during landscape viewing.
 - [x] **Picture-in-Picture (PiP)**: Watch streams while using other apps.
-- [x] **Background Play**: Listen to stream audio even when the screen is off or the app is minimized.
 - [ ] **Navigation Improvements**: Faster transitions and better gesture support.
 - [ ] **Android TV Support**: Optimized interface for television and remote control navigation.
 

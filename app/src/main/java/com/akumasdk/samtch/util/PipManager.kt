@@ -17,7 +17,6 @@ object PipManager {
         context: Context,
         isPipEnabled: Boolean,
         currentChannel: String?,
-        isAudioOnly: Boolean,
         isInPipMode: Boolean
     ): PictureInPictureParams {
         val actions = if (currentChannel != null && isInPipMode) {
@@ -38,7 +37,7 @@ object PipManager {
         return PictureInPictureParams.Builder()
             .setAspectRatio(Rational(16, 9))
             .setActions(actions)
-            .setAutoEnterEnabled(currentChannel != null && isPipEnabled && !isAudioOnly)
+            .setAutoEnterEnabled(currentChannel != null && isPipEnabled)
             .build()
     }
 }

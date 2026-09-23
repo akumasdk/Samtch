@@ -75,17 +75,6 @@ fun PipToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> 
 }
 
 @Composable
-fun AudioBackgroundToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(stringResource(R.string.audio_only_background_title)) },
-        supportingContent = { Text(stringResource(R.string.audio_only_background_summary)) },
-        leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_headset), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
-        modifier = Modifier.combinedClickable(onClick = { onToggle(!enabled) }, onLongClick = onReset)
-    )
-}
-
-@Composable
 fun AdBlockModeItem(mode: SettingsManager.AdBlockMode, onClick: () -> Unit, onReset: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.ad_block_mode_title)) },
@@ -135,6 +124,24 @@ fun ChatEmoteSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Unit) {
         headlineContent = { Text(stringResource(R.string.chat_settings_emote_size)) },
         supportingContent = { Text("${size}dp") },
         leadingContent = { Icon(imageVector = Icons.Default.EmojiEmotions, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onReset)
+    )
+}
+
+@Composable
+fun ChatEmoteQualityItem(quality: SettingsManager.EmoteQuality, onClick: () -> Unit, onReset: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.emote_quality_title)) },
+        supportingContent = {
+            Text(
+                when (quality) {
+                    SettingsManager.EmoteQuality.LOW -> stringResource(R.string.emote_quality_low)
+                    SettingsManager.EmoteQuality.MEDIUM -> stringResource(R.string.emote_quality_medium)
+                    SettingsManager.EmoteQuality.HIGH -> stringResource(R.string.emote_quality_high)
+                }
+            )
+        },
+        leadingContent = { Icon(imageVector = Icons.Default.HighQuality, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onReset)
     )
 }

@@ -1,5 +1,23 @@
 # Changelog
 
+## Samtch v1.1.9
+
+### What's New
+- **Twitch GIF Chat Support**:
+  - Display GIFs sent in Twitch chat using the native `gifs` IRC tag format.
+  - Added a GIF information dialog with preview, source URL, and copy action.
+  - Preserved complete GIF URLs containing query parameters during IRC tag parsing.
+- **Player Loading Experience**:
+  - Added reusable animated loading skeletons for the player surface and metadata.
+  - Improved loading visuals with visible, unblurred Twitch preview artwork and layered scrims.
+  - Added reduced-motion behavior for users who disable system animations.
+- **Player Simplification & Reliability**:
+  - Removed the broken audio-only player, background playback service, settings, and controls.
+  - Preserved normal video playback, chat-only mode, minimized mode, fullscreen, and PiP behavior.
+  - Prevented the device screen from turning off while a stream player is active.
+
+---
+
 ## Samtch v1.1.8
 
 ### What's New

@@ -37,8 +37,6 @@ data class SamtchColors(
     val defaultUserColor: Color,
     val accentColor: Color,
     val glassBorder: Color,
-    val audioPlayerBackgroundStart: Color,
-    val audioPlayerBackgroundEnd: Color
 )
 
 @Composable
@@ -71,8 +69,6 @@ fun animateSamtchColorsAsState(target: SamtchColors): SamtchColors {
         defaultUserColor = animateColorAsState(target.defaultUserColor, animationSpec, label = "defaultUserColor").value,
         accentColor = animateColorAsState(target.accentColor, animationSpec, label = "accentColor").value,
         glassBorder = animateColorAsState(target.glassBorder, animationSpec, label = "glassBorder").value,
-        audioPlayerBackgroundStart = animateColorAsState(target.audioPlayerBackgroundStart, animationSpec, label = "audioPlayerBackgroundStart").value,
-        audioPlayerBackgroundEnd = animateColorAsState(target.audioPlayerBackgroundEnd, animationSpec, label = "audioPlayerBackgroundEnd").value
     )
 }
 
@@ -132,8 +128,6 @@ val LocalSamtchColors = compositionLocalOf {
         accentColor = TwitchPurpleLight,
         glassBorder = Color.Black.copy(alpha = 0.08f),
         loadingOverlay = Color.Black.copy(alpha = 0.6f),
-        audioPlayerBackgroundStart = TwitchDarkGray,
-        audioPlayerBackgroundEnd = TwitchBlack
     )
 }
 
@@ -199,8 +193,6 @@ fun SamtchTheme(
             accentColor = TwitchPurpleLight,
             glassBorder = Color.White.copy(alpha = 0.12f),
             loadingOverlay = TwitchBlack.copy(alpha = 0.6f),
-            audioPlayerBackgroundStart = TwitchDarkGray,
-            audioPlayerBackgroundEnd = TwitchBlack
         )
     } else {
         val darkPurple = Color(0xFF6441A5) // Deep purple for high contrast on light backgrounds
@@ -225,8 +217,6 @@ fun SamtchTheme(
             accentColor = darkPurple, 
             glassBorder = Color.Black.copy(alpha = 0.08f),
             loadingOverlay = Color.White.copy(alpha = 0.35f),
-            audioPlayerBackgroundStart = Color(0xFFF7F7F8),
-            audioPlayerBackgroundEnd = Color.White
         )
     }
     

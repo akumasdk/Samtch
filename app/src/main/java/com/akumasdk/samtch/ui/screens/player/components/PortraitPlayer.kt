@@ -42,7 +42,6 @@ fun PortraitPlayer(
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
-    isAudioOnly: Boolean = false,
     adblockText: String = "",
     streamStartedAt: String? = null,
     previewImageUrl: String? = null,
@@ -97,8 +96,6 @@ fun PortraitPlayer(
                     .then(
                         if (videoHeight != androidx.compose.ui.unit.Dp.Unspecified) {
                             Modifier.height(videoHeight)
-                        } else if (isAudioOnly) {
-                            Modifier.height(240.dp)
                         } else if (portraitMode == PortraitMode.CHAT_ONLY) {
                             Modifier.height(0.dp)
                         } else {
@@ -144,7 +141,7 @@ fun PortraitPlayer(
 
                 // Metadata space above chat (Overlay)
                 this@Column.AnimatedVisibility(
-                    visible = !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
+                    visible = streamTitle.isNullOrEmpty() && gameName.isNullOrEmpty() || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
                     enter = SamtchAnimation.FadeIn,
                     exit = SamtchAnimation.FadeOut,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -162,6 +159,7 @@ fun PortraitPlayer(
                         forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
                         forceSlim = forceSlimMetadata,
                         isImmersiveEnabled = isImmersiveEnabled,
+                        loading = displayName == null && streamTitle == null && gameName == null,
                         onClick = { showInfoDialog = true }
                     )
                 }

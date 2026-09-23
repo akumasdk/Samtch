@@ -34,7 +34,6 @@ fun WebViewContainer(
     channel: String,
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit = {},
-    onToggleAudioOnly: () -> Unit = {},
     onPlaybackStarted: () -> Unit = {},
     onLoadingStatus: (String) -> Unit = {},
     onAdblocked: (String) -> Unit = {}
@@ -98,7 +97,6 @@ fun WebViewContainer(
     // Ensure the bridge always uses the latest lambdas from the current composition context
     val currentOnToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
     val currentOnToggleChat by rememberUpdatedState(onToggleChat)
-    val currentOnToggleAudioOnly by rememberUpdatedState(onToggleAudioOnly)
     val currentOnPlaybackStarted by rememberUpdatedState(onPlaybackStarted)
     val currentOnLoadingStatus by rememberUpdatedState(onLoadingStatus)
     val currentOnAdblocked by rememberUpdatedState(onAdblocked)
@@ -185,9 +183,6 @@ fun WebViewContainer(
                         },
                         onToggleChat = {
                             post { currentOnToggleChat() }
-                        },
-                        onToggleAudioOnly = {
-                            post { currentOnToggleAudioOnly() }
                         },
                         onPlaybackStartedCallback = {
                             post { currentOnPlaybackStarted() }

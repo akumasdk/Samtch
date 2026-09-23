@@ -67,8 +67,6 @@ import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerLoadingScreen
 import com.akumasdk.samtch.ui.components.playerComponents.TapTooltip
 import com.akumasdk.samtch.ui.components.playerComponents.createTwitchPlayerUrl
-import com.akumasdk.samtch.ui.screens.player.components.AudioOnlyPlayer
-import com.akumasdk.samtch.ui.screens.player.components.AudioServiceEffects
 import com.akumasdk.samtch.ui.screens.player.components.BrightnessManager
 import com.akumasdk.samtch.ui.screens.player.components.FullscreenChatToggle
 import com.akumasdk.samtch.ui.screens.player.components.PlayerGestureOverlay
@@ -116,7 +114,6 @@ fun TwitchPlayer(
     onMetadataUpdated: (String?, String?) -> Unit = { _, _ -> },
     onLoginRequested: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onAudioOnlyModeChanged: (Boolean) -> Unit = {},
     onVideoBoundsChanged: (android.graphics.Rect) -> Unit = {},
 ) {
     BoxWithConstraints(
@@ -124,9 +121,13 @@ fun TwitchPlayer(
     ) {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
+        val maxDim = maxOf(screenWidth, screenHeight)
+        val minDim = minOf(screenWidth, screenHeight)
+        val aspectRatio = if (minDim > 0.dp) maxDim / minDim else 1.77f
+        val isFoldableInnerScreen = aspectRatio < 1.35f
+
         val context = LocalContext.current
         
-        var isAudioOnly by playerViewModel::isAudioOnly
         var portraitMode by playerViewModel::portraitMode
         
         val isImmersiveEnabled by mainViewModel.settingsManager.isImmersiveBackgroundEnabled().collectAsState(initial = true)
@@ -149,7 +150,6 @@ fun TwitchPlayer(
         }
 
         val defaultLoadingMessage = stringResource(R.string.loading_stream)
-        val isAudioOnlyBackgroundEnabled by mainViewModel.settingsManager.isAudioOnlyBackgroundEnabled().collectAsState(initial = false)
         val chatRatioPercent by mainViewModel.settingsManager.getFullscreenChatRatio().collectAsState(initial = 0)
         
         val chatViewModel: ChatViewModel = hiltViewModel()
@@ -217,7 +217,6 @@ fun TwitchPlayer(
         }
 
         var lastProcessedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
-        val shouldUseAudioService = isAudioOnly
 
         PlayerLifecycleEffects(
             channel = channel,
@@ -232,13 +231,6 @@ fun TwitchPlayer(
             isUiLoading = playerViewModel.isUiLoading,
         ) { playerViewModel.isUiLoading = false }
 
-        AudioServiceEffects(
-            channel = channel,
-            shouldUseAudioService = shouldUseAudioService,
-            isAudioOnlyBackgroundEnabled = isAudioOnlyBackgroundEnabled,
-            playerViewModel = playerViewModel,
-            context = context,
-        )
 
         LaunchedEffect(channel, refreshTrigger) {
             val isManualRefresh = refreshTrigger > lastProcessedRefreshTrigger
@@ -248,10 +240,6 @@ fun TwitchPlayer(
 
         LaunchedEffect(avatarUrl, streamSubtitle) {
             onMetadataUpdated(avatarUrl, streamSubtitle)
-        }
-
-        LaunchedEffect(shouldUseAudioService) {
-            onAudioOnlyModeChanged(shouldUseAudioService)
         }
 
         val state = rememberSaveableWebViewState("")
@@ -308,7 +296,6 @@ fun TwitchPlayer(
 
         DisposableEffect(channel) {
             onDispose {
-                playerViewModel.disconnectMediaController()
                 chatViewModel.disconnect()
                 try {
                     state.nativeWebView.apply {
@@ -369,7 +356,6 @@ fun TwitchPlayer(
         }
 
         val bannerText = when {
-            isAudioOnly -> stringResource(R.string.status_audio_only)
             portraitMode == PortraitMode.CHAT_ONLY -> stringResource(R.string.status_chat_only)
             else -> playerViewModel.adblockText
         }
@@ -402,7 +388,8 @@ fun TwitchPlayer(
             tooltipShowCount = tooltipShowCount,
             screenWidth = screenWidth,
             screenHeight = screenHeight,
-            bannerText = bannerText
+            bannerText = bannerText,
+            isFoldableInnerScreen = isFoldableInnerScreen
         )
     }
 }
@@ -429,11 +416,11 @@ private fun TwitchPlayerOrchestrator(
     tooltipShowCount: Int,
     screenWidth: androidx.compose.ui.unit.Dp,
     screenHeight: androidx.compose.ui.unit.Dp,
-    bannerText: String
+    bannerText: String,
+    isFoldableInnerScreen: Boolean = false
 ) {
     val layout = rememberPlayerLayoutDimensions(
         isMinimized = layoutType == PlayerLayoutType.MINIMIZED,
-        isAudioOnly = playerViewModel.isAudioOnly,
         isFullscreen = layoutType == PlayerLayoutType.FULLSCREEN,
         portraitMode = playerViewModel.portraitMode,
         isPip = layoutType == PlayerLayoutType.PIP,
@@ -441,7 +428,8 @@ private fun TwitchPlayerOrchestrator(
         screenHeight = screenHeight,
         isChatVisible = playerViewModel.isChatVisible,
         chatRatio = chatRatioFloat,
-        isKeyboardOrMenuVisible = forceSlimMetadata
+        isKeyboardOrMenuVisible = forceSlimMetadata,
+        isFoldableInnerScreen = isFoldableInnerScreen
     )
 
     SharedTransitionLayout {
@@ -461,7 +449,6 @@ private fun TwitchPlayerOrchestrator(
                     channel = channel,
                     streamMetadata = playerViewModel.streamMetadata,
                     avatarUrl = playerViewModel.avatarUrl,
-                    isAudioOnly = playerViewModel.isAudioOnly,
                     adblockText = bannerText,
                     portraitMode = playerViewModel.portraitMode,
                     metadataExpandTrigger = metadataExpandTrigger,
@@ -471,6 +458,7 @@ private fun TwitchPlayerOrchestrator(
                     chatRatio = chatRatioFloat,
                     forceSlimMetadata = forceSlimMetadata,
                     isImmersiveEnabled = isImmersiveEnabled,
+                    isFoldableInnerScreen = isFoldableInnerScreen,
                     videoHeight = layout.height.value,
                     onToggleChat = {
                         playerViewModel.toggleChat()
@@ -479,7 +467,6 @@ private fun TwitchPlayerOrchestrator(
                     onToggleMode = {
                         if (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY) {
                             playerViewModel.portraitMode = PortraitMode.VIDEO_AND_CHAT
-                            playerViewModel.isAudioOnly = false
                         } else {
                             playerViewModel.portraitMode = PortraitMode.CHAT_ONLY
                         }
@@ -530,6 +517,7 @@ private fun TwitchPlayerOrchestrator(
                 isImmersiveEnabled = isImmersiveEnabled,
                 tooltipShowCount = tooltipShowCount,
                 refreshTrigger = refreshTrigger,
+                isFoldableInnerScreen = isFoldableInnerScreen,
                 onSizeChanged = { stablePlayerSize = it },
                 stablePlayerSize = stablePlayerSize
             )
@@ -552,6 +540,7 @@ private fun BoxScope.StablePlayerShell(
     isImmersiveEnabled: Boolean,
     tooltipShowCount: Int,
     refreshTrigger: Int,
+    isFoldableInnerScreen: Boolean = false,
     onSizeChanged: (IntSize) -> Unit,
     stablePlayerSize: IntSize
 ) {
@@ -586,19 +575,20 @@ private fun BoxScope.StablePlayerShell(
                     .offset { IntOffset(dismissState.requireOffset().roundToInt(), 0) }
                     .size(layout.width.value.coerceAtLeast(1.dp), layout.height.value.coerceAtLeast(1.dp))
                     .clip(RoundedCornerShape(layout.cornerRadius.value.coerceAtLeast(0.dp)))
-                PlayerLayoutType.FULLSCREEN -> if (!playerViewModel.isAudioOnly) {
-                    Modifier
-                        .align(Alignment.TopStart)
-                        .width(layout.width.value.coerceAtLeast(1.dp))
-                        .fillMaxHeight()
-                        .clip(RectangleShape)
-                } else {
-                    Modifier
-                        .align(Alignment.TopStart)
-                        .statusBarsPadding()
-                        .fillMaxWidth()
-                        .height(layout.height.value.coerceAtLeast(1.dp))
-                        .clip(RectangleShape)
+                PlayerLayoutType.FULLSCREEN -> {
+                    if (isFoldableInnerScreen) {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .fillMaxWidth()
+                            .height(layout.height.value.coerceAtLeast(1.dp))
+                            .clip(RectangleShape)
+                    } else {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .width(layout.width.value.coerceAtLeast(1.dp))
+                            .fillMaxHeight()
+                            .clip(RectangleShape)
+                    }
                 }
                 PlayerLayoutType.PORTRAIT -> Modifier
                     .align(Alignment.TopStart)
@@ -609,7 +599,7 @@ private fun BoxScope.StablePlayerShell(
             }
                 .onSizeChanged(onSizeChanged)
                 .playerGestureHandler(
-                    isFullscreen = isFullscreen && !playerViewModel.isAudioOnly,
+                    isFullscreen = isFullscreen,
                     isMinimized = isMinimized,
                     size = stablePlayerSize,
                     doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis,
@@ -618,7 +608,7 @@ private fun BoxScope.StablePlayerShell(
                     onVolumeDragging = { isDraggingVolume = it },
                     onBrightnessDragging = { isDraggingBrightness = it },
                     onSingleTap = {
-                        if (isFullscreen && !playerViewModel.isAudioOnly) {
+                        if (isFullscreen) {
                             playerViewModel.toggleFullscreenControls()
                         } else {
                             onMetadataExpandTriggered()
@@ -628,7 +618,7 @@ private fun BoxScope.StablePlayerShell(
                         }
                     },
                     onDoubleTapCenter = {
-                        if (isFullscreen && !playerViewModel.isAudioOnly) playerViewModel.toggleChat() else onToggleFullscreen()
+                        if (isFullscreen) playerViewModel.toggleChat() else onToggleFullscreen()
                     }
                 )
         ) {
@@ -655,7 +645,6 @@ private fun BoxScope.StablePlayerShell(
                     } else {
                         if (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY) {
                             playerViewModel.portraitMode = PortraitMode.VIDEO_AND_CHAT
-                            playerViewModel.isAudioOnly = false
                         } else {
                             playerViewModel.portraitMode = PortraitMode.CHAT_ONLY
                         }
@@ -665,7 +654,7 @@ private fun BoxScope.StablePlayerShell(
             }
 
             if (!isMinimized && !isPip) {
-                if (isFullscreen && !playerViewModel.isAudioOnly) {
+                if (isFullscreen) {
                     PlayerGestureOverlay(
                         isDraggingVolume = isDraggingVolume,
                         isDraggingBrightness = isDraggingBrightness,
@@ -711,39 +700,17 @@ private fun PlayerVideoContent(
         val liveMetadata = playerViewModel.streamMetadata
         val liveAvatarUrl = playerViewModel.avatarUrl
         val liveSubtitle = playerViewModel.streamSubtitle
-        val liveIsPlaying = playerViewModel.isPlaying
-
-        val isAudioOrChatMode = playerViewModel.isAudioOnly || playerViewModel.portraitMode == PortraitMode.CHAT_ONLY
+        val isChatOnlyMode = playerViewModel.portraitMode == PortraitMode.CHAT_ONLY
         val previewImageUrl = liveMetadata?.user?.stream?.previewImageUrl
 
-        if (isMinimized && isAudioOrChatMode) {
+        if (isMinimized && isChatOnlyMode) {
             MiniPlayerOverlay(
                 channel = channel,
                 avatarUrl = liveAvatarUrl,
                 previewImageUrl = previewImageUrl,
-                badgeText = if (playerViewModel.portraitMode == PortraitMode.CHAT_ONLY) "CHAT ONLY" else "AUDIO ONLY",
-                usePreview = playerViewModel.portraitMode == PortraitMode.CHAT_ONLY,
-                showLoading = playerViewModel.isUiLoading && !playerViewModel.isAudioOnly
-            )
-        } else if (isAudioOrChatMode) {
-            AudioOnlyPlayer(
-                channel = channel,
-                avatarUrl = liveAvatarUrl,
-                subtitle = liveSubtitle,
-                displayName = liveMetadata?.user?.displayName,
-                streamTitle = liveMetadata?.user?.stream?.title,
-                gameName = liveMetadata?.user?.stream?.game?.name,
-                viewersCount = liveMetadata?.user?.stream?.viewersCount ?: 0,
-                isPlaying = liveIsPlaying,
-                onTogglePlayback = { playerViewModel.togglePlayback() },
-                onCloseAudioOnly = {
-                    playerViewModel.isAudioOnly = false
-                    playerViewModel.portraitMode = PortraitMode.VIDEO_AND_CHAT
-                    playerViewModel.disconnectMediaController()
-                },
-                onRefresh = { playerViewModel.updateMediaItem(channel) },
-                previewImageUrl = previewImageUrl,
-                modifier = Modifier.fillMaxSize()
+                badgeText = "CHAT ONLY",
+                usePreview = true,
+                showLoading = playerViewModel.isUiLoading
             )
         } else {
             PlayerBackground(
@@ -759,11 +726,6 @@ private fun PlayerVideoContent(
                     isMinimized = isMinimized,
                     onToggleFullscreen = onToggleFullscreen,
                     onToggleChat = onToggleChat,
-                    onToggleAudioOnly = {
-                        if (isFullscreen) onToggleFullscreen()
-                        playerViewModel.isAudioOnly = true
-                        playerViewModel.portraitMode = PortraitMode.AUDIO_AND_CHAT
-                    },
                     onPlaybackStarted = onPlaybackStarted,
                     onLoadingStatus = { playerViewModel.loadingMessage = it },
                     onAdblocked = { text ->

@@ -189,7 +189,7 @@ class ChatEmoteManager @Inject constructor(
     }
 
     fun recordEmoteUsage(scope: CoroutineScope, channel: String, emote: Emote) {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             settingsManager.addRecentEmote(channel, emote)
         }
     }

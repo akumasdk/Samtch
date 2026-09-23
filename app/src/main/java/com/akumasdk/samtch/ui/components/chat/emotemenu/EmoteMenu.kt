@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -51,14 +53,25 @@ fun EmoteMenu(
     isImmersiveEnabled: Boolean = true,
     isLoading: Boolean = false
 ) {
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabResIds = remember(tabs) { tabs.keys.toList() }
+    var selectedTabResId by remember { mutableStateOf<Int?>(null) }
+    val gridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(tabResIds) {
-        if (selectedTabIndex >= tabResIds.size && tabResIds.isNotEmpty()) {
-            selectedTabIndex = 0
+    val safeTabIndex = remember(tabResIds, selectedTabResId) {
+        val currentId = selectedTabResId
+        if (currentId != null && tabResIds.contains(currentId)) {
+            tabResIds.indexOf(currentId)
+        } else {
+            val defaultIndex = tabResIds.indexOf(R.string.emote_menu_channel).takeIf { it >= 0 } ?: 0
+            defaultIndex.coerceIn(0, (tabResIds.size - 1).coerceAtLeast(0))
         }
-        Log.d("EmoteMenu", "Tabs updated: ${tabResIds.size} tabs. Keys: ${tabResIds.joinToString { it.toString() }}")
+    }
+
+    LaunchedEffect(tabResIds, safeTabIndex) {
+        if (tabResIds.isNotEmpty()) {
+            selectedTabResId = tabResIds.getOrNull(safeTabIndex)
+        }
     }
 
     val isLightMode = SamtchTheme.colors.dialogBackground.luminance() > 0.5f
@@ -85,7 +98,7 @@ fun EmoteMenu(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     SecondaryScrollableTabRow(
-                        selectedTabIndex = selectedTabIndex.coerceIn(0, (tabResIds.size - 1).coerceAtLeast(0)),
+                        selectedTabIndex = safeTabIndex,
                         containerColor = Color.Transparent,
                         contentColor = SamtchTheme.colors.accentColor,
                         edgePadding = 0.dp,
@@ -94,13 +107,20 @@ fun EmoteMenu(
                     ) {
                         tabResIds.forEachIndexed { index, resId ->
                             Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
+                                selected = safeTabIndex == index,
+                                onClick = {
+                                    if (selectedTabResId != resId) {
+                                        selectedTabResId = resId
+                                        coroutineScope.launch {
+                                            gridState.scrollToItem(0)
+                                        }
+                                    }
+                                },
                                 text = {
                                     Text(
                                         text = stringResource(resId),
                                         style = MaterialTheme.typography.titleSmall,
-                                        color = if (selectedTabIndex == index) SamtchTheme.colors.accentColor else SamtchTheme.colors.secondaryText
+                                        color = if (safeTabIndex == index) SamtchTheme.colors.accentColor else SamtchTheme.colors.secondaryText
                                     )
                                 }
                             )
@@ -133,13 +153,15 @@ fun EmoteMenu(
                 }
 
                 Box(modifier = Modifier.weight(1f)) {
-                    val currentEmotes = tabs[tabResIds[selectedTabIndex]] ?: emptyList()
+                    val currentTabResId = tabResIds.getOrNull(safeTabIndex)
+                    val currentEmotes = if (currentTabResId != null) tabs[currentTabResId] ?: emptyList() else emptyList()
 
                     val groupedEmotes = remember(currentEmotes) {
                         currentEmotes.groupBy { it.type }
                     }
 
                     LazyVerticalGrid(
+                        state = gridState,
                         columns = GridCells.Adaptive(minSize = 48.dp),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 8.dp, start = 8.dp, end = 8.dp),
@@ -186,7 +208,7 @@ fun EmoteMenu(
                         }
                     }
 
-                    if (isLoading) {
+                    if (isLoading && currentEmotes.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()

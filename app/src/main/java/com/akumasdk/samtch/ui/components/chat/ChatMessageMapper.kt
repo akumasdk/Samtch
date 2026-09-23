@@ -25,7 +25,6 @@ class ChatMessageMapper @Inject constructor(
     private val badgeRepository: BadgeRepository,
     private val settingsManager: SettingsManager
 ) {
-
     private data class EmoteOccurrence(
         val id: String,
         val code: String,
@@ -71,16 +70,27 @@ class ChatMessageMapper @Inject constructor(
                 messageText
             }
 
+            // Twitch sends GIF metadata as pipe-delimited fields:
+            // "<start>-<end>|<gif-id>|<url>".
+            val gifsTag = message.tags["gifs"]
+            val gifUrl = gifsTag
+                ?.split("|")
+                ?.map { it.removePrefix("url=") }
+                ?.firstOrNull { it.startsWith("https://") || it.startsWith("http://") }
+                ?.takeIf { it.isNotBlank() }
+            val displayText = if (gifUrl != null) "" else cleanText
+
             val occurrences = mutableListOf<EmoteOccurrence>()
 
             // 1. Parse Twitch emotes
+            val quality = runBlocking { settingsManager.getEmoteQuality().first() }
             val twitchEmotesTag = message.tags["emotes"]
-            if (!twitchEmotesTag.isNullOrEmpty()) {
+            if (gifUrl == null && !twitchEmotesTag.isNullOrEmpty()) {
                 twitchEmotesTag.split("/").forEach { emoteData ->
                     val parts = emoteData.split(":")
                     if (parts.size == 2) {
                         val id = parts[0]
-                        val url = Constants.Twitch.Templates.EMOTE_CDN.format(id)
+                        val url = "https://static-cdn.jtvnw.net/emoticons/v2/$id/default/dark/${quality.twitchScale}"
                         parts[1].split(",").forEach { rangeStr ->
                             val rangeParts = rangeStr.split("-")
                             if (rangeParts.size == 2) {
@@ -102,7 +112,7 @@ class ChatMessageMapper @Inject constructor(
 
             // 2. Parse 3rd party emotes
             val thirdPartyEnabled = runBlocking { settingsManager.isThirdPartyEmotesEnabledForChannel(channelName).first() }
-            cleanText.forEachWord { word, start ->
+            displayText.forEachWord { word, start ->
                 val end = start + word.length - 1
                 if (occurrences.none { it.range.first <= start && it.range.last >= end }) {
                     val emote = emoteRepository.getEmote(channelName, word)
@@ -124,7 +134,7 @@ class ChatMessageMapper @Inject constructor(
                     val occurrence = occurrences[i]
                     
                     if (occurrence.range.first > lastPos) {
-                        val text = cleanText.substring(lastPos, occurrence.range.first)
+                        val text = displayText.substring(lastPos, occurrence.range.first)
                         val style = if (isAction) SpanStyle(color = userColor, fontWeight = FontWeight.Bold) else SpanStyle()
                         withStyle(style) {
                             append(text)
@@ -153,8 +163,8 @@ class ChatMessageMapper @Inject constructor(
                     lastPos = cluster.last().range.last + 1
                     i = j
                 }
-                if (lastPos < cleanText.length) {
-                    val text = cleanText.substring(lastPos)
+                if (lastPos < displayText.length) {
+                    val text = displayText.substring(lastPos)
                     val style = if (isAction) SpanStyle(color = userColor, fontWeight = FontWeight.Bold) else SpanStyle()
                     withStyle(style) {
                         append(text)
@@ -167,11 +177,12 @@ class ChatMessageMapper @Inject constructor(
                 contentType = "privmsg",
                 displayName = displayName,
                 userColor = userColor,
-                messageText = cleanText,
+                messageText = displayText,
                 annotatedString = annotatedString,
                 emotes = emotes,
                 badgeUrls = badgeUrls,
                 badges = badgesInfo,
+                gifUrl = gifUrl,
                 isAction = isAction
             )
         }

@@ -28,7 +28,6 @@ class MainViewModel @Inject constructor(
     var refreshTrigger by mutableIntStateOf(0)
     var isAppLoaded by mutableStateOf(false)
     var isMinimized by mutableStateOf(false)
-    var isAudioOnlyMode by mutableStateOf(false)
     var isSettingsOpen by mutableStateOf(false)
     var lastDarkTheme: Boolean? = null
 

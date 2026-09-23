@@ -23,7 +23,8 @@ class EmoteRepository @Inject constructor(
     private val ffzApi: FFZApi,
     private val sevenTVApi: SevenTVApi,
     private val gqlService: TwitchGqlService,
-    private val authManager: TwitchAuthManager
+    private val authManager: TwitchAuthManager,
+    private val settingsManager: SettingsManager
 ) {
     companion object {
         private const val TAG = "EmoteRepository"
@@ -44,6 +45,21 @@ class EmoteRepository @Inject constructor(
     
     private val repoScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val aspectRatioCache = ConcurrentHashMap<String, Float>()
+
+    init {
+        repoScope.launch {
+            settingsManager.getEmoteQuality().drop(1).collect { quality ->
+                Log.d(TAG, "Emote quality changed to ${quality.name}, reloading all active emote sets")
+                val activeChannels = _channelStates.keys.toList()
+                clearCache()
+                launch { loadGlobalEmotes(force = true) }
+                launch { loadUserEmotes(force = true) }
+                activeChannels.forEach { channel ->
+                    launch { loadChannelEmotes(channel, force = true) }
+                }
+            }
+        }
+    }
 
     fun getAspectRatio(url: String): Float? = aspectRatioCache[url]
     fun putAspectRatio(url: String, ratio: Float) { aspectRatioCache[url] = ratio }
@@ -168,6 +184,7 @@ class EmoteRepository @Inject constructor(
 
     suspend fun loadGlobalEmotes(force: Boolean = false) = withContext(Dispatchers.IO) {
         val auth = authManager.authStateFlow.first()
+        val quality = settingsManager.getEmoteQuality().first()
         val currentState = _globalState.value
         
         if (!force && currentState.isTwitchLoaded && currentState.loadedWithAuth == auth.isLoggedIn && 
@@ -175,7 +192,7 @@ class EmoteRepository @Inject constructor(
             return@withContext
         }
         
-        Log.d(TAG, "Loading global emotes. isLoggedIn=${auth.isLoggedIn}, force=$force")
+        Log.d(TAG, "Loading global emotes (quality=${quality.name}). isLoggedIn=${auth.isLoggedIn}, force=$force")
 
         supervisorScope {
             // Twitch Global
@@ -183,7 +200,7 @@ class EmoteRepository @Inject constructor(
             if (shouldLoadTwitch) {
                 launch {
                     helixApiClient.getGlobalEmotes().onSuccess { helixEmotes ->
-                        val twitchMap = helixEmotes.associateBy({ it.name }, { mapHelixEmote(it) })
+                        val twitchMap = helixEmotes.associateBy({ it.name }, { mapHelixEmote(it, quality) })
                         _globalState.update { it.copy(twitchEmotes = twitchMap, isTwitchLoaded = true, loadedWithAuth = true) }
                     }.onFailure { e ->
                         if (e is CancellationException) throw e
@@ -200,7 +217,7 @@ class EmoteRepository @Inject constructor(
                 launch {
                     bttvApi.getGlobalEmotes().onSuccess { bttvList ->
                         val bttvMap = bttvList.associate { it.code to Emote(
-                            it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
+                            it.id, it.code, "https://cdn.betterttv.net/emote/${it.id}/${quality.bttvScale}", EmoteType.BTTV,
                             isZeroWidth = it.code in BTTV_ZERO_WIDTH
                         )}
                         _globalState.update { it.copy(bttvEmotes = bttvMap, isBttvLoaded = true) }
@@ -216,7 +233,7 @@ class EmoteRepository @Inject constructor(
             if (force || !currentState.isSeventvLoaded) {
                 launch {
                     sevenTVApi.getGlobalEmotes().onSuccess { sevenTVSet ->
-                        val seventvMap = sevenTVSet.emotes.mapNotNull { parseSevenTVEmote(it) }.associateBy { it.code }
+                        val seventvMap = sevenTVSet.emotes.mapNotNull { parseSevenTVEmote(it, quality) }.associateBy { it.code }
                         _globalState.update { it.copy(seventvEmotes = seventvMap, isSeventvLoaded = true) }
                     }.onFailure { e ->
                         if (e is CancellationException) throw e
@@ -232,7 +249,7 @@ class EmoteRepository @Inject constructor(
                     ffzApi.getGlobalEmotes().onSuccess { ffzResponse ->
                         val ffzMap = mutableMapOf<String, Emote>()
                         ffzResponse.default_sets.forEach { setId ->
-                            ffzGlobalToMap(ffzResponse, setId.toString(), ffzMap)
+                            ffzGlobalToMap(ffzResponse, setId.toString(), ffzMap, quality)
                         }
                         _globalState.update { it.copy(ffzEmotes = ffzMap, isFfzLoaded = true) }
                     }.onFailure { e ->
@@ -245,10 +262,10 @@ class EmoteRepository @Inject constructor(
         }
     }
 
-    private fun ffzGlobalToMap(response: FFZGlobalResponse, setId: String, outMap: MutableMap<String, Emote>) {
+    private fun ffzGlobalToMap(response: FFZGlobalResponse, setId: String, outMap: MutableMap<String, Emote>, quality: SettingsManager.EmoteQuality) {
         response.sets[setId]?.emotes?.forEach { emote ->
-            val url = emote.animated?.get("4") ?: emote.animated?.get("2") ?: emote.animated?.get("1")
-                     ?: emote.urls["4"] ?: emote.urls["2"] ?: emote.urls["1"] ?: ""
+            val url = emote.animated?.get(quality.ffzScale) ?: emote.animated?.get("1")
+                     ?: emote.urls[quality.ffzScale] ?: emote.urls["1"] ?: ""
             if (url.isNotEmpty()) {
                 val fullUrl = if (url.startsWith("http") || url.startsWith("//")) {
                     if (url.startsWith("//")) "https:$url" else url
@@ -260,6 +277,7 @@ class EmoteRepository @Inject constructor(
 
     suspend fun loadChannelEmotes(channelName: String, userId: String? = null, force: Boolean = false) = withContext(Dispatchers.IO) {
         val channelLower = channelName.lowercase()
+        val quality = settingsManager.getEmoteQuality().first()
         val stateFlow = _channelStates.getOrPut(channelLower) { MutableStateFlow(ChannelEmoteState()) }
         val auth = authManager.authStateFlow.first()
         
@@ -280,7 +298,7 @@ class EmoteRepository @Inject constructor(
             return@withContext
         }
 
-        Log.d(TAG, "Loading channel emotes for $channelLower (ID: $resolvedUserId)")
+        Log.d(TAG, "Loading channel emotes (quality=${quality.name}) for $channelLower (ID: $resolvedUserId)")
 
         supervisorScope {
             // Check subscription status
@@ -301,7 +319,7 @@ class EmoteRepository @Inject constructor(
             if (shouldLoadTwitch) {
                 launch {
                     helixApiClient.getChannelEmotes(resolvedUserId).onSuccess { helixEmotes ->
-                        val twitchMap = helixEmotes.associateBy({ it.name }, { mapHelixEmote(it) })
+                        val twitchMap = helixEmotes.associateBy({ it.name }, { mapHelixEmote(it, quality) })
                         stateFlow.update { it.copy(twitchEmotes = twitchMap, isTwitchLoaded = true, loadedWithAuth = true) }
                     }.onFailure { e ->
                         if (e is CancellationException) throw e
@@ -318,7 +336,7 @@ class EmoteRepository @Inject constructor(
                 launch {
                     bttvApi.getChannelEmotes(resolvedUserId).onSuccess { bttvChannel ->
                         val bttvMap = (bttvChannel.channelEmotes + bttvChannel.sharedEmotes).associate { it.code to Emote(
-                            it.id, it.code, Constants.ThirdParty.BTTV.CDN_EMOTE.format(it.id), EmoteType.BTTV,
+                            it.id, it.code, "https://cdn.betterttv.net/emote/${it.id}/${quality.bttvScale}", EmoteType.BTTV,
                             isZeroWidth = it.code in BTTV_ZERO_WIDTH
                         )}
                         stateFlow.update { it.copy(bttvEmotes = bttvMap, isBttvLoaded = true) }
@@ -334,7 +352,7 @@ class EmoteRepository @Inject constructor(
             if (force || !currentState.isSeventvLoaded) {
                 launch {
                     sevenTVApi.getChannelEmotes(resolvedUserId).onSuccess { seventvUser ->
-                        val seventvMap = (seventvUser.emoteSet ?: seventvUser.user?.emoteSet)?.emotes?.mapNotNull { parseSevenTVEmote(it) }?.associateBy { it.code } ?: emptyMap()
+                        val seventvMap = (seventvUser.emoteSet ?: seventvUser.user?.emoteSet)?.emotes?.mapNotNull { parseSevenTVEmote(it, quality) }?.associateBy { it.code } ?: emptyMap()
                         stateFlow.update { it.copy(seventvEmotes = seventvMap, isSeventvLoaded = true) }
                     }.onFailure { e ->
                         if (e is CancellationException) throw e
@@ -351,8 +369,8 @@ class EmoteRepository @Inject constructor(
                         val ffzMap = mutableMapOf<String, Emote>()
                         ffzRoom.sets.values.forEach { set ->
                             set.emotes.forEach { emote ->
-                                val url = emote.animated?.get("4") ?: emote.animated?.get("2") ?: emote.animated?.get("1")
-                                         ?: emote.urls["4"] ?: emote.urls["2"] ?: emote.urls["1"] ?: ""
+                                val url = emote.animated?.get(quality.ffzScale) ?: emote.animated?.get("1")
+                                         ?: emote.urls[quality.ffzScale] ?: emote.urls["1"] ?: ""
                                 if (url.isNotEmpty()) {
                                     val fullUrl = if (url.startsWith("http") || url.startsWith("//")) {
                                         if (url.startsWith("//")) "https:$url" else url
@@ -374,6 +392,7 @@ class EmoteRepository @Inject constructor(
 
     suspend fun loadUserEmotes(force: Boolean = false) = withContext(Dispatchers.IO) {
         val auth = authManager.authStateFlow.first()
+        val quality = settingsManager.getEmoteQuality().first()
         if (!auth.isLoggedIn || auth.userId == null) return@withContext
         if (!force && _userEmoteState.value.isLoaded && _userEmoteState.value.userId == auth.userId && _userEmoteState.value.twitchEmotes.isNotEmpty()) return@withContext
 
@@ -383,7 +402,7 @@ class EmoteRepository @Inject constructor(
         helixApiClient.getUserEmotes(auth.userId).onSuccess { helixEmotes ->
             if (helixEmotes.isNotEmpty()) {
                 val twitchMap = helixEmotes.associateBy({ it.name }, { dto ->
-                    mapHelixEmote(dto).copy(
+                    mapHelixEmote(dto, quality).copy(
                         isSubOnly = dto.emote_type == "subscriptions" || dto.tier != null || dto.owner_id != null,
                         isUnlocked = true
                     )
@@ -422,10 +441,10 @@ class EmoteRepository @Inject constructor(
             ?: globalState.ffzEmotes[code]
     }
 
-    private fun mapHelixEmote(dto: HelixEmoteDto): Emote {
+    private fun mapHelixEmote(dto: HelixEmoteDto, quality: SettingsManager.EmoteQuality): Emote {
         val isAnimated = dto.format?.contains("animated") == true
         val format = if (isAnimated) "animated" else "static"
-        val url = "https://static-cdn.jtvnw.net/emoticons/v2/${dto.id}/$format/dark/3.0"
+        val url = "https://static-cdn.jtvnw.net/emoticons/v2/${dto.id}/$format/dark/${quality.twitchScale}"
         val isSubOnly = dto.emote_type == "subscriptions" || dto.tier != null
         return Emote(
             id = dto.id,
@@ -439,17 +458,16 @@ class EmoteRepository @Inject constructor(
         )
     }
 
-    private fun parseSevenTVEmote(emote: SevenTVEmote): Emote? {
+    private fun parseSevenTVEmote(emote: SevenTVEmote, quality: SettingsManager.EmoteQuality): Emote? {
         val data = emote.data ?: return null
         val hostUrl = data.host.url
         if (hostUrl.isBlank()) return null
         
-        val bestFile = data.host.files.find { it.name == "4x.webp" }
-                      ?: data.host.files.find { it.format == "WEBP" && it.name.contains("4x") }
-                      ?: data.host.files.find { it.name == "2x.webp" }
+        val targetFile = data.host.files.find { it.name == quality.sevenTvFile }
+                      ?: data.host.files.find { it.name == "1x.webp" }
                       ?: data.host.files.firstOrNull()
         
-        val path = bestFile?.name ?: "4x.webp"
+        val path = targetFile?.name ?: quality.sevenTvFile
         val baseUrl = if (hostUrl.startsWith("//")) "https:$hostUrl" else if (hostUrl.startsWith("http")) hostUrl else "https://$hostUrl"
         val url = if (baseUrl.endsWith("/")) "$baseUrl$path" else "$baseUrl/$path"
         

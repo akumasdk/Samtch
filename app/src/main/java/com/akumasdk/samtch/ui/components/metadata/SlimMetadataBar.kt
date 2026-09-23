@@ -7,6 +7,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -14,10 +15,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.ui.components.metadata.util.cleanMetadataText
 import com.akumasdk.samtch.ui.components.metadata.util.formatStreamDuration
 
 @Composable
@@ -28,9 +31,11 @@ internal fun SlimMetadataBar(
     streamTitle: String?,
     viewersCount: Int,
     streamStartedAt: String?,
-    maxWidth: androidx.compose.ui.unit.Dp = 400.dp,
+    maxWidth: Dp = 400.dp,
 ) {
     val isNarrow = maxWidth < 240.dp
+    val cleanedTitle = remember(streamTitle) { cleanMetadataText(streamTitle).ifEmpty { "Stream Offline" } }
+    val cleanedName = remember(displayName, channel) { cleanMetadataText(displayName ?: channel) }
 
     Row(
         modifier = Modifier
@@ -69,7 +74,7 @@ internal fun SlimMetadataBar(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = (displayName ?: channel).take(1).uppercase(),
+                            text = cleanedName.take(1).uppercase(),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
@@ -81,7 +86,7 @@ internal fun SlimMetadataBar(
 
         // Streamer Name
         Text(
-            text = displayName ?: channel,
+            text = cleanedName,
             color = SamtchTheme.colors.accentColor,
             fontSize = 13.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -94,7 +99,7 @@ internal fun SlimMetadataBar(
             Text(text = ": ", color = SamtchTheme.colors.secondaryText, fontSize = 13.sp)
             
             Text(
-                text = streamTitle ?: "Stream Offline",
+                text = cleanedTitle,
                 color = SamtchTheme.colors.primaryText,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
@@ -127,6 +132,7 @@ internal fun SlimMetadataBar(
             if (viewersCount > 0) {
                 AnimatedViewerCount(
                     count = viewersCount,
+                    modifier = Modifier.padding(start = 4.dp),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold
                 )

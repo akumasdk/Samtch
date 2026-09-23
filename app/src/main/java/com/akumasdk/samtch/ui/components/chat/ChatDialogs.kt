@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import com.akumasdk.samtch.ui.components.chat.emote.BadgeInfoDialog
 import com.akumasdk.samtch.ui.components.chat.emote.EmoteInfoDialog
+import com.akumasdk.samtch.ui.components.chat.gif.GifInfoDialog
 import com.akumasdk.samtch.ui.components.chat.user.UserInfoDialog
 
 @Composable
@@ -14,6 +15,15 @@ fun ChatDialogs(viewModel: ChatViewModel, isFullscreen: Boolean = false) {
     val selectedEmoteForInfo by viewModel.selectedEmoteForInfo.collectAsState()
     val selectedBadgeForInfo by viewModel.selectedBadgeForInfo.collectAsState()
     val selectedUserForInfo by viewModel.selectedUserForInfo.collectAsState()
+    val selectedGifForInfo by viewModel.selectedGifForInfo.collectAsState()
+
+    selectedGifForInfo?.let { url ->
+        GifInfoDialog(
+            url = url,
+            isFullscreen = isFullscreen,
+            onDismiss = { viewModel.dismissGifInfo() }
+        )
+    }
 
     selectedEmoteForInfo?.let { emote ->
         EmoteInfoDialog(
@@ -22,7 +32,6 @@ fun ChatDialogs(viewModel: ChatViewModel, isFullscreen: Boolean = false) {
             onDismiss = { viewModel.dismissEmoteInfo() },
             onUseEmote = { 
                 viewModel.insertEmote(it)
-                viewModel.recordEmoteUsage(it)
             }
         )
     }

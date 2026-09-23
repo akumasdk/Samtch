@@ -57,7 +57,6 @@
     <string name="audio_only_mode_toggle">Audio Only</string>
     <string name="audio_only_notification_text">Listening to %s</string>
     <string name="audio_only_background_title">Audio Background Play</string>
-    <string name="audio_only_background_summary">Automatically switch to audio-only mode when app is minimized</string>
     <string name="audio_only_hint">You can close or minimize the app to keep listening</string>
 
     <!-- PiP Settings -->
@@ -83,6 +82,13 @@
     <string name="fullscreen_chat_ratio_title">Chat Space Ratio (Fullscreen)</string>
     <string name="fullscreen_chat_ratio_summary">Adjust the width of the chat panel in landscape mode</string>
     <string name="fullscreen_chat_ratio_auto">Auto (Fit Stream)</string>
+
+    <!-- Emote Resolution Settings -->
+    <string name="emote_quality_title">Emote Resolution Quality</string>
+    <string name="emote_quality_summary">Select emote image resolution (Lowest is fastest and uses less memory)</string>
+    <string name="emote_quality_low">Low (1x - Fast &amp; Light)</string>
+    <string name="emote_quality_medium">Medium (2x - Default)</string>
+    <string name="emote_quality_high">High (3x / 4x)</string>
 
     <!-- Theme Settings -->
     <string name="theme_mode_title">Theme Mode</string>
@@ -144,4 +150,7 @@
     <string name="emote_info_zero_width">Zero-width overlay</string>
     <string name="emote_info_use">Use</string>
     <string name="emote_info_copy">Copy</string>
+    <string name="gif_info_title">GIF Information</string>
+    <string name="gif_info_source">Source</string>
+    <string name="gif_info_copy_url">Copy URL</string>
 </resources>

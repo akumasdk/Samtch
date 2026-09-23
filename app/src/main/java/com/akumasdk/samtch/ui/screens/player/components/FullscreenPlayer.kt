@@ -5,15 +5,19 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
@@ -62,6 +66,7 @@ fun FullscreenPlayer(
     refreshTrigger: Int = 0,
     forceSlimMetadata: Boolean = false,
     isImmersiveEnabled: Boolean = true,
+    isFoldableInnerScreen: Boolean = false,
     chatRatio: Float = 0.28f,
     onToggleChat: () -> Unit = {},
     chatContent: @Composable (ChatContentConfig, Modifier) -> Unit,
@@ -85,90 +90,194 @@ fun FullscreenPlayer(
         )
     }
 
-    Row(modifier = Modifier.fillMaxSize()) {
-        // Video Player
-        Box(
-            modifier = Modifier
-                .weight(if (isChatVisible) (1f - chatRatio).coerceAtLeast(0.01f) else 1f)
-                .onSizeChanged { size ->
-                    playerSize = size
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val screenWidth = maxWidth
+        val screenHeight = maxHeight
+
+        if (isFoldableInnerScreen) {
+            val videoHeight = if (isChatVisible) {
+                if (forceSlimMetadata) {
+                    (screenWidth * 9f / 16f).coerceAtMost(screenHeight * 0.3f)
+                } else {
+                    (screenWidth * 9f / 16f).coerceAtMost(screenHeight * 0.65f)
                 }
-        ) {
-            webView(Modifier.fillMaxSize(), onToggleChat)
-        }
+            } else {
+                screenHeight
+            }
 
-        AnimatedVisibility(
-            visible = isChatVisible,
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(chatRatio),
-            enter = slideInHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
-                    fadeIn(animationSpec = tween(400, easing = SamtchAnimation.EmphasizedEasing)),
-            exit = slideOutHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
-                   fadeOut(animationSpec = tween(300))
-        ) {
-            val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
-            val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.65f else 1.0f
+            // Foldable inner screen / square layout: Video on TOP, Chat on BOTTOM
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Top Video Player
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(videoHeight)
+                        .onSizeChanged { size -> playerSize = size }
+                ) {
+                    webView(Modifier.fillMaxSize(), onToggleChat)
+                }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
-            ) {
+                // Bottom Chat
+                AnimatedVisibility(
+                    visible = isChatVisible,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(screenHeight - videoHeight),
+                    enter = slideInVertically(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                            fadeIn(animationSpec = tween(400, easing = SamtchAnimation.EmphasizedEasing)),
+                    exit = slideOutVertically(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                           fadeOut(animationSpec = tween(300))
+                ) {
+                val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
+                val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.65f else 1.0f
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End))
+                        .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
                 ) {
-                    // 1. Chat area
                     Box(modifier = Modifier.fillMaxSize()) {
-                        chatContent(
-                            ChatContentConfig(
-                                isCompact = true,
-                                showInput = true,
-                                refreshTrigger = refreshTrigger,
-                                isFullscreen = true
-                            ),
-                            Modifier.fillMaxSize()
-                        )
-                    }
-
-                    // 2. Overlays (Banner + Metadata)
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        StatusBanner(
-                            text = adblockText,
-                            isImmersiveEnabled = isImmersiveEnabled,
-                            channel = channel,
-                            previewImageUrl = previewImageUrl
-                        )
-
-                        this@Row.AnimatedVisibility(
-                            visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
-                            enter = SamtchAnimation.FadeIn,
-                            exit = SamtchAnimation.FadeOut
-                        ) {
-                            StreamMetadataBar(
-                                channel = channel,
-                                displayName = displayName,
-                                avatarUrl = avatarUrl,
-                                streamTitle = streamTitle,
-                                gameName = gameName,
-                                viewersCount = viewersCount,
-                                streamStartedAt = streamStartedAt,
-                                previewImageUrl = previewImageUrl,
-                                expandTrigger = expandTrigger,
-                                forceSlim = forceSlimMetadata,
-                                isImmersiveEnabled = isImmersiveEnabled,
-                                onClick = { showInfoDialog = true },
-                                modifier = Modifier.padding(horizontal = 4.dp) // Subtle extra padding for side panel
+                        // 1. Chat area
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            chatContent(
+                                ChatContentConfig(
+                                    isCompact = true,
+                                    showInput = true,
+                                    refreshTrigger = refreshTrigger,
+                                    isFullscreen = true
+                                ),
+                                Modifier.fillMaxSize()
                             )
+                        }
+
+                        // 2. Overlays (Banner + Metadata)
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            StatusBanner(
+                                text = adblockText,
+                                isImmersiveEnabled = isImmersiveEnabled,
+                                channel = channel,
+                                previewImageUrl = previewImageUrl
+                            )
+
+                            this@Column.AnimatedVisibility(
+                                visible = displayName == null && streamTitle == null && gameName == null || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                                enter = SamtchAnimation.FadeIn,
+                                exit = SamtchAnimation.FadeOut
+                            ) {
+                                StreamMetadataBar(
+                                    channel = channel,
+                                    displayName = displayName,
+                                    avatarUrl = avatarUrl,
+                                    streamTitle = streamTitle,
+                                    gameName = gameName,
+                                    viewersCount = viewersCount,
+                                    streamStartedAt = streamStartedAt,
+                                    previewImageUrl = previewImageUrl,
+                                    expandTrigger = expandTrigger,
+                                    forceSlim = forceSlimMetadata,
+                                    loading = displayName == null && streamTitle == null && gameName == null,
+                                    isImmersiveEnabled = isImmersiveEnabled,
+                                    onClick = { showInfoDialog = true },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Standard widescreen landscape layout: Video on LEFT, Chat on RIGHT
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Video Player
+            Box(
+                modifier = Modifier
+                    .weight(if (isChatVisible) (1f - chatRatio).coerceAtLeast(0.01f) else 1f)
+                    .onSizeChanged { size ->
+                        playerSize = size
+                    }
+            ) {
+                webView(Modifier.fillMaxSize(), onToggleChat)
+            }
+
+            AnimatedVisibility(
+                visible = isChatVisible,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(chatRatio),
+                enter = slideInHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                        fadeIn(animationSpec = tween(400, easing = SamtchAnimation.EmphasizedEasing)),
+                exit = slideOutHorizontally(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                       fadeOut(animationSpec = tween(300))
+            ) {
+                val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
+                val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.65f else 1.0f
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(SamtchTheme.colors.chatBackground.copy(alpha = surfaceAlpha))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End))
+                    ) {
+                        // 1. Chat area
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            chatContent(
+                                ChatContentConfig(
+                                    isCompact = true,
+                                    showInput = true,
+                                    refreshTrigger = refreshTrigger,
+                                    isFullscreen = true
+                                ),
+                                Modifier.fillMaxSize()
+                            )
+                        }
+
+                        // 2. Overlays (Banner + Metadata)
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            StatusBanner(
+                                text = adblockText,
+                                isImmersiveEnabled = isImmersiveEnabled,
+                                channel = channel,
+                                previewImageUrl = previewImageUrl
+                            )
+
+                            this@Row.AnimatedVisibility(
+                                visible = displayName == null && streamTitle == null && gameName == null || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                                enter = SamtchAnimation.FadeIn,
+                                exit = SamtchAnimation.FadeOut
+                            ) {
+                                StreamMetadataBar(
+                                    channel = channel,
+                                    displayName = displayName,
+                                    avatarUrl = avatarUrl,
+                                    streamTitle = streamTitle,
+                                    gameName = gameName,
+                                    viewersCount = viewersCount,
+                                    streamStartedAt = streamStartedAt,
+                                    previewImageUrl = previewImageUrl,
+                                    expandTrigger = expandTrigger,
+                                    forceSlim = forceSlimMetadata,
+                                    loading = displayName == null && streamTitle == null && gameName == null,
+                                    isImmersiveEnabled = isImmersiveEnabled,
+                                    onClick = { showInfoDialog = true },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
 }

@@ -59,6 +59,7 @@ fun NativeTwitchChat(
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
     onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
+    onGifClick: ((String) -> Unit)? = null,
     onUserClick: ((String) -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(top = 74.dp, bottom = 0.dp)
 ) {
@@ -150,6 +151,7 @@ fun NativeTwitchChat(
                     onEmoteClick = onEmoteClick,
                     onEmoteLongClick = onEmoteLongClick,
                     onBadgeClick = onBadgeClick,
+                    onGifClick = onGifClick,
                     onUserClick = onUserClick,
                     fontSize = chatFontSize,
                     emoteSize = chatEmoteSize,

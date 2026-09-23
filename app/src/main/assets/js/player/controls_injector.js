@@ -24,7 +24,8 @@
             .samtch-control-btn:hover { opacity: 1; background: rgba(255, 255, 255, 0.15); }
             .samtch-control-btn svg { fill: currentColor; }
 
-            /* Ensure the control group is visible enough and doesn't wrap */
+            /* Ensure left & right control groups are visible and don't wrap */
+            .player-controls__left-control-group,
             .player-controls__right-control-group {
                 overflow: visible !important;
                 flex-wrap: nowrap !important;
@@ -34,46 +35,38 @@
     }
 
     function injectButtons() {
-        // Broad range of selectors to find the control container
-        const selectors = [
+        const rightSelectors = [
             '.player-controls__right-control-group',
             '[data-a-target="player-controls"] .tw-justify-content-end',
             '.video-player__controls .tw-justify-content-end',
             '.video-player__controls .tw-align-items-center.tw-flex-row'
         ];
 
+        const leftSelectors = [
+            '.player-controls__left-control-group',
+            '[data-a-target="player-controls"] .tw-justify-content-start',
+            '.video-player__controls .tw-justify-content-start'
+        ];
+
         let rightGroup = null;
-        for (const s of selectors) {
+        for (const s of rightSelectors) {
             rightGroup = document.querySelector(s);
             if (rightGroup) break;
         }
 
-        if (!rightGroup) return false;
+        let leftGroup = null;
+        for (const s of leftSelectors) {
+            leftGroup = document.querySelector(s);
+            if (leftGroup) break;
+        }
+
+        if (!rightGroup && !leftGroup) return false;
 
         let injectedCount = 0;
 
-        // 1. Audio Only Toggle Button (Headset)
-        if (!document.getElementById('samtch-audio-btn')) {
-            const btn = document.createElement('button');
-            btn.id = 'samtch-audio-btn';
-            btn.className = 'samtch-control-btn';
-            btn.title = 'Audio Only Mode';
-            btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 640 640"><path d="M160 288C160 199.6 231.6 128 320 128C408.4 128 480 199.6 480 288L480 325.5C470 322 459.2 320 448 320L432 320C405.5 320 384 341.5 384 368L384 496C384 522.5 405.5 544 432 544L448 544C501 544 544 501 544 448L544 288C544 164.3 443.7 64 320 64C196.3 64 96 164.3 96 288L96 448C96 501 139 544 192 544L208 544C234.5 544 256 522.5 256 496L256 368C256 341.5 234.5 320 208 320L192 320C180.8 320 170 321.9 160 325.5L160 288z"></path></svg>';
-            btn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.TwitchPlayerBridge) {
-                    window.TwitchPlayerBridge.toggleAudioOnly();
-                } else {
-                    console.error('[Samtch] Bridge not found for audio toggle');
-                }
-            };
-            rightGroup.prepend(btn);
-            injectedCount++;
-        }
 
-        // 2. Fullscreen Toggle Button
-        if (!document.getElementById('samtch-fullscreen-btn')) {
+        // 2. Fullscreen Toggle Button - Right Group
+        if (rightGroup && !document.getElementById('samtch-fullscreen-btn')) {
             const btn = document.createElement('button');
             btn.id = 'samtch-fullscreen-btn';
             btn.className = 'samtch-control-btn';
@@ -92,8 +85,9 @@
             injectedCount++;
         }
 
-        // 3. Audio Compressor Toggle Button
-        if (!document.getElementById('samtch-compressor-btn')) {
+        // 3. Audio Compressor Toggle Button - Left Group (preferred)
+        const compressorGroup = leftGroup || rightGroup;
+        if (compressorGroup && !document.getElementById('samtch-compressor-btn')) {
             const btn = document.createElement('button');
             btn.id = 'samtch-compressor-btn';
             btn.className = 'samtch-control-btn';
@@ -119,15 +113,23 @@
                     console.error('[Samtch] Audio compressor module not loaded.');
                 }
             };
-            rightGroup.prepend(btn);
+
+            if (leftGroup) {
+                if (leftGroup.lastElementChild) {
+                    leftGroup.insertBefore(btn, leftGroup.lastElementChild);
+                } else {
+                    leftGroup.appendChild(btn);
+                }
+            } else {
+                rightGroup.prepend(btn);
+            }
             injectedCount++;
         }
 
         if (injectedCount > 0) {
             console.log('[Samtch] Buttons injected successfully (' + injectedCount + ')');
             document.documentElement.classList.add('samtch-ready');
-        } else if (document.getElementById('samtch-chat-btn')) {
-            // Already injected in previous run, ensure visibility
+        } else if (document.getElementById('samtch-compressor-btn') || document.getElementById('samtch-audio-btn')) {
             document.documentElement.classList.add('samtch-ready');
         }
         return injectedCount > 0;
@@ -135,18 +137,15 @@
 
     injectStyles();
 
-    // Aggressive polling for the first 10 seconds
     const startTime = Date.now();
     window.samtch_controls_init_int = setInterval(() => {
         const success = injectButtons();
         if (success || Date.now() - startTime > 10000) {
             clearInterval(window.samtch_controls_init_int);
-            // Switch to low-frequency maintenance polling
             window.samtch_controls_maint_int = setInterval(injectButtons, 3000);
         }
     }, 500);
 
-    // Watch for dynamic UI updates (React transitions)
     window.samtch_controls_obs = new MutationObserver(injectButtons);
     window.samtch_controls_obs.observe(document.documentElement, { childList: true, subtree: true });
 
