@@ -29,6 +29,7 @@ sealed interface ChatMessageUiState {
         val emotes: List<EmoteInfo>,
         val badgeUrls: List<String> = emptyList(),
         val badges: List<TwitchBadgeDto> = emptyList(),
+        val gifUrl: String? = null,
         val isAction: Boolean = false
     ) : ChatMessageUiState
 

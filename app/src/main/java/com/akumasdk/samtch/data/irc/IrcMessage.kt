@@ -48,9 +48,13 @@ data class IrcMessage(
                 val spaceIdx = current.indexOf(' ')
                 val tagsStr = current.substring(1, spaceIdx)
                 tagsStr.split(";").forEach { tag ->
-                    val parts = tag.split("=")
-                    if (parts.size == 2) {
-                        tags[parts[0]] = unescapeIrcTagValue(parts[1])
+                    val equalsIdx = tag.indexOf('=')
+                    if (equalsIdx >= 0) {
+                        val key = tag.substring(0, equalsIdx)
+                        val value = tag.substring(equalsIdx + 1)
+                        tags[key] = unescapeIrcTagValue(value)
+                    } else if (tag.isNotEmpty()) {
+                        tags[tag] = ""
                     }
                 }
                 current = current.substring(spaceIdx + 1)

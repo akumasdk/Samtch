@@ -1,6 +1,9 @@
 package com.akumasdk.samtch.ui.components.chat
 
+import android.util.Log
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,6 +22,10 @@ import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
 
 @Composable
 fun ChatMessageRow(
@@ -84,37 +91,62 @@ fun ChatMessageRow(
                 }
             }
 
-            DynamicEmoteText(
-                text = fullAnnotatedString,
-                emotes = combinedEmotes,
-                emoteRepository = emoteRepository,
-                isCompact = isCompact,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                onEmoteClick = { info ->
-                    if (info.source == "Badge") {
-                        val index = info.id.substringAfterLast("_").toIntOrNull()
-                        if (index != null && index < message.badges.size) {
-                            onBadgeClick?.invoke(message.badges[index])
+            Column {
+                DynamicEmoteText(
+                    text = fullAnnotatedString,
+                    emotes = combinedEmotes,
+                    emoteRepository = emoteRepository,
+                    isCompact = isCompact,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    onEmoteClick = { info ->
+                        if (info.source == "Badge") {
+                            val index = info.id.substringAfterLast("_").toIntOrNull()
+                            if (index != null && index < message.badges.size) {
+                                onBadgeClick?.invoke(message.badges[index])
+                            }
+                        } else {
+                            onEmoteClick?.invoke(info)
                         }
-                    } else {
-                        onEmoteClick?.invoke(info)
-                    }
-                },
-                onEmoteLongClick = onEmoteLongClick,
-                onClick = { offset ->
-                    fullAnnotatedString.getStringAnnotations(tag = "username", start = offset, end = offset)
-                        .firstOrNull()?.let { annotation ->
-                            onUserClick?.invoke(annotation.item)
-                        }
-                },
-                emoteSize = emoteSize,
-                badgeSize = badgeSize,
-                style = TextStyle(
-                    color = if (message.isAction) userColor else SamtchTheme.colors.primaryText,
-                    fontSize = displayFontSize,
-                    fontWeight = if (message.isAction) FontWeight.Bold else FontWeight.Normal
+                    },
+                    onEmoteLongClick = onEmoteLongClick,
+                    onClick = { offset ->
+                        fullAnnotatedString.getStringAnnotations(tag = "username", start = offset, end = offset)
+                            .firstOrNull()?.let { annotation ->
+                                onUserClick?.invoke(annotation.item)
+                            }
+                    },
+                    emoteSize = emoteSize,
+                    badgeSize = badgeSize,
+                    style = TextStyle(
+                        color = if (message.isAction) userColor else SamtchTheme.colors.primaryText,
+                        fontSize = displayFontSize,
+                        fontWeight = if (message.isAction) FontWeight.Bold else FontWeight.Normal
+                    )
                 )
-            )
+
+                message.gifUrl?.let { url ->
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(url)
+                            .build(),
+                        contentDescription = "GIF",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .padding(start = 8.dp, bottom = 2.dp)
+                            .sizeIn(maxWidth = 240.dp, maxHeight = 180.dp),
+                        onSuccess = {
+                            Log.d("ChatMessageRow", "GIF loaded for message ${message.id}: $url")
+                        },
+                        onError = { state ->
+                            Log.e(
+                                "ChatMessageRow",
+                                "GIF failed to load for message ${message.id}: $url",
+                                state.result.throwable
+                            )
+                        }
+                    )
+                }
+            }
         }
         is ChatMessageUiState.SystemMessageUi -> {
             Text(
