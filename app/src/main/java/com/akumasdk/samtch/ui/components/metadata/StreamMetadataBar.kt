@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
+import com.akumasdk.samtch.ui.components.loading.MetadataBarSkeleton
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import kotlinx.coroutines.delay
@@ -39,6 +40,7 @@ fun StreamMetadataBar(
     forceExpanded: Boolean = false,
     forceSlim: Boolean = false,
     isImmersiveEnabled: Boolean = true,
+    loading: Boolean = false,
     onClick: () -> Unit = {},
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
@@ -130,7 +132,9 @@ fun StreamMetadataBar(
                 )
             }
             
-            AnimatedContent(
+            if (loading) {
+                MetadataBarSkeleton(compact = isSlim)
+            } else AnimatedContent(
                 targetState = isSlim,
                 modifier = Modifier.clickable { 
                     if (isSlim) {

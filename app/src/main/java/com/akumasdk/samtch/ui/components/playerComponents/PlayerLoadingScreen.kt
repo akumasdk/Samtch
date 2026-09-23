@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
@@ -39,6 +40,7 @@ import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 import com.akumasdk.samtch.util.Constants
 import com.akumasdk.samtch.ui.components.metadata.util.unifyPreviewUrl
+import com.akumasdk.samtch.ui.components.loading.PlayerSurfaceSkeleton
 
 @Composable
 fun PlayerLoadingScreen(
@@ -90,18 +92,36 @@ fun PlayerLoadingScreen(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(5.dp)
-                    .scale(1.1f), // Scale up slightly to hide blur edges
+                    .scale(1.04f), // Slightly scale up to hide image edges
                 contentScale = ContentScale.Crop,
-                alpha = 0.6f
+                alpha = 0.78f
             )
         }
 
-        // 2. Dark Overlay
+        // Layered scrims keep controls readable while preserving the preview artwork.
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.45f))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.34f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.72f)
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.12f))
+        )
+
+        PlayerSurfaceSkeleton(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp)
         )
 
         // 3. Central Content

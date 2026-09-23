@@ -163,7 +163,7 @@ fun FullscreenPlayer(
                             )
 
                             this@Column.AnimatedVisibility(
-                                visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                                visible = displayName == null && streamTitle == null && gameName == null || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
                                 enter = SamtchAnimation.FadeIn,
                                 exit = SamtchAnimation.FadeOut
                             ) {
@@ -178,6 +178,7 @@ fun FullscreenPlayer(
                                     previewImageUrl = previewImageUrl,
                                     expandTrigger = expandTrigger,
                                     forceSlim = forceSlimMetadata,
+                                    loading = displayName == null && streamTitle == null && gameName == null,
                                     isImmersiveEnabled = isImmersiveEnabled,
                                     onClick = { showInfoDialog = true },
                                     modifier = Modifier.fillMaxWidth()
@@ -251,7 +252,7 @@ fun FullscreenPlayer(
                             )
 
                             this@Row.AnimatedVisibility(
-                                visible = !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                                visible = displayName == null && streamTitle == null && gameName == null || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
                                 enter = SamtchAnimation.FadeIn,
                                 exit = SamtchAnimation.FadeOut
                             ) {
@@ -266,6 +267,7 @@ fun FullscreenPlayer(
                                     previewImageUrl = previewImageUrl,
                                     expandTrigger = expandTrigger,
                                     forceSlim = forceSlimMetadata,
+                                    loading = displayName == null && streamTitle == null && gameName == null,
                                     isImmersiveEnabled = isImmersiveEnabled,
                                     onClick = { showInfoDialog = true },
                                     modifier = Modifier.fillMaxWidth()

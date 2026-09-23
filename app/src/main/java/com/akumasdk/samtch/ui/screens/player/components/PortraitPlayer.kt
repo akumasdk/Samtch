@@ -144,7 +144,7 @@ fun PortraitPlayer(
 
                 // Metadata space above chat (Overlay)
                 this@Column.AnimatedVisibility(
-                    visible = !isAudioOnly && (!streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
+                    visible = !isAudioOnly && (streamTitle.isNullOrEmpty() && gameName.isNullOrEmpty() || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty()),
                     enter = SamtchAnimation.FadeIn,
                     exit = SamtchAnimation.FadeOut,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -162,6 +162,7 @@ fun PortraitPlayer(
                         forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
                         forceSlim = forceSlimMetadata,
                         isImmersiveEnabled = isImmersiveEnabled,
+                        loading = displayName == null && streamTitle == null && gameName == null,
                         onClick = { showInfoDialog = true }
                     )
                 }
