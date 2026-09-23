@@ -25,8 +25,6 @@ class ChatMessageMapper @Inject constructor(
     private val badgeRepository: BadgeRepository,
     private val settingsManager: SettingsManager
 ) {
-    private val tag = "ChatMessageMapper"
-
     private data class EmoteOccurrence(
         val id: String,
         val code: String,
@@ -80,13 +78,6 @@ class ChatMessageMapper @Inject constructor(
                 ?.map { it.removePrefix("url=") }
                 ?.firstOrNull { it.startsWith("https://") || it.startsWith("http://") }
                 ?.takeIf { it.isNotBlank() }
-            if (gifsTag != null) {
-                if (gifUrl != null) {
-                    Log.d(tag, "GIF detected for message ${message.id}: url=$gifUrl")
-                } else {
-                    Log.w(tag, "GIF tag found without a usable URL for message ${message.id}: $gifsTag")
-                }
-            }
             val displayText = if (gifUrl != null) "" else cleanText
 
             val occurrences = mutableListOf<EmoteOccurrence>()

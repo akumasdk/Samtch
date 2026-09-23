@@ -1,6 +1,7 @@
 package com.akumasdk.samtch.ui.components.chat
 
-import android.util.Log
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.sizeIn
@@ -35,6 +36,7 @@ fun ChatMessageRow(
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
     onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
+    onGifClick: ((String) -> Unit)? = null,
     onUserClick: ((String) -> Unit)? = null,
     fontSize: Int = 14,
     emoteSize: Int = 28,
@@ -133,17 +135,10 @@ fun ChatMessageRow(
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .padding(start = 8.dp, bottom = 2.dp)
-                            .sizeIn(maxWidth = 240.dp, maxHeight = 180.dp),
-                        onSuccess = {
-                            Log.d("ChatMessageRow", "GIF loaded for message ${message.id}: $url")
-                        },
-                        onError = { state ->
-                            Log.e(
-                                "ChatMessageRow",
-                                "GIF failed to load for message ${message.id}: $url",
-                                state.result.throwable
-                            )
-                        }
+                            .sizeIn(maxWidth = 240.dp, maxHeight = 180.dp)
+                            .pointerInput(url, onGifClick) {
+                                detectTapGestures(onTap = { onGifClick?.invoke(url) })
+                            }
                     )
                 }
             }

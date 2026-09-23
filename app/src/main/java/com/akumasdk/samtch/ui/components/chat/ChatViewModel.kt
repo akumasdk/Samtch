@@ -63,6 +63,9 @@ class ChatViewModel @Inject constructor(
     private val _selectedUserForInfo = MutableStateFlow<com.akumasdk.samtch.data.api.helix.dto.UserDto?>(null)
     val selectedUserForInfo = _selectedUserForInfo.asStateFlow()
 
+    private val _selectedGifForInfo = MutableStateFlow<String?>(null)
+    val selectedGifForInfo = _selectedGifForInfo.asStateFlow()
+
     private val _keyboardHeightPx = MutableStateFlow(0)
     val keyboardHeightPx = _keyboardHeightPx.asStateFlow()
 
@@ -407,6 +410,10 @@ class ChatViewModel @Inject constructor(
     }
 
     fun dismissUserInfo() { _selectedUserForInfo.value = null }
+
+    fun showGifInfo(url: String) { _selectedGifForInfo.value = url }
+
+    fun dismissGifInfo() { _selectedGifForInfo.value = null }
 
     fun insertEmote(emote: Emote) = emoteManager.insertEmote(viewModelScope, emote)
 

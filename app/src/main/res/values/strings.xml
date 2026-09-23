@@ -151,4 +151,7 @@
     <string name="emote_info_zero_width">Zero-width overlay</string>
     <string name="emote_info_use">Use</string>
     <string name="emote_info_copy">Copy</string>
+    <string name="gif_info_title">GIF Information</string>
+    <string name="gif_info_source">Source</string>
+    <string name="gif_info_copy_url">Copy URL</string>
 </resources>
