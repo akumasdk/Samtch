@@ -132,6 +132,7 @@ internal fun SlimMetadataBar(
             if (viewersCount > 0) {
                 AnimatedViewerCount(
                     count = viewersCount,
+                    modifier = Modifier.padding(start = 4.dp),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold
                 )

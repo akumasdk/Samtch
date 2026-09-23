@@ -30,11 +30,13 @@ import com.akumasdk.samtch.ui.components.metadata.util.formatViewerCount
 @Composable
 fun AnimatedViewerCount(
     count: Int,
+    modifier: Modifier = Modifier,
     color: Color = SamtchTheme.colors.accentColor,
     fontSize: TextUnit = 11.sp,
     fontWeight: FontWeight = FontWeight.Bold
 ) {
     Row(
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {

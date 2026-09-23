@@ -180,7 +180,7 @@ fun FullscreenPlayer(
                                     forceSlim = forceSlimMetadata,
                                     isImmersiveEnabled = isImmersiveEnabled,
                                     onClick = { showInfoDialog = true },
-                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
@@ -268,7 +268,7 @@ fun FullscreenPlayer(
                                     forceSlim = forceSlimMetadata,
                                     isImmersiveEnabled = isImmersiveEnabled,
                                     onClick = { showInfoDialog = true },
-                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
