@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,10 +18,12 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import com.akumasdk.samtch.ui.theme.SamtchTheme
+import com.akumasdk.samtch.ui.components.metadata.util.cleanMetadataText
 import com.akumasdk.samtch.ui.components.metadata.util.formatStreamDuration
 
 @Composable
@@ -32,12 +35,16 @@ internal fun StandardMetadataBar(
     gameName: String?,
     viewersCount: Int,
     streamStartedAt: String?,
-    maxWidth: androidx.compose.ui.unit.Dp = 400.dp
+    maxWidth: Dp = 400.dp
 ) {
+    val cleanedTitle = remember(streamTitle) { cleanMetadataText(streamTitle).ifEmpty { "Stream Offline" } }
+    val cleanedGame = remember(gameName) { cleanMetadataText(gameName) }
+    val cleanedName = remember(displayName, channel) { cleanMetadataText(displayName ?: channel) }
+
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 1. Avatar Section
@@ -67,13 +74,8 @@ internal fun StandardMetadataBar(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp),
-                            color = Color.White.copy(alpha = 0.7f),
-                            strokeWidth = 2.dp
-                        )
                         Text(
-                            text = (displayName ?: channel).take(1).uppercase(),
+                            text = cleanedName.take(1).uppercase(),
                             color = Color.White,
                             fontWeight = FontWeight.Black,
                             fontSize = 18.sp,
@@ -84,11 +86,13 @@ internal fun StandardMetadataBar(
             }
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
-        // 2. Multi-row Info Block
+        // 2. Multi-row Info Block centered with safe vertical spacing
         Column(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
         ) {
             // ROW 1: Name & Uptime
@@ -97,13 +101,16 @@ internal fun StandardMetadataBar(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = displayName ?: channel,
+                    text = cleanedName,
                     color = SamtchTheme.colors.accentColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                    style = TextStyle(
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                        lineHeight = 15.sp
+                    ),
                     modifier = Modifier.weight(1f)
                 )
 
@@ -124,20 +131,23 @@ internal fun StandardMetadataBar(
                             color = SamtchTheme.colors.secondaryText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                            style = TextStyle(
+                                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                                lineHeight = 14.sp
+                            )
                         )
                     }
                 }
             }
 
-            // ROW 2: Stream Title (Main Focus)
+            // ROW 2: Stream Title
             Text(
-                text = streamTitle ?: "Stream Offline",
+                text = cleanedTitle,
                 color = SamtchTheme.colors.primaryText,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
-                overflow = TextOverflow.Visible,
+                overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
                     lineHeight = 16.sp
@@ -152,28 +162,32 @@ internal fun StandardMetadataBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (!gameName.isNullOrEmpty()) {
-                    Icon(
-                        imageVector = Icons.Default.Gamepad,
-                        contentDescription = null,
-                        tint = SamtchTheme.colors.accentColor.copy(alpha = 0.6f),
-                        modifier = Modifier.size(14.dp) // Matched size to text optics
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = gameName,
-                        color = SamtchTheme.colors.accentColor.copy(alpha = 0.8f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Visible,
-                        style = TextStyle(
-                            platformStyle = PlatformTextStyle(includeFontPadding = false)
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .basicMarquee(iterations = Int.MAX_VALUE)
-                    )
+                if (cleanedGame.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Gamepad,
+                            contentDescription = null,
+                            tint = SamtchTheme.colors.accentColor.copy(alpha = 0.6f),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = cleanedGame,
+                            color = SamtchTheme.colors.accentColor.copy(alpha = 0.8f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = TextStyle(
+                                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                                lineHeight = 14.sp
+                            ),
+                            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
+                        )
+                    }
                 } else {
                     Spacer(modifier = Modifier.weight(1f))
                 }

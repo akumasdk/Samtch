@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.components.metadata.util
 
+import android.text.Html
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -64,4 +65,13 @@ fun getAlternatingPreviewUrl(url: String?, key: Any?): String? {
     val trigger = (key as? Int) ?: 0
     val (w, h) = if (trigger % 2 == 0) "640" to "360" else "1280" to "720"
     return unifyPreviewUrl(url, w, h)
+}
+
+fun cleanMetadataText(text: String?): String {
+    if (text.isNullOrBlank()) return ""
+    return try {
+        Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY).toString().trim()
+    } catch (_: Exception) {
+        text.trim()
+    }
 }

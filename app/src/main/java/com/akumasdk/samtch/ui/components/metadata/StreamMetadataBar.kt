@@ -50,7 +50,7 @@ fun StreamMetadataBar(
         val isSlim = forceSlim || (containerWidth < 300.dp) || (isSlimManual && !forceExpanded)
 
         val animatedHeight by animateDpAsState(
-            targetValue = if (isSlim) 38.dp else 68.dp,
+            targetValue = if (isSlim) 38.dp else 80.dp,
             animationSpec = SamtchAnimation.DpSpring,
             label = "MetadataBarHeight"
         )
