@@ -28,6 +28,7 @@ fun SettingsDialogs(
     showChatModeDialog: Boolean,
     showChatFontSizeDialog: Boolean,
     showChatEmoteSizeDialog: Boolean,
+    showChatEmoteQualityDialog: Boolean,
     showChatBadgeSizeDialog: Boolean,
     showChatRatioDialog: Boolean,
     showLogoutDialog: Boolean,
@@ -37,6 +38,7 @@ fun SettingsDialogs(
     chatMode: SettingsManager.ChatMode,
     chatFontSize: Int,
     chatEmoteSize: Int,
+    emoteQuality: SettingsManager.EmoteQuality,
     chatBadgeSize: Int,
     chatRatio: Int,
     onDismissTheme: () -> Unit,
@@ -44,6 +46,7 @@ fun SettingsDialogs(
     onDismissChatMode: () -> Unit,
     onDismissFontSize: () -> Unit,
     onDismissEmoteSize: () -> Unit,
+    onDismissEmoteQuality: () -> Unit,
     onDismissBadgeSize: () -> Unit,
     onDismissChatRatio: () -> Unit,
     onDismissLogout: () -> Unit,
@@ -124,6 +127,23 @@ fun SettingsDialogs(
             selectedIndex = emoteSizeOptions.indexOf(chatEmoteSize),
             onReset = { scope.launch { settingsManager.setChatEmoteSize(28) } },
             onDismiss = onDismissEmoteSize
+        )
+    }
+
+    if (showChatEmoteQualityDialog) {
+        SelectionDialog(
+            title = stringResource(R.string.emote_quality_title),
+            options = SettingsManager.EmoteQuality.entries.map { q ->
+                val label = when (q) {
+                    SettingsManager.EmoteQuality.LOW -> stringResource(R.string.emote_quality_low)
+                    SettingsManager.EmoteQuality.MEDIUM -> stringResource(R.string.emote_quality_medium)
+                    SettingsManager.EmoteQuality.HIGH -> stringResource(R.string.emote_quality_high)
+                }
+                label to { scope.launch { settingsManager.setEmoteQuality(q) } }
+            },
+            selectedIndex = SettingsManager.EmoteQuality.entries.indexOf(emoteQuality),
+            onReset = { scope.launch { settingsManager.setEmoteQuality(SettingsManager.EmoteQuality.MEDIUM) } },
+            onDismiss = onDismissEmoteQuality
         )
     }
 

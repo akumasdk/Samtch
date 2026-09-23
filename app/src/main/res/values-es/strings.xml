@@ -84,6 +84,13 @@
     <string name="fullscreen_chat_ratio_summary">Ajusta el ancho del panel de chat en modo horizontal</string>
     <string name="fullscreen_chat_ratio_auto">Automático (Ajustar al stream)</string>
 
+    <!-- Configuración de resolución de emoticonos -->
+    <string name="emote_quality_title">Calidad de Resolución de Emoticonos</string>
+    <string name="emote_quality_summary">Selecciona la resolución de imagen de emoticonos (Baja es más rápida y consume menos memoria)</string>
+    <string name="emote_quality_low">Baja (1x - Rápida y Ligera)</string>
+    <string name="emote_quality_medium">Media (2x - Predeterminada)</string>
+    <string name="emote_quality_high">Alta (3x / 4x)</string>
+
     <!-- Theme Settings -->
     <string name="theme_mode_title">Modo de Tema</string>
     <string name="theme_mode_summary">Elige el tema preferido para la aplicación y el reproductor de Twitch</string>

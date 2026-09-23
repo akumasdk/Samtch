@@ -202,12 +202,12 @@ class ChatViewModel @Inject constructor(
                     badgeRepository.getChannelState(channel),
                     emoteManager.hasTriggeredEmoteLoad
                 ) { globalEmotes, channelEmotes, globalBadges, channelBadges, triggered ->
-                    val emotesFullyLoaded = globalEmotes.isFullyLoaded && channelEmotes.isFullyLoaded
+                    val emotesLoaded = globalEmotes.isLoaded && channelEmotes.isLoaded
                     val badgesLoaded = globalBadges.isLoaded && channelBadges.isLoaded
-                    emoteManager.setEmoteLoading(triggered && (!emotesFullyLoaded || !channelEmotes.isFullyLoaded))
+                    emoteManager.setEmoteLoading(triggered && !emotesLoaded)
 
                     RemapTriggerState(
-                        isFullyLoaded = emotesFullyLoaded && badgesLoaded,
+                        isFullyLoaded = (globalEmotes.isLoaded || globalEmotes.isFullyLoaded) && (channelEmotes.isLoaded || channelEmotes.isFullyLoaded) && badgesLoaded,
                         globalBadgeCount = globalBadges.badges.size,
                         channelBadgeCount = channelBadges.badges.size,
                         globalEmoteCount = globalEmotes.twitchEmotes.size + globalEmotes.seventvEmotes.size + globalEmotes.bttvEmotes.size + globalEmotes.ffzEmotes.size,
@@ -305,10 +305,12 @@ class ChatViewModel @Inject constructor(
         val authState = twitchAuthManager.getAuthState()
 
         // Validate message for locked sub-emotes
-        val words = message.split(" ")
-        val lockedEmote = words.mapNotNull { word ->
+        val words = message.split("\\s+".toRegex())
+        val emotesInMessage = words.mapNotNull { word ->
             emoteRepository.getEmote(channel, word)
-        }.find { emote ->
+        }
+
+        val lockedEmote = emotesInMessage.find { emote ->
             emote.type == EmoteType.TWITCH && emote.isSubOnly && !emote.isUnlocked
         }
 
@@ -317,6 +319,11 @@ class ChatViewModel @Inject constructor(
                 _systemNotice.value = "Cannot send sub-only emote '${lockedEmote.code}'. Subscription required."
             }
             return
+        }
+
+        // Record recent emote usage only when sending a message
+        emotesInMessage.distinctBy { it.id }.forEach { emote ->
+            recordEmoteUsage(emote)
         }
         
         if (authState.isLoggedIn && !authState.userName.isNullOrEmpty()) {

@@ -140,6 +140,24 @@ fun ChatEmoteSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Unit) {
 }
 
 @Composable
+fun ChatEmoteQualityItem(quality: SettingsManager.EmoteQuality, onClick: () -> Unit, onReset: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.emote_quality_title)) },
+        supportingContent = {
+            Text(
+                when (quality) {
+                    SettingsManager.EmoteQuality.LOW -> stringResource(R.string.emote_quality_low)
+                    SettingsManager.EmoteQuality.MEDIUM -> stringResource(R.string.emote_quality_medium)
+                    SettingsManager.EmoteQuality.HIGH -> stringResource(R.string.emote_quality_high)
+                }
+            )
+        },
+        leadingContent = { Icon(imageVector = Icons.Default.HighQuality, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onReset)
+    )
+}
+
+@Composable
 fun ChatBadgeSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.chat_settings_badge_size)) },

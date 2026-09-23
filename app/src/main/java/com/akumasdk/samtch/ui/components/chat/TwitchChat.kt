@@ -305,7 +305,7 @@ private fun ChatInputArea(
                 isEmoteMenuVisible = isEmoteMenuVisible,
                 suggestions = emoteSuggestions,
                 onEmoteSelected = { emote ->
-                    viewModel.recordEmoteUsage(emote)
+                    viewModel.insertEmote(emote)
                 },
                 onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                 onTextChange = { text, pos -> 
@@ -373,7 +373,6 @@ private fun ChatInputArea(
                                     tabs = emoteMenuTabs,
                                     onEmoteClick = { emote ->
                                         viewModel.insertEmote(emote)
-                                        viewModel.recordEmoteUsage(emote)
                                     },
                                     onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                                     onRefresh = {

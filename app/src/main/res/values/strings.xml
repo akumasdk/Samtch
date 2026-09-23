@@ -84,6 +84,13 @@
     <string name="fullscreen_chat_ratio_summary">Adjust the width of the chat panel in landscape mode</string>
     <string name="fullscreen_chat_ratio_auto">Auto (Fit Stream)</string>
 
+    <!-- Emote Resolution Settings -->
+    <string name="emote_quality_title">Emote Resolution Quality</string>
+    <string name="emote_quality_summary">Select emote image resolution (Lowest is fastest and uses less memory)</string>
+    <string name="emote_quality_low">Low (1x - Fast &amp; Light)</string>
+    <string name="emote_quality_medium">Medium (2x - Default)</string>
+    <string name="emote_quality_high">High (3x / 4x)</string>
+
     <!-- Theme Settings -->
     <string name="theme_mode_title">Theme Mode</string>
     <string name="theme_mode_summary">Choose the preferred theme for the app and Twitch player</string>

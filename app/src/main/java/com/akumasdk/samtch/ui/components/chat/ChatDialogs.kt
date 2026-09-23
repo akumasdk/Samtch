@@ -22,7 +22,6 @@ fun ChatDialogs(viewModel: ChatViewModel, isFullscreen: Boolean = false) {
             onDismiss = { viewModel.dismissEmoteInfo() },
             onUseEmote = { 
                 viewModel.insertEmote(it)
-                viewModel.recordEmoteUsage(it)
             }
         )
     }

@@ -40,6 +40,7 @@ fun SettingsScreen(
     var showChatModeDialog by remember { mutableStateOf(false) }
     var showChatFontSizeDialog by remember { mutableStateOf(false) }
     var showChatEmoteSizeDialog by remember { mutableStateOf(false) }
+    var showChatEmoteQualityDialog by remember { mutableStateOf(false) }
     var showChatBadgeSizeDialog by remember { mutableStateOf(false) }
     var showChatRatioDialog by remember { mutableStateOf(false) }
     var showThemeModeDialog by remember { mutableStateOf(false) }
@@ -56,6 +57,7 @@ fun SettingsScreen(
     val chatMode by settingsManager.getChatMode().collectAsState(initial = SettingsManager.ChatMode.NATIVE)
     val chatFontSize by settingsManager.getChatFontSize().collectAsState(initial = 14)
     val chatEmoteSize by settingsManager.getChatEmoteSize().collectAsState(initial = 28)
+    val emoteQuality by settingsManager.getEmoteQuality().collectAsState(initial = SettingsManager.EmoteQuality.MEDIUM)
     val chatBadgeSize by settingsManager.getChatBadgeSize().collectAsState(initial = 18)
     val chatRatio by settingsManager.getFullscreenChatRatio().collectAsState(initial = 0)
     val themeMode by settingsManager.getThemeMode().collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
@@ -138,12 +140,14 @@ fun SettingsScreen(
                 chatMode = chatMode,
                 chatFontSize = chatFontSize,
                 chatEmoteSize = chatEmoteSize,
+                emoteQuality = emoteQuality,
                 chatBadgeSize = chatBadgeSize,
                 chatRatio = chatRatio,
                 scope = scope,
                 onChatModeClick = { showChatModeDialog = true },
                 onFontSizeClick = { showChatFontSizeDialog = true },
                 onEmoteSizeClick = { showChatEmoteSizeDialog = true },
+                onEmoteQualityClick = { showChatEmoteQualityDialog = true },
                 onBadgeSizeClick = { showChatBadgeSizeDialog = true },
                 onChatRatioClick = { showChatRatioDialog = true },
                 onBttvClick = { isBttvSettingsOpen = true },
@@ -174,6 +178,7 @@ fun SettingsScreen(
         showChatModeDialog = showChatModeDialog,
         showChatFontSizeDialog = showChatFontSizeDialog,
         showChatEmoteSizeDialog = showChatEmoteSizeDialog,
+        showChatEmoteQualityDialog = showChatEmoteQualityDialog,
         showChatBadgeSizeDialog = showChatBadgeSizeDialog,
         showChatRatioDialog = showChatRatioDialog,
         showLogoutDialog = showLogoutDialog,
@@ -183,6 +188,7 @@ fun SettingsScreen(
         chatMode = chatMode,
         chatFontSize = chatFontSize,
         chatEmoteSize = chatEmoteSize,
+        emoteQuality = emoteQuality,
         chatBadgeSize = chatBadgeSize,
         chatRatio = chatRatio,
         onDismissTheme = { showThemeModeDialog = false },
@@ -190,6 +196,7 @@ fun SettingsScreen(
         onDismissChatMode = { showChatModeDialog = false },
         onDismissFontSize = { showChatFontSizeDialog = false },
         onDismissEmoteSize = { showChatEmoteSizeDialog = false },
+        onDismissEmoteQuality = { showChatEmoteQualityDialog = false },
         onDismissBadgeSize = { showChatBadgeSizeDialog = false },
         onDismissChatRatio = { showChatRatioDialog = false },
         onDismissLogout = { showLogoutDialog = false },
@@ -271,6 +278,7 @@ private fun LazyListScope.chatSection(
     chatMode: SettingsManager.ChatMode,
     chatFontSize: Int,
     chatEmoteSize: Int,
+    emoteQuality: SettingsManager.EmoteQuality,
     chatBadgeSize: Int,
     chatRatio: Int,
     scope: CoroutineScope,
@@ -278,6 +286,7 @@ private fun LazyListScope.chatSection(
     onChatModeClick: () -> Unit,
     onFontSizeClick: () -> Unit,
     onEmoteSizeClick: () -> Unit,
+    onEmoteQualityClick: () -> Unit,
     onBadgeSizeClick: () -> Unit,
     onChatRatioClick: () -> Unit,
     onBttvClick: () -> Unit
@@ -304,6 +313,13 @@ private fun LazyListScope.chatSection(
                 chatEmoteSize, 
                 onClick = onEmoteSizeClick,
                 onReset = { scope.launch { settingsManager.setChatEmoteSize(28) } }
+            ) 
+        }
+        item { 
+            ChatEmoteQualityItem(
+                emoteQuality, 
+                onClick = onEmoteQualityClick,
+                onReset = { scope.launch { settingsManager.setEmoteQuality(SettingsManager.EmoteQuality.MEDIUM) } }
             ) 
         }
         item { 

@@ -74,13 +74,14 @@ class ChatMessageMapper @Inject constructor(
             val occurrences = mutableListOf<EmoteOccurrence>()
 
             // 1. Parse Twitch emotes
+            val quality = runBlocking { settingsManager.getEmoteQuality().first() }
             val twitchEmotesTag = message.tags["emotes"]
             if (!twitchEmotesTag.isNullOrEmpty()) {
                 twitchEmotesTag.split("/").forEach { emoteData ->
                     val parts = emoteData.split(":")
                     if (parts.size == 2) {
                         val id = parts[0]
-                        val url = Constants.Twitch.Templates.EMOTE_CDN.format(id)
+                        val url = "https://static-cdn.jtvnw.net/emoticons/v2/$id/default/dark/${quality.twitchScale}"
                         parts[1].split(",").forEach { rangeStr ->
                             val rangeParts = rangeStr.split("-")
                             if (rangeParts.size == 2) {

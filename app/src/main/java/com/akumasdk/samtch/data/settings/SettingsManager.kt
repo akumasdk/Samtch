@@ -39,6 +39,7 @@ class SettingsManager @Inject constructor(
     private val IMMERSIVE_BACKGROUND_ENABLED = booleanPreferencesKey("immersive_background_enabled")
     private val FULLSCREEN_CHAT_RATIO = intPreferencesKey("fullscreen_chat_ratio_v2")
     private val THIRD_PARTY_EMOTES_ENABLED = booleanPreferencesKey("third_party_emotes_enabled")
+    private val EMOTE_QUALITY = intPreferencesKey("emote_quality_v1")
 
     // Auth
     private val AUTH_TOKEN = stringPreferencesKey("auth_token")
@@ -50,6 +51,16 @@ class SettingsManager @Inject constructor(
     enum class AdBlockMode { VAFT, VIDEO_SWAP }
     enum class ChatMode { NATIVE, LEGACY }
     enum class ThemeMode { DARK, LIGHT, SYSTEM }
+    enum class EmoteQuality(
+        val twitchScale: String,
+        val bttvScale: String,
+        val ffzScale: String,
+        val sevenTvFile: String
+    ) {
+        LOW("1.0", "1x", "1", "1x.webp"),
+        MEDIUM("2.0", "2x", "2", "2x.webp"),
+        HIGH("3.0", "3x", "4", "4x.webp")
+    }
 
     private val dataStore get() = context.dataStore
 
@@ -121,6 +132,13 @@ class SettingsManager @Inject constructor(
 
     fun getFullscreenChatRatio(): Flow<Int> = dataStore.data.map { it[FULLSCREEN_CHAT_RATIO] ?: 0 }
     suspend fun setFullscreenChatRatio(ratio: Int) = dataStore.edit { it[FULLSCREEN_CHAT_RATIO] = ratio }
+
+    fun getEmoteQuality(): Flow<EmoteQuality> = dataStore.data.map { 
+        EmoteQuality.entries[it[EMOTE_QUALITY] ?: EmoteQuality.MEDIUM.ordinal] 
+    }
+    suspend fun setEmoteQuality(quality: EmoteQuality) = dataStore.edit { 
+        it[EMOTE_QUALITY] = quality.ordinal 
+    }
 
     private fun getChannelThirdPartyEmotesKey(channel: String) = booleanPreferencesKey("third_party_emotes_${channel.lowercase()}")
 
