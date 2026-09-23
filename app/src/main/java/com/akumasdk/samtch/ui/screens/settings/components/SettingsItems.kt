@@ -75,17 +75,6 @@ fun PipToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> 
 }
 
 @Composable
-fun AudioBackgroundToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(stringResource(R.string.audio_only_background_title)) },
-        supportingContent = { Text(stringResource(R.string.audio_only_background_summary)) },
-        leadingContent = { Icon(painter = painterResource(id = R.drawable.ic_headset), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
-        modifier = Modifier.combinedClickable(onClick = { onToggle(!enabled) }, onLongClick = onReset)
-    )
-}
-
-@Composable
 fun AdBlockModeItem(mode: SettingsManager.AdBlockMode, onClick: () -> Unit, onReset: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.ad_block_mode_title)) },

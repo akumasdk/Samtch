@@ -3,7 +3,6 @@ package com.akumasdk.samtch
 import android.annotation.SuppressLint
 import android.app.PictureInPictureParams
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -43,18 +42,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.settings.SettingsManager
-import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.ui.MainViewModel
@@ -97,7 +90,6 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var badgeRepository: BadgeRepository
     @Inject lateinit var gqlService: TwitchGqlService
 
-    private var backgroundController: MediaController? = null
     private lateinit var orientationManager: DeviceOrientationManager
 
     private val pipReceiver = object : BroadcastReceiver() {
@@ -220,7 +212,6 @@ class MainActivity : ComponentActivity() {
                             val useImmersiveMode = isFullscreen && 
                                                    viewModel.selectedChannel != null && 
                                                    !viewModel.isMinimized && 
-                                                   !viewModel.isAudioOnlyMode && 
                                                    playerViewModel.portraitMode != PortraitMode.CHAT_ONLY
 
                             if (useImmersiveMode) {
@@ -238,11 +229,6 @@ class MainActivity : ComponentActivity() {
                         onLogout = {
                             viewModel.updateChannel(null)
                             playerViewModel.updateChannel(null)
-                            try {
-                                val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                                stopService(stopIntent)
-                            } catch (_: Exception) {}
-
                             emoteRepository.clearCache()
                             badgeRepository.clearCache()
 
@@ -272,7 +258,6 @@ class MainActivity : ComponentActivity() {
             context = this,
             isPipEnabled = isPipEnabled,
             currentChannel = viewModel.selectedChannel,
-            isAudioOnly = viewModel.isAudioOnlyMode,
             isInPipMode = viewModel.isInPipMode
         )
         try {
@@ -283,25 +268,10 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         lifecycleScope.launch {
-            val audioOnlyBackgroundEnabled = settingsManager.isAudioOnlyBackgroundEnabled().first()
-            val isAudioOnlyPlayerActive = viewModel.isAudioOnlyMode
-            
-            if (isAudioOnlyPlayerActive && audioOnlyBackgroundEnabled) {
-                backgroundController?.release()
-                backgroundController = null
-            } else {
-                backgroundController?.release()
-                backgroundController = null
-                try {
-                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                    stopService(stopIntent)
-                } catch (_: Exception) {}
-                
-                if (viewModel.selectedChannel != null && !viewModel.wasInPip) {
-                    viewModel.incrementRefreshTrigger()
-                }
-                viewModel.wasInPip = false
+            if (viewModel.selectedChannel != null && !viewModel.wasInPip) {
+                viewModel.incrementRefreshTrigger()
             }
+            viewModel.wasInPip = false
         }
     }
 
@@ -313,45 +283,10 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         orientationManager.disable()
-        lifecycleScope.launch {
-            val audioOnlyEnabled = settingsManager.isAudioOnlyBackgroundEnabled().first()
-            val isAudioOnlyPlayerActive = viewModel.isAudioOnlyMode
-            if (viewModel.selectedChannel != null && !viewModel.isInPipMode && audioOnlyEnabled) {
-                if (!isAudioOnlyPlayerActive) {
-                    val sessionToken = SessionToken(this@MainActivity, ComponentName(this@MainActivity, PlaybackService::class.java))
-                    val controllerFuture = MediaController.Builder(this@MainActivity, sessionToken).buildAsync()
-                    controllerFuture.addListener({
-                        val controller = controllerFuture.get()
-                        backgroundController = controller
-                        val metadata = MediaMetadata.Builder()
-                            .setTitle(viewModel.selectedChannel)
-                            .setArtist(viewModel.lastSubtitle)
-                            .setArtworkUri(viewModel.lastAvatarUrl?.toUri())
-                            .build()
-                        controller.setMediaItem(MediaItem.Builder().setMediaId(viewModel.selectedChannel!!).setMediaMetadata(metadata).build())
-                        controller.prepare()
-                        controller.play()
-                    }, MoreExecutors.directExecutor())
-                }
-            } else {
-                backgroundController?.release()
-                backgroundController = null
-                try {
-                    val stopIntent = Intent(this@MainActivity, PlaybackService::class.java).apply { action = "STOP" }
-                    stopService(stopIntent)
-                } catch (_: Exception) {}
-            }
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        backgroundController?.release()
-        backgroundController = null
-        try {
-            val stopIntent = Intent(this, PlaybackService::class.java).apply { action = "STOP" }
-            stopService(stopIntent)
-        } catch (_: Exception) {}
         try {
             unregisterReceiver(pipReceiver)
         } catch (_: Exception) {}

@@ -1,8 +1,5 @@
 package com.akumasdk.samtch.ui.screens.player.viewmodel
 
-import android.app.Application
-import android.content.ComponentName
-import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.getValue
@@ -11,28 +8,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
 import com.akumasdk.samtch.data.api.helix.HelixApiClient
 import com.akumasdk.samtch.data.api.helix.TwitchHelixMapper
 import com.akumasdk.samtch.data.model.TwitchStreamMetadata
-import com.akumasdk.samtch.service.PlaybackService
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
-import com.google.common.util.concurrent.MoreExecutors
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.lifecycle.viewModelScope
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -48,7 +34,6 @@ class PlayerViewModel @Inject constructor(
         private set
         
     var portraitMode by mutableStateOf(PortraitMode.VIDEO_AND_CHAT)
-    var isAudioOnly by mutableStateOf(false)
     
     var streamMetadata by mutableStateOf<TwitchStreamMetadata?>(null)
     var avatarUrl by mutableStateOf<String?>(null)
@@ -80,7 +65,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun isVideoRequired(isFullscreen: Boolean): Boolean {
-        return (!isAudioOnly) && (portraitMode != PortraitMode.CHAT_ONLY) && (isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
+        return portraitMode != PortraitMode.CHAT_ONLY && (isFullscreen || portraitMode == PortraitMode.VIDEO_AND_CHAT)
     }
 
     fun getChatRatio(
@@ -134,10 +119,6 @@ class PlayerViewModel @Inject constructor(
 
     var hasBackgroundReloaded by mutableStateOf(false)
     
-    var mediaController by mutableStateOf<MediaController?>(null)
-        private set
-    var isPlaying by mutableStateOf(false)
-        
     private var metadataJob: Job? = null
 
     fun updateChannel(newChannel: String?, forceRefresh: Boolean = false) {
@@ -154,7 +135,6 @@ class PlayerViewModel @Inject constructor(
             
             // Always reset UI mode to standard when changing channels to avoid "breaking logic"
             portraitMode = PortraitMode.VIDEO_AND_CHAT
-            isAudioOnly = false
             
             // Clear metadata for new channel
             streamMetadata = null
@@ -169,60 +149,6 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun connectMediaController(context: Context) {
-        if (mediaController != null) return
-        
-        val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-        val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
-        controllerFuture.addListener({
-            val controller = controllerFuture.get()
-            mediaController = controller
-            isPlaying = controller.isPlaying
-            controller.addListener(object : Player.Listener {
-                override fun onIsPlayingChanged(playing: Boolean) {
-                    isPlaying = playing
-                }
-            })
-            
-            // Sync current channel if already playing
-            channel?.let { updateMediaItem(it) }
-        }, MoreExecutors.directExecutor())
-    }
-
-    fun disconnectMediaController() {
-        mediaController?.release()
-        mediaController = null
-        isPlaying = false
-    }
-
-    fun togglePlayback() {
-        val controller = mediaController ?: return
-        if (controller.isPlaying) controller.pause() else controller.play()
-    }
-
-    fun updateMediaItem(channelName: String) {
-        val controller = mediaController ?: return
-        
-        viewModelScope.launch(Dispatchers.Default) {
-            val metadata = MediaMetadata.Builder()
-                .setTitle(streamMetadata?.user?.stream?.title ?: channelName)
-                .setArtist(streamMetadata?.user?.displayName ?: channelName)
-                .setAlbumTitle(streamMetadata?.user?.stream?.game?.name)
-                .setArtworkUri(avatarUrl?.toUri())
-                .build()
-                
-            val mediaItem = MediaItem.Builder()
-                .setMediaId(channelName)
-                .setMediaMetadata(metadata)
-                .build()
-
-            withContext(Dispatchers.Main) {
-                controller.setMediaItem(mediaItem)
-                controller.prepare()
-                controller.play()
-            }
-        }
-    }
 
     private fun startMetadataFetch(channel: String) {
         metadataJob?.cancel()

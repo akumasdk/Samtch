@@ -64,25 +64,6 @@
 
         let injectedCount = 0;
 
-        // 1. Audio Only Toggle Button (Headset) - Right Group
-        if (rightGroup && !document.getElementById('samtch-audio-btn')) {
-            const btn = document.createElement('button');
-            btn.id = 'samtch-audio-btn';
-            btn.className = 'samtch-control-btn';
-            btn.title = 'Audio Only Mode';
-            btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 640 640"><path d="M160 288C160 199.6 231.6 128 320 128C408.4 128 480 199.6 480 288L480 325.5C470 322 459.2 320 448 320L432 320C405.5 320 384 341.5 384 368L384 496C384 522.5 405.5 544 432 544L448 544C501 544 544 501 544 448L544 288C544 164.3 443.7 64 320 64C196.3 64 96 164.3 96 288L96 448C96 501 139 544 192 544L208 544C234.5 544 256 522.5 256 496L256 368C256 341.5 234.5 320 208 320L192 320C180.8 320 170 321.9 160 325.5L160 288z"></path></svg>';
-            btn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.TwitchPlayerBridge) {
-                    window.TwitchPlayerBridge.toggleAudioOnly();
-                } else {
-                    console.error('[Samtch] Bridge not found for audio toggle');
-                }
-            };
-            rightGroup.prepend(btn);
-            injectedCount++;
-        }
 
         // 2. Fullscreen Toggle Button - Right Group
         if (rightGroup && !document.getElementById('samtch-fullscreen-btn')) {

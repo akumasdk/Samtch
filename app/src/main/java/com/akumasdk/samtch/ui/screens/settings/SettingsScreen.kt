@@ -63,7 +63,6 @@ fun SettingsScreen(
     val themeMode by settingsManager.getThemeMode().collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
     val adBlockMode by settingsManager.getAdBlockMode().collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
     val isPipEnabled by settingsManager.isPipEnabled().collectAsState(initial = true)
-    val isAudioBackgroundEnabled by settingsManager.isAudioOnlyBackgroundEnabled().collectAsState(initial = false)
     val isImmersiveBackgroundEnabled by settingsManager.isImmersiveBackgroundEnabled().collectAsState(initial = true)
     val isLoggedIn by settingsManager.isLoggedIn().collectAsState(initial = false)
 
@@ -129,7 +128,6 @@ fun SettingsScreen(
 
             playerSection(
                 isPipEnabled = isPipEnabled,
-                isAudioEnabled = isAudioBackgroundEnabled,
                 adBlockMode = adBlockMode,
                 scope = scope,
                 onAdBlockClick = { showAdBlockDialog = true },
@@ -243,7 +241,6 @@ private fun LazyListScope.appearanceSection(
 
 private fun LazyListScope.playerSection(
     isPipEnabled: Boolean,
-    isAudioEnabled: Boolean,
     adBlockMode: SettingsManager.AdBlockMode,
     scope: CoroutineScope,
     settingsManager: SettingsManager,
@@ -255,13 +252,6 @@ private fun LazyListScope.playerSection(
             isPipEnabled, 
             onToggle = { scope.launch { settingsManager.setPipEnabled(it) } },
             onReset = { scope.launch { settingsManager.setPipEnabled(true) } }
-        ) 
-    }
-    item { 
-        AudioBackgroundToggleItem(
-            isAudioEnabled, 
-            onToggle = { scope.launch { settingsManager.setAudioOnlyBackgroundEnabled(it) } },
-            onReset = { scope.launch { settingsManager.setAudioOnlyBackgroundEnabled(false) } }
         ) 
     }
     item { 

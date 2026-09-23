@@ -24,7 +24,6 @@ class SettingsManager @Inject constructor(
     private val json: Json
 ) {
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
-    private val AUDIO_ONLY_BACKGROUND_ENABLED = booleanPreferencesKey("audio_background_v2")
     private val AD_BLOCK_MODE = booleanPreferencesKey("ad_block_mode_is_vaft")
     private val CHAT_MODE = booleanPreferencesKey("chat_mode_is_native")
     private val MINI_PLAYER_HINT_SHOWN = booleanPreferencesKey("mini_player_hint_shown")
@@ -67,8 +66,6 @@ class SettingsManager @Inject constructor(
     fun isPipEnabled(): Flow<Boolean> = dataStore.data.map { it[PIP_ENABLED] ?: true }
     suspend fun setPipEnabled(enabled: Boolean) = dataStore.edit { it[PIP_ENABLED] = enabled }
 
-    fun isAudioOnlyBackgroundEnabled(): Flow<Boolean> = dataStore.data.map { it[AUDIO_ONLY_BACKGROUND_ENABLED] ?: false }
-    suspend fun setAudioOnlyBackgroundEnabled(enabled: Boolean) = dataStore.edit { it[AUDIO_ONLY_BACKGROUND_ENABLED] = enabled }
 
     fun getAdBlockMode(): Flow<AdBlockMode> = dataStore.data.map { if (it[AD_BLOCK_MODE] ?: true) AdBlockMode.VAFT else AdBlockMode.VIDEO_SWAP }
     suspend fun setAdBlockMode(mode: AdBlockMode) = dataStore.edit { it[AD_BLOCK_MODE] = mode == AdBlockMode.VAFT }

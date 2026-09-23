@@ -353,7 +353,6 @@ class TwitchGqlService @Inject constructor(
                 "?sig=$signature" +
                 "&token=$encodedToken" +
                 "&allow_source=true" +
-                "&allow_audio_only=true" +
                 "&fast_bread=false" +
                 "&p=$random"
     }

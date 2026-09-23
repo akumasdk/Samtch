@@ -17,7 +17,6 @@ fun PlayerWebView(
     isMinimized: Boolean,
     onToggleFullscreen: () -> Unit,
     onToggleChat: () -> Unit,
-    onToggleAudioOnly: () -> Unit,
     onPlaybackStarted: () -> Unit,
     onLoadingStatus: (String) -> Unit,
     onAdblocked: (String) -> Unit,
@@ -45,7 +44,6 @@ fun PlayerWebView(
         channel = channel,
         onToggleFullscreen = onToggleFullscreen,
         onToggleChat = onToggleChat,
-        onToggleAudioOnly = onToggleAudioOnly,
         onPlaybackStarted = onPlaybackStarted,
         onLoadingStatus = onLoadingStatus,
         onAdblocked = onAdblocked

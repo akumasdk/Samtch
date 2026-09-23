@@ -21,7 +21,6 @@ data class PlayerLayoutDimensions(
 @Composable
 fun rememberPlayerLayoutDimensions(
     isMinimized: Boolean,
-    isAudioOnly: Boolean,
     isFullscreen: Boolean,
     portraitMode: PortraitMode,
     isPip: Boolean,
@@ -44,7 +43,6 @@ fun rememberPlayerLayoutDimensions(
     val height = animateDpAsState(
         targetValue = when {
             isMinimized -> 64.dp
-            isAudioOnly -> 240.dp
             isFullscreen -> if (isFoldableInnerScreen && isChatVisible) {
                 if (isKeyboardOrMenuVisible) {
                     (screenWidth * 9f / 16f).coerceAtMost(screenHeight * 0.3f)

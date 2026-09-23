@@ -5,7 +5,6 @@ import android.webkit.JavascriptInterface
 class TwitchPlayerBridge(
     private val onToggleFullscreen: () -> Unit,
     private val onToggleChat: () -> Unit = {},
-    private val onToggleAudioOnly: () -> Unit = {},
     private val onPlaybackStartedCallback: () -> Unit = {},
     private val onLoadingStatusCallback: (String) -> Unit = {},
     private val onAdblockedCallback: (String) -> Unit = {},
@@ -19,11 +18,6 @@ class TwitchPlayerBridge(
     @JavascriptInterface
     fun toggleChat() {
         onToggleChat()
-    }
-
-    @JavascriptInterface
-    fun toggleAudioOnly() {
-        onToggleAudioOnly()
     }
 
     @JavascriptInterface

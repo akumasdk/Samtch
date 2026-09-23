@@ -1,65 +1,11 @@
 package com.akumasdk.samtch.ui.screens.player.components
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.core.net.toUri
+import androidx.compose.runtime.*
 import androidx.lifecycle.Lifecycle
-import com.akumasdk.samtch.ui.screens.player.viewmodel.PlayerViewModel
+import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.screens.player.models.PortraitMode
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
-
-@Composable
-fun AudioServiceEffects(
-    channel: String,
-    shouldUseAudioService: Boolean,
-    isAudioOnlyBackgroundEnabled: Boolean,
-    playerViewModel: PlayerViewModel,
-    context: android.content.Context
-) {
-    val isPlaying = playerViewModel.isPlaying
-    
-    LaunchedEffect(shouldUseAudioService) {
-        if (!shouldUseAudioService) {
-            playerViewModel.disconnectMediaController()
-            if (!isAudioOnlyBackgroundEnabled) {
-                context.stopService(android.content.Intent(context, com.akumasdk.samtch.service.PlaybackService::class.java))
-            }
-            return@LaunchedEffect
-        }
-        playerViewModel.connectMediaController(context)
-    }
-
-    LaunchedEffect(playerViewModel.mediaController, shouldUseAudioService) {
-        if (shouldUseAudioService && playerViewModel.mediaController != null && !isPlaying) {
-            playerViewModel.updateMediaItem(channel)
-        }
-    }
-
-    LaunchedEffect(playerViewModel.streamMetadata, playerViewModel.mediaController) {
-        val controller = playerViewModel.mediaController ?: return@LaunchedEffect
-        val stream = playerViewModel.streamMetadata?.user?.stream ?: return@LaunchedEffect
-        
-        val metadata = androidx.media3.common.MediaMetadata.Builder()
-            .setTitle(stream.title)
-            .setArtist(playerViewModel.streamMetadata?.user?.displayName ?: channel)
-            .setAlbumTitle(stream.game?.name)
-            .setArtworkUri(stream.previewImageUrl?.toUri())
-            .build()
-            
-        controller.replaceMediaItem(
-            0,
-            androidx.media3.common.MediaItem.Builder()
-                .setMediaId(channel)
-                .setMediaMetadata(metadata)
-                .build()
-        )
-    }
-}
 
 @Composable
 fun PlayerLifecycleEffects(
@@ -68,7 +14,7 @@ fun PlayerLifecycleEffects(
     refreshTrigger: Int,
     lifecycleState: Lifecycle.State,
     portraitMode: PortraitMode,
-    chatViewModel: com.akumasdk.samtch.ui.components.chat.ChatViewModel,
+    chatViewModel: ChatViewModel,
     chatLoadingText: String,
     chatWelcomeTemplate: String,
     chatLoginTemplate: String,
@@ -77,25 +23,14 @@ fun PlayerLifecycleEffects(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var lastRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
-
-    // Manage chat connection lifecycle
     LaunchedEffect(channel, isPip, lifecycleState, portraitMode, refreshTrigger) {
-        // In PiP mode, lifecycle drops to PAUSED. But if the app is visible (STARTED) or in PiP, 
-        // we should keep connections active depending on the portrait mode.
-        val isVisible = lifecycleState.isAtLeast(Lifecycle.State.STARTED) || isPip
-        val shouldBeConnected = isVisible && (!isPip || portraitMode == PortraitMode.CHAT_ONLY)
-        
-        val isManualRefresh = refreshTrigger > lastRefreshTrigger
+        val visible = lifecycleState.isAtLeast(Lifecycle.State.STARTED) || isPip
+        val connected = visible && (!isPip || portraitMode == PortraitMode.CHAT_ONLY)
+        val manualRefresh = refreshTrigger > lastRefreshTrigger
         lastRefreshTrigger = refreshTrigger
-
-        if (shouldBeConnected) {
-            chatViewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = isManualRefresh)
-        } else {
-            chatViewModel.disconnect()
-        }
+        if (connected) chatViewModel.connect(context, channel, chatLoadingText, chatWelcomeTemplate, chatLoginTemplate, forceRefresh = manualRefresh)
+        else chatViewModel.disconnect()
     }
-
-    // Safety timeout for loading screen
     LaunchedEffect(isUiLoading, channel) {
         if (isUiLoading) {
             delay(12.seconds)
