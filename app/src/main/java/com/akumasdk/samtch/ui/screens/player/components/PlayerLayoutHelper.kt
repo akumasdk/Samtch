@@ -46,7 +46,11 @@ fun rememberPlayerLayoutDimensions(
             isMinimized -> 64.dp
             isAudioOnly -> 240.dp
             isFullscreen -> if (isFoldableInnerScreen && isChatVisible) {
-                (screenWidth * 9f / 16f).coerceAtMost(screenHeight * 0.55f)
+                if (isKeyboardOrMenuVisible) {
+                    (screenWidth * 9f / 16f).coerceAtMost(screenHeight * 0.3f)
+                } else {
+                    (screenWidth * 9f / 16f).coerceAtMost(screenHeight * 0.65f)
+                }
             } else {
                 screenHeight
             }

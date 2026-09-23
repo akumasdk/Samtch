@@ -10,12 +10,14 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
@@ -88,30 +90,44 @@ fun FullscreenPlayer(
         )
     }
 
-    if (isFoldableInnerScreen) {
-        // Foldable inner screen / square layout: Video on TOP, Chat on BOTTOM
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Top Video Player
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(if (isChatVisible) 0.55f else 1f)
-                    .onSizeChanged { size -> playerSize = size }
-            ) {
-                webView(Modifier.fillMaxSize(), onToggleChat)
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val screenWidth = maxWidth
+        val screenHeight = maxHeight
+
+        if (isFoldableInnerScreen) {
+            val videoHeight = if (isChatVisible) {
+                if (forceSlimMetadata) {
+                    (screenWidth * 9f / 16f).coerceAtMost(screenHeight * 0.3f)
+                } else {
+                    (screenWidth * 9f / 16f).coerceAtMost(screenHeight * 0.65f)
+                }
+            } else {
+                screenHeight
             }
 
-            // Bottom Chat
-            AnimatedVisibility(
-                visible = isChatVisible,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.45f),
-                enter = slideInVertically(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
-                        fadeIn(animationSpec = tween(400, easing = SamtchAnimation.EmphasizedEasing)),
-                exit = slideOutVertically(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
-                       fadeOut(animationSpec = tween(300))
-            ) {
+            // Foldable inner screen / square layout: Video on TOP, Chat on BOTTOM
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Top Video Player
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(videoHeight)
+                        .onSizeChanged { size -> playerSize = size }
+                ) {
+                    webView(Modifier.fillMaxSize(), onToggleChat)
+                }
+
+                // Bottom Chat
+                AnimatedVisibility(
+                    visible = isChatVisible,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(screenHeight - videoHeight),
+                    enter = slideInVertically(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                            fadeIn(animationSpec = tween(400, easing = SamtchAnimation.EmphasizedEasing)),
+                    exit = slideOutVertically(animationSpec = SamtchAnimation.layoutSpring()) { it } + 
+                           fadeOut(animationSpec = tween(300))
+                ) {
                 val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
                 val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.65f else 1.0f
 
@@ -261,4 +277,5 @@ fun FullscreenPlayer(
             }
         }
     }
+}
 }

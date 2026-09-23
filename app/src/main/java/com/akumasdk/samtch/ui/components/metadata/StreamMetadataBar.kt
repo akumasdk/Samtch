@@ -55,10 +55,22 @@ fun StreamMetadataBar(
             label = "MetadataBarHeight"
         )
 
+        val animatedTopPadding by animateDpAsState(
+            targetValue = if (isSlim) 0.dp else 8.dp,
+            animationSpec = SamtchAnimation.DpSpring,
+            label = "MetadataTopPadding"
+        )
+
         val animatedHorizontalPadding by animateDpAsState(
             targetValue = if (isSlim) 0.dp else 12.dp,
             animationSpec = SamtchAnimation.DpSpring,
             label = "MetadataHorizontalPadding"
+        )
+
+        val animatedTopRadius by animateDpAsState(
+            targetValue = if (isSlim) 0.dp else 16.dp,
+            animationSpec = SamtchAnimation.DpSpring,
+            label = "MetadataTopRadius"
         )
 
         // Manual expansion / Title change / Force expansion
@@ -87,15 +99,15 @@ fun StreamMetadataBar(
             modifier = Modifier
                 .padding(
                     start = animatedHorizontalPadding.coerceAtLeast(0.dp),
-                    top = 0.dp,
+                    top = animatedTopPadding.coerceAtLeast(0.dp),
                     end = animatedHorizontalPadding.coerceAtLeast(0.dp),
                     bottom = 8.dp
                 )
                 .fillMaxWidth()
                 .height(animatedHeight),
             shape = RoundedCornerShape(
-                topStart = 0.dp,
-                topEnd = 0.dp,
+                topStart = animatedTopRadius.coerceAtLeast(0.dp),
+                topEnd = animatedTopRadius.coerceAtLeast(0.dp),
                 bottomStart = 16.dp,
                 bottomEnd = 16.dp
             ),
