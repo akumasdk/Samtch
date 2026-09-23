@@ -16,6 +16,10 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +62,18 @@ fun StreamInfoDialog(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    var isAvatarExpanded by remember { mutableStateOf(false) }
+    val finalAvatarUrl = avatarUrl ?: user?.profileImageUrl
+
+    if (isAvatarExpanded && !finalAvatarUrl.isNullOrEmpty()) {
+        ExpandedAvatarDialog(
+            avatarUrl = finalAvatarUrl,
+            displayName = displayName ?: user?.displayName ?: channel,
+            channel = channel,
+            previewImageUrl = previewImageUrl,
+            onDismiss = { isAvatarExpanded = false }
+        )
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -112,10 +128,14 @@ fun StreamInfoDialog(
                         Surface(
                             shape = CircleShape,
                             border = BorderStroke(2.dp, SamtchTheme.colors.twitchPurple),
-                            modifier = Modifier.size(56.dp),
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .clickable(enabled = !finalAvatarUrl.isNullOrEmpty()) {
+                                    isAvatarExpanded = true
+                                },
                             color = Color.Transparent
                         ) {
-                            val finalAvatarUrl = avatarUrl ?: user?.profileImageUrl
                             if (!finalAvatarUrl.isNullOrEmpty()) {
                                 AsyncImage(
                                     model = finalAvatarUrl,
