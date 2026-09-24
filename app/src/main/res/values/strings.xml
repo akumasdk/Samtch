@@ -53,12 +53,6 @@
     <string name="update_download_title">Samtch Update</string>
     <string name="update_download_description">Downloading latest version…</string>
 
-    <!-- Audio Only Mode -->
-    <string name="audio_only_mode_toggle">Audio Only</string>
-    <string name="audio_only_notification_text">Listening to %s</string>
-    <string name="audio_only_background_title">Audio Background Play</string>
-    <string name="audio_only_hint">You can close or minimize the app to keep listening</string>
-
     <!-- PiP Settings -->
     <string name="pip_enabled_title">Picture-in-Picture</string>
     <string name="pip_enabled_summary">Automatically enter PiP mode when app is minimized</string>
@@ -119,7 +113,6 @@
     <string name="content_desc_toggle_mode">Toggle Mode</string>
     <string name="content_desc_send">Send</string>
     <string name="status_chat_only">CHAT ONLY MODE</string>
-    <string name="status_audio_only">AUDIO ONLY MODE</string>
     <string name="emote_menu_recent">Recent</string>
     <string name="emote_menu_twitch">Twitch</string>
     <string name="emote_menu_channel">Channel</string>
