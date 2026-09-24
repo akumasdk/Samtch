@@ -58,7 +58,7 @@ fun Modifier.skeletonLoading(
             initialValue = -1f,
             targetValue = 2f,
             animationSpec = infiniteRepeatable(
-                animation = tween(1300, easing = LinearEasing),
+                animation = tween(2400, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart
             ),
             label = "SkeletonShimmerProgress"
@@ -88,26 +88,14 @@ fun Modifier.skeletonLoading(
 
 @Composable
 fun PlayerSurfaceSkeleton(modifier: Modifier = Modifier) {
-    val playerBase = Color.White.copy(alpha = 0.20f)
-    val playerHighlight = Color.White.copy(alpha = 0.38f)
-    val iconTint = Color.White.copy(alpha = 0.55f)
+    val playerBase = Color.White.copy(alpha = 0.10f)
+    val playerHighlight = Color.White.copy(alpha = 0.22f)
+    val iconTint = Color.White.copy(alpha = 0.35f)
 
     Box(
         modifier = modifier
             .clearAndSetSemantics { contentDescription = "Loading video player" }
     ) {
-        // Base surface skeleton
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .skeletonLoading(
-                    shape = RoundedCornerShape(0.dp),
-                    description = "Loading video",
-                    baseColor = Color.White.copy(alpha = 0.04f),
-                    highlightColor = Color.White.copy(alpha = 0.12f)
-                )
-        )
-
         // Top Controls Scrim & Skeleton
         Box(
             modifier = Modifier
@@ -115,7 +103,7 @@ fun PlayerSurfaceSkeleton(modifier: Modifier = Modifier) {
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent)
+                        colors = listOf(Color.Black.copy(alpha = 0.25f), Color.Transparent)
                     )
                 )
         ) {
@@ -188,7 +176,7 @@ fun PlayerSurfaceSkeleton(modifier: Modifier = Modifier) {
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f))
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f))
                     )
                 )
         ) {
