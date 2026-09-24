@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,6 +42,7 @@ import com.akumasdk.samtch.ui.theme.SamtchTheme
 @Composable
 fun EmoteInfoDialog(
     emote: Emote,
+    isLoggedIn: Boolean = true,
     isFullscreen: Boolean = false,
     onDismiss: () -> Unit,
     onUseEmote: (Emote) -> Unit
@@ -124,10 +125,13 @@ fun EmoteInfoDialog(
                         onUseEmote(emote)
                         onDismiss()
                     },
+                    enabled = isLoggedIn,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = SamtchTheme.colors.twitchPurple,
-                        contentColor = SamtchTheme.colors.primaryText
+                        contentColor = SamtchTheme.colors.primaryText,
+                        disabledContainerColor = SamtchTheme.colors.twitchPurple.copy(alpha = 0.4f),
+                        disabledContentColor = SamtchTheme.colors.primaryText.copy(alpha = 0.4f)
                     ),
                     contentPadding = PaddingValues(if (isFullscreen) 8.dp else 12.dp)
                 ) {

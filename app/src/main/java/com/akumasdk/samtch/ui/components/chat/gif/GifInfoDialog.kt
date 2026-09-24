@@ -1,8 +1,11 @@
 package com.akumasdk.samtch.ui.components.chat.gif
 
+import android.content.Intent
+import androidx.core.net.toUri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,8 +23,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.akumasdk.samtch.ui.components.loading.skeletonLoading
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.components.chat.emote.InfoRow
 import com.akumasdk.samtch.ui.theme.SamtchTheme
@@ -31,9 +36,12 @@ import androidx.compose.runtime.DisposableEffect
 @Composable
 fun GifInfoDialog(
     url: String,
+    gifId: String? = null,
+    gifDescription: String? = null,
     isFullscreen: Boolean = false,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -71,16 +79,34 @@ fun GifInfoDialog(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(if (isFullscreen) 12.dp else 16.dp)
         ) {
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(url)
+                    .memoryCacheKey(url)
+                    .placeholderMemoryCacheKey(url)
                     .crossfade(true)
                     .build(),
                 contentDescription = stringResource(R.string.gif_info_title),
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = if (isFullscreen) 220.dp else 320.dp),
-                contentScale = ContentScale.Fit
+                contentScale = ContentScale.Fit,
+                loading = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (isFullscreen) 180.dp else 240.dp)
+                            .skeletonLoading(RoundedCornerShape(12.dp), stringResource(R.string.gif_info_title)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "GIF",
+                            color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
             )
 
             Text(
@@ -94,11 +120,34 @@ fun GifInfoDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                InfoRow(label = stringResource(R.string.gif_info_source), value = "Twitch")
+                InfoRow(
+                    label = stringResource(R.string.description_label),
+                    value = when {
+                        !gifDescription.isNullOrEmpty() -> gifDescription
+                        !gifId.isNullOrEmpty() -> "Twitch Animated GIF ($gifId)"
+                        else -> "Twitch Animated GIF"
+                    }
+                )
+            }
+
+            // Open in External Browser Button
+            Button(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SamtchTheme.colors.accentColor.copy(alpha = 0.1f),
+                    contentColor = SamtchTheme.colors.accentColor
+                ),
+                border = BorderStroke(1.dp, SamtchTheme.colors.accentColor.copy(alpha = 0.2f))
+            ) {
+                Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = url,
-                    color = SamtchTheme.colors.secondaryText,
-                    fontSize = 12.sp
+                    text = stringResource(R.string.open_external_button),
+                    fontWeight = FontWeight.Bold
                 )
             }
 

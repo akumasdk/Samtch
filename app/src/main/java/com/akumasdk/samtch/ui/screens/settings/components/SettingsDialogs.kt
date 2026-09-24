@@ -31,6 +31,7 @@ fun SettingsDialogs(
     showChatEmoteQualityDialog: Boolean,
     showChatBadgeSizeDialog: Boolean,
     showChatRatioDialog: Boolean,
+    showChatGifMaxSizeDialog: Boolean,
     showLogoutDialog: Boolean,
     showAboutDialog: Boolean,
     themeMode: SettingsManager.ThemeMode,
@@ -41,6 +42,7 @@ fun SettingsDialogs(
     emoteQuality: SettingsManager.EmoteQuality,
     chatBadgeSize: Int,
     chatRatio: Int,
+    chatGifMaxSize: Int,
     onDismissTheme: () -> Unit,
     onDismissAdBlock: () -> Unit,
     onDismissChatMode: () -> Unit,
@@ -49,6 +51,7 @@ fun SettingsDialogs(
     onDismissEmoteQuality: () -> Unit,
     onDismissBadgeSize: () -> Unit,
     onDismissChatRatio: () -> Unit,
+    onDismissGifMaxSize: () -> Unit,
     onDismissLogout: () -> Unit,
     onDismissAbout: () -> Unit,
     onLogout: () -> Unit,
@@ -171,6 +174,19 @@ fun SettingsDialogs(
             selectedIndex = ratioOptions.indexOf(chatRatio),
             onReset = { scope.launch { settingsManager.setFullscreenChatRatio(0) } },
             onDismiss = onDismissChatRatio
+        )
+    }
+
+    if (showChatGifMaxSizeDialog) {
+        val gifSizeOptions = listOf(120, 150, 180, 220, 260, 300)
+        SelectionDialog(
+            title = stringResource(R.string.chat_gif_max_size_title),
+            options = gifSizeOptions.map { size ->
+                "${size}dp" to { scope.launch { settingsManager.setChatGifMaxSize(size) } }
+            },
+            selectedIndex = gifSizeOptions.indexOf(chatGifMaxSize),
+            onReset = { scope.launch { settingsManager.setChatGifMaxSize(180) } },
+            onDismiss = onDismissGifMaxSize
         )
     }
 

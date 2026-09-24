@@ -73,11 +73,15 @@ class ChatMessageMapper @Inject constructor(
             // Twitch sends GIF metadata as pipe-delimited fields:
             // "<start>-<end>|<gif-id>|<url>".
             val gifsTag = message.tags["gifs"]
-            val gifUrl = gifsTag
-                ?.split("|")
+            val gifParts = gifsTag?.split("|")
+            val gifUrl = gifParts
                 ?.map { it.removePrefix("url=") }
                 ?.firstOrNull { it.startsWith("https://") || it.startsWith("http://") }
                 ?.takeIf { it.isNotBlank() }
+            val gifId = gifParts?.getOrNull(1)?.takeIf { !it.contains("=") && !it.startsWith("http") }
+            val gifDescription = cleanText.ifBlank {
+                if (!gifId.isNullOrEmpty()) "Twitch Animated GIF ($gifId)" else "Twitch Animated GIF"
+            }
             val displayText = if (gifUrl != null) "" else cleanText
 
             val occurrences = mutableListOf<EmoteOccurrence>()
@@ -183,6 +187,8 @@ class ChatMessageMapper @Inject constructor(
                 badgeUrls = badgeUrls,
                 badges = badgesInfo,
                 gifUrl = gifUrl,
+                gifId = gifId,
+                gifDescription = gifDescription,
                 isAction = isAction
             )
         }

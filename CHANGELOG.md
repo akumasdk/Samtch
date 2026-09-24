@@ -1,5 +1,26 @@
 # Changelog
 
+## Samtch v1.2.0
+
+### What's New
+- **Twitch Chat GIF Customization & Enhancements**:
+  - **GIF Skeleton Loading**: Added shimmering skeleton loading states with a centered "GIF" indicator for chat GIFs and the GIF detail dialog.
+  - **Chat GIF Preferences**: Added settings to toggle Twitch chat GIFs on/off and configure maximum GIF display size (from 120dp to 300dp).
+  - **Disabled GIF Fallback Text**: When chat GIFs are disabled, messages containing a GIF display the fallback message text instead of an empty space.
+  - **External Browser Integration**: Added an "Open in Browser" action button to the GIF info dialog.
+  - **Zero Rebuffer GIF Dialog**: Shared Coil memory cache keys between chat rows and the GIF info dialog to instantly display cached GIFs without re-downloading or re-buffering.
+  - **Rich GIF Descriptions**: Extracted GIF descriptions directly from chat message tags.
+- **Player Loading Skeleton & Visuals**:
+  - **Player Controls Skeleton**: Redesigned `PlayerSurfaceSkeleton` to match actual player controls layout (top bar, central play control, seekbar, and bottom action icons).
+  - **Ambient Fallback Gradient**: Added a dark ambient gradient background with Twitch purple glow while stream preview images load.
+- **UI & Guest User Experience**:
+  - **Guest User Settings Access**: Added a settings cogwheel button for guest users directly next to the login button in the chat control panel.
+  - **Guest User Emote Guard**: Disabled the "Use Emote" button in the Emote Info Dialog when browsing as a guest.
+  - **Emote Source Info**: Restored source metadata exclusively in the Emote Info Dialog.
+  - **Concise Chat Login Prompts**: Shortened chat login prompts across English and Spanish translations.
+
+---
+
 ## Samtch v1.1.9
 
 ### What's New

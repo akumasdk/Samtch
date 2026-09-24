@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -23,10 +24,14 @@ import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.ui.theme.SamtchTheme
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.akumasdk.samtch.ui.components.loading.skeletonLoading
 
 @Composable
 fun ChatMessageRow(
@@ -36,11 +41,13 @@ fun ChatMessageRow(
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
     onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
-    onGifClick: ((String) -> Unit)? = null,
+    onGifClick: ((String, String?, String?) -> Unit)? = null,
     onUserClick: ((String) -> Unit)? = null,
     fontSize: Int = 14,
     emoteSize: Int = 28,
-    badgeSize: Int = 18
+    badgeSize: Int = 18,
+    gifEnabled: Boolean = true,
+    gifMaxSize: Int = 180
 ) {
     val displayFontSize = if (isCompact) (fontSize - 2).sp else fontSize.sp
     
@@ -68,7 +75,7 @@ fun ChatMessageRow(
                 badgesAsEmotes + message.emotes
             }
 
-            val fullAnnotatedString = remember(message, userColor) {
+            val fullAnnotatedString = remember(message, userColor, gifEnabled) {
                 buildAnnotatedString {
                     // Inline Badges
                     message.badges.forEachIndexed { index, _ ->
@@ -89,7 +96,11 @@ fun ChatMessageRow(
                         append(" ")
                     }
 
-                    append(message.annotatedString)
+                    if (!gifEnabled && message.gifUrl != null && message.annotatedString.isEmpty()) {
+                        append(message.gifDescription ?: "Twitch Animated GIF")
+                    } else {
+                        append(message.annotatedString)
+                    }
                 }
             }
 
@@ -126,20 +137,40 @@ fun ChatMessageRow(
                     )
                 )
 
-                message.gifUrl?.let { url ->
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(url)
-                            .build(),
-                        contentDescription = "GIF",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .padding(start = 8.dp, bottom = 2.dp)
-                            .sizeIn(maxWidth = 240.dp, maxHeight = 180.dp)
-                            .pointerInput(url, onGifClick) {
-                                detectTapGestures(onTap = { onGifClick?.invoke(url) })
+                if (gifEnabled) {
+                    message.gifUrl?.let { url ->
+                        SubcomposeAsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(url)
+                                .memoryCacheKey(url)
+                                .placeholderMemoryCacheKey(url)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "GIF",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .padding(start = 8.dp, bottom = 2.dp)
+                                .sizeIn(maxWidth = gifMaxSize.dp, maxHeight = gifMaxSize.dp)
+                                .pointerInput(url, onGifClick) {
+                                    detectTapGestures(onTap = { onGifClick?.invoke(url, message.gifId, message.gifDescription) })
+                                },
+                            loading = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = (gifMaxSize * 0.8f).dp, height = (gifMaxSize * 0.6f).dp)
+                                        .skeletonLoading(RoundedCornerShape(8.dp), "Loading GIF"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "GIF",
+                                        color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
                             }
-                    )
+                        )
+                    }
                 }
             }
         }

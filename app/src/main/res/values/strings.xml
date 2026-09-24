@@ -73,6 +73,9 @@
     <string name="chat_settings_font_size">Font Size</string>
     <string name="chat_settings_emote_size">Emote Size</string>
     <string name="chat_settings_badge_size">Badge Size</string>
+    <string name="chat_gifs_enabled_title">Twitch Chat GIFs</string>
+    <string name="chat_gifs_enabled_summary">Display animated GIFs sent in chat</string>
+    <string name="chat_gif_max_size_title">GIF Max Size</string>
     <string name="fullscreen_chat_ratio_title">Chat Space Ratio (Fullscreen)</string>
     <string name="fullscreen_chat_ratio_summary">Adjust the width of the chat panel in landscape mode</string>
     <string name="fullscreen_chat_ratio_auto">Auto (Fit Stream)</string>
@@ -104,8 +107,8 @@
     <string name="chat_jump_to_bottom">Jump to bottom</string>
     <string name="chat_connecting">Connecting to chat…</string>
     <string name="chat_welcome">Welcome to %s\'s chat!</string>
-    <string name="chat_login_required">Log in to chat</string>
-    <string name="chat_login_prompt">You must be logged in to participate in chat.</string>
+    <string name="chat_login_required">Log in</string>
+    <string name="chat_login_prompt">Log in to chat</string>
     <string name="chat_logged_in_as">Logged in as %s</string>
     <string name="chat_input_placeholder">Send a message…</string>
     <string name="content_desc_emotes">Emotes</string>

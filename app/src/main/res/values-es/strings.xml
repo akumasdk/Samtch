@@ -104,8 +104,8 @@
     <string name="chat_jump_to_bottom">Ir al final</string>
     <string name="chat_connecting">Conectando al chat…</string>
     <string name="chat_welcome">¡Bienvenido al chat de %s!</string>
-    <string name="chat_login_required">Inicia sesión para chatear</string>
-    <string name="chat_login_prompt">Debes iniciar sesión para participar en el chat.</string>
+    <string name="chat_login_required">Iniciar sesión</string>
+    <string name="chat_login_prompt">Inicia sesión para chatear</string>
     <string name="chat_logged_in_as">Sesión iniciada como %s</string>
     <string name="chat_input_placeholder">Enviar un mensaje…</string>
     <string name="content_desc_emotes">Emoticonos</string>
@@ -143,4 +143,7 @@
     <string name="emote_info_zero_width">Superposición de ancho cero</string>
     <string name="emote_info_use">Usar</string>
     <string name="emote_info_copy">Copiar</string>
+    <string name="chat_gifs_enabled_title">GIFs en el chat de Twitch</string>
+    <string name="chat_gifs_enabled_summary">Mostrar GIFs animados enviados en el chat</string>
+    <string name="chat_gif_max_size_title">Tamaño máximo de GIF</string>
 </resources>

@@ -204,3 +204,24 @@ fun AboutItem(onClick: () -> Unit) {
         modifier = Modifier.clickable { onClick() }
     )
 }
+
+@Composable
+fun ChatGifsToggleItem(enabled: Boolean, onToggle: (Boolean) -> Unit, onReset: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.chat_gifs_enabled_title)) },
+        supportingContent = { Text(stringResource(R.string.chat_gifs_enabled_summary)) },
+        leadingContent = { Icon(imageVector = Icons.Default.Image, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
+        modifier = Modifier.combinedClickable(onClick = { onToggle(!enabled) }, onLongClick = onReset)
+    )
+}
+
+@Composable
+fun ChatGifMaxSizeItem(size: Int, onClick: () -> Unit, onReset: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.chat_gif_max_size_title)) },
+        supportingContent = { Text("${size}dp") },
+        leadingContent = { Icon(imageVector = Icons.Default.AspectRatio, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onReset)
+    )
+}
