@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -75,6 +76,7 @@ fun ChatInputBox(
     onInteraction: () -> Unit = {},
     onFocusChanged: (Boolean) -> Unit = {},
     onLoginRequested: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     isImmersiveEnabled: Boolean = true
 ) {
     BoxWithConstraints(
@@ -119,6 +121,7 @@ fun ChatInputBox(
                         portraitMode = portraitMode,
                         onToggleMode = onToggleMode,
                         onLoginRequested = onLoginRequested,
+                        onSettingsClick = onSettingsClick,
                         isImmersiveEnabled = isImmersiveEnabled,
                         maxWidth = containerWidth,
                         onInteraction = onInteraction
@@ -418,6 +421,7 @@ private fun LoggedOutChatInput(
     portraitMode: PortraitMode?,
     onToggleMode: (() -> Unit)?,
     onLoginRequested: () -> Unit,
+    onSettingsClick: () -> Unit,
     isImmersiveEnabled: Boolean,
     maxWidth: androidx.compose.ui.unit.Dp,
     onInteraction: () -> Unit
@@ -461,6 +465,28 @@ private fun LoggedOutChatInput(
                     horizontal = 12.dp
                 )
             )
+        }
+
+        Surface(
+            color = SamtchTheme.colors.textFieldBackground.copy(alpha = 0.05f),
+            shape = if (isImmersiveEnabled) CircleShape else RoundedCornerShape(8.dp),
+            border = BorderStroke(0.3.dp, SamtchTheme.colors.glassBorder.copy(alpha = 0.1f)),
+            modifier = Modifier.size(if (portraitMode == null) 32.dp else 44.dp)
+        ) {
+            IconButton(
+                onClick = {
+                    onSettingsClick()
+                    onInteraction()
+                },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = SamtchTheme.colors.primaryText.copy(alpha = 0.8f),
+                    modifier = Modifier.size(if (portraitMode == null) 16.dp else 20.dp)
+                )
+            }
         }
     }
 }

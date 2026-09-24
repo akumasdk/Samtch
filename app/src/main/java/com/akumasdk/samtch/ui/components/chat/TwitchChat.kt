@@ -322,6 +322,7 @@ private fun ChatInputArea(
                     if (focused) onInteraction()
                 },
                 onLoginRequested = onLoginRequested,
+                onSettingsClick = onSettingsClick,
                 isImmersiveEnabled = isImmersiveEnabled
             )
 
