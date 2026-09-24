@@ -57,7 +57,6 @@
     <string name="audio_only_mode_toggle">Audio Only</string>
     <string name="audio_only_notification_text">Listening to %s</string>
     <string name="audio_only_background_title">Audio Background Play</string>
-    <string name="audio_only_background_summary">Automatically switch to audio-only mode when minimizing the app</string>
     <string name="audio_only_hint">You can close or minimize the app to keep listening</string>
 
     <!-- PiP Settings -->
