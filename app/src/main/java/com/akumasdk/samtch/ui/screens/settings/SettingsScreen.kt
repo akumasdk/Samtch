@@ -43,6 +43,7 @@ fun SettingsScreen(
     var showChatEmoteQualityDialog by remember { mutableStateOf(false) }
     var showChatBadgeSizeDialog by remember { mutableStateOf(false) }
     var showChatRatioDialog by remember { mutableStateOf(false) }
+    var showChatGifMaxSizeDialog by remember { mutableStateOf(false) }
     var showThemeModeDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var isBttvSettingsOpen by remember { mutableStateOf(false) }
@@ -60,6 +61,8 @@ fun SettingsScreen(
     val emoteQuality by settingsManager.getEmoteQuality().collectAsState(initial = SettingsManager.EmoteQuality.MEDIUM)
     val chatBadgeSize by settingsManager.getChatBadgeSize().collectAsState(initial = 18)
     val chatRatio by settingsManager.getFullscreenChatRatio().collectAsState(initial = 0)
+    val chatGifsEnabled by settingsManager.isChatGifsEnabled().collectAsState(initial = true)
+    val chatGifMaxSize by settingsManager.getChatGifMaxSize().collectAsState(initial = 180)
     val themeMode by settingsManager.getThemeMode().collectAsState(initial = SettingsManager.ThemeMode.SYSTEM)
     val adBlockMode by settingsManager.getAdBlockMode().collectAsState(initial = SettingsManager.AdBlockMode.VIDEO_SWAP)
     val isPipEnabled by settingsManager.isPipEnabled().collectAsState(initial = true)
@@ -141,6 +144,8 @@ fun SettingsScreen(
                 emoteQuality = emoteQuality,
                 chatBadgeSize = chatBadgeSize,
                 chatRatio = chatRatio,
+                chatGifsEnabled = chatGifsEnabled,
+                chatGifMaxSize = chatGifMaxSize,
                 scope = scope,
                 onChatModeClick = { showChatModeDialog = true },
                 onFontSizeClick = { showChatFontSizeDialog = true },
@@ -148,6 +153,8 @@ fun SettingsScreen(
                 onEmoteQualityClick = { showChatEmoteQualityDialog = true },
                 onBadgeSizeClick = { showChatBadgeSizeDialog = true },
                 onChatRatioClick = { showChatRatioDialog = true },
+                onGifsToggle = { scope.launch { settingsManager.setChatGifsEnabled(it) } },
+                onGifMaxSizeClick = { showChatGifMaxSizeDialog = true },
                 onBttvClick = { isBttvSettingsOpen = true },
                 settingsManager = settingsManager
             )
@@ -189,6 +196,8 @@ fun SettingsScreen(
         emoteQuality = emoteQuality,
         chatBadgeSize = chatBadgeSize,
         chatRatio = chatRatio,
+        showChatGifMaxSizeDialog = showChatGifMaxSizeDialog,
+        chatGifMaxSize = chatGifMaxSize,
         onDismissTheme = { showThemeModeDialog = false },
         onDismissAdBlock = { showAdBlockDialog = false },
         onDismissChatMode = { showChatModeDialog = false },
@@ -197,6 +206,7 @@ fun SettingsScreen(
         onDismissEmoteQuality = { showChatEmoteQualityDialog = false },
         onDismissBadgeSize = { showChatBadgeSizeDialog = false },
         onDismissChatRatio = { showChatRatioDialog = false },
+        onDismissGifMaxSize = { showChatGifMaxSizeDialog = false },
         onDismissLogout = { showLogoutDialog = false },
         onDismissAbout = { showAboutDialog = false },
         onLogout = onLogout,
@@ -271,6 +281,8 @@ private fun LazyListScope.chatSection(
     emoteQuality: SettingsManager.EmoteQuality,
     chatBadgeSize: Int,
     chatRatio: Int,
+    chatGifsEnabled: Boolean,
+    chatGifMaxSize: Int,
     scope: CoroutineScope,
     settingsManager: SettingsManager,
     onChatModeClick: () -> Unit,
@@ -279,6 +291,8 @@ private fun LazyListScope.chatSection(
     onEmoteQualityClick: () -> Unit,
     onBadgeSizeClick: () -> Unit,
     onChatRatioClick: () -> Unit,
+    onGifsToggle: (Boolean) -> Unit,
+    onGifMaxSizeClick: () -> Unit,
     onBttvClick: () -> Unit
 ) {
     item { SettingSectionHeader(stringResource(R.string.settings_category_chat)) }
@@ -325,6 +339,22 @@ private fun LazyListScope.chatSection(
                 onClick = onChatRatioClick,
                 onReset = { scope.launch { settingsManager.setFullscreenChatRatio(0) } }
             ) 
+        }
+        item { 
+            ChatGifsToggleItem(
+                chatGifsEnabled, 
+                onToggle = onGifsToggle,
+                onReset = { scope.launch { settingsManager.setChatGifsEnabled(true) } }
+            ) 
+        }
+        if (chatGifsEnabled) {
+            item { 
+                ChatGifMaxSizeItem(
+                    chatGifMaxSize, 
+                    onClick = onGifMaxSizeClick,
+                    onReset = { scope.launch { settingsManager.setChatGifMaxSize(180) } }
+                ) 
+            }
         }
     }
 else {

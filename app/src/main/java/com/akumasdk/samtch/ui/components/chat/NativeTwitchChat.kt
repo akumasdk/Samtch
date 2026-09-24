@@ -67,6 +67,8 @@ fun NativeTwitchChat(
     val chatFontSize by viewModel.chatFontSize.collectAsState()
     val chatEmoteSize by viewModel.chatEmoteSize.collectAsState()
     val chatBadgeSize by viewModel.chatBadgeSize.collectAsState()
+    val chatGifsEnabled by viewModel.chatGifsEnabled.collectAsState()
+    val chatGifMaxSize by viewModel.chatGifMaxSize.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     
@@ -155,7 +157,9 @@ fun NativeTwitchChat(
                     onUserClick = onUserClick,
                     fontSize = chatFontSize,
                     emoteSize = chatEmoteSize,
-                    badgeSize = chatBadgeSize
+                    badgeSize = chatBadgeSize,
+                    gifEnabled = chatGifsEnabled,
+                    gifMaxSize = chatGifMaxSize
                 )
             }
         }

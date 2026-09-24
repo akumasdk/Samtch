@@ -84,6 +84,12 @@ class ChatViewModel @Inject constructor(
     private val _chatBadgeSize = MutableStateFlow(18)
     val chatBadgeSize = _chatBadgeSize.asStateFlow()
 
+    private val _chatGifsEnabled = MutableStateFlow(true)
+    val chatGifsEnabled = _chatGifsEnabled.asStateFlow()
+
+    private val _chatGifMaxSize = MutableStateFlow(180)
+    val chatGifMaxSize = _chatGifMaxSize.asStateFlow()
+
     private val _systemNotice = MutableStateFlow<String?>(null)
     val systemNotice = _systemNotice.asStateFlow()
 
@@ -192,6 +198,8 @@ class ChatViewModel @Inject constructor(
             launch { settingsManager.getChatFontSize().collect { _chatFontSize.value = it } }
             launch { settingsManager.getChatEmoteSize().collect { _chatEmoteSize.value = it } }
             launch { settingsManager.getChatBadgeSize().collect { _chatBadgeSize.value = it } }
+            launch { settingsManager.isChatGifsEnabled().collect { _chatGifsEnabled.value = it } }
+            launch { settingsManager.getChatGifMaxSize().collect { _chatGifMaxSize.value = it } }
 
             // Timeout safety to ensure buffer is released even if network calls hang
             val timeoutJob = launch {

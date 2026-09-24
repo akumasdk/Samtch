@@ -35,6 +35,8 @@ class SettingsManager @Inject constructor(
     private val CHAT_FONT_SIZE = intPreferencesKey("chat_font_size")
     private val CHAT_EMOTE_SIZE = intPreferencesKey("chat_emote_size")
     private val CHAT_BADGE_SIZE = intPreferencesKey("chat_badge_size")
+    private val CHAT_GIFS_ENABLED = booleanPreferencesKey("chat_gifs_enabled")
+    private val CHAT_GIF_MAX_SIZE = intPreferencesKey("chat_gif_max_size")
     private val IMMERSIVE_BACKGROUND_ENABLED = booleanPreferencesKey("immersive_background_enabled")
     private val FULLSCREEN_CHAT_RATIO = intPreferencesKey("fullscreen_chat_ratio_v2")
     private val THIRD_PARTY_EMOTES_ENABLED = booleanPreferencesKey("third_party_emotes_enabled")
@@ -123,6 +125,12 @@ class SettingsManager @Inject constructor(
 
     fun getChatBadgeSize(): Flow<Int> = dataStore.data.map { it[CHAT_BADGE_SIZE] ?: 18 }
     suspend fun setChatBadgeSize(size: Int) = dataStore.edit { it[CHAT_BADGE_SIZE] = size }
+
+    fun isChatGifsEnabled(): Flow<Boolean> = dataStore.data.map { it[CHAT_GIFS_ENABLED] ?: true }
+    suspend fun setChatGifsEnabled(enabled: Boolean) = dataStore.edit { it[CHAT_GIFS_ENABLED] = enabled }
+
+    fun getChatGifMaxSize(): Flow<Int> = dataStore.data.map { it[CHAT_GIF_MAX_SIZE] ?: 180 }
+    suspend fun setChatGifMaxSize(size: Int) = dataStore.edit { it[CHAT_GIF_MAX_SIZE] = size }
 
     fun isImmersiveBackgroundEnabled(): Flow<Boolean> = dataStore.data.map { it[IMMERSIVE_BACKGROUND_ENABLED] ?: true }
     suspend fun setImmersiveBackgroundEnabled(enabled: Boolean) = dataStore.edit { it[IMMERSIVE_BACKGROUND_ENABLED] = enabled }

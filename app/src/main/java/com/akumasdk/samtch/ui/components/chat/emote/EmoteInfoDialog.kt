@@ -107,6 +107,7 @@ fun EmoteInfoDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                InfoRow(label = stringResource(R.string.emote_info_source), value = emote.type.name)
                 if (!isFullscreen) {
                     InfoRow(label = stringResource(R.string.emote_info_id), value = emote.id)
                 }

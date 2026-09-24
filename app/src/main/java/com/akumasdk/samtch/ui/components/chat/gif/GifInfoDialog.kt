@@ -82,6 +82,8 @@ fun GifInfoDialog(
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(url)
+                    .memoryCacheKey(url)
+                    .placeholderMemoryCacheKey(url)
                     .crossfade(true)
                     .build(),
                 contentDescription = stringResource(R.string.gif_info_title),

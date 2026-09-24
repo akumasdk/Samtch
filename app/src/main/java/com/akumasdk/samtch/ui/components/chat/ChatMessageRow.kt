@@ -45,7 +45,9 @@ fun ChatMessageRow(
     onUserClick: ((String) -> Unit)? = null,
     fontSize: Int = 14,
     emoteSize: Int = 28,
-    badgeSize: Int = 18
+    badgeSize: Int = 18,
+    gifEnabled: Boolean = true,
+    gifMaxSize: Int = 180
 ) {
     val displayFontSize = if (isCompact) (fontSize - 2).sp else fontSize.sp
     
@@ -73,7 +75,7 @@ fun ChatMessageRow(
                 badgesAsEmotes + message.emotes
             }
 
-            val fullAnnotatedString = remember(message, userColor) {
+            val fullAnnotatedString = remember(message, userColor, gifEnabled) {
                 buildAnnotatedString {
                     // Inline Badges
                     message.badges.forEachIndexed { index, _ ->
@@ -94,7 +96,11 @@ fun ChatMessageRow(
                         append(" ")
                     }
 
-                    append(message.annotatedString)
+                    if (!gifEnabled && message.gifUrl != null && message.annotatedString.isEmpty()) {
+                        append(message.gifDescription ?: "Twitch Animated GIF")
+                    } else {
+                        append(message.annotatedString)
+                    }
                 }
             }
 
@@ -131,36 +137,40 @@ fun ChatMessageRow(
                     )
                 )
 
-                message.gifUrl?.let { url ->
-                    SubcomposeAsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(url)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "GIF",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .padding(start = 8.dp, bottom = 2.dp)
-                            .sizeIn(maxWidth = 240.dp, maxHeight = 180.dp)
-                            .pointerInput(url, onGifClick) {
-                                detectTapGestures(onTap = { onGifClick?.invoke(url, message.gifId, message.gifDescription) })
-                            },
-                        loading = {
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 160.dp, height = 120.dp)
-                                    .skeletonLoading(RoundedCornerShape(8.dp), "Loading GIF"),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "GIF",
-                                    color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
+                if (gifEnabled) {
+                    message.gifUrl?.let { url ->
+                        SubcomposeAsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(url)
+                                .memoryCacheKey(url)
+                                .placeholderMemoryCacheKey(url)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "GIF",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .padding(start = 8.dp, bottom = 2.dp)
+                                .sizeIn(maxWidth = gifMaxSize.dp, maxHeight = gifMaxSize.dp)
+                                .pointerInput(url, onGifClick) {
+                                    detectTapGestures(onTap = { onGifClick?.invoke(url, message.gifId, message.gifDescription) })
+                                },
+                            loading = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = (gifMaxSize * 0.8f).dp, height = (gifMaxSize * 0.6f).dp)
+                                        .skeletonLoading(RoundedCornerShape(8.dp), "Loading GIF"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "GIF",
+                                        color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }

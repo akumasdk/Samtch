@@ -79,7 +79,9 @@ class ChatMessageMapper @Inject constructor(
                 ?.firstOrNull { it.startsWith("https://") || it.startsWith("http://") }
                 ?.takeIf { it.isNotBlank() }
             val gifId = gifParts?.getOrNull(1)?.takeIf { !it.contains("=") && !it.startsWith("http") }
-            val gifDescription = cleanText.takeIf { it.isNotBlank() }
+            val gifDescription = cleanText.ifBlank {
+                if (!gifId.isNullOrEmpty()) "Twitch Animated GIF ($gifId)" else "Twitch Animated GIF"
+            }
             val displayText = if (gifUrl != null) "" else cleanText
 
             val occurrences = mutableListOf<EmoteOccurrence>()
