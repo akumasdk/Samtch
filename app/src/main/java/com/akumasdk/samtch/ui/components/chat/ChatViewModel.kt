@@ -26,6 +26,12 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
+data class GifInfo(
+    val url: String,
+    val id: String? = null,
+    val description: String? = null
+)
+
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     val chatClient: TwitchChatClient,
@@ -63,7 +69,7 @@ class ChatViewModel @Inject constructor(
     private val _selectedUserForInfo = MutableStateFlow<com.akumasdk.samtch.data.api.helix.dto.UserDto?>(null)
     val selectedUserForInfo = _selectedUserForInfo.asStateFlow()
 
-    private val _selectedGifForInfo = MutableStateFlow<String?>(null)
+    private val _selectedGifForInfo = MutableStateFlow<GifInfo?>(null)
     val selectedGifForInfo = _selectedGifForInfo.asStateFlow()
 
     private val _keyboardHeightPx = MutableStateFlow(0)
@@ -411,7 +417,9 @@ class ChatViewModel @Inject constructor(
 
     fun dismissUserInfo() { _selectedUserForInfo.value = null }
 
-    fun showGifInfo(url: String) { _selectedGifForInfo.value = url }
+    fun showGifInfo(url: String, id: String? = null, description: String? = null) {
+        _selectedGifForInfo.value = GifInfo(url, id, description)
+    }
 
     fun dismissGifInfo() { _selectedGifForInfo.value = null }
 

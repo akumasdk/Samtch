@@ -30,6 +30,8 @@ sealed interface ChatMessageUiState {
         val badgeUrls: List<String> = emptyList(),
         val badges: List<TwitchBadgeDto> = emptyList(),
         val gifUrl: String? = null,
+        val gifId: String? = null,
+        val gifDescription: String? = null,
         val isAction: Boolean = false
     ) : ChatMessageUiState
 

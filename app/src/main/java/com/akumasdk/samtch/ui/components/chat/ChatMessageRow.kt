@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -23,10 +24,14 @@ import androidx.compose.ui.unit.sp
 import com.akumasdk.samtch.data.badge.TwitchBadgeDto
 import com.akumasdk.samtch.data.emote.EmoteRepository
 import com.akumasdk.samtch.ui.theme.SamtchTheme
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.akumasdk.samtch.ui.components.loading.skeletonLoading
 
 @Composable
 fun ChatMessageRow(
@@ -36,7 +41,7 @@ fun ChatMessageRow(
     onEmoteClick: ((EmoteInfo) -> Unit)? = null,
     onEmoteLongClick: ((EmoteInfo) -> Unit)? = null,
     onBadgeClick: ((TwitchBadgeDto) -> Unit)? = null,
-    onGifClick: ((String) -> Unit)? = null,
+    onGifClick: ((String, String?, String?) -> Unit)? = null,
     onUserClick: ((String) -> Unit)? = null,
     fontSize: Int = 14,
     emoteSize: Int = 28,
@@ -127,9 +132,10 @@ fun ChatMessageRow(
                 )
 
                 message.gifUrl?.let { url ->
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(url)
+                            .crossfade(true)
                             .build(),
                         contentDescription = "GIF",
                         contentScale = ContentScale.Fit,
@@ -137,8 +143,23 @@ fun ChatMessageRow(
                             .padding(start = 8.dp, bottom = 2.dp)
                             .sizeIn(maxWidth = 240.dp, maxHeight = 180.dp)
                             .pointerInput(url, onGifClick) {
-                                detectTapGestures(onTap = { onGifClick?.invoke(url) })
+                                detectTapGestures(onTap = { onGifClick?.invoke(url, message.gifId, message.gifDescription) })
+                            },
+                        loading = {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 160.dp, height = 120.dp)
+                                    .skeletonLoading(RoundedCornerShape(8.dp), "Loading GIF"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "GIF",
+                                    color = SamtchTheme.colors.secondaryText.copy(alpha = 0.6f),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
                             }
+                        }
                     )
                 }
             }

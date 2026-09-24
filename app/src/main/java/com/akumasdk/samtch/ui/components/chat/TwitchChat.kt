@@ -206,7 +206,7 @@ private fun NativeChatContainer(
                 onEmoteClick = { viewModel.showEmoteInfo(it) },
                 onEmoteLongClick = { viewModel.showEmoteInfo(it) },
                 onBadgeClick = { viewModel.showBadgeInfo(it) },
-                onGifClick = { viewModel.showGifInfo(it) },
+                onGifClick = { url, id, desc -> viewModel.showGifInfo(url, id, desc) },
                 onUserClick = { viewModel.showUserInfo(it) },
                 contentPadding = PaddingValues(
                     top = 88.dp, 
