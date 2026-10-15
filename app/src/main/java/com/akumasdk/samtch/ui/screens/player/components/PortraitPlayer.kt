@@ -2,7 +2,6 @@ package com.akumasdk.samtch.ui.screens.player.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +24,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.data.model.TwitchUser
-import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
@@ -42,7 +40,6 @@ fun PortraitPlayer(
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
-    adblockText: String = "",
     streamStartedAt: String? = null,
     previewImageUrl: String? = null,
     user: TwitchUser? = null,
@@ -110,14 +107,6 @@ fun PortraitPlayer(
                     // Internal toggle ignored as per request to drop injected toggle
                 }
             }
-
-            // Space for Status Banner between player and metadata
-            StatusBanner(
-                text = adblockText,
-                isImmersiveEnabled = isImmersiveEnabled,
-                channel = channel,
-                previewImageUrl = previewImageUrl
-            )
 
             // Wrap metadata and chat in a Box to allow metadata bar to overlay chat
             Box(

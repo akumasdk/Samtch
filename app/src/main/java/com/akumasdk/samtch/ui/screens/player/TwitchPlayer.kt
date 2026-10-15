@@ -61,6 +61,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.ui.components.chat.ChatViewModel
 import com.akumasdk.samtch.ui.components.chat.TwitchChat
+import com.akumasdk.samtch.ui.components.playerComponents.AdBlockIndicator
 import com.akumasdk.samtch.ui.components.playerComponents.MiniPlayerContainer
 import com.akumasdk.samtch.ui.components.playerComponents.MiniPlayerOverlay
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
@@ -355,11 +356,6 @@ fun TwitchPlayer(
             }
         }
 
-        val bannerText = when {
-            portraitMode == PortraitMode.CHAT_ONLY -> stringResource(R.string.status_chat_only)
-            else -> playerViewModel.adblockText
-        }
-
         val playerLayout = remember(isMinimized, isPip, isFullscreen) {
             when {
                 isPip -> PlayerLayoutType.PIP
@@ -388,7 +384,6 @@ fun TwitchPlayer(
             tooltipShowCount = tooltipShowCount,
             screenWidth = screenWidth,
             screenHeight = screenHeight,
-            bannerText = bannerText,
             isFoldableInnerScreen = isFoldableInnerScreen
         )
     }
@@ -416,7 +411,6 @@ private fun TwitchPlayerOrchestrator(
     tooltipShowCount: Int,
     screenWidth: androidx.compose.ui.unit.Dp,
     screenHeight: androidx.compose.ui.unit.Dp,
-    bannerText: String,
     isFoldableInnerScreen: Boolean = false
 ) {
     val layout = rememberPlayerLayoutDimensions(
@@ -449,7 +443,6 @@ private fun TwitchPlayerOrchestrator(
                     channel = channel,
                     streamMetadata = playerViewModel.streamMetadata,
                     avatarUrl = playerViewModel.avatarUrl,
-                    adblockText = bannerText,
                     portraitMode = playerViewModel.portraitMode,
                     metadataExpandTrigger = metadataExpandTrigger,
                     isPip = layoutType == PlayerLayoutType.PIP,
@@ -733,6 +726,12 @@ private fun PlayerVideoContent(
                         if (text.isNotEmpty() && playerViewModel.isUiLoading) playerViewModel.isUiLoading = false
                     },
                     onVideoBoundsChanged = onVideoBoundsChanged
+                )
+
+                AdBlockIndicator(
+                    adblockText = playerViewModel.adblockText,
+                    isMinimized = isMinimized,
+                    modifier = Modifier.align(Alignment.TopStart)
                 )
 
                 AnimatedVisibility(

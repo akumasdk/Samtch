@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,7 +32,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.data.model.TwitchUser
-import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
@@ -57,7 +55,6 @@ fun FullscreenPlayer(
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
-    adblockText: String = "",
     streamStartedAt: String? = null,
     previewImageUrl: String? = null,
     user: TwitchUser? = null,
@@ -150,18 +147,11 @@ fun FullscreenPlayer(
                             )
                         }
 
-                        // 2. Overlays (Banner + Metadata)
+                        // 2. Overlays (Metadata)
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            StatusBanner(
-                                text = adblockText,
-                                isImmersiveEnabled = isImmersiveEnabled,
-                                channel = channel,
-                                previewImageUrl = previewImageUrl
-                            )
-
                             this@Column.AnimatedVisibility(
                                 visible = displayName == null && streamTitle == null && gameName == null || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
                                 enter = SamtchAnimation.FadeIn,
@@ -239,18 +229,11 @@ fun FullscreenPlayer(
                             )
                         }
 
-                        // 2. Overlays (Banner + Metadata)
+                        // 2. Overlays (Metadata)
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            StatusBanner(
-                                text = adblockText,
-                                isImmersiveEnabled = isImmersiveEnabled,
-                                channel = channel,
-                                previewImageUrl = previewImageUrl
-                            )
-
                             this@Row.AnimatedVisibility(
                                 visible = displayName == null && streamTitle == null && gameName == null || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
                                 enter = SamtchAnimation.FadeIn,
