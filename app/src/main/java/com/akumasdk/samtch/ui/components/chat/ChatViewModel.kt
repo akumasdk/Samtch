@@ -161,8 +161,15 @@ class ChatViewModel @Inject constructor(
     ) {
         if (_currentChannel.value == channel && !forceRefresh) return
         
+        // Evict emote cache for old channel when switching channels
+        val oldChannel = _currentChannel.value
+        if (oldChannel != null && oldChannel != channel) {
+            emoteRepository.clearChannelCache(oldChannel)
+        }
+
         // 1. Instantly cancel any active session logic for the previous channel
         connectionJob?.cancel()
+        connectionJob = null
         _currentChannel.value = channel
         _areEmotesLoaded.value = false
         synchronized(messageBufferList) {
@@ -370,7 +377,9 @@ class ChatViewModel @Inject constructor(
     }
 
     fun disconnect() {
+        val channelToClear = _currentChannel.value
         connectionJob?.cancel()
+        connectionJob = null
         chatClient.disconnect()
         messageStore.clear()
         synchronized(messageBufferList) {
@@ -379,7 +388,14 @@ class ChatViewModel @Inject constructor(
         _areEmotesLoaded.value = false
         userTags.clear()
         emoteManager.clear()
+        _systemNotice.value = null
+        _selectedBadgeForInfo.value = null
+        _selectedUserForInfo.value = null
+        _selectedGifForInfo.value = null
         _currentChannel.value = null
+        if (channelToClear != null) {
+            emoteRepository.clearChannelCache(channelToClear)
+        }
     }
 
     fun toggleEmoteMenu() = emoteManager.toggleEmoteMenu()

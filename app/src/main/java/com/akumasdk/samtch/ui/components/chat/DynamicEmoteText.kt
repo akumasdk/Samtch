@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.ui.components.chat
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,9 +17,10 @@ import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
+import coil.request.CachePolicy
 import coil.request.ImageRequest
-import coil.size.Size
 import com.akumasdk.samtch.data.emote.EmoteRepository
 
 @Composable
@@ -67,25 +69,36 @@ fun DynamicEmoteText(
                         }
                 ) {
                     urls.forEach { url ->
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
+                        val imageRequest = remember(url) {
+                            ImageRequest.Builder(context)
                                 .data(url)
-                                .size(Size.ORIGINAL)
-                                .build(),
-                            contentDescription = emote.code,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit,
-                            onSuccess = { state ->
-                                if (url == baseEmoteUrl) {
-                                    val drawable = state.result.drawable
-                                    val ratio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .memoryCacheKey(url)
+                                .build()
+                        }
+                        val painter = rememberAsyncImagePainter(model = imageRequest)
+                        val painterState = painter.state
+
+                        if (url == baseEmoteUrl && painterState is AsyncImagePainter.State.Success) {
+                            val drawable = painterState.result.drawable
+                            if (drawable.intrinsicHeight > 0) {
+                                val ratio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
+                                if (cachedRatio != ratio) {
+                                    emoteRepository.putAspectRatio(url, ratio)
                                     val calculatedWidth = baseHeight * ratio
                                     if (measuredWidths[emote.id] != calculatedWidth) {
                                         measuredWidths[emote.id] = calculatedWidth
-                                        emoteRepository.putAspectRatio(url, ratio)
                                     }
                                 }
                             }
+                        }
+
+                        Image(
+                            painter = painter,
+                            contentDescription = emote.code,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
                         )
                     }
                 }

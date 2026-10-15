@@ -22,6 +22,12 @@ enum class EmoteType {
     TWITCH, BTTV, SEVENTV, FFZ
 }
 
+data class EmoteTab(
+    val titleResId: Int,
+    val iconResId: Int? = null,
+    val emotes: List<Emote>
+)
+
 @Serializable
 data class BTTVEmote(
     val id: String,

@@ -1,5 +1,6 @@
 package com.akumasdk.samtch.data.emote
 
+import android.content.Context
 import android.util.Log
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.api.gql.TwitchGqlService
@@ -9,6 +10,7 @@ import com.akumasdk.samtch.data.api.thirdparty.*
 import com.akumasdk.samtch.data.auth.TwitchAuthManager
 import com.akumasdk.samtch.data.settings.SettingsManager
 import com.akumasdk.samtch.util.Constants
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.ConcurrentHashMap
@@ -18,6 +20,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class EmoteRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val helixApiClient: HelixApiClient,
     private val bttvApi: BTTVApi,
     private val ffzApi: FFZApi,
@@ -40,7 +43,7 @@ class EmoteRepository @Inject constructor(
     val userEmoteState = _userEmoteState.asStateFlow()
 
     private val _channelStates = ConcurrentHashMap<String, MutableStateFlow<ChannelEmoteState>>()
-    private val _tabCache = ConcurrentHashMap<String, StateFlow<Map<Int, List<Emote>>>>()
+    private val _tabCache = ConcurrentHashMap<String, StateFlow<List<EmoteTab>>>()
     private val _flattenedCache = ConcurrentHashMap<String, StateFlow<List<Emote>>>()
     
     private val repoScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -69,7 +72,7 @@ class EmoteRepository @Inject constructor(
     }.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-    fun getEmoteTabs(channelName: String, settingsManager: SettingsManager): StateFlow<Map<Int, List<Emote>>> {
+    fun getEmoteTabs(channelName: String, settingsManager: SettingsManager): StateFlow<List<EmoteTab>> {
         val channelLower = channelName.lowercase()
         @Suppress("UNCHECKED_CAST")
         return _tabCache.getOrPut(channelLower) {
@@ -81,27 +84,22 @@ class EmoteRepository @Inject constructor(
                 userEmoteState,
                 getChannelState(channelLower)
             ) { recent, thirdPartyEnabled, global, userState, channelState ->
-                val tabs = mutableMapOf<Int, List<Emote>>()
+                val tabs = mutableListOf<EmoteTab>()
                 val auth = authManager.getAuthState()
                 val unlockedUserEmoteIds = userState.twitchEmotes.values.map { it.id }.toSet()
                 val unlockedUserEmoteCodes = userState.twitchEmotes.values.map { it.code.lowercase() }.toSet()
                 val isChannelOwner = auth.isLoggedIn && auth.userName.equals(channelLower, ignoreCase = true)
                 val isSubscribed = isChannelOwner || channelState.isUserSubscribed
 
+                // 1. Recent Emotes
                 val filteredRecent = if (thirdPartyEnabled) recent else recent.filter { it.type == EmoteType.TWITCH }
                 if (filteredRecent.isNotEmpty()) {
-                    tabs[R.string.emote_menu_recent] = filteredRecent
+                    tabs.add(EmoteTab(titleResId = R.string.emote_menu_recent, emotes = filteredRecent))
                 }
 
-                // Channel Emotes
-                val rawChannelEmotes = if (thirdPartyEnabled) {
-                    (channelState.twitchEmotes.values + channelState.seventvEmotes.values + channelState.bttvEmotes.values + channelState.ffzEmotes.values).distinctBy { it.id }
-                } else {
-                    channelState.twitchEmotes.values.toList()
-                }
-
-                val processedChannelEmotes = rawChannelEmotes.map { emote ->
-                    if (emote.type == EmoteType.TWITCH && emote.isSubOnly) {
+                // 2. Channel Twitch Emotes
+                val processedChannelTwitchEmotes = channelState.twitchEmotes.values.map { emote ->
+                    if (emote.isSubOnly) {
                         val isUnlocked = !auth.isLoggedIn || 
                                         isSubscribed || 
                                         emote.id in unlockedUserEmoteIds || 
@@ -113,44 +111,60 @@ class EmoteRepository @Inject constructor(
                     }
                 }
 
-                if (processedChannelEmotes.isNotEmpty()) {
-                    tabs[R.string.emote_menu_channel] = processedChannelEmotes
+                if (processedChannelTwitchEmotes.isNotEmpty()) {
+                    tabs.add(EmoteTab(titleResId = R.string.emote_menu_channel, emotes = processedChannelTwitchEmotes))
                 }
 
-                // Subscribed Emotes tab (custom sub emotes from user's active subs)
+                // 3. 7TV Emotes (Channel + Global 7TV)
+                if (thirdPartyEnabled) {
+                    val seventvEmotes = (channelState.seventvEmotes.values + global.seventvEmotes.values).distinctBy { it.id }
+                    if (seventvEmotes.isNotEmpty()) {
+                        tabs.add(EmoteTab(titleResId = R.string.emote_source_seventv, iconResId = R.drawable.ic_7tv, emotes = seventvEmotes))
+                    }
+                }
+
+                // 4. BTTV Emotes (Channel + Global BTTV)
+                if (thirdPartyEnabled) {
+                    val bttvEmotes = (channelState.bttvEmotes.values + global.bttvEmotes.values).distinctBy { it.id }
+                    if (bttvEmotes.isNotEmpty()) {
+                        tabs.add(EmoteTab(titleResId = R.string.emote_source_bttv, iconResId = R.drawable.ic_bttv, emotes = bttvEmotes))
+                    }
+                }
+
+                // 5. FFZ Emotes (Channel + Global FFZ)
+                if (thirdPartyEnabled) {
+                    val ffzEmotes = (channelState.ffzEmotes.values + global.ffzEmotes.values).distinctBy { it.id }
+                    if (ffzEmotes.isNotEmpty()) {
+                        tabs.add(EmoteTab(titleResId = R.string.emote_source_ffz, iconResId = R.drawable.ic_ffz, emotes = ffzEmotes))
+                    }
+                }
+
+                // 6. Subscribed Emotes tab
                 val subEmotes = userState.twitchEmotes.values.toList()
                 if (subEmotes.isNotEmpty()) {
-                    tabs[R.string.emote_menu_subscribed] = subEmotes.map { it.copy(isUnlocked = true) }
+                    tabs.add(EmoteTab(titleResId = R.string.emote_menu_subscribed, emotes = subEmotes.map { it.copy(isUnlocked = true) }))
                 }
 
-                // User Emotes (personal/all unlocked user emotes)
+                // 7. User Personal Emotes
                 if (userState.twitchEmotes.isNotEmpty()) {
-                    tabs[R.string.emote_menu_user] = userState.twitchEmotes.values.map { it.copy(isUnlocked = true) }
+                    tabs.add(EmoteTab(titleResId = R.string.emote_menu_user, emotes = userState.twitchEmotes.values.map { it.copy(isUnlocked = true) }))
                 }
 
-                // Global Twitch
+                // 8. Twitch Global Emotes
                 if (global.twitchEmotes.isNotEmpty()) {
-                    tabs[R.string.emote_menu_twitch] = global.twitchEmotes.values.map { it.copy(isUnlocked = true) }
-                }
-
-                // Global 3rd Party
-                if (thirdPartyEnabled) {
-                    val allGlobal3rdParty = (global.seventvEmotes.values + global.bttvEmotes.values + global.ffzEmotes.values).toList()
-                    if (allGlobal3rdParty.isNotEmpty()) {
-                        tabs[R.string.emote_menu_global] = allGlobal3rdParty
-                    }
+                    tabs.add(EmoteTab(titleResId = R.string.emote_menu_twitch, emotes = global.twitchEmotes.values.map { it.copy(isUnlocked = true) }))
                 }
 
                 Log.d(TAG, "Tabs emission calculated for $channelLower: ${tabs.size} tabs")
                 tabs
             }
-            .debounce(100.milliseconds) // Avoid UI jumps when multiple providers load back-to-back
+            .debounce(100.milliseconds)
             .stateIn(
                 scope = repoScope,
                 started = SharingStarted.Eagerly, 
-                initialValue = emptyMap()
+                initialValue = emptyList()
             )
-        } as StateFlow<Map<Int, List<Emote>>>
+        } as StateFlow<List<EmoteTab>>
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -474,6 +488,27 @@ class EmoteRepository @Inject constructor(
         return Emote(emote.id, emote.name, url, EmoteType.SEVENTV, isZeroWidth = emote.isZeroWidth)
     }
 
+    fun clearChannelCache(channelName: String? = null) {
+        if (channelName != null) {
+            val channelLower = channelName.lowercase()
+            Log.d(TAG, "Clearing channel emote cache for $channelLower")
+            _channelStates.remove(channelLower)
+            _tabCache.remove(channelLower)
+            _flattenedCache.remove(channelLower)
+        } else {
+            Log.d(TAG, "Clearing all channel emote caches")
+            _channelStates.clear()
+            _tabCache.clear()
+            _flattenedCache.clear()
+        }
+        aspectRatioCache.clear()
+        try {
+            coil.Coil.imageLoader(context).memoryCache?.clear()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear Coil memory cache", e)
+        }
+    }
+
     fun clearCache() {
         Log.d(TAG, "Clearing emote cache")
         _globalState.update { GlobalEmoteState() }
@@ -482,5 +517,10 @@ class EmoteRepository @Inject constructor(
         _tabCache.clear()
         _flattenedCache.clear()
         aspectRatioCache.clear()
+        try {
+            coil.Coil.imageLoader(context).memoryCache?.clear()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear Coil memory cache", e)
+        }
     }
 }

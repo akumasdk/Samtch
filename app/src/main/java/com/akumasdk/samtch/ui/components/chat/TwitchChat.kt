@@ -251,7 +251,7 @@ private fun ChatInputArea(
     isImmersiveEnabled: Boolean,
     isEmoteMenuVisible: Boolean,
     emoteSuggestions: List<com.akumasdk.samtch.data.emote.Emote>,
-    emoteMenuTabs: Map<Int, List<com.akumasdk.samtch.data.emote.Emote>>,
+    emoteMenuTabs: List<com.akumasdk.samtch.data.emote.EmoteTab>,
     isEmoteLoading: Boolean,
     systemNotice: String?,
     keyboardHeightPx: Int,
