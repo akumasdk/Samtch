@@ -31,6 +31,7 @@ fun rememberPlayerLayoutDimensions(
     isKeyboardOrMenuVisible: Boolean = false,
     isFoldableInnerScreen: Boolean = false
 ): PlayerLayoutDimensions {
+    val isTabletPortrait = screenWidth >= 600.dp && !isFullscreen && !isMinimized && !isPip
     val isChatOnly = portraitMode == PortraitMode.CHAT_ONLY && !isPip
     
     // Choose the best motion spec for the current state change
@@ -53,8 +54,12 @@ fun rememberPlayerLayoutDimensions(
                 screenHeight
             }
             isChatOnly -> 0.dp
+            isTabletPortrait -> (screenWidth * 0.6f * 9f / 16f)
             isKeyboardOrMenuVisible -> (screenWidth * 9 / 16).coerceAtMost(screenHeight * 0.3f)
-            else -> (screenWidth * 9 / 16)
+            else -> {
+                val maxPortraitVideoHeight = (screenHeight * 0.65f).coerceAtMost(screenHeight - 160.dp).coerceAtLeast(120.dp)
+                (screenWidth * 9 / 16).coerceAtMost(maxPortraitVideoHeight)
+            }
         },
         animationSpec = animationSpec,
         label = "PlayerHeight"
@@ -69,6 +74,7 @@ fun rememberPlayerLayoutDimensions(
                 screenWidth * (1f - chatRatio)
             }
             isChatOnly -> 0.dp
+            isTabletPortrait -> screenWidth * 0.6f
             else -> screenWidth
         },
         animationSpec = animationSpec,

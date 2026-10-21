@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -103,7 +105,12 @@ fun FullscreenPlayer(
             }
 
             // Foldable inner screen / square layout: Video on TOP, Chat on BOTTOM
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+            ) {
                 // Top Video Player
                 Box(
                     modifier = Modifier
@@ -152,7 +159,7 @@ fun FullscreenPlayer(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            this@Column.AnimatedVisibility(
+                            AnimatedVisibility(
                                 visible = displayName == null && streamTitle == null && gameName == null || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
                                 enter = SamtchAnimation.FadeIn,
                                 exit = SamtchAnimation.FadeOut
@@ -215,6 +222,8 @@ fun FullscreenPlayer(
                         modifier = Modifier
                             .fillMaxSize()
                             .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End))
+                            .statusBarsPadding()
+                            .navigationBarsPadding()
                     ) {
                         // 1. Chat area
                         Box(modifier = Modifier.fillMaxSize()) {

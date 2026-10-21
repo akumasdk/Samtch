@@ -46,10 +46,11 @@ fun StreamMetadataBar(
 ) {
     BoxWithConstraints(modifier = modifier) {
         val containerWidth = maxWidth
+        val containerHeight = maxHeight
         
         var isSlimManual by rememberSaveable { mutableStateOf(false) }
-        // forceSlim (keyboard/emotes) or narrow width takes absolute precedence over forceExpanded (Chat Only mode)
-        val isSlim = forceSlim || (containerWidth < 300.dp) || (isSlimManual && !forceExpanded)
+        // forceSlim (keyboard/emotes), narrow width or constrained height takes absolute precedence over forceExpanded (Chat Only mode)
+        val isSlim = forceSlim || (containerWidth < 300.dp) || (containerHeight < 120.dp) || (isSlimManual && !forceExpanded)
 
         val animatedHeight by animateDpAsState(
             targetValue = if (isSlim) 38.dp else 80.dp,

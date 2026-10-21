@@ -511,6 +511,7 @@ private fun TwitchPlayerOrchestrator(
                 tooltipShowCount = tooltipShowCount,
                 refreshTrigger = refreshTrigger,
                 isFoldableInnerScreen = isFoldableInnerScreen,
+                screenWidth = screenWidth,
                 onSizeChanged = { stablePlayerSize = it },
                 stablePlayerSize = stablePlayerSize
             )
@@ -534,6 +535,7 @@ private fun BoxScope.StablePlayerShell(
     tooltipShowCount: Int,
     refreshTrigger: Int,
     isFoldableInnerScreen: Boolean = false,
+    screenWidth: androidx.compose.ui.unit.Dp,
     onSizeChanged: (IntSize) -> Unit,
     stablePlayerSize: IntSize
 ) {
@@ -583,12 +585,24 @@ private fun BoxScope.StablePlayerShell(
                             .clip(RectangleShape)
                     }
                 }
-                PlayerLayoutType.PORTRAIT -> Modifier
-                    .align(Alignment.TopStart)
-                    .statusBarsPadding()
-                    .fillMaxWidth()
-                    .height(layout.height.value.coerceAtLeast(0.dp))
-                    .clip(RectangleShape)
+                PlayerLayoutType.PORTRAIT -> {
+                    if (screenWidth >= 600.dp && playerViewModel.portraitMode != PortraitMode.CHAT_ONLY) {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .statusBarsPadding()
+                            .padding(top = 88.dp)
+                            .width(layout.width.value.coerceAtLeast(1.dp))
+                            .height(layout.height.value.coerceAtLeast(0.dp))
+                            .clip(RectangleShape)
+                    } else {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .statusBarsPadding()
+                            .fillMaxWidth()
+                            .height(layout.height.value.coerceAtLeast(0.dp))
+                            .clip(RectangleShape)
+                    }
+                }
             }
                 .onSizeChanged(onSizeChanged)
                 .playerGestureHandler(
