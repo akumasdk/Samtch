@@ -2,8 +2,8 @@ package com.akumasdk.samtch.ui.screens.player.viewmodel
 
 import android.util.Log
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.Dp
@@ -39,7 +39,7 @@ class PlayerViewModel @Inject constructor(
     var avatarUrl by mutableStateOf<String?>(null)
     var streamSubtitle by mutableStateOf<String?>(null)
     
-    var metadataRefreshTrigger by mutableStateOf(0)
+    var metadataRefreshTrigger by mutableLongStateOf(System.currentTimeMillis())
     
     var isUiLoading by mutableStateOf(true)
     var loadingMessage by mutableStateOf("")
@@ -131,7 +131,7 @@ class PlayerViewModel @Inject constructor(
         // Only reset background reload flag if it's a COMPLETELY new channel.
         if (isNewChannel) {
             hasBackgroundReloaded = false
-            metadataRefreshTrigger = 0
+            metadataRefreshTrigger = System.currentTimeMillis()
             
             // Always reset UI mode to standard when changing channels to avoid "breaking logic"
             portraitMode = PortraitMode.VIDEO_AND_CHAT
@@ -205,11 +205,10 @@ class PlayerViewModel @Inject constructor(
     private fun updateMetadataState(metadata: TwitchStreamMetadata) {
         Log.d("PlayerViewModel", "Updating metadata state for ${metadata.user?.login}. Stream live: ${metadata.user?.stream != null}")
         streamMetadata = metadata
-        metadataRefreshTrigger++
+        metadataRefreshTrigger = System.currentTimeMillis()
         
         metadata.user?.let { user ->
-            // Optimization: Only update avatarUrl once per channel session to prevent flicker
-            if (avatarUrl == null) {
+            if (!user.profileImageUrl.isNullOrEmpty()) {
                 avatarUrl = user.profileImageUrl
             }
             streamSubtitle = user.stream?.title
