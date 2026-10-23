@@ -1,11 +1,11 @@
 [versions]
-agp = "9.3.2"
+agp = "9.4.1"
 coil = "2.7.0"
 composeWebviewMultiplatform = "2.0.3"
 datastorePreferences = "1.2.1"
 hilt = "2.60.1"
 hiltNavigationCompose = "1.2.0"
-ksp = "2.1.0-1.0.29"
+ksp = "2.3.6"
 kotlin = "2.4.10"
 kotlinxCollectionsImmutable = "0.5.2"
 coreKtx = "1.19.0"

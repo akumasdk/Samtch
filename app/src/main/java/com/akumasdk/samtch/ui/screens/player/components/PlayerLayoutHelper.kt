@@ -54,7 +54,10 @@ fun rememberPlayerLayoutDimensions(
             }
             isChatOnly -> 0.dp
             isKeyboardOrMenuVisible -> (screenWidth * 9 / 16).coerceAtMost(screenHeight * 0.3f)
-            else -> (screenWidth * 9 / 16)
+            else -> {
+                val maxPortraitVideoHeight = (screenHeight * 0.5f).coerceAtMost(screenHeight - 160.dp).coerceAtLeast(120.dp)
+                (screenWidth * 9 / 16).coerceAtMost(maxPortraitVideoHeight)
+            }
         },
         animationSpec = animationSpec,
         label = "PlayerHeight"

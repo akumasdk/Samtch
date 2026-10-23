@@ -19,7 +19,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.SubcomposeAsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.akumasdk.samtch.ui.theme.SamtchTheme
 
 /**
@@ -41,11 +44,20 @@ fun MiniPlayerOverlay(
             .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        val displayUrl = if (usePreview && !previewImageUrl.isNullOrEmpty()) previewImageUrl else avatarUrl
+        val rawUrl = if (usePreview && !previewImageUrl.isNullOrEmpty()) previewImageUrl else avatarUrl
+        val displayUrl = if (!rawUrl.isNullOrEmpty() && usePreview) {
+            val connector = if (rawUrl.contains("?")) "&" else "?"
+            "$rawUrl${connector}t=${System.currentTimeMillis()}"
+        } else rawUrl
         
         if (!displayUrl.isNullOrEmpty()) {
             SubcomposeAsyncImage(
-                model = displayUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(displayUrl)
+                    .crossfade(true)
+                    .diskCachePolicy(if (usePreview) CachePolicy.DISABLED else CachePolicy.ENABLED)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .build(),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()

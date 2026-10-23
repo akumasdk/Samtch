@@ -1,23 +1,15 @@
 package com.akumasdk.samtch.ui.components.chat.emote
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -32,7 +24,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.akumasdk.samtch.R
 import com.akumasdk.samtch.data.emote.Emote
@@ -71,6 +64,18 @@ fun EmoteInfoDialog(
             }
         }
 
+        val context = LocalContext.current
+        val imageRequest = remember(emote.url) {
+            ImageRequest.Builder(context)
+                .data(emote.url)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .memoryCacheKey(emote.url)
+                .crossfade(true)
+                .build()
+        }
+        val painter = rememberAsyncImagePainter(model = imageRequest)
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -84,11 +89,8 @@ fun EmoteInfoDialog(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(if (isFullscreen) 12.dp else 16.dp)
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(emote.url)
-                    .crossfade(true)
-                    .build(),
+            Image(
+                painter = painter,
                 contentDescription = emote.code,
                 modifier = Modifier
                     .size(if (isFullscreen) 80.dp else 128.dp)

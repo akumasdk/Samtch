@@ -51,14 +51,18 @@ fun PlayerBackground(
     }
     
     val finalUrl = remember(baseUrl, targetRefreshKey) {
-        val url = if (targetRefreshKey != null) {
+        if (baseUrl.isEmpty()) ""
+        else {
             val connector = if (baseUrl.contains("?")) "&" else "?"
-            "$baseUrl${connector}v=$targetRefreshKey"
-        } else {
-            baseUrl
+            val ts = if (targetRefreshKey is Long && targetRefreshKey > 1000000L) {
+                targetRefreshKey
+            } else {
+                System.currentTimeMillis()
+            }
+            val url = "$baseUrl${connector}t=$ts"
+            Log.d("PlayerBackground", "Preview URL: $url (RefreshKey: $targetRefreshKey)")
+            url
         }
-        Log.d("PlayerBackground", "Preview URL: $url (RefreshKey: $targetRefreshKey)")
-        url
     }
 
     Box(
@@ -84,25 +88,27 @@ fun PlayerBackground(
                     label = "ImageFadeAnimation"
                 )
 
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(url)
-                        .crossfade(true)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
-                    contentScale = contentScale,
-                    alpha = animatedAlpha,
-                    onState = { state ->
-                        if (state is AsyncImagePainter.State.Success) {
-                            isLoaded = true
+                if (url.isNotEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(url)
+                            .crossfade(true)
+                            .diskCachePolicy(CachePolicy.DISABLED)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
+                        contentScale = contentScale,
+                        alpha = animatedAlpha,
+                        onState = { state ->
+                            if (state is AsyncImagePainter.State.Success) {
+                                isLoaded = true
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
         }
         

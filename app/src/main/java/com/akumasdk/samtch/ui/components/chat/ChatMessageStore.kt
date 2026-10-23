@@ -37,8 +37,8 @@ class ChatMessageStore @Inject constructor(
                         }
                     }
                     
-                    if (updatedList.size > 500) { 
-                        val toRemove = updatedList.size - 500
+                    if (updatedList.size > 200) { 
+                        val toRemove = updatedList.size - 200
                         repeat(toRemove) { updatedList.removeAt(0) }
                     }
                     
@@ -63,7 +63,7 @@ class ChatMessageStore @Inject constructor(
         synchronized(rawIrcMessages) {
             if (rawIrcMessages.none { it.id == msg.id }) {
                 rawIrcMessages.add(msg)
-                if (rawIrcMessages.size > 500) rawIrcMessages.removeAt(0)
+                if (rawIrcMessages.size > 200) rawIrcMessages.removeAt(0)
             }
         }
     }
@@ -106,7 +106,7 @@ class ChatMessageStore @Inject constructor(
     fun addLocalMessage(uiState: ChatMessageUiState) {
         synchronized(messageHistory) {
             messageHistory.add(uiState)
-            if (messageHistory.size > 500) {
+            if (messageHistory.size > 200) {
                 messageHistory.removeAt(0)
             }
         }

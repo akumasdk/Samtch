@@ -1,5 +1,19 @@
 # Changelog
 
+## Samtch v1.2.1
+
+### What's New
+- **Fresh Live Stream Previews & Cache Busting**:
+  - **Timestamped Refresh Trigger**: Replaced static integer counters in `PlayerViewModel` with time-based epoch timestamps (`System.currentTimeMillis()`) to ensure unique preview URL keys on every fetch.
+  - **Disk Cache Bypass**: Disabled disk caching for live stream preview images in `PlayerBackground` and `PlayerLoadingScreen`, forcing Coil and Twitch's CDN to always deliver the freshest live stream preview.
+  - **WebView Background Script Overhaul**: Updated `player_background.js` with dynamic channel lookup (`getChannel()`), active `<video poster="...">` updates, and 5-second load timeout safeguards.
+- **System Navigation Bar & Inset Protection**:
+  - **Android 15/16 Navigation Insets**: Applied `.navigationBarsPadding()` and `.statusBarsPadding()` across player layouts so the streamer information bar, video player, and chat input box never overlap with system navigation bars (Back, Home, Recents).
+  - **Capped Video Player Height**: Constrained portrait video height to at most 50% of available screen height, guaranteeing ample vertical space for chat and metadata elements on tablets and devices with wider aspect ratios.
+  - **Responsive Streamer Metadata Bar**: Added vertical container constraints (`containerHeight < 120.dp`) in `StreamMetadataBar` to automatically switch to a compact 38dp slim metadata bar when vertical height is constrained.
+
+---
+
 ## Samtch v1.2.0
 
 ### What's New

@@ -69,11 +69,11 @@ class ChatEmoteManager @Inject constructor(
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun getEmoteMenuTabs(scope: CoroutineScope, currentChannelFlow: StateFlow<String?>): StateFlow<Map<Int, List<Emote>>> {
+    fun getEmoteMenuTabs(scope: CoroutineScope, currentChannelFlow: StateFlow<String?>): StateFlow<List<com.akumasdk.samtch.data.emote.EmoteTab>> {
         return currentChannelFlow.flatMapLatest { channelName ->
             if (channelName == null) {
-                Log.d(TAG, "Emote menu tabs: channel is null, returning emptyMap")
-                return@flatMapLatest flowOf(emptyMap<Int, List<Emote>>())
+                Log.d(TAG, "Emote menu tabs: channel is null, returning emptyList")
+                return@flatMapLatest flowOf(emptyList<com.akumasdk.samtch.data.emote.EmoteTab>())
             }
             
             Log.d(TAG, "Starting emote menu tabs flow for $channelName")
@@ -87,7 +87,7 @@ class ChatEmoteManager @Inject constructor(
                 Log.d(TAG, "Emote tabs combined for $channelName (trigger=$trigger). Tab count: ${tabs.size}")
                 tabs
             }
-        }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
+        }.stateIn(scope, SharingStarted.Eagerly, emptyList())
     }
 
     fun refreshEmotes(scope: CoroutineScope, channel: String, userId: String? = null, force: Boolean = false): Job {

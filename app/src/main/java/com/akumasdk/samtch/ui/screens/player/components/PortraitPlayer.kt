@@ -2,15 +2,16 @@ package com.akumasdk.samtch.ui.screens.player.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,7 +26,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.akumasdk.samtch.data.model.TwitchUser
-import com.akumasdk.samtch.ui.components.metadata.StatusBanner
 import com.akumasdk.samtch.ui.components.metadata.StreamInfoDialog
 import com.akumasdk.samtch.ui.components.metadata.StreamMetadataBar
 import com.akumasdk.samtch.ui.components.playerComponents.PlayerBackground
@@ -42,7 +42,6 @@ fun PortraitPlayer(
     streamTitle: String? = null,
     gameName: String? = null,
     viewersCount: Int = 0,
-    adblockText: String = "",
     streamStartedAt: String? = null,
     previewImageUrl: String? = null,
     user: TwitchUser? = null,
@@ -77,11 +76,20 @@ fun PortraitPlayer(
     val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
     val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.15f else 0f
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(SamtchTheme.colors.rootBackground.copy(alpha = surfaceAlpha))
     ) {
+        val screenHeight = maxHeight
+        val maxAllowedVideoHeight = screenHeight * 0.5f
+
+        val effectiveVideoHeight = if (videoHeight != androidx.compose.ui.unit.Dp.Unspecified) {
+            videoHeight.coerceAtMost(maxAllowedVideoHeight)
+        } else {
+            androidx.compose.ui.unit.Dp.Unspecified
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -94,30 +102,22 @@ fun PortraitPlayer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(
-                        if (videoHeight != androidx.compose.ui.unit.Dp.Unspecified) {
-                            Modifier.height(videoHeight)
+                        if (effectiveVideoHeight != androidx.compose.ui.unit.Dp.Unspecified) {
+                            Modifier.height(effectiveVideoHeight)
                         } else if (portraitMode == PortraitMode.CHAT_ONLY) {
                             Modifier.height(0.dp)
                         } else {
-                            Modifier.aspectRatio(16f / 9f)
+                            Modifier
+                                .aspectRatio(16f / 9f)
+                                .heightIn(max = maxAllowedVideoHeight)
                         }
                     )
                     .onSizeChanged { size ->
                         playerSize = size
                     }
             ) {
-                webView(Modifier.fillMaxSize()) {
-                    // Internal toggle ignored as per request to drop injected toggle
-                }
+                webView(Modifier.fillMaxSize()) {}
             }
-
-            // Space for Status Banner between player and metadata
-            StatusBanner(
-                text = adblockText,
-                isImmersiveEnabled = isImmersiveEnabled,
-                channel = channel,
-                previewImageUrl = previewImageUrl
-            )
 
             // Wrap metadata and chat in a Box to allow metadata bar to overlay chat
             Box(

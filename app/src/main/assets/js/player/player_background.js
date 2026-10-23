@@ -2,19 +2,23 @@
     'use strict';
 
     const styleId = 'samtch-player-background-style';
-    const channel = window.SamtchChannel;
-    if (!channel) return;
-
     let isFirstLoad = true;
     let isTransitioning = false;
     let lastRefreshTime = 0;
     let currentPosterUrl = '';
+    let lastChannel = '';
+
+    function getChannel() {
+        return (window.SamtchChannel || '').trim().toLowerCase();
+    }
 
     function getUrl(key) {
-        const trigger = parseInt(key) || 0;
+        const currentChannel = getChannel();
+        if (!currentChannel) return '';
+        const trigger = parseInt(key) || Date.now();
         const res = (trigger % 2 === 0) ? '640x360' : '1280x720';
-        const cacheBuster = key ? `v=${key}` : `t=${new Date().getTime()}`;
-        return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.toLowerCase()}-${res}.jpg?${cacheBuster}`;
+        const cacheBuster = `t=${Date.now()}`;
+        return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${currentChannel}-${res}.jpg?${cacheBuster}`;
     }
 
     function updatePosters(newPoster) {
@@ -24,8 +28,7 @@
             currentPosterUrl = newPoster;
         }
         document.querySelectorAll('video').forEach(video => {
-            // Check if poster is missing or using the default WebView poster
-            if (!video.poster || video.poster.startsWith('android-webview-video-poster:')) {
+            if (newPoster || !video.poster || video.poster.startsWith('android-webview-video-poster:')) {
                 video.poster = poster;
             }
         });
@@ -72,8 +75,17 @@
 
     window.refreshSamtchBackground = function(key) {
         const now = Date.now();
-        // Prevent multiple simultaneous transitions or spamming (min 10s between refreshes)
-        if (isTransitioning || (now - lastRefreshTime < 10000 && !isFirstLoad)) {
+        const activeChannel = getChannel();
+        if (!activeChannel) return;
+
+        if (lastChannel !== activeChannel) {
+            isFirstLoad = true;
+            isTransitioning = false;
+            lastChannel = activeChannel;
+            currentPosterUrl = '';
+        }
+
+        if (isTransitioning || (now - lastRefreshTime < 5000 && !isFirstLoad)) {
             return;
         }
 
@@ -81,18 +93,23 @@
         if (!container) return;
 
         const nextUrl = getUrl(key);
-        const img = new Image();
+        if (!nextUrl) return;
 
         isTransitioning = true;
+        const loadTimeout = setTimeout(() => {
+            isTransitioning = false;
+        }, 5000);
 
+        const img = new Image();
         img.onload = function() {
+            clearTimeout(loadTimeout);
             lastRefreshTime = Date.now();
             updatePosters(nextUrl);
             if (isFirstLoad) {
                 container.style.setProperty('--samtch-bg-prev', `url('${nextUrl}')`);
                 isFirstLoad = false;
                 isTransitioning = false;
-                console.log('Samtch: Initial background set for ' + channel);
+                console.log('Samtch: Initial background set for ' + activeChannel);
             } else {
                 console.log('Samtch: Starting crossfade to new preview');
                 const currentVal = container.style.getPropertyValue('--samtch-bg-curr') || container.style.getPropertyValue('--samtch-bg-prev');
@@ -113,6 +130,7 @@
         };
 
         img.onerror = function() {
+            clearTimeout(loadTimeout);
             isTransitioning = false;
         };
 
@@ -121,7 +139,7 @@
 
     injectStyles();
     updatePosters();
-    // Initial call
+
     setTimeout(() => {
         window.refreshSamtchBackground();
         updatePosters();
@@ -132,7 +150,6 @@
             if (!document.getElementById(styleId)) injectStyles();
             updatePosters();
             const container = document.querySelector('[data-a-target="video-ref"]');
-            // Only trigger if container exists and hasn't been initialized yet
             if (container && !container.style.getPropertyValue('--samtch-bg-prev') && !isTransitioning) {
                 window.refreshSamtchBackground();
             }

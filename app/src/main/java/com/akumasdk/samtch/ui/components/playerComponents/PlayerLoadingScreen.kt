@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.akumasdk.samtch.ui.theme.SamtchAnimation
 import com.akumasdk.samtch.ui.theme.SamtchTheme
@@ -70,11 +71,15 @@ fun PlayerLoadingScreen(
     }
     
     val finalUrl = remember(baseUrl, refreshKey) {
-        if (refreshKey != null) {
+        if (baseUrl.isEmpty()) ""
+        else {
             val connector = if (baseUrl.contains("?")) "&" else "?"
-            "$baseUrl${connector}v=$refreshKey"
-        } else {
-            baseUrl
+            val ts = if (refreshKey is Long && refreshKey > 1000000L) {
+                refreshKey
+            } else {
+                System.currentTimeMillis()
+            }
+            "$baseUrl${connector}t=$ts"
         }
     }
 
@@ -107,19 +112,23 @@ fun PlayerLoadingScreen(
         ) { url ->
             var isLoaded by remember { mutableStateOf(false) }
 
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(url)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scale(1.04f),
-                contentScale = ContentScale.Crop,
-                alpha = if (isLoaded) 0.78f else 0f,
-                onSuccess = { isLoaded = true }
-            )
+            if (url.isNotEmpty()) {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(url)
+                        .crossfade(true)
+                        .diskCachePolicy(CachePolicy.DISABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .scale(1.04f),
+                    contentScale = ContentScale.Crop,
+                    alpha = if (isLoaded) 0.78f else 0f,
+                    onSuccess = { isLoaded = true }
+                )
+            }
         }
 
         // Layered scrims keep controls readable while preserving the preview artwork.
