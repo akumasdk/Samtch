@@ -104,7 +104,7 @@ fun FullscreenPlayer(
                 screenHeight
             }
 
-            // Foldable inner screen / square layout: Video on TOP, Chat on BOTTOM
+            // Vertical / Portrait Fullscreen layout: Video on TOP, Chat on BOTTOM
             Column(
                 modifier = Modifier
                     .fillMaxSize()

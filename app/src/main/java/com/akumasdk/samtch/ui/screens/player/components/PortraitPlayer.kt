@@ -5,11 +5,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -78,83 +75,50 @@ fun PortraitPlayer(
     val isActuallyDark = SamtchTheme.colors.dialogBackground.luminance() < 0.5f
     val surfaceAlpha = if (isImmersiveEnabled && isActuallyDark) 0.15f else 0f
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(SamtchTheme.colors.rootBackground.copy(alpha = surfaceAlpha))
     ) {
-        val screenWidth = maxWidth
-        val isTablet = screenWidth >= 600.dp
-
-        if (isTablet && portraitMode != PortraitMode.CHAT_ONLY) {
-            // Tablet Portrait Layout: 2-column side-by-side layout
-            Row(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
+            verticalArrangement = Arrangement.Top
+        ) {
+            // Dynamic height container (Placeholder for the stable WebView)
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding(),
-                horizontalArrangement = Arrangement.Start
+                    .fillMaxWidth()
+                    .then(
+                        if (videoHeight != androidx.compose.ui.unit.Dp.Unspecified) {
+                            Modifier.height(videoHeight)
+                        } else if (portraitMode == PortraitMode.CHAT_ONLY) {
+                            Modifier.height(0.dp)
+                        } else {
+                            Modifier.aspectRatio(16f / 9f)
+                        }
+                    )
+                    .onSizeChanged { size ->
+                        playerSize = size
+                    }
             ) {
-                // Left Column: Metadata Bar + Video
-                Column(
-                    modifier = Modifier
-                        .weight(0.6f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.Top
-                ) {
-                    // Stream Metadata Bar at top of Left Column
-                    AnimatedVisibility(
-                        visible = streamTitle.isNullOrEmpty() && gameName.isNullOrEmpty() || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
-                        enter = SamtchAnimation.FadeIn,
-                        exit = SamtchAnimation.FadeOut
-                    ) {
-                        StreamMetadataBar(
-                            channel = channel,
-                            displayName = displayName,
-                            avatarUrl = avatarUrl,
-                            streamTitle = streamTitle,
-                            gameName = gameName,
-                            viewersCount = viewersCount,
-                            streamStartedAt = streamStartedAt,
-                            previewImageUrl = previewImageUrl,
-                            expandTrigger = expandTrigger,
-                            forceExpanded = true,
-                            forceSlim = forceSlimMetadata,
-                            isImmersiveEnabled = isImmersiveEnabled,
-                            loading = displayName == null && streamTitle == null && gameName == null,
-                            onClick = { showInfoDialog = true },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                webView(Modifier.fillMaxSize()) {}
+            }
 
-                    // Video Container Placeholder
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(
-                                if (videoHeight != androidx.compose.ui.unit.Dp.Unspecified) {
-                                    Modifier.height(videoHeight)
-                                } else {
-                                    Modifier.aspectRatio(16f / 9f)
-                                }
-                            )
-                            .onSizeChanged { size ->
-                                playerSize = size
-                            }
-                    ) {
-                        webView(Modifier.fillMaxSize()) {}
-                    }
-                }
-
-                // Right Column: Twitch Chat (Full Height)
-                Box(
-                    modifier = Modifier
-                        .weight(0.4f)
-                        .fillMaxHeight()
-                ) {
+            // Wrap metadata and chat in a Box to allow metadata bar to overlay chat
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                // Twitch Chat
+                Box(modifier = Modifier.fillMaxSize()) {
                     chatContent(
                         ChatContentConfig(
-                            isCompact = true,
+                            isCompact = false,
                             showInput = true,
                             refreshTrigger = refreshTrigger,
                             portraitMode = portraitMode,
@@ -163,81 +127,30 @@ fun PortraitPlayer(
                         Modifier.fillMaxSize()
                     )
                 }
-            }
-        } else {
-            // Standard Phone Portrait Layout
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .animateContentSize(animationSpec = SamtchAnimation.springInteractive()),
-                verticalArrangement = Arrangement.Top
-            ) {
-                // Dynamic height container (Placeholder for the stable WebView)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (videoHeight != androidx.compose.ui.unit.Dp.Unspecified) {
-                                Modifier.height(videoHeight)
-                            } else if (portraitMode == PortraitMode.CHAT_ONLY) {
-                                Modifier.height(0.dp)
-                            } else {
-                                Modifier.aspectRatio(16f / 9f)
-                            }
-                        )
-                        .onSizeChanged { size ->
-                            playerSize = size
-                        }
-                ) {
-                    webView(Modifier.fillMaxSize()) {}
-                }
 
-                // Wrap metadata and chat in a Box to allow metadata bar to overlay chat
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
+                // Metadata space above chat (Overlay)
+                this@Column.AnimatedVisibility(
+                    visible = streamTitle.isNullOrEmpty() && gameName.isNullOrEmpty() || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
+                    enter = SamtchAnimation.FadeIn,
+                    exit = SamtchAnimation.FadeOut,
+                    modifier = Modifier.align(Alignment.TopCenter)
                 ) {
-                    // Twitch Chat
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        chatContent(
-                            ChatContentConfig(
-                                isCompact = false,
-                                showInput = true,
-                                refreshTrigger = refreshTrigger,
-                                portraitMode = portraitMode,
-                                onToggleMode = onToggleMode
-                            ),
-                            Modifier.fillMaxSize()
-                        )
-                    }
-
-                    // Metadata space above chat (Overlay)
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = streamTitle.isNullOrEmpty() && gameName.isNullOrEmpty() || !streamTitle.isNullOrEmpty() || !gameName.isNullOrEmpty(),
-                        enter = SamtchAnimation.FadeIn,
-                        exit = SamtchAnimation.FadeOut,
-                        modifier = Modifier.align(Alignment.TopCenter)
-                    ) {
-                        StreamMetadataBar(
-                            channel = channel,
-                            displayName = displayName,
-                            avatarUrl = avatarUrl,
-                            streamTitle = streamTitle,
-                            gameName = gameName,
-                            viewersCount = viewersCount,
-                            streamStartedAt = streamStartedAt,
-                            previewImageUrl = previewImageUrl,
-                            expandTrigger = expandTrigger,
-                            forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
-                            forceSlim = forceSlimMetadata,
-                            isImmersiveEnabled = isImmersiveEnabled,
-                            loading = displayName == null && streamTitle == null && gameName == null,
-                            onClick = { showInfoDialog = true }
-                        )
-                    }
+                    StreamMetadataBar(
+                        channel = channel,
+                        displayName = displayName,
+                        avatarUrl = avatarUrl,
+                        streamTitle = streamTitle,
+                        gameName = gameName,
+                        viewersCount = viewersCount,
+                        streamStartedAt = streamStartedAt,
+                        previewImageUrl = previewImageUrl,
+                        expandTrigger = expandTrigger,
+                        forceExpanded = portraitMode == PortraitMode.CHAT_ONLY,
+                        forceSlim = forceSlimMetadata,
+                        isImmersiveEnabled = isImmersiveEnabled,
+                        loading = displayName == null && streamTitle == null && gameName == null,
+                        onClick = { showInfoDialog = true }
+                    )
                 }
             }
         }
